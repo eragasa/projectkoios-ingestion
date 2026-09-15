@@ -86,19 +86,55 @@ layout/semantic interpretation, storage, and model calls are non-goals.
 optional dependency tests, fixture verification, and full test/static-analysis
 suites.
 
-### ING-LAYOUT-01 — Reading-order and column analysis
+### ING-LAYOUT-01 — Reading-order and column analysis (implemented)
 
-Replace the current heuristic warning with a processor that proposes ordered
-text blocks and column groups without changing raw block order.
+`DeterministicLayoutProcessor` produces immutable, page-local text layout
+proposals without changing `ExtractedPage.blocks`. Results retain exact source
+and physical-page identity, the complete native raw-block ID sequence,
+source-spanned text references, explicitly non-text block IDs, a proposed text
+order, documented geometry exclusions, and column/group hypotheses. Stable
+result identity includes the layout contract, source page, input evidence,
+processor version, and complete configuration digest.
+
+Processor version 2 uses actual block-level vertical concurrency and minimum
+flow extent to distinguish one column and two balanced columns. A spanning
+heading must be wide, above both columns, intersect both column extents, and
+cross the gutter. Separated bottom text follows main flow only with the
+explicitly ambiguous group kind `footnote_candidate`; identical geometry can
+be a footer or final paragraph. Overlap, touching or weak separation, sparse/staggered groups,
+bridging top blocks, unsupported spanning positions, sidebars, and nonzero page
+rotation use low-confidence explicit warnings rather than confident insertion
+guesses. Unsupported coordinate systems are rejected. Confidence is a bounded
+heuristic score, not a probability, transcription score, or scientific
+validation claim.
+
+Per-page preflight bounds are 1,024 total raw blocks, 512 text blocks, 2,048
+total source spans, 4,096 characters per identity field, and 1,000,000 aggregate
+identity characters before provenance validation and pair analysis.
+
+The processor does not inspect text semantics. Non-text blocks remain in the
+raw page and are recorded but excluded from text-layout claims. Raw kind/span
+references are factory-validated against the input page. Missing geometry or a
+missing string text payload is an explicit exclusion; text with no analyzable
+geometry is ambiguous with zero confidence rather than empty. Group confidence
+and warning associations participate in stable identity. OCR, tables, figures,
+equations, semantic sections,
+document-wide flow, publication, and derived caching remain out of scope. The
+processor supports at most two confident columns, uses extracted ink geometry,
+and cannot distinguish column geometry from tables or semantic footnotes;
+complex pages require inspection of the low-confidence proposal and raw page.
+
+The cold extractor's former `pdf.reading_order_uncertain` heuristic was removed
+and its adapter version changed from 1 to 2, invalidating matching raw cache
+entries. The additive page-rotation evidence uses extraction contract 2.2 and
+also changes raw cache identity. The synthetic matrix covers
+one-column, two-column, spanning-heading, footnote, sidebar, and weakly
+separated ambiguous pages.
 
 **Depends on:** `ING-CACHE-01`.
 
-**Deliverables:** layout hypotheses, evidence, confidence, and ambiguity
-warnings.
-
-**Acceptance:** fixtures cover one-column, two-column, spanning headings,
-footnotes, and sidebars; uncertain cases remain uncertain; raw blocks are still
-available.
+**Validation:** focused layout/extractor/cache tests, fixture verification, and
+full test/static-analysis suites.
 
 ### ING-QUALITY-01 — Redistributable PDF fixture matrix (implemented)
 

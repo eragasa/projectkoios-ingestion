@@ -21,15 +21,14 @@ def _observe(fixture_id: str) -> dict[str, Any]:
 
 
 def test__pdf_fixture_matrix__manifest_integrity_and_expected_outputs() -> None:
-    manifest = json.loads(
-        (FIXTURE_DIRECTORY / "manifest.json").read_text()
-    )
+    manifest = json.loads((FIXTURE_DIRECTORY / "manifest.json").read_text())
 
     assert manifest["matrix_task"] == "ING-QUALITY-01"
     script_bytes = pdf_fixture_matrix.SCRIPT_PATH.read_bytes()
-    assert manifest["generation"]["script_sha256"] == hashlib.sha256(
-        script_bytes
-    ).hexdigest()
+    assert (
+        manifest["generation"]["script_sha256"]
+        == hashlib.sha256(script_bytes).hexdigest()
+    )
     assert [entry["id"] for entry in manifest["fixtures"]] == [
         case.fixture_id for case in pdf_fixture_matrix.CASES
     ]
@@ -73,26 +72,18 @@ def test__pdf_fixture_matrix__born_digital_text() -> None:
     assert block["kind"] == "text"
     assert block["bounding_box"] == [54.0, 54.0, 269.798, 101.6091]
     assert 0.0 < page["extraction_quality"] < 1.0
+    assert page["rotation_degrees"] == 0
     assert page["warnings"] == []
 
 
-def test__pdf_fixture_matrix__two_column_native_order_and_warning() -> None:
+def test__pdf_fixture_matrix__two_column_native_order_without_warning() -> None:
     page = _observe("two-column-layout")["pages"][0]
     right, left = page["blocks"]
 
     assert right["text"].startswith("RIGHT COLUMN FIRST")
     assert left["text"].startswith("LEFT COLUMN SECOND")
     assert right["bounding_box"][0] > left["bounding_box"][2]
-    assert page["warnings"] == [
-        {
-            "code": "pdf.reading_order_uncertain",
-            "evidence": {
-                "block_order": "extractor_native",
-                "separated_vertical_overlap_pairs": "1",
-            },
-            "severity": "info",
-        }
-    ]
+    assert page["warnings"] == []
 
 
 def test__pdf_fixture_matrix__equation_raw_text_and_geometry() -> None:
@@ -122,7 +113,7 @@ def test__pdf_fixture_matrix__table_raw_cell_order_and_geometry() -> None:
     assert cell_a["bounding_box"][0] < cell_b["bounding_box"][0]
     assert header_a["bounding_box"][3] < cell_a["bounding_box"][1]
     assert title["kind"] == "text"
-    assert page["warnings"][0]["code"] == "pdf.reading_order_uncertain"
+    assert page["warnings"] == []
 
 
 def test__pdf_fixture_matrix__figure_image_reference_and_caption() -> None:

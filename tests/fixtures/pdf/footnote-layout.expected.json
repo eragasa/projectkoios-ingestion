@@ -1,5 +1,5 @@
 {
-  "fixture": "two-column-layout",
+  "fixture": "footnote-layout",
   "pages": [
     {
       "blocks": [
@@ -7,46 +7,46 @@
           "asset_id": null,
           "asset_media_type": null,
           "bounding_box": [
-            330.0,
-            72.0,
-            449.779,
-            119.6091
+            54.0,
+            340.0,
+            268.632,
+            352.366
           ],
           "confidence": 1.0,
           "extraction_method": "pymupdf-text-dict",
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:0",
-          "text": "RIGHT COLUMN FIRST\nRight line two\nRight line three"
+          "text": "1 Footnote evidence near the separated page bottom."
         },
         {
           "asset_id": null,
           "asset_media_type": null,
           "bounding_box": [
             54.0,
-            72.0,
-            181.732,
-            119.6091
+            54.0,
+            147.533,
+            101.6091
           ],
           "confidence": 1.0,
           "extraction_method": "pymupdf-text-dict",
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:1",
-          "text": "LEFT COLUMN SECOND\nLeft line two\nLeft line three"
+          "text": "Main flow evidence\nFirst body line\nSecond body line"
         }
       ],
       "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
-      "extraction_quality": 0.098,
+      "extraction_quality": 0.102,
       "height": 420.0,
       "page_index": 0,
       "printed_page_label": null,
       "rotation_degrees": 0,
       "warnings": [],
-      "width": 600.0
+      "width": 420.0
     }
   ],
   "schema_version": 1,
-  "source_id": "fixture:two-column-layout",
-  "source_sha256": "66833e507efa6daa8f539686c69f4fd9aff31b357a6905a0a1c3fe79fb115500"
+  "source_id": "fixture:footnote-layout",
+  "source_sha256": "acea68b015deee7e9ff1a0a303077ce94ba0846c6e64c6cc30e3b743c2042a65"
 }

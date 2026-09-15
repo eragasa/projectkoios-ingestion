@@ -21,6 +21,18 @@ from projectkoios.ingestion.documents import (
     ExtractedArticle,
     ExtractedTextbook,
 )
+from projectkoios.ingestion.layout import (
+    LAYOUT_CONTRACT_VERSION,
+    DeterministicLayoutProcessor,
+    LayoutAnalysisLimitError,
+    LayoutBlockReference,
+    LayoutConfiguration,
+    LayoutExclusion,
+    LayoutGroupHypothesis,
+    LayoutGroupKind,
+    LayoutPageKind,
+    PageLayoutResult,
+)
 from projectkoios.ingestion.models import (
     CONTRACT_VERSION,
     ExtractedBlock,
@@ -49,6 +61,7 @@ from projectkoios.ingestion.pdf import (
 from projectkoios.ingestion.protocols import (
     ChunkIndexWriter,
     ExtractionCache,
+    PageLayoutProcessor,
     PageRegionRenderer,
     SourceExtractor,
 )
@@ -69,12 +82,14 @@ from projectkoios.ingestion.textbooks import (
 
 __all__ = [
     "CONTRACT_VERSION",
+    "LAYOUT_CONTRACT_VERSION",
     "EXTRACTION_CACHE_FORMAT_VERSION",
     "ArticleIngester",
     "ArticleStructureAnalyzer",
     "ChunkIndexWriter",
     "CodeRepositoryIndexer",
     "CodeRepositoryIngester",
+    "DeterministicLayoutProcessor",
     "ExtractedArticle",
     "ExtractedBlock",
     "ExtractedDocument",
@@ -89,7 +104,16 @@ __all__ = [
     "IngestionManifest",
     "IngestionStatus",
     "IngestionWarning",
+    "LayoutAnalysisLimitError",
+    "LayoutBlockReference",
+    "LayoutConfiguration",
+    "LayoutExclusion",
+    "LayoutGroupHypothesis",
+    "LayoutGroupKind",
+    "LayoutPageKind",
     "PYMUPDF_COORDINATE_SYSTEM",
+    "PageLayoutProcessor",
+    "PageLayoutResult",
     "PageRegionRenderer",
     "PageRegionSelection",
     "PdfArticleIngester",

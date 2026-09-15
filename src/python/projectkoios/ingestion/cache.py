@@ -693,6 +693,7 @@ def _decode_page(value: object) -> ExtractedPage:
             "extraction_quality",
             "warning_ids",
             "coordinate_system",
+            "rotation_degrees",
         },
     )
     return ExtractedPage(
@@ -709,6 +710,9 @@ def _decode_page(value: object) -> ExtractedPage:
         warning_ids=_string_tuple(raw["warning_ids"], "page.warning_ids"),
         coordinate_system=_string(
             raw["coordinate_system"], "page.coordinate_system"
+        ),
+        rotation_degrees=_integer(
+            raw["rotation_degrees"], "page.rotation_degrees"
         ),
     )
 

@@ -89,16 +89,8 @@
       "height": 320.0,
       "page_index": 0,
       "printed_page_label": null,
-      "warnings": [
-        {
-          "code": "pdf.reading_order_uncertain",
-          "evidence": {
-            "block_order": "extractor_native",
-            "separated_vertical_overlap_pairs": "2"
-          },
-          "severity": "info"
-        }
-      ],
+      "rotation_degrees": 0,
+      "warnings": [],
       "width": 540.0
     }
   ],

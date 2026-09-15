@@ -1,5 +1,5 @@
 {
-  "fixture": "two-column-layout",
+  "fixture": "sidebar-layout",
   "pages": [
     {
       "blocks": [
@@ -7,9 +7,9 @@
           "asset_id": null,
           "asset_media_type": null,
           "bounding_box": [
-            330.0,
+            54.0,
             72.0,
-            449.779,
+            341.276,
             119.6091
           ],
           "confidence": 1.0,
@@ -17,27 +17,27 @@
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:0",
-          "text": "RIGHT COLUMN FIRST\nRight line two\nRight line three"
+          "text": "MAIN FLOW HAS A SUBSTANTIALLY WIDER MEASURE\nMain line two remains concurrent with side text\nMain line three remains geometry evidence"
         },
         {
           "asset_id": null,
           "asset_media_type": null,
           "bounding_box": [
-            54.0,
-            72.0,
-            181.732,
-            119.6091
+            470.0,
+            92.0,
+            505.01,
+            135.281
           ],
           "confidence": 1.0,
           "extraction_method": "pymupdf-text-dict",
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:1",
-          "text": "LEFT COLUMN SECOND\nLeft line two\nLeft line three"
+          "text": "SIDE\nNOTE\nMAYBE"
         }
       ],
       "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
-      "extraction_quality": 0.098,
+      "extraction_quality": 0.148,
       "height": 420.0,
       "page_index": 0,
       "printed_page_label": null,
@@ -47,6 +47,6 @@
     }
   ],
   "schema_version": 1,
-  "source_id": "fixture:two-column-layout",
-  "source_sha256": "66833e507efa6daa8f539686c69f4fd9aff31b357a6905a0a1c3fe79fb115500"
+  "source_id": "fixture:sidebar-layout",
+  "source_sha256": "0c34cc372f87ebaec8c77c49e0f6611938272a707d4dadb86d77fbda457d8931"
 }

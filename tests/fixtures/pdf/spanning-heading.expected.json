@@ -1,5 +1,5 @@
 {
-  "fixture": "two-column-layout",
+  "fixture": "spanning-heading",
   "pages": [
     {
       "blocks": [
@@ -8,36 +8,52 @@
           "asset_media_type": null,
           "bounding_box": [
             330.0,
-            72.0,
-            449.779,
-            119.6091
+            92.0,
+            414.942,
+            139.6091
           ],
           "confidence": 1.0,
           "extraction_method": "pymupdf-text-dict",
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:0",
-          "text": "RIGHT COLUMN FIRST\nRight line two\nRight line three"
+          "text": "RIGHT COLUMN\nRight flow one\nRight flow two"
         },
         {
           "asset_id": null,
           "asset_media_type": null,
           "bounding_box": [
             54.0,
-            72.0,
-            181.732,
-            119.6091
+            92.0,
+            131.616,
+            139.6091
           ],
           "confidence": 1.0,
           "extraction_method": "pymupdf-text-dict",
           "kind": "text",
           "printed_page_label": null,
           "source_object_id": "page:0:block:1",
-          "text": "LEFT COLUMN SECOND\nLeft line two\nLeft line three"
+          "text": "LEFT COLUMN\nLeft flow one\nLeft flow two"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            36.0,
+            393.1189,
+            51.114
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:2",
+          "text": "SPANNING HEADING ACROSS BOTH COLUMNS -----------------------"
         }
       ],
       "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
-      "extraction_quality": 0.098,
+      "extraction_quality": 0.141,
       "height": 420.0,
       "page_index": 0,
       "printed_page_label": null,
@@ -47,6 +63,6 @@
     }
   ],
   "schema_version": 1,
-  "source_id": "fixture:two-column-layout",
-  "source_sha256": "66833e507efa6daa8f539686c69f4fd9aff31b357a6905a0a1c3fe79fb115500"
+  "source_id": "fixture:spanning-heading",
+  "source_sha256": "80801e3d93d88de31a3efb6ce5136c40acc60bb2a0abfe500d4f6fec262e1941"
 }

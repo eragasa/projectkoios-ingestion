@@ -143,7 +143,9 @@ This correction produced contract version 2.0 before the PDF adapter was
 implemented. The additive 2.1 contract adds immutable table-of-contents entries
 with source-local bookmark identity and optional physical-page destinations;
 2.0 constructors remain source-compatible because the new tuple defaults to
-empty.
+empty. Contract 2.2 adds a trailing defaulted `ExtractedPage.rotation_degrees`
+field, preserving positional page construction while retaining native rotation
+evidence needed by bounded layout processing.
 
 ## Implementation status
 
@@ -151,8 +153,9 @@ The initial PyMuPDF cold extractor is implemented behind the optional `pdf`
 extra. It emits extractor-native ordered text blocks, content-addressed image
 and mask references with media types, bounding boxes in a declared unrotated
 crop-box coordinate system, page labels, PDF bookmarks/table-of-contents
-evidence, source hashes, stable object identities, and structured low-text and
-reading-order warnings. It records the installed PyMuPDF version in extractor/cache identity.
+evidence, source hashes, stable object identities, and structured low-text
+warnings. It keeps native block order without making a layout claim and records
+the installed PyMuPDF version in extractor/cache identity.
 The CLI can project raw page text and the complete versioned extraction
 contract into explicitly selected artifact directories. It refuses to
 overwrite existing artifacts and rolls back artifacts created by an invocation
@@ -162,8 +165,16 @@ not provide an atomic transaction across the requested paths.
 
 The filesystem raw-extraction cache is implemented with versioned canonical
 JSON envelopes, complete identity and contract validation, atomic single-entry
-publication, and optional CLI reuse. Selected-region rendering is implemented
-as an explicit non-empty ordered selection contract and lazy PyMuPDF adapter
+publication, and optional CLI reuse. Deterministic page-layout analysis is
+implemented as a separate bounded derivation with stable processor and
+configuration identity, source-backed text-block references, geometry evidence,
+heuristic confidence, and explicit ambiguity; it never replaces or reorders raw
+blocks. Removing the old cold multicolumn warning changed the extractor adapter
+version from 1 to 2. Additive page-rotation evidence changed the extraction
+contract from 2.1 to 2.2; both identities invalidate earlier raw cache entries.
+Selected-region
+rendering is implemented as an explicit non-empty ordered selection contract and
+lazy PyMuPDF adapter
 that returns validated in-memory PNG evidence under deterministic
 pre-allocation limits. OCR and semantic cleanup remain future bounded
 processors. Their absence must not be hidden by treating raw text extraction as

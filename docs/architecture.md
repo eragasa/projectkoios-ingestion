@@ -57,13 +57,15 @@ indices remain dependencies outside this repository as established by
 The implemented cold PDF adapter uses PyMuPDF behind a lazy optional dependency
 boundary. It records text blocks in PyMuPDF's native block order, image
 references with media and mask identities, bounding boxes, physical pages,
-printed labels, bookmarks, source hashes, and low-text or reading-order
-warnings. Coordinates and matching dimensions use points relative to the
-unrotated crop box's top-left corner. Multicolumn evidence produces a
-warning rather than silently replacing native order with PyMuPDF's optional
-reading-order sort. The implemented bounded region adapter renders only
-explicit full-page or bounding-box selections to in-memory PNG evidence. OCR
-and structural enrichment remain bounded future processors.
+printed labels, bookmarks, source hashes, page rotation, and low-text warnings.
+Coordinates and matching dimensions use points relative to the unrotated crop box's
+top-left corner. Cold extraction never applies PyMuPDF's optional reading-order
+sort. The separate `DeterministicLayoutProcessor` proposes page-local ordered
+text references and geometry-backed groups while preserving the complete raw
+block sequence. It keeps sidebars, overlaps, weak separation, and unsupported
+spanning arrangements explicitly uncertain. The implemented bounded region
+adapter renders only explicit full-page or bounding-box selections to in-memory
+PNG evidence. OCR and structural enrichment remain bounded future processors.
 
 PDF document support follows an output-independent pipeline:
 
@@ -71,6 +73,7 @@ PDF document support follows an output-independent pipeline:
 SourceDocument
     -> SourceExtractor
     -> ExtractedDocument
+    -> optional PageLayoutProcessor
     -> StructuralAnalyzer
     -> StructuredDocument
     -> optional ChunkProducer
@@ -269,12 +272,16 @@ documents; a renderer-only byte limit would not satisfy that boundary.
 ## Failure and Confidence Model
 
 Extraction does not silently discard uncertainty. A result may contain usable
-content and warnings at the same time. The implemented cold extractor emits
-warnings for uncertain reading order and low text density or likely scan pages.
-It treats an absent printed page label as normal optional evidence rather than
-a warning. Malformed and encrypted inputs are fatal errors and do not produce a
-result. Deferred OCR, layout, structure, figure, and equation processors may
-add their own source-backed warnings when implemented.
+content and warnings at the same time. The cold extractor emits low-text or
+likely-scan warnings; layout ambiguity belongs to the separate layout result.
+The layout processor emits source-backed warnings for overlapping blocks,
+touching, weak, sparse, or staggered column evidence, sidebars, uncertain bottom
+text, nonzero page rotation, unsupported spanning positions, and documented
+geometry or payload exclusions. Unsupported coordinate systems fail closed. It
+treats an absent printed page label as normal optional
+evidence rather than a warning. Malformed and encrypted inputs are fatal errors
+and do not produce a result. Deferred OCR, structure, figure, and equation
+processors may add their own source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. Region rendering rejects source metadata
@@ -346,7 +353,7 @@ collections. They verify:
 - deterministic output and stable IDs;
 - exact page and bounding-box provenance;
 - article and textbook structure behavior;
-- warnings for ambiguous or image-only pages;
+- layout warnings for ambiguous pages and extraction warnings for image-only pages;
 - cache invalidation by source and processor version;
 - lazy loading of optional dependencies;
 - streaming behavior for large inputs;

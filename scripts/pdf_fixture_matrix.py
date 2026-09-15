@@ -83,6 +83,81 @@ def _two_column(pymupdf: Any) -> Any:
     return document
 
 
+def _spanning_heading(pymupdf: Any) -> Any:
+    document = _new_document(pymupdf)
+    page = document.new_page(width=600, height=420)
+    # Insert columns before the heading so native order differs from the
+    # geometry-derived proposal.
+    page.insert_textbox(
+        (330, 92, 546, 260),
+        "RIGHT COLUMN\nRight flow one\nRight flow two",
+        fontsize=11,
+    )
+    page.insert_textbox(
+        (54, 92, 270, 260),
+        "LEFT COLUMN\nLeft flow one\nLeft flow two",
+        fontsize=11,
+    )
+    page.insert_textbox(
+        (54, 36, 546, 68),
+        "SPANNING HEADING ACROSS BOTH COLUMNS -----------------------",
+        fontsize=11,
+    )
+    return document
+
+
+def _footnote(pymupdf: Any) -> Any:
+    document = _new_document(pymupdf)
+    page = document.new_page(width=420, height=420)
+    # Insert the footnote first so native order differs from the supported
+    # main-flow-then-footnote layout proposal.
+    page.insert_textbox(
+        (54, 340, 366, 380),
+        "1 Footnote evidence near the separated page bottom.",
+        fontsize=9,
+    )
+    page.insert_textbox(
+        (54, 54, 366, 210),
+        "Main flow evidence\nFirst body line\nSecond body line",
+        fontsize=11,
+    )
+    return document
+
+
+def _sidebar(pymupdf: Any) -> Any:
+    document = _new_document(pymupdf)
+    page = document.new_page(width=600, height=420)
+    page.insert_textbox(
+        (54, 72, 390, 280),
+        "MAIN FLOW HAS A SUBSTANTIALLY WIDER MEASURE\n"
+        "Main line two remains concurrent with side text\n"
+        "Main line three remains geometry evidence",
+        fontsize=11,
+    )
+    page.insert_textbox(
+        (470, 92, 550, 220),
+        "SIDE\nNOTE\nMAYBE",
+        fontsize=10,
+    )
+    return document
+
+
+def _ambiguous_overlap(pymupdf: Any) -> Any:
+    document = _new_document(pymupdf)
+    page = document.new_page(width=420, height=300)
+    page.insert_textbox(
+        (54, 80, 150, 170),
+        "LEFT MAYBE\nConcurrent\nuncertain",
+        fontsize=11,
+    )
+    page.insert_textbox(
+        (132, 82, 232, 172),
+        "RIGHT MAYBE\nConcurrent\nuncertain",
+        fontsize=11,
+    )
+    return document
+
+
 def _equations(pymupdf: Any) -> Any:
     document = _new_document(pymupdf)
     page = document.new_page(width=420, height=300)
@@ -220,13 +295,53 @@ CASES = (
     ),
     FixtureCase(
         "two-column-layout",
-        "Extractor-native order and ambiguity evidence for two columns.",
+        "Extractor-native evidence for a synthetic two-column page.",
         (
             "right-column text precedes left-column text in native block order",
-            "separated block geometry demonstrates two columns",
-            "pdf.reading_order_uncertain records extractor_native evidence",
+            "separated block geometry remains available to layout processing",
+            "cold extraction emits no derived reading-order warning",
         ),
         _two_column,
+    ),
+    FixtureCase(
+        "spanning-heading",
+        "A page-wide heading before two concurrent text columns.",
+        (
+            "the heading remains separate raw text above both columns",
+            "layout analysis proposes the heading before column flow",
+            "the source is wholly synthetic geometry evidence",
+        ),
+        _spanning_heading,
+    ),
+    FixtureCase(
+        "footnote-layout",
+        "Main flow followed by separated text near the page bottom.",
+        (
+            "main and bottom text remain separate raw blocks",
+            "layout analysis proposes supported bottom text after main flow",
+            "footnote status is only a geometry hypothesis",
+        ),
+        _footnote,
+    ),
+    FixtureCase(
+        "sidebar-layout",
+        "A narrow side group concurrent with wider main text.",
+        (
+            "main and side text remain separate raw blocks",
+            "layout analysis exposes an uncertain sidebar hypothesis",
+            "no confident sidebar insertion point is asserted",
+        ),
+        _sidebar,
+    ),
+    FixtureCase(
+        "ambiguous-overlap",
+        "Two weakly separated text blocks with no safe geometric order.",
+        (
+            "weakly separated raw text blocks remain available",
+            "layout analysis reports explicit ordering ambiguity",
+            "the fallback order carries low heuristic confidence",
+        ),
+        _ambiguous_overlap,
     ),
     FixtureCase(
         "equations",
@@ -365,6 +480,7 @@ def project_result(fixture_id: str, payload: bytes) -> dict[str, object]:
                 "width": _round(page.width),
                 "height": _round(page.height),
                 "coordinate_system": page.coordinate_system,
+                "rotation_degrees": page.rotation_degrees,
                 "extraction_quality": _round(page.extraction_quality),
                 "blocks": blocks,
                 "warnings": page_warnings,

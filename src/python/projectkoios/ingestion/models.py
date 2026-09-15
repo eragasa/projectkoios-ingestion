@@ -6,7 +6,7 @@ from enum import StrEnum
 from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.identity import sha256_digest, stable_id
 
-CONTRACT_VERSION = "2.1"
+CONTRACT_VERSION = "2.2"
 BoundingBox = tuple[float, float, float, float]
 Metadata = tuple[tuple[str, str], ...]
 
@@ -261,6 +261,7 @@ class ExtractedPage:
     extraction_quality: float = 1.0
     warning_ids: tuple[str, ...] = ()
     coordinate_system: str = "unspecified"
+    rotation_degrees: int = 0
 
     def __post_init__(self) -> None:
         if self.page_index < 0:
@@ -271,6 +272,12 @@ class ExtractedPage:
             raise ValueError("extraction_quality must be between 0 and 1")
         if not self.coordinate_system:
             raise ValueError("coordinate_system must be non-empty")
+        if (
+            isinstance(self.rotation_degrees, bool)
+            or not isinstance(self.rotation_degrees, int)
+            or self.rotation_degrees not in (0, 90, 180, 270)
+        ):
+            raise ValueError("rotation_degrees must be 0, 90, 180, or 270")
         for block in self.blocks:
             if any(
                 span.page_index != self.page_index

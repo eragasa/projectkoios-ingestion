@@ -5,8 +5,9 @@
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
 cache, filesystem-cache, article, textbook, structural-analysis, deterministic
-PyMuPDF cold extraction, and bounded PDF region-rendering contracts are
-implemented and exported. `RoughChunk`, OCR, and the general
+PyMuPDF cold extraction, deterministic page-layout analysis, and bounded PDF
+region-rendering contracts are implemented and exported. `RoughChunk`, OCR,
+and the general
 `ProcessingSelection`/`ProcessingResult` JIT coordination specializations remain
 planned until implemented, tested, and exported; that deferred status does not
 include the implemented bounded region renderer.
@@ -84,8 +85,9 @@ Contains the ordered extraction result for one physical PDF page:
 
 - physical page index;
 - printed page label;
-- dimensions and coordinate system. PyMuPDF pages report unrotated crop-box
-  width and height matching their extracted coordinates;
+- dimensions, coordinate system, and clockwise page rotation in degrees.
+  PyMuPDF pages report unrotated crop-box width and height matching their
+  extracted coordinates and rotation in `{0, 90, 180, 270}`;
 - blocks in extractor-native source order;
 - image and drawing references;
 - extraction quality metrics;
@@ -109,9 +111,11 @@ Contract version 2.1 adds `table_of_contents` as an additive trailing tuple that
 defaults to empty. Its placement preserves the positional field order of 2.0
 `ExtractedDocument` construction. Each entry records a stable entry ID, exact
 logical and blob source identity, source hierarchy level, source title,
-optional native PDF object ID,
-and an optional `SourceSpan` for an internal physical-page destination. It does
-not prescribe a generated heading, filename, or consumer navigation target.
+optional native PDF object ID, and an optional `SourceSpan` for an internal
+physical-page destination. Contract version 2.2 adds trailing, defaulted
+`ExtractedPage.rotation_degrees` evidence while preserving positional
+construction. It does not prescribe a generated heading, filename, or consumer
+navigation target.
 
 It does not contain destination paths, Markdown filenames, search scores, or
 vault links.
@@ -172,6 +176,69 @@ Fields include:
 A rough chunk must not split an indivisible typed object such as an equation,
 caption, or problem merely to satisfy a token target. Search-specific vectors,
 scores, and ranking features are not part of this contract.
+
+## `PageLayoutResult`
+
+`DeterministicLayoutProcessor` returns one immutable `PageLayoutResult` for
+each analyzed `ExtractedPage`. Layout contract version 1.0 is separate from raw
+extraction contract 2.2. Processor version 2 contains the repaired identity and
+conservative ambiguity semantics. A result records:
+
+- stable result and exact source-page IDs;
+- logical source ID, exact source-blob ID and SHA-256, physical page index,
+  dimensions, printed label, coordinate system, and page rotation;
+- every raw page block as a non-owning kind-and-source-span reference in
+  extractor-native order;
+- text-block references projected exactly from those raw references, plus every
+  non-text block ID excluded from text analysis;
+- proposed text-block order and explicit reason/evidence for every text block
+  excluded because usable positive-area geometry is unavailable;
+- one exclusive group membership for every ordered block, with group kind,
+  union bounding box, transparent evidence, heuristic confidence, and warning
+  links;
+- page hypothesis, page evidence, ambiguity warnings, processor name/version,
+  and complete configuration digest.
+
+Direct construction validates finite in-page geometry, exact source/page/span
+identity, unique raw/reference/order/exclusion/group/warning IDs, complete text
+coverage by either order or documented exclusion, exclusive group membership,
+group bounding boxes and stable IDs, warning cross-links and IDs, processor
+identity, and stable result identity. Group identity includes confidence and
+ordered warning links. The public factory rejects supplied text/non-text
+classifications or spans that differ from `ExtractedPage.blocks`. Tuple-valued
+contracts must actually be immutable tuples. Signed zero in layout geometry is
+canonicalized before it enters identities; non-finite geometry is rejected.
+
+The default bounded geometry heuristic admits at most 1,024 total raw blocks,
+512 text blocks, 2,048 total source spans, 4,096 characters per identity field,
+and 1,000,000 aggregate identity characters per page. These limits are checked
+before provenance validation, tuple/set construction, or pair analysis. It
+uses horizontal gaps and actual block-level vertical concurrency plus minimum
+flow extent to propose one or two columns. A spanning-heading candidate must be
+sufficiently wide, lie above both columns, intersect both column extents, and
+cross the gutter. Multiple or offset wide candidates remain ambiguous.
+Separated bottom text is ordered after main flow only with the low-confidence
+group kind `footnote_candidate` and always carries a warning because identical
+geometry may be a footer or final paragraph. Narrow asymmetric side groups, block
+overlap, touching or weak separation, sparse or staggered groups, bridging top
+blocks, and nonzero page rotation remain explicit low-confidence ambiguity
+hypotheses. Unsupported coordinate systems are rejected. Confidence is a
+bounded heuristic score, not a probability, scientific validation result, or
+proofread-transcription measure. Thresholds and resource bounds are versioned
+configuration identity.
+
+The processor neither owns nor mutates raw blocks. Images and other non-text
+blocks remain available in `ExtractedPage.blocks` and cannot enter text-layout
+groups. Text-kind blocks without string text payloads are explicitly excluded;
+a page with text but no analyzable geometry is ambiguous with zero confidence,
+not empty. Known limits are deliberate: analysis is page-local, proposes at most
+two confident columns, uses extracted ink boxes rather than typography or PDF
+drawing commands, and cannot semantically distinguish columns from tables or a
+true footnote from other separated bottom text. More complex geometry becomes
+an imperfect low-confidence fallback and requires inspection. The processor
+performs no OCR, semantic section recognition, table reconstruction, equation
+or figure interpretation, document-wide ordering, model call, publication, or
+derived-result caching.
 
 ## `PageRegionSelection` and `RenderedRegion`
 

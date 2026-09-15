@@ -32,7 +32,7 @@ class PyMuPdfExtractor:
     """Deterministic cold PDF extraction through a lazy optional adapter."""
 
     name = "pymupdf"
-    version = "1"
+    version = "2"
 
     def __init__(self, *, low_text_character_threshold: int = 40) -> None:
         if low_text_character_threshold < 0:
@@ -149,13 +149,11 @@ class PyMuPdfExtractor:
         page: Any,
         page_index: int,
     ) -> tuple[ExtractedPage, tuple[IngestionWarning, ...]]:
-        # PyMuPDF's sorting is a reading-order hypothesis. Keep its native
-        # source block sequence as cold evidence and warn about ambiguous
-        # layout.
+        # PyMuPDF's sorting is a reading-order hypothesis. Cold extraction
+        # retains its native source sequence; layout is a separate derivation.
         raw = page.get_text("dict", sort=False)
         blocks: list[ExtractedBlock] = []
         text_character_count = 0
-        text_boxes: list[tuple[float, float, float, float]] = []
         for ordinal, raw_block in enumerate(raw.get("blocks", [])):
             source_object_id = f"page:{page_index}:block:{ordinal}"
             box = tuple(float(item) for item in raw_block.get("bbox", ()))
@@ -173,8 +171,6 @@ class PyMuPdfExtractor:
                 if not text:
                     continue
                 text_character_count += len(text.strip())
-                if bounding_box is not None:
-                    text_boxes.append(bounding_box)
                 blocks.append(
                     ExtractedBlock.create(
                         kind="text",
@@ -238,36 +234,6 @@ class PyMuPdfExtractor:
                     ),
                 )
             )
-        column_overlap_pairs = self._multicolumn_overlap_pairs(text_boxes)
-        if column_overlap_pairs:
-            warnings.append(
-                IngestionWarning.create(
-                    code="pdf.reading_order_uncertain",
-                    severity=WarningSeverity.INFO,
-                    message=(
-                        "Multiple text columns may make reading order "
-                        "uncertain; blocks remain in extractor-native order"
-                    ),
-                    source_spans=(
-                        SourceSpan(
-                            source_id=source.source_id,
-                            source_blob_id=source.blob_id,
-                            page_index=page_index,
-                            printed_page_label=self._page_label(page),
-                        ),
-                    ),
-                    evidence=(
-                        ("block_order", "extractor_native"),
-                        (
-                            "separated_vertical_overlap_pairs",
-                            str(column_overlap_pairs),
-                        ),
-                    ),
-                    suggested_recovery=(
-                        "Proofread block order against the rendered page"
-                    ),
-                )
-            )
         warning_ids = tuple(warning.warning_id for warning in warnings)
         # get_text() and outline destinations use the unrotated cropbox
         # coordinate space, whereas page.rect dimensions rotate with the page.
@@ -284,6 +250,7 @@ class PyMuPdfExtractor:
                 extraction_quality=quality,
                 warning_ids=warning_ids,
                 coordinate_system=PYMUPDF_COORDINATE_SYSTEM,
+                rotation_degrees=int(page.rotation),
             ),
             tuple(warnings),
         )
@@ -340,21 +307,6 @@ class PyMuPdfExtractor:
     def _page_label(page: Any) -> str | None:
         label = str(page.get_label() or "").strip()
         return label or None
-
-    @staticmethod
-    def _multicolumn_overlap_pairs(
-        boxes: list[tuple[float, float, float, float]],
-    ) -> int:
-        count = 0
-        for first_index, first in enumerate(boxes):
-            for second in boxes[first_index + 1 :]:
-                vertical_overlap = min(first[3], second[3]) - max(
-                    first[1], second[1]
-                )
-                separated = first[2] < second[0] or second[2] < first[0]
-                if vertical_overlap > 20 and separated:
-                    count += 1
-        return count
 
     @classmethod
     def _extractor_version(cls, pymupdf: Any) -> str:

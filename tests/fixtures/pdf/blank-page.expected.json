@@ -8,6 +8,7 @@
       "height": 300.0,
       "page_index": 0,
       "printed_page_label": null,
+      "rotation_degrees": 0,
       "warnings": [
         {
           "code": "pdf.low_text_density",

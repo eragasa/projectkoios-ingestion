@@ -4,7 +4,13 @@ from collections.abc import Iterable
 from typing import BinaryIO, Protocol
 
 from projectkoios.chunking import TextChunk
-from projectkoios.ingestion.models import ExtractionResult, SourceDocument
+from projectkoios.ingestion.layout import PageLayoutResult
+from projectkoios.ingestion.models import (
+    ExtractedDocument,
+    ExtractedPage,
+    ExtractionResult,
+    SourceDocument,
+)
 from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
@@ -24,6 +30,19 @@ class SourceExtractor(Protocol):
         source: SourceDocument,
         content: BinaryIO,
     ) -> ExtractionResult: ...
+
+
+class PageLayoutProcessor(Protocol):
+    name: str
+    version: str
+
+    def analyze(
+        self, document: ExtractedDocument
+    ) -> tuple[PageLayoutResult, ...]: ...
+
+    def analyze_page(
+        self, source: SourceDocument, page: ExtractedPage
+    ) -> PageLayoutResult: ...
 
 
 class PageRegionRenderer(Protocol):

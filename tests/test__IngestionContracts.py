@@ -165,6 +165,20 @@ def test__source_span__rejects_invalid_coordinates() -> None:
         )
 
 
+@pytest.mark.parametrize("rotation", [-90, 45, 360, True, 90.0])
+def test__extracted_page__rejects_invalid_rotation(rotation: object) -> None:
+    source = make_source()
+
+    with pytest.raises(ValueError, match="rotation_degrees"):
+        ExtractedPage(
+            page_index=2,
+            width=612.0,
+            height=792.0,
+            blocks=(make_block(source),),
+            rotation_degrees=rotation,  # type: ignore[arg-type]
+        )
+
+
 def test__document__rejects_blocks_from_another_source() -> None:
     source = make_source()
     other = SourceDocument.from_bytes(
@@ -233,23 +247,34 @@ def test__serialization__is_deterministic_and_json_compatible() -> None:
     values = contract_dict(document)
 
     assert first == second
-    assert values["contract_version"] == "2.1"
+    assert values["contract_version"] == "2.2"
     assert values["source"]["content_hash"] == source.content_hash
     assert values["pages"][0]["blocks"][0]["kind"] == "text"
     assert values["table_of_contents"][0]["title"] == "Introduction"
 
 
-def test__contract_2_1__keeps_table_of_contents_additive() -> None:
+def test__contract_2_2__keeps_additive_fields() -> None:
     document = make_document(make_source())
 
-    assert CONTRACT_VERSION == "2.1"
+    assert CONTRACT_VERSION == "2.2"
     assert document.contract_version == CONTRACT_VERSION
     assert document.table_of_contents == ()
+    assert document.pages[0].rotation_degrees == 0
 
 
-def test__contract_2_1__preserves_positional_construction() -> None:
+def test__contract_2_2__preserves_positional_construction() -> None:
     source = make_source()
     factory_document = make_document(source)
+    page = ExtractedPage(
+        2,
+        612.0,
+        792.0,
+        (make_block(source),),
+        "1",
+        1.0,
+        (),
+        "legacy-coordinate-system",
+    )
 
     document = ExtractedDocument(
         factory_document.document_id,
@@ -260,6 +285,7 @@ def test__contract_2_1__preserves_positional_construction() -> None:
         "2.0",
     )
 
+    assert page.rotation_degrees == 0
     assert document.warning_ids == ("warning:legacy",)
     assert document.contract_version == "2.0"
     assert document.table_of_contents == ()

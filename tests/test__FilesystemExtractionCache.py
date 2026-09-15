@@ -133,6 +133,23 @@ def test__filesystem_cache__deterministic_round_trip(tmp_path: Path) -> None:
     )
 
 
+def test__filesystem_cache__round_trips_page_rotation_evidence(
+    tmp_path: Path,
+) -> None:
+    result = _result()
+    rotated_page = replace(result.document.pages[0], rotation_degrees=270)
+    rotated_document = replace(result.document, pages=(rotated_page,))
+    rotated_result = replace(result, document=rotated_document)
+    cache = FilesystemExtractionCache(tmp_path / "cache")
+
+    cache.put(rotated_result.manifest.cache_key, rotated_result)
+    restored = cache.get(rotated_result.manifest.cache_key)
+
+    assert restored is not None
+    assert restored.document.pages[0].rotation_degrees == 270
+    assert restored == rotated_result
+
+
 def test__cache_key__changes_for_source_backend_configuration_and_format() -> (
     None
 ):

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from projectkoios.ingestion import (
     CONTRACT_VERSION,
+    build_extraction_cache_key,
     contract_dict,
     serialize_contract,
 )
@@ -194,6 +195,7 @@ def test__pymupdf_extractor__declares_unrotated_cropbox_coordinates() -> None:
     destination = result.document.table_of_contents[0].destination
 
     assert (extracted_page.width, extracted_page.height) == (500.0, 600.0)
+    assert extracted_page.rotation_degrees == 90
     assert extracted_page.coordinate_system == (
         "pymupdf_unrotated_cropbox_points_top_left"
     )
@@ -206,7 +208,9 @@ def test__pymupdf_extractor__declares_unrotated_cropbox_coordinates() -> None:
     assert destination.bounding_box[3] <= extracted_page.height
 
 
-def test__pymupdf_extractor__keeps_native_multicolumn_block_order() -> None:
+def test__pymupdf_extractor__keeps_native_order_without_layout_warning() -> (
+    None
+):
     document = pymupdf.open()
     page = document.new_page(width=600, height=800)
     page.insert_textbox(
@@ -222,14 +226,14 @@ def test__pymupdf_extractor__keeps_native_multicolumn_block_order() -> None:
 
     result = _extract(content, low_text_character_threshold=0)
     texts = [block.text for block in result.document.pages[0].blocks]
-    warning = result.warnings[0]
 
     assert texts == [
         "RIGHT ONE\nRIGHT TWO\nRIGHT THREE",
         "LEFT ONE\nLEFT TWO\nLEFT THREE",
     ]
-    assert warning.code == "pdf.reading_order_uncertain"
-    assert dict(warning.evidence)["block_order"] == "extractor_native"
+    assert result.warnings == ()
+    assert result.document.pages[0].warning_ids == ()
+    assert result.manifest.extractor_version.startswith("2+pymupdf.")
 
 
 def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
@@ -265,6 +269,29 @@ def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
     assert serialized_entry["title"] == "Introduction"
     with pytest.raises(FrozenInstanceError):
         entries[0].title = "Changed"  # type: ignore[misc]
+
+
+def test__pymupdf_extractor__version_two_misses_version_one_cache() -> None:
+    content = _fixture_pdf(blank_page=False)
+    source = _source(content)
+    extractor = PyMuPdfExtractor(low_text_character_threshold=0)
+    current = extractor.extract(source, BytesIO(content))
+    old_key = build_extraction_cache_key(
+        source_id=source.source_id,
+        source_blob_id=source.blob_id,
+        extractor_name=extractor.name,
+        extractor_version=(
+            current.manifest.extractor_version.replace(
+                "2+pymupdf.", "1+pymupdf.", 1
+            )
+        ),
+        configuration_digest=extractor.configuration_digest,
+        contract_version="2.1",
+    )
+
+    assert current.manifest.extractor_version.startswith("2+pymupdf.")
+    assert current.manifest.cache_key != old_key
+    assert current.manifest.contract_version == "2.2"
 
 
 def test__pymupdf_extractor__configuration_invalidates_cache_identity() -> None:
@@ -351,7 +378,7 @@ def test__cli__publishes_contract_and_raw_pages(tmp_path: Path) -> None:
     assert output.is_file()
     assert (pages / "page-0001.txt").is_file()
     assert (pages / "page-0002.txt").is_file()
-    assert '"contract_version":"2.1"' in output.read_text()
+    assert '"contract_version":"2.2"' in output.read_text()
 
 
 def test__cli__cache_hit_avoids_extractor_invocation(
@@ -520,4 +547,4 @@ def test__cli__reports_in_progress_file_cleanup_failure(
 
 
 def test__contract_version__minor_bump_is_explicit() -> None:
-    assert CONTRACT_VERSION == "2.1"
+    assert CONTRACT_VERSION == "2.2"
