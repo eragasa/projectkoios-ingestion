@@ -24,7 +24,12 @@ from projectkoios.ingestion.models import (
     IngestionWarning,
     SourceDocument,
     SourceSpan,
+    TableOfContentsEntry,
     WarningSeverity,
+)
+from projectkoios.ingestion.pdf import (
+    PdfDependencyUnavailableError,
+    PyMuPdfExtractor,
 )
 from projectkoios.ingestion.protocols import (
     ChunkIndexWriter,
@@ -64,10 +69,13 @@ __all__ = [
     "IngestionStatus",
     "IngestionWarning",
     "PdfArticleIngester",
+    "PdfDependencyUnavailableError",
     "PdfTextbookIngester",
+    "PyMuPdfExtractor",
     "SourceDocument",
     "SourceExtractor",
     "SourceSpan",
+    "TableOfContentsEntry",
     "StructureAnalysis",
     "StructureKind",
     "StructureNode",

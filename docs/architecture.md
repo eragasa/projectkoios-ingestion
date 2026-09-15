@@ -52,7 +52,17 @@ CodeRepository
 indices remain dependencies outside this repository as established by
 `adr.20260629.establish-ingestion-repo.md`.
 
-## Planned Document Processing Model
+## Document Processing Model
+
+The implemented cold PDF adapter uses PyMuPDF behind a lazy optional dependency
+boundary. It records text blocks in PyMuPDF's native block order, image
+references with media and mask identities, bounding boxes, physical pages,
+printed labels, bookmarks, source hashes, and low-text or reading-order
+warnings. Coordinates and matching dimensions use points relative to the
+unrotated crop box's top-left corner. Multicolumn evidence produces a
+warning rather than silently replacing native order with PyMuPDF's optional
+reading-order sort. OCR, structural enrichment, and region rendering remain
+bounded future processors.
 
 PDF document support follows an output-independent pipeline:
 
@@ -231,32 +241,44 @@ package.
    models prefer dataclasses or ordinary classes.
 6. Optional dependencies are loaded only when their adapter is used.
 
+## Trust and Resource Boundary
+
+Cold extraction parses the complete PDF in the caller's process and currently
+reads the complete source blob into memory. PyMuPDF includes complex native
+parsing code; successful parsing is not validation that a PDF is trustworthy.
+Callers accepting untrusted documents are responsible for source-size, page
+count, time, memory, and concurrency limits. Deployments whose threat model
+requires containment should invoke the CLI or library inside an
+operating-system sandbox, container, or similarly restricted worker. This
+milestone does not provide a sandbox, daemon, or resource-enforcement service.
+
 ## Failure and Confidence Model
 
 Extraction does not silently discard uncertainty. A result may contain usable
-content and warnings at the same time.
-
-Warnings identify at least:
-
-- missing or contradictory page labels;
-- uncertain reading order;
-- low text density or likely scan pages;
-- probable OCR requirement;
-- ambiguous heading level;
-- uncertain equation or figure association;
-- malformed source metadata;
-- unsupported or encrypted input.
+content and warnings at the same time. The implemented cold extractor emits
+warnings for uncertain reading order and low text density or likely scan pages.
+It treats an absent printed page label as normal optional evidence rather than
+a warning. Malformed and encrypted inputs are fatal errors and do not produce a
+result. Deferred OCR, layout, structure, figure, and equation processors may
+add their own source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest.
 
 ## Idempotency
 
-Given the same source bytes, extractor version, and configuration, deterministic
-extraction must produce equivalent normalized content and stable identifiers.
+Given the same source bytes, adapter version, PyMuPDF backend version, and
+configuration, deterministic extraction must produce equivalent normalized
+content and stable identifiers. The concrete backend version participates in
+the manifest extractor identity and extraction cache key.
 
 Cache writes and downstream delivery must be retryable. This repository does
-not assume that a consumer supports destructive replacement.
+not assume that a consumer supports destructive replacement. CLI publication
+preflights every requested path, creates files exclusively, and removes files
+and directories created by the current invocation after a handled publication
+failure. There is no portable atomic transaction spanning multiple output
+paths, so process termination or machine failure can leave partial artifacts;
+no-overwrite behavior then requires explicit inspection and cleanup.
 
 ## Package Direction
 

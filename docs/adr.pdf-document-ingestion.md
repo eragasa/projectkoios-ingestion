@@ -140,7 +140,29 @@ SHA-256 identifies exact bytes for integrity and cache invalidation; it does
 not define the permanent logical identity of a document.
 
 This correction produced contract version 2.0 before the PDF adapter was
-implemented.
+implemented. The additive 2.1 contract adds immutable table-of-contents entries
+with source-local bookmark identity and optional physical-page destinations;
+2.0 constructors remain source-compatible because the new tuple defaults to
+empty.
+
+## Implementation status
+
+The initial PyMuPDF cold extractor is implemented behind the optional `pdf`
+extra. It emits extractor-native ordered text blocks, content-addressed image
+and mask references with media types, bounding boxes in a declared unrotated
+crop-box coordinate system, page labels, PDF bookmarks/table-of-contents
+evidence, source hashes, stable object identities, and structured low-text and
+reading-order warnings. It records the installed PyMuPDF version in extractor/cache identity.
+The CLI can project raw page text and the complete versioned extraction
+contract into explicitly selected artifact directories. It refuses to
+overwrite existing artifacts and rolls back artifacts created by an invocation
+when an ordinary publication error is handled. A process or machine crash can
+still leave a partial multi-file publication because portable filesystems do
+not provide an atomic transaction across the requested paths.
+
+OCR, selected-region rendering, semantic cleanup, and extraction caching remain
+future bounded processors. Their absence must not be hidden by treating raw
+text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

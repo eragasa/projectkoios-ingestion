@@ -2,6 +2,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 from projectkoios.ingestion import (
+    CONTRACT_VERSION,
     ExtractedBlock,
     ExtractedDocument,
     ExtractedPage,
@@ -11,6 +12,7 @@ from projectkoios.ingestion import (
     IngestionWarning,
     SourceDocument,
     SourceSpan,
+    TableOfContentsEntry,
     WarningSeverity,
     contract_dict,
     serialize_contract,
@@ -212,15 +214,55 @@ def test__manifest__cache_identity_excludes_run_timestamps() -> None:
 
 def test__serialization__is_deterministic_and_json_compatible() -> None:
     source = make_source()
-    document = make_document(source)
+    entry = TableOfContentsEntry.create(
+        source=source,
+        level=1,
+        title="Introduction",
+        destination=make_span(source),
+        source_object_id="pdf-outline-xref:7",
+    )
+    base_document = make_document(source)
+    document = ExtractedDocument.create(
+        source=source,
+        pages=base_document.pages,
+        table_of_contents=(entry,),
+    )
 
     first = serialize_contract(document)
     second = serialize_contract(document)
     values = contract_dict(document)
 
     assert first == second
+    assert values["contract_version"] == "2.1"
     assert values["source"]["content_hash"] == source.content_hash
     assert values["pages"][0]["blocks"][0]["kind"] == "text"
+    assert values["table_of_contents"][0]["title"] == "Introduction"
+
+
+def test__contract_2_1__keeps_table_of_contents_additive() -> None:
+    document = make_document(make_source())
+
+    assert CONTRACT_VERSION == "2.1"
+    assert document.contract_version == CONTRACT_VERSION
+    assert document.table_of_contents == ()
+
+
+def test__contract_2_1__preserves_positional_construction() -> None:
+    source = make_source()
+    factory_document = make_document(source)
+
+    document = ExtractedDocument(
+        factory_document.document_id,
+        source,
+        factory_document.pages,
+        (),
+        ("warning:legacy",),
+        "2.0",
+    )
+
+    assert document.warning_ids == ("warning:legacy",)
+    assert document.contract_version == "2.0"
+    assert document.table_of_contents == ()
 
 
 def test__extraction_result__requires_manifest_warning_consistency() -> None:

@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from projectkoios.ingestion.identity import sha256_digest, stable_id
 
-CONTRACT_VERSION = "2.0"
+CONTRACT_VERSION = "2.1"
 BoundingBox = tuple[float, float, float, float]
 Metadata = tuple[tuple[str, str], ...]
 
@@ -178,6 +178,9 @@ class ExtractedBlock:
     text: str | None = None
     asset_id: str | None = None
     warning_ids: tuple[str, ...] = ()
+    asset_media_type: str | None = None
+    asset_mask_id: str | None = None
+    asset_mask_media_type: str | None = None
 
     @classmethod
     def create(
@@ -190,6 +193,9 @@ class ExtractedBlock:
         text: str | None = None,
         asset_id: str | None = None,
         warning_ids: tuple[str, ...] = (),
+        asset_media_type: str | None = None,
+        asset_mask_id: str | None = None,
+        asset_mask_media_type: str | None = None,
     ) -> ExtractedBlock:
         has_source_local_evidence = any(
             span.source_object_id is not None
@@ -199,7 +205,7 @@ class ExtractedBlock:
         )
         fallback_payload = None
         if not has_source_local_evidence:
-            fallback_payload = (text, asset_id)
+            fallback_payload = (text, asset_id, asset_mask_id)
 
         block_id = stable_id(
             "block",
@@ -216,6 +222,9 @@ class ExtractedBlock:
             text=text,
             asset_id=asset_id,
             warning_ids=warning_ids,
+            asset_media_type=asset_media_type,
+            asset_mask_id=asset_mask_id,
+            asset_mask_media_type=asset_mask_media_type,
         )
 
     def __post_init__(self) -> None:
@@ -229,6 +238,16 @@ class ExtractedBlock:
             raise ValueError("confidence must be between 0 and 1")
         if self.text is None and self.asset_id is None:
             raise ValueError("a block must contain text or an asset reference")
+        if self.asset_media_type is not None and self.asset_id is None:
+            raise ValueError("asset media type requires an asset reference")
+        if (self.asset_mask_id is None) != (
+            self.asset_mask_media_type is None
+        ):
+            raise ValueError(
+                "asset mask identity and media type must be set together"
+            )
+        if self.asset_mask_id is not None and self.asset_id is None:
+            raise ValueError("asset mask requires a primary asset reference")
 
 
 @dataclass(frozen=True)
@@ -240,6 +259,7 @@ class ExtractedPage:
     printed_page_label: str | None = None
     extraction_quality: float = 1.0
     warning_ids: tuple[str, ...] = ()
+    coordinate_system: str = "unspecified"
 
     def __post_init__(self) -> None:
         if self.page_index < 0:
@@ -248,6 +268,8 @@ class ExtractedPage:
             raise ValueError("page dimensions must be positive")
         if not 0.0 <= self.extraction_quality <= 1.0:
             raise ValueError("extraction_quality must be between 0 and 1")
+        if not self.coordinate_system:
+            raise ValueError("coordinate_system must be non-empty")
         for block in self.blocks:
             if any(
                 span.page_index != self.page_index
@@ -259,6 +281,61 @@ class ExtractedPage:
 
 
 @dataclass(frozen=True)
+class TableOfContentsEntry:
+    entry_id: str
+    source_id: str
+    source_blob_id: str
+    level: int
+    title: str
+    destination: SourceSpan | None = None
+    source_object_id: str | None = None
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        source: SourceDocument,
+        level: int,
+        title: str,
+        destination: SourceSpan | None = None,
+        source_object_id: str | None = None,
+    ) -> TableOfContentsEntry:
+        entry_id = stable_id(
+            "table-of-contents-entry",
+            source.source_id,
+            source.blob_id,
+            source_object_id,
+            level,
+            title,
+            destination.identity_parts() if destination is not None else None,
+        )
+        return cls(
+            entry_id=entry_id,
+            source_id=source.source_id,
+            source_blob_id=source.blob_id,
+            level=level,
+            title=title,
+            destination=destination,
+            source_object_id=source_object_id,
+        )
+
+    def __post_init__(self) -> None:
+        if not self.source_id or not self.source_blob_id:
+            raise ValueError("table-of-contents source must be complete")
+        if self.level < 1:
+            raise ValueError("table-of-contents level must be positive")
+        if not self.title:
+            raise ValueError("table-of-contents title must be non-empty")
+        if self.destination is not None and (
+            self.destination.source_id != self.source_id
+            or self.destination.source_blob_id != self.source_blob_id
+        ):
+            raise ValueError(
+                "table-of-contents destination must refer to its exact source"
+            )
+
+
+@dataclass(frozen=True)
 class ExtractedDocument:
     document_id: str
     source: SourceDocument
@@ -266,6 +343,7 @@ class ExtractedDocument:
     metadata: Metadata = ()
     warning_ids: tuple[str, ...] = ()
     contract_version: str = CONTRACT_VERSION
+    table_of_contents: tuple[TableOfContentsEntry, ...] = ()
 
     @classmethod
     def create(
@@ -274,6 +352,7 @@ class ExtractedDocument:
         source: SourceDocument,
         pages: tuple[ExtractedPage, ...],
         metadata: Metadata = (),
+        table_of_contents: tuple[TableOfContentsEntry, ...] = (),
         warning_ids: tuple[str, ...] = (),
     ) -> ExtractedDocument:
         return cls(
@@ -281,6 +360,7 @@ class ExtractedDocument:
             source=source,
             pages=pages,
             metadata=metadata,
+            table_of_contents=table_of_contents,
             warning_ids=warning_ids,
         )
 
@@ -298,6 +378,15 @@ class ExtractedDocument:
                     raise ValueError(
                         "block spans must refer to the exact document source"
                     )
+        if any(
+            entry.source_id != self.source.source_id
+            or entry.source_blob_id != self.source.blob_id
+            for entry in self.table_of_contents
+        ):
+            raise ValueError(
+                "table-of-contents entries must refer to the exact "
+                "document source"
+            )
 
 
 @dataclass(frozen=True)

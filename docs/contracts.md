@@ -4,9 +4,10 @@
 
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
-cache, article, textbook, and structural-analysis contracts are implemented and
-exported. Rough-chunk and JIT-processing specializations remain planned until
-implemented, tested, and exported.
+cache, article, textbook, structural-analysis, and deterministic PyMuPDF cold
+extraction contracts are implemented and exported. Rough-chunk, OCR, region
+rendering, and JIT-processing specializations remain planned until implemented,
+tested, and exported.
 
 ## Contract Principles
 
@@ -47,7 +48,9 @@ PDF spans contain:
 - zero- or one-based physical page under an explicitly declared convention;
 - printed page label when available;
 - source block or object ID;
-- bounding box and coordinate system when available;
+- bounding box and coordinate system when available. PyMuPDF cold extraction
+  uses points relative to the top-left of the unrotated page crop box, with
+  positive x to the right and positive y downward;
 - optional character or token offsets within the block.
 
 A derived object may refer to multiple ordered spans, including spans that
@@ -64,6 +67,8 @@ Required information:
 - block kind;
 - ordered source spans;
 - raw or normalized payload appropriate to the kind;
+- content-addressed asset identity and media type for image blocks, plus a
+  separate content-addressed mask identity and media type when present;
 - extraction method;
 - extraction confidence;
 - warning references.
@@ -77,8 +82,9 @@ Contains the ordered extraction result for one physical PDF page:
 
 - physical page index;
 - printed page label;
-- dimensions and coordinate system;
-- ordered blocks;
+- dimensions and coordinate system. PyMuPDF pages report unrotated crop-box
+  width and height matching their extracted coordinates;
+- blocks in extractor-native source order;
 - image and drawing references;
 - extraction quality metrics;
 - page-level warnings.
@@ -93,9 +99,17 @@ The destination-independent result of deterministic source extraction:
 - source document;
 - document metadata as observed in the source;
 - ordered pages;
-- bookmarks and table-of-contents evidence;
+- immutable bookmarks and table-of-contents evidence;
 - extraction manifest reference;
 - document-level warnings.
+
+Contract version 2.1 adds `table_of_contents` as an additive trailing tuple that
+defaults to empty. Its placement preserves the positional field order of 2.0
+`ExtractedDocument` construction. Each entry records a stable entry ID, exact
+logical and blob source identity, source hierarchy level, source title,
+optional native PDF object ID,
+and an optional `SourceSpan` for an internal physical-page destination. It does
+not prescribe a generated heading, filename, or consumer navigation target.
 
 It does not contain destination paths, Markdown filenames, search scores, or
 vault links.
@@ -211,7 +225,10 @@ The manifest makes a run inspectable and reproducible:
 - cache keys;
 - start, completion, and status information.
 
-Timestamps do not participate in deterministic content identity.
+Timestamps do not participate in deterministic content identity. The PyMuPDF
+adapter records both its adapter version and the installed PyMuPDF backend
+version as extractor identity, so a backend upgrade changes the raw extraction
+cache key.
 
 ## Stable Identity
 
@@ -223,6 +240,7 @@ blob ID = hash(exact source bytes)
 block ID = hash(source ID, blob ID, page, source object evidence)
 node ID = hash(source ID, blob ID, node kind, source spans, source label)
 chunk ID = hash(source ID, blob ID, source block IDs, content kind)
+TOC entry ID = hash(source ID, blob ID, native outline evidence, title, target)
 result ID = hash(input IDs, processor version, configuration digest)
 ```
 
@@ -246,8 +264,9 @@ Persisted contracts include a schema or contract version. Readers reject
 unsupported major versions and tolerate documented additive minor fields.
 
 Binary assets are referenced by content identity and media type rather than
-embedded unconditionally in JSON. A storage adapter decides whether asset
-bytes live in files, an object store, or another local representation.
+embedded in JSON. A transparency mask is a separate content reference when
+PyMuPDF reports one. A storage adapter decides whether asset bytes live in
+files, an object store, or another local representation.
 
 ## Consumer Responsibilities
 
