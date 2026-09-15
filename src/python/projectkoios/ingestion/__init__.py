@@ -3,6 +3,14 @@ from projectkoios.ingestion.articles import (
     ArticleStructureAnalyzer,
     PdfArticleIngester,
 )
+from projectkoios.ingestion.cache import (
+    EXTRACTION_CACHE_FORMAT_VERSION,
+    ExtractionCacheCorruptionError,
+    ExtractionCacheError,
+    ExtractionCacheSafetyError,
+    FilesystemExtractionCache,
+    build_extraction_cache_key,
+)
 from projectkoios.ingestion.code_repository_indexer import (
     CodeRepositoryIndexer,
 )
@@ -53,6 +61,7 @@ from projectkoios.ingestion.textbooks import (
 
 __all__ = [
     "CONTRACT_VERSION",
+    "EXTRACTION_CACHE_FORMAT_VERSION",
     "ArticleIngester",
     "ArticleStructureAnalyzer",
     "ChunkIndexWriter",
@@ -64,7 +73,11 @@ __all__ = [
     "ExtractedPage",
     "ExtractedTextbook",
     "ExtractionCache",
+    "ExtractionCacheCorruptionError",
+    "ExtractionCacheError",
+    "ExtractionCacheSafetyError",
     "ExtractionResult",
+    "FilesystemExtractionCache",
     "IngestionManifest",
     "IngestionStatus",
     "IngestionWarning",
@@ -82,6 +95,7 @@ __all__ = [
     "TextbookIngester",
     "TextbookStructureAnalyzer",
     "WarningSeverity",
+    "build_extraction_cache_key",
     "contract_dict",
     "serialize_contract",
 ]

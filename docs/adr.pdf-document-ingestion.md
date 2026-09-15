@@ -160,9 +160,11 @@ when an ordinary publication error is handled. A process or machine crash can
 still leave a partial multi-file publication because portable filesystems do
 not provide an atomic transaction across the requested paths.
 
-OCR, selected-region rendering, semantic cleanup, and extraction caching remain
-future bounded processors. Their absence must not be hidden by treating raw
-text extraction as a proofread transcription.
+The filesystem raw-extraction cache is implemented with versioned canonical
+JSON envelopes, complete identity and contract validation, atomic single-entry
+publication, and optional CLI reuse. OCR, selected-region rendering, and
+semantic cleanup remain future bounded processors. Their absence must not be
+hidden by treating raw text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

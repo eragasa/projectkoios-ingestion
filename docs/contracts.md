@@ -4,8 +4,9 @@
 
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
-cache, article, textbook, structural-analysis, and deterministic PyMuPDF cold
-extraction contracts are implemented and exported. Rough-chunk, OCR, region
+cache, filesystem-cache, article, textbook, structural-analysis, and
+deterministic PyMuPDF cold extraction contracts are implemented and exported.
+Rough-chunk, OCR, region
 rendering, and JIT-processing specializations remain planned until implemented,
 tested, and exported.
 
@@ -267,6 +268,21 @@ Binary assets are referenced by content identity and media type rather than
 embedded in JSON. A transparency mask is a separate content reference when
 PyMuPDF reports one. A storage adapter decides whether asset bytes live in
 files, an object store, or another local representation.
+
+The filesystem extraction cache uses cache format version 1 canonical JSON
+envelopes. The logical extraction key includes cache and contract versions,
+logical source ID, exact source-blob ID, extractor/installed-backend identity,
+and configuration digest. The envelope repeats diagnostic identity evidence
+and hashes the complete serialized result. Readers reject unsupported formats,
+malformed data, hash/key disagreement, invalid stable IDs, and inconsistent
+source or span provenance instead of interpreting those states as misses.
+Publication never replaces an existing final path: a valid exact-key entry is
+accepted, while an unrelated or corrupt regular file is preserved and reported.
+The filesystem implementation requires POSIX descriptor-relative and no-follow
+filesystem capabilities and fails closed before cache-root access when they are
+unavailable. Excessive JSON nesting and non-finite or unrepresentable numeric
+values read from entries are corruption errors; analogous invalid caller keys or
+results raise `ValueError` before cache-root mutation.
 
 ## Consumer Responsibilities
 

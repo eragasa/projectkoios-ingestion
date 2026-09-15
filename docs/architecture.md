@@ -105,8 +105,11 @@ Cold processing may capture:
 - equation, figure, example, and problem candidates;
 - extraction quality and warnings.
 
-Cold results are reusable by every downstream destination. Unchanged sources
-must not be re-extracted when a compatible cached result exists.
+Cold results are reusable by every downstream destination. The implemented
+filesystem cache reuses unchanged sources when the contract/cache format,
+logical and exact blob identities, extractor and installed-backend versions,
+and extraction-affecting configuration match. It stores canonical JSON
+contracts in hash-sharded version directories beneath an injected root.
 
 ### Just-in-time processing
 
@@ -272,8 +275,19 @@ configuration, deterministic extraction must produce equivalent normalized
 content and stable identifiers. The concrete backend version participates in
 the manifest extractor identity and extraction cache key.
 
-Cache writes and downstream delivery must be retryable. This repository does
-not assume that a consumer supports destructive replacement. CLI publication
+Cache writes and downstream delivery must be retryable. Filesystem cache
+entries are flushed to exclusive same-directory temporaries and atomically
+published without clobbering an existing path. An existing exact-key entry must
+validate before it is accepted; unrelated or corrupt files are preserved and
+reported. Readers validate envelope, payload, stable-object, and cross-source
+identities. Concurrent same-key writers accept the first valid entry and cannot
+publish a partial entry. Cache corruption is an explicit error rather than a
+miss. Uncatchable termination can leave ignored temporary files, and durability
+of the latest publication remains subject to the filesystem honoring directory
+sync. This backend fails closed before root access unless required POSIX
+capabilities for descriptor-relative and no-follow operations are present;
+uncached extraction remains available. This repository does not assume that a
+consumer supports destructive replacement. CLI publication
 preflights every requested path, creates files exclusively, and removes files
 and directories created by the current invocation after a handled publication
 failure. There is no portable atomic transaction spanning multiple output

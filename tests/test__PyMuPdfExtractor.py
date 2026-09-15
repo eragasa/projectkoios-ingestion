@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
+import sys
 from dataclasses import FrozenInstanceError
 from io import BytesIO
 from pathlib import Path
@@ -265,6 +267,20 @@ def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
         entries[0].title = "Changed"  # type: ignore[misc]
 
 
+def test__pymupdf_extractor__configuration_invalidates_cache_identity() -> None:
+    content = _fixture_pdf(blank_page=False)
+    source = _source(content)
+    first_extractor = PyMuPdfExtractor(low_text_character_threshold=0)
+    second_extractor = PyMuPdfExtractor(low_text_character_threshold=1)
+
+    first = first_extractor.extract(source, BytesIO(content))
+    second = second_extractor.extract(source, BytesIO(content))
+
+    assert first_extractor.cache_key(source) == first.manifest.cache_key
+    assert second_extractor.cache_key(source) == second.manifest.cache_key
+    assert first.manifest.cache_key != second.manifest.cache_key
+
+
 def test__pymupdf_extractor__backend_version_invalidates_cache_identity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -336,6 +352,70 @@ def test__cli__publishes_contract_and_raw_pages(tmp_path: Path) -> None:
     assert (pages / "page-0001.txt").is_file()
     assert (pages / "page-0002.txt").is_file()
     assert '"contract_version":"2.1"' in output.read_text()
+
+
+def test__cli__cache_hit_avoids_extractor_invocation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pdf = tmp_path / "fixture.pdf"
+    cache = tmp_path / "cache"
+    first_output = tmp_path / "first.json"
+    second_output = tmp_path / "second.json"
+    pdf.write_bytes(_fixture_pdf(blank_page=False))
+    arguments = [
+        str(pdf),
+        "--source-id",
+        "article:fixture",
+        "--cache-root",
+        str(cache),
+    ]
+
+    assert main([*arguments, "--output", str(first_output)]) == 0
+
+    def unexpected_extract(*args: object, **kwargs: object) -> None:
+        raise AssertionError("extractor invoked for a cache hit")
+
+    monkeypatch.setattr(PyMuPdfExtractor, "extract", unexpected_extract)
+    assert main([*arguments, "--output", str(second_output)]) == 0
+    assert second_output.read_bytes() == first_output.read_bytes()
+
+
+def test__cli__excessively_nested_cache_is_a_truthful_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    pdf = tmp_path / "fixture.pdf"
+    cache_root = tmp_path / "cache"
+    first_output = tmp_path / "first.json"
+    second_output = tmp_path / "second.json"
+    payload = _fixture_pdf(blank_page=False)
+    pdf.write_bytes(payload)
+    arguments = [
+        str(pdf),
+        "--source-id",
+        "article:fixture",
+        "--cache-root",
+        str(cache_root),
+    ]
+    assert main([*arguments, "--output", str(first_output)]) == 0
+    source = _source(payload)
+    cache_key = PyMuPdfExtractor().cache_key(source)
+    key_hash = hashlib.sha256(cache_key.encode()).hexdigest()
+    entry = cache_root / "v1" / key_hash[:2] / f"{key_hash}.json"
+    depth = max(10_000, sys.getrecursionlimit() * 10)
+    entry.write_text("[" * depth + "0" + "]" * depth)
+
+    def unexpected_extract(*args: object, **kwargs: object) -> None:
+        raise AssertionError("corruption was treated as a miss")
+
+    monkeypatch.setattr(PyMuPdfExtractor, "extract", unexpected_extract)
+    with pytest.raises(SystemExit, match="2"):
+        main([*arguments, "--output", str(second_output)])
+
+    assert "extraction cache failure" in capsys.readouterr().err
+    assert not second_output.exists()
 
 
 def test__cli__collision_preflight_leaves_no_new_artifacts(

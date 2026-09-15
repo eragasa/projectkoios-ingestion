@@ -6,6 +6,10 @@ from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
 
+from projectkoios.ingestion.cache import (
+    ExtractionCacheError,
+    FilesystemExtractionCache,
+)
 from projectkoios.ingestion.models import ExtractionResult, SourceDocument
 from projectkoios.ingestion.pdf import PyMuPdfExtractor
 from projectkoios.ingestion.serialization import serialize_contract
@@ -31,6 +35,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--raw-text-directory", type=Path)
+    parser.add_argument("--cache-root", type=Path)
     parser.add_argument("--locator")
     parser.add_argument("--low-text-threshold", type=int, default=40)
     return parser
@@ -46,9 +51,27 @@ def main(arguments: list[str] | None = None) -> int:
         media_type="application/pdf",
         locator=args.locator or args.pdf.name,
     )
-    result = PyMuPdfExtractor(
+    extractor = PyMuPdfExtractor(
         low_text_character_threshold=args.low_text_threshold
-    ).extract(source, content=BytesIO(payload))
+    )
+    result: ExtractionResult
+    if args.cache_root is None:
+        result = extractor.extract(source, content=BytesIO(payload))
+    else:
+        cache = FilesystemExtractionCache(args.cache_root)
+        cache_key = extractor.cache_key(source)
+        try:
+            cached_result = cache.get(cache_key)
+        except (ExtractionCacheError, OSError) as error:
+            parser.error(f"extraction cache failure: {error}")
+        if cached_result is None:
+            result = extractor.extract(source, content=BytesIO(payload))
+            try:
+                cache.put(cache_key, result)
+            except (ExtractionCacheError, OSError, ValueError) as error:
+                parser.error(f"extraction cache failure: {error}")
+        else:
+            result = cached_result
     artifacts = _raw_page_artifacts(args.raw_text_directory, result)
     artifacts.append((args.output, serialize_contract(result) + "\n"))
     try:

@@ -5,8 +5,10 @@ import math
 from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
+from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
+    CONTRACT_VERSION,
     ExtractedBlock,
     ExtractedDocument,
     ExtractedPage,
@@ -37,6 +39,34 @@ class PyMuPdfExtractor:
         if low_text_character_threshold < 0:
             raise ValueError("low-text threshold must be non-negative")
         self.low_text_character_threshold = low_text_character_threshold
+
+    @property
+    def configuration_digest(self) -> str:
+        return stable_id(
+            "configuration",
+            {
+                "low_text_character_threshold": (
+                    self.low_text_character_threshold
+                )
+            },
+        )
+
+    def cache_key(self, source: SourceDocument) -> str:
+        """Return the key extraction will record for this source and backend."""
+        try:
+            import pymupdf
+        except ImportError as error:  # pragma: no cover - environment dependent
+            raise PdfDependencyUnavailableError(
+                "PDF extraction requires the 'pdf' project extra"
+            ) from error
+        return build_extraction_cache_key(
+            source_id=source.source_id,
+            source_blob_id=source.blob_id,
+            extractor_name=self.name,
+            extractor_version=self._extractor_version(pymupdf),
+            configuration_digest=self.configuration_digest,
+            contract_version=CONTRACT_VERSION,
+        )
 
     def extract(
         self,
@@ -97,17 +127,11 @@ class PyMuPdfExtractor:
             + tuple(block.block_id for page in pages for block in page.blocks)
             + tuple(entry.entry_id for entry in table_of_contents)
         )
-        configuration_digest = stable_id(
-            "configuration",
-            {"low_text_character_threshold": self.low_text_character_threshold},
-        )
         manifest = IngestionManifest.create(
             source=source,
             extractor_name=self.name,
-            extractor_version=(
-                f"{self.version}+pymupdf.{self._backend_version(pymupdf)}"
-            ),
-            configuration_digest=configuration_digest,
+            extractor_version=self._extractor_version(pymupdf),
+            configuration_digest=self.configuration_digest,
             object_ids=object_ids,
             warning_ids=tuple(warning.warning_id for warning in warnings),
             status=IngestionStatus.COMPLETED,
@@ -332,6 +356,10 @@ class PyMuPdfExtractor:
                 if vertical_overlap > 20 and separated:
                     count += 1
         return count
+
+    @classmethod
+    def _extractor_version(cls, pymupdf: Any) -> str:
+        return f"{cls.version}+pymupdf.{cls._backend_version(pymupdf)}"
 
     @staticmethod
     def _backend_version(pymupdf: Any) -> str:

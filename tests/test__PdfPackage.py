@@ -91,3 +91,4 @@ def test__package_entry_point__targets_cli_and_module_help_works() -> None:
     assert console_script.is_file()
     assert completed.returncode == 0
     assert "--raw-text-directory" in completed.stdout
+    assert "--cache-root" in completed.stdout

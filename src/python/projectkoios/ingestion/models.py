@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.identity import sha256_digest, stable_id
 
 CONTRACT_VERSION = "2.1"
@@ -420,13 +421,13 @@ class IngestionManifest:
         started_at: str,
         completed_at: str | None = None,
     ) -> IngestionManifest:
-        cache_key = stable_id(
-            "extraction-cache",
-            source.source_id,
-            source.blob_id,
-            extractor_name,
-            extractor_version,
-            configuration_digest,
+        cache_key = build_extraction_cache_key(
+            source_id=source.source_id,
+            source_blob_id=source.blob_id,
+            extractor_name=extractor_name,
+            extractor_version=extractor_version,
+            configuration_digest=configuration_digest,
+            contract_version=CONTRACT_VERSION,
         )
         manifest_id = stable_id(
             "manifest",

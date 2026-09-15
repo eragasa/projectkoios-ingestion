@@ -9,19 +9,46 @@ extraction is immutable evidence; derived output is append-only.
 
 ## Foundation tasks
 
-### ING-CACHE-01 — Filesystem extraction cache
+### ING-CACHE-01 — Filesystem extraction cache (implemented)
 
-Implement the existing `ExtractionCache` protocol using content-addressed,
-versioned files beneath an injected cache root.
+`FilesystemExtractionCache` implements the existing `ExtractionCache` protocol
+with canonical JSON envelopes below an injected root. Its deterministic key
+includes cache format and extraction contract versions, logical and exact blob
+source identity, extractor/installed-backend identity, and the normalized
+configuration digest. The versioned, hash-sharded path is derived from a SHA-256
+digest of the complete key rather than caller-controlled path text.
+
+Every read verifies the path/key hash, payload hash, envelope evidence, complete
+reconstructed `ExtractionResult`, stable object identities, and cross-field
+source/span identities. Malformed or truncated JSON, invalid Unicode, duplicate
+fields, unsupported versions, identity mismatches, and invalid contracts raise
+explicit cache errors rather than becoming misses. Managed directories and
+entries are opened without following symlinks.
+
+Writes flush a same-directory exclusive temporary file and atomically publish it
+only if the entry path is absent. An existing valid exact-key entry is accepted;
+an unrelated or corrupt regular file is preserved and reported. The containing
+directory is synced and handled failures remove their temporary. Concurrent
+identical writers are safe: a reader observes the first complete validated
+result. A machine or filesystem failure can still lose the most recent
+publication where durable directory sync is not honored; abandoned temporaries
+from uncatchable process termination are ignored by readers.
+
+The backend checks for required POSIX descriptor-relative, directory/no-follow,
+and no-follow hard-link capabilities before accessing its root and fails closed
+with `ExtractionCacheSafetyError` if they are unavailable. Uncached extraction
+remains usable on unsupported platforms; a weaker portable cache fallback is
+not implemented.
+
+The PDF CLI's optional `--cache-root` reuses a hit without extraction and fills a
+miss before artifact publication. Existing artifact no-overwrite behavior is
+unchanged. Cache retention, eviction, migration of future formats, distributed
+coordination, and repair of corrupt entries are deferred/non-goals.
 
 **Depends on:** current extraction contracts.
 
-**Deliverables:** atomic `get` and `put`, cache manifest, corruption detection,
-and CLI cache reuse.
-
-**Acceptance:** unchanged source bytes and configuration avoid re-extraction;
-extractor-version or source-hash changes miss the cache; interrupted writes do
-not create valid entries; cache paths never escape the supplied root.
+**Validation:** cache unit and CLI hit tests, the PDF fixture matrix, full test
+and static-analysis suites.
 
 ### ING-REGION-01 — Bounded PDF region renderer
 
