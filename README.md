@@ -9,7 +9,8 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [Architecture](docs/architecture.md)
 - [Public data contracts](docs/contracts.md)
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
-- [Deferred document-processing tasks](docs/tasks/document-processing-backlog.md)
+- [Document-processing task status](docs/tasks/document-processing-backlog.md)
+- [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
 
 The optional deterministic PDF adapter is installed with `.[pdf]` and exposed
 through `koios-ingest-pdf`. It writes a versioned extraction contract and,

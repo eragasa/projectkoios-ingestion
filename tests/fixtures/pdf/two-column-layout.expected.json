@@ -1,0 +1,60 @@
+{
+  "fixture": "two-column-layout",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            330.0,
+            72.0,
+            449.779,
+            119.6091
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": "RIGHT COLUMN FIRST\nRight line two\nRight line three"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            72.0,
+            181.732,
+            119.6091
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:1",
+          "text": "LEFT COLUMN SECOND\nLeft line two\nLeft line three"
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.098,
+      "height": 420.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [
+        {
+          "code": "pdf.reading_order_uncertain",
+          "evidence": {
+            "block_order": "extractor_native",
+            "separated_vertical_overlap_pairs": "1"
+          },
+          "severity": "info"
+        }
+      ],
+      "width": 600.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:two-column-layout",
+  "source_sha256": "66833e507efa6daa8f539686c69f4fd9aff31b357a6905a0a1c3fe79fb115500"
+}

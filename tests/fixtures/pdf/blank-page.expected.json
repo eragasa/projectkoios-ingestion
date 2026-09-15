@@ -1,0 +1,26 @@
+{
+  "fixture": "blank-page",
+  "pages": [
+    {
+      "blocks": [],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.0,
+      "height": 300.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [
+        {
+          "code": "pdf.low_text_density",
+          "evidence": {
+            "character_count": "0"
+          },
+          "severity": "warning"
+        }
+      ],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:blank-page",
+  "source_sha256": "a63c08b8c47f157a7476c55d0556db2cd10ec77ccd8d83d7a133a01083766654"
+}

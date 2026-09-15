@@ -1,0 +1,108 @@
+{
+  "fixture": "tables",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            60.0,
+            40.175,
+            244.0409,
+            55.289
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": "Table evidence: positioned native text"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            60.0,
+            86.0,
+            116.859,
+            117.3616
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:1",
+          "text": "Header A\ncolumn one"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            310.0,
+            86.0,
+            365.627,
+            117.3616
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:2",
+          "text": "Header B\ncolumn two"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            60.0,
+            146.0,
+            99.127,
+            177.3616
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:3",
+          "text": "Cell A1\nrow one"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            310.0,
+            146.0,
+            349.127,
+            177.3616
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:4",
+          "text": "Cell B1\nrow one"
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.106,
+      "height": 320.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [
+        {
+          "code": "pdf.reading_order_uncertain",
+          "evidence": {
+            "block_order": "extractor_native",
+            "separated_vertical_overlap_pairs": "2"
+          },
+          "severity": "info"
+        }
+      ],
+      "width": 540.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:tables",
+  "source_sha256": "184d44d82a99420e52c15019a76e381dd7a1435a6019b310c0b57be4a0a36d73"
+}

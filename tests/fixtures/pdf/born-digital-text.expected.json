@@ -1,0 +1,35 @@
+{
+  "fixture": "born-digital-text",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            54.0,
+            269.798,
+            101.6091
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": "Born-digital text evidence\nAlpha beta gamma delta\nNative text remains raw extraction evidence."
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.094,
+      "height": 300.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:born-digital-text",
+  "source_sha256": "02bfeb2be2e06b23d7bda6dd34a3581a589909eaee43c008e3f5084870bd5452"
+}

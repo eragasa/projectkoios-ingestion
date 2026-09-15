@@ -2,10 +2,10 @@
 
 ## Status and rules
 
-All tasks are proposed and independently reviewable. They preserve the accepted
-output-independent PDF-ingestion architecture. Optional OCR or model libraries
-must remain lazy adapters. Raw extraction is immutable evidence; derived output
-is append-only.
+Tasks are proposed and independently reviewable unless explicitly marked
+implemented. They preserve the accepted output-independent PDF-ingestion
+architecture. Optional OCR or model libraries must remain lazy adapters. Raw
+extraction is immutable evidence; derived output is append-only.
 
 ## Foundation tasks
 
@@ -51,19 +51,27 @@ warnings.
 footnotes, and sidebars; uncertain cases remain uncertain; raw blocks are still
 available.
 
-### ING-QUALITY-01 — Redistributable PDF fixture matrix
+### ING-QUALITY-01 — Redistributable PDF fixture matrix (implemented)
 
-Build generated or openly licensed fixtures for born-digital text, two-column
-layout, equations, tables, figures, page labels, blank pages, and image-only
-pages.
+The compact synthetic matrix in `tests/fixtures/pdf/` covers born-digital text,
+two-column layout, equations, tables, figures, printed page labels, blank
+pages, and image-only pages. Its machine-readable manifest records per-case
+purpose, provenance, MIT rights, exact source and expected-output SHA-256
+identities, sizes, and focused cold-extraction assertions. The checked-in
+sources are canonical because generation is PyMuPDF-version-sensitive;
+`scripts/pdf_fixture_matrix.py` provides explicit refresh and verification
+modes.
+
+The maintained assertions are limited to raw text/image blocks, native order,
+geometry, labels, asset identity/media type, the extractor's text-density
+quality metric, and explicit cold-extraction warnings. OCR, equation
+understanding, table reconstruction, figure semantics,
+layout analysis, scientific validation, and proofread transcription remain
+deferred to their respective tasks or downstream review.
 
 **Depends on:** none.
 
-**Deliverables:** fixture provenance, generation scripts where possible, and
-expected extraction assertions.
-
-**Acceptance:** no private corpus enters Git; fixture rights are documented;
-source files and expected outputs have checksums.
+**Validation:** `.venv/bin/python scripts/pdf_fixture_matrix.py --verify`.
 
 ## OCR tasks
 

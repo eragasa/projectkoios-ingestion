@@ -1,0 +1,67 @@
+{
+  "fixture": "equations",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            48.0,
+            258.8199,
+            63.114
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": "Equation page: raw native characters only"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            120.0,
+            125.0,
+            208.101,
+            142.862
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:1",
+          "text": "E = m c^2    (1)"
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            205.0,
+            239.8669,
+            220.114
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:2",
+          "text": "No equation interpretation is asserted."
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.096,
+      "height": 300.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:equations",
+  "source_sha256": "5abb287a90162c905e0e889431cb66e9a28782818019c0ce33c962f64b398be8"
+}

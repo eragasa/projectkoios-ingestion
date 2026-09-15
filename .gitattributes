@@ -1,0 +1,4 @@
+# Exact-byte fixture identities require checkout-independent line endings.
+scripts/pdf_fixture_matrix.py text eol=lf
+tests/fixtures/pdf/*.json text eol=lf
+tests/fixtures/pdf/*.pdf binary

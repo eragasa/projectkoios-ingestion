@@ -1,0 +1,62 @@
+{
+  "fixture": "printed-page-labels",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            60.175,
+            280.2039,
+            75.289
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": "App-A",
+          "source_object_id": "page:0:block:0",
+          "text": "First physically ordered labeled page evidence"
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.046,
+      "height": 300.0,
+      "page_index": 0,
+      "printed_page_label": "App-A",
+      "warnings": [],
+      "width": 420.0
+    },
+    {
+      "blocks": [
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            54.0,
+            60.175,
+            296.1209,
+            75.289
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": "App-B",
+          "source_object_id": "page:1:block:0",
+          "text": "Second physically ordered labeled page evidence"
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.047,
+      "height": 300.0,
+      "page_index": 1,
+      "printed_page_label": "App-B",
+      "warnings": [],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:printed-page-labels",
+  "source_sha256": "365f13e9bfdb0ea9cfdddf2031e8b006cc9bc705c580481ad18ae1b0c79b1e0d"
+}

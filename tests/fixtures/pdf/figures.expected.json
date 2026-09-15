@@ -1,0 +1,51 @@
+{
+  "fixture": "figures",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": "asset:sha256:6dd2352dc6fc45a3acb6623685bd6fdf4c3a174634a0d155fb23af6ba562c620",
+          "asset_media_type": "image/png",
+          "bounding_box": [
+            90.0,
+            55.0,
+            330.0,
+            215.0
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-image-reference",
+          "kind": "image",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": null
+        },
+        {
+          "asset_id": null,
+          "asset_media_type": null,
+          "bounding_box": [
+            72.0,
+            235.0,
+            277.436,
+            250.114
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-text-dict",
+          "kind": "text",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:1",
+          "text": "Figure 1. Synthetic blue rectangle caption."
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.043,
+      "height": 340.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:figures",
+  "source_sha256": "5626f7eccaf81541004bb9a8fbf01ccd3245497cff7d29c4c005b81827a352ed"
+}

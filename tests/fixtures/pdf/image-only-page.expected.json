@@ -1,0 +1,43 @@
+{
+  "fixture": "image-only-page",
+  "pages": [
+    {
+      "blocks": [
+        {
+          "asset_id": "asset:sha256:96d636fb155f0e8fc44fa20adc89e4e75b13293131a5895162161c645ff30fbb",
+          "asset_media_type": "image/png",
+          "bounding_box": [
+            72.0,
+            54.0,
+            348.0,
+            246.0
+          ],
+          "confidence": 1.0,
+          "extraction_method": "pymupdf-image-reference",
+          "kind": "image",
+          "printed_page_label": null,
+          "source_object_id": "page:0:block:0",
+          "text": null
+        }
+      ],
+      "coordinate_system": "pymupdf_unrotated_cropbox_points_top_left",
+      "extraction_quality": 0.0,
+      "height": 300.0,
+      "page_index": 0,
+      "printed_page_label": null,
+      "warnings": [
+        {
+          "code": "pdf.low_text_density",
+          "evidence": {
+            "character_count": "0"
+          },
+          "severity": "warning"
+        }
+      ],
+      "width": 420.0
+    }
+  ],
+  "schema_version": 1,
+  "source_id": "fixture:image-only-page",
+  "source_sha256": "cbc3ea22c6e80c28ea906124c09ef3730bf9aa36f52a380c77f82c3508473d34"
+}
