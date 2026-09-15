@@ -65,4 +65,59 @@ PyMuPDF is a complex native parser, not a security sandbox. Applications that
 accept untrusted PDFs should enforce input and resource limits and use an
 operating-system isolation boundary when their threat model requires one.
 
+## Bounded PDF region rendering
+
+`PyMuPdfRegionRenderer` lazily uses the same optional `pdf` extra. It requires a
+non-empty ordered set of explicit full-page or bounding-box selections and
+returns immutable `RenderedRegion` values containing PNG bytes and complete
+source, geometry, configuration, content-hash, processor, and backend evidence.
+Coordinates are unrotated crop-box points from top left; page rotation is
+applied only when mapping that exact source box into the displayed raster.
+Fractional clips are rounded outward to the backend pixel grid. Each result
+records both the requested box and effective source footprint, plus an affine
+mapping from PNG pixel-edge coordinates back to source points.
+
+```python
+from io import BytesIO
+from pathlib import Path
+from projectkoios.ingestion import (
+    PageRegionSelection,
+    PyMuPdfRegionRenderer,
+    SourceDocument,
+)
+
+payload = Path("article.pdf").read_bytes()
+source = SourceDocument.from_bytes(
+    payload,
+    source_id="reference:example2020",
+    media_type="application/pdf",
+    locator="article.pdf",
+)
+selection = PageRegionSelection.for_bounding_box(
+    source, 0, (72.0, 72.0, 360.0, 216.0)
+)
+region = PyMuPdfRegionRenderer(resolution_dpi=144).render(
+    source, BytesIO(payload), (selection,)
+)[0]
+```
+
+Output is opaque RGB on white by default; `RegionColorMode.GRAYSCALE` is also
+supported. Defaults limit requests to 256 selections and each raster to 16,384
+pixels per dimension, 25,000,000 pixels, and 100,000,000 uncompressed bytes.
+The complete set of unique selections is also limited to 25,000,000 pixels and
+100,000,000 uncompressed raster bytes. Iterable consumption is capped at the
+selection limit plus one, and all raster limits are checked before the first
+pixmap allocation. Full-page rendering must use
+`PageRegionSelection.for_full_page`; there is no render-all operation. The
+adapter does not perform OCR, region detection, interpretation, file writes, or
+storage publication.
+
+Region rendering follows the repository-wide PDF trust boundary: callers must
+admit bounded source sizes before invocation and apply process isolation where
+their threat model requires it. A shared ingestion source-admission policy must
+be established before accepting untrusted or unbounded documents; this adapter
+does not introduce a renderer-only source-size policy. Stable PNG bytes are
+verified for repeated execution with one concrete installed PyMuPDF build and
+are not claimed across different native builds that report the same version.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

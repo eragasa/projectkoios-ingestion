@@ -36,12 +36,20 @@ from projectkoios.ingestion.models import (
     WarningSeverity,
 )
 from projectkoios.ingestion.pdf import (
+    PYMUPDF_COORDINATE_SYSTEM,
+    PageRegionSelection,
     PdfDependencyUnavailableError,
+    PdfRegionRenderLimitError,
     PyMuPdfExtractor,
+    PyMuPdfRegionRenderer,
+    RegionColorMode,
+    RegionRenderConfiguration,
+    RenderedRegion,
 )
 from projectkoios.ingestion.protocols import (
     ChunkIndexWriter,
     ExtractionCache,
+    PageRegionRenderer,
     SourceExtractor,
 )
 from projectkoios.ingestion.serialization import (
@@ -81,10 +89,18 @@ __all__ = [
     "IngestionManifest",
     "IngestionStatus",
     "IngestionWarning",
+    "PYMUPDF_COORDINATE_SYSTEM",
+    "PageRegionRenderer",
+    "PageRegionSelection",
     "PdfArticleIngester",
     "PdfDependencyUnavailableError",
+    "PdfRegionRenderLimitError",
     "PdfTextbookIngester",
     "PyMuPdfExtractor",
+    "PyMuPdfRegionRenderer",
+    "RegionColorMode",
+    "RegionRenderConfiguration",
+    "RenderedRegion",
     "SourceDocument",
     "SourceExtractor",
     "SourceSpan",

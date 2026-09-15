@@ -68,6 +68,48 @@ else:
     assert completed.returncode == 0, completed.stderr
 
 
+def test__missing_optional_dependency__renderer_raises_typed_error() -> None:
+    script = """
+import sys
+class BlockPyMuPdf:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "pymupdf" or fullname.startswith("pymupdf."):
+            raise ModuleNotFoundError("blocked optional dependency")
+        return None
+sys.meta_path.insert(0, BlockPyMuPdf())
+from io import BytesIO
+from projectkoios.ingestion import (
+    PageRegionSelection,
+    PdfDependencyUnavailableError,
+    PyMuPdfRegionRenderer,
+    SourceDocument,
+)
+content = b"fixture"
+source = SourceDocument.from_bytes(
+    content,
+    source_id="fixture",
+    media_type="application/pdf",
+    locator="memory://fixture.pdf",
+)
+selection = PageRegionSelection.for_full_page(source, 0)
+try:
+    PyMuPdfRegionRenderer().render(source, BytesIO(content), (selection,))
+except PdfDependencyUnavailableError:
+    pass
+else:
+    raise AssertionError("missing PyMuPDF was not reported")
+"""
+
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+
+
 def test__package_entry_point__targets_cli_and_module_help_works() -> None:
     entry_points = importlib.metadata.entry_points(
         group="console_scripts",

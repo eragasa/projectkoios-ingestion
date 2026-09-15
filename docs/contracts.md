@@ -4,11 +4,12 @@
 
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
-cache, filesystem-cache, article, textbook, structural-analysis, and
-deterministic PyMuPDF cold extraction contracts are implemented and exported.
-Rough-chunk, OCR, region
-rendering, and JIT-processing specializations remain planned until implemented,
-tested, and exported.
+cache, filesystem-cache, article, textbook, structural-analysis, deterministic
+PyMuPDF cold extraction, and bounded PDF region-rendering contracts are
+implemented and exported. `RoughChunk`, OCR, and the general
+`ProcessingSelection`/`ProcessingResult` JIT coordination specializations remain
+planned until implemented, tested, and exported; that deferred status does not
+include the implemented bounded region renderer.
 
 ## Contract Principles
 
@@ -172,6 +173,57 @@ A rough chunk must not split an indivisible typed object such as an equation,
 caption, or problem merely to satisfy a token target. Search-specific vectors,
 scores, and ranking features are not part of this contract.
 
+## `PageRegionSelection` and `RenderedRegion`
+
+`PageRegionSelection` requests exactly one zero-based physical PDF page. It
+carries logical and exact blob source identity and explicitly distinguishes a
+full page from a bounding box. A bounded selection uses finite, non-negative,
+strictly ordered, positive-area coordinates in
+`pymupdf_unrotated_cropbox_points_top_left`; boxes outside the actual page crop
+box are invalid. `PyMuPdfRegionRenderer.render` requires a non-empty iterable of
+these selections, preserves requested order, and provides no implicit
+whole-document operation.
+
+`RegionRenderConfiguration` records positive integer DPI, opaque RGB or
+opaque grayscale output on white, and pre-allocation limits. Defaults are 144
+DPI, 256 requested selections, 16,384 pixels per dimension, 25,000,000 pixels,
+and 100,000,000 uncompressed raster bytes per region. Aggregate unique-region
+limits default to 25,000,000 pixels and 100,000,000 uncompressed raster bytes.
+All participate in its stable digest. The renderer consumes no more than the
+selection limit plus one iterable items, then computes every per-region and
+aggregate raster limit before asking PyMuPDF to allocate the first pixmap.
+
+Each immutable `RenderedRegion` directly carries PNG bytes and records:
+
+- logical source ID, exact source-blob ID, and source content SHA-256;
+- zero-based physical page and optional printed page label;
+- the exact requested source bounding box and whether full-page selection
+  produced it;
+- the effective source footprint after outward pixel-grid rounding, page
+  rotation, and scaling, plus the page rotation and affine mapping from PNG
+  pixel-edge coordinates to unrotated source points;
+- the declared unrotated crop-box coordinate system and pixel-rounding
+  convention;
+- DPI, color mode, and opaque alpha behavior;
+- PNG media type, byte length, pixel dimensions, and content SHA-256;
+- region ID, configuration digest, renderer identity/version, and PyMuPDF
+  backend identity/version.
+
+PNG signatures, dimensions, byte length, content hashes, and complete region
+identity are validated by the contract. Stable region identity excludes source
+locators and printed page labels. Printed labels are retained exactly as
+returned by the backend, with an empty label represented as unavailable.
+PyMuPDF page rotation changes display orientation and therefore output pixel
+orientation, but the requested and effective source boxes remain in the
+declared unrotated coordinate system. For the recorded affine `(a, b, c, d, e,
+f)`, a PNG pixel-edge coordinate `(x, y)` maps to source point
+`(x*a + y*c + e, x*b + y*d + f)`. The effective box encloses the four mapped
+PNG boundary corners; it may extend beyond the requested box because scaled
+display coordinates are rounded outward to integer pixel boundaries. Rendering
+writes no files and performs no OCR,
+region detection, layout analysis, semantic interpretation, storage
+publication, or model calls.
+
 ## `ProcessingSelection`
 
 Requests bounded JIT processing. A selection may identify:
@@ -243,6 +295,8 @@ node ID = hash(source ID, blob ID, node kind, source spans, source label)
 chunk ID = hash(source ID, blob ID, source block IDs, content kind)
 TOC entry ID = hash(source ID, blob ID, native outline evidence, title, target)
 result ID = hash(input IDs, processor version, configuration digest)
+rendered region ID = hash(source IDs, page, exact selection, configuration,
+                          renderer/backend identity, PNG hash)
 ```
 
 A new byte representation changes the blob ID and extraction cache without

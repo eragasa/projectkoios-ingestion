@@ -61,8 +61,9 @@ printed labels, bookmarks, source hashes, and low-text or reading-order
 warnings. Coordinates and matching dimensions use points relative to the
 unrotated crop box's top-left corner. Multicolumn evidence produces a
 warning rather than silently replacing native order with PyMuPDF's optional
-reading-order sort. OCR, structural enrichment, and region rendering remain
-bounded future processors.
+reading-order sort. The implemented bounded region adapter renders only
+explicit full-page or bounding-box selections to in-memory PNG evidence. OCR
+and structural enrichment remain bounded future processors.
 
 PDF document support follows an output-independent pipeline:
 
@@ -115,7 +116,14 @@ contracts in hash-sharded version directories beneath an injected root.
 
 An application may request enrichment of a selected page range or structural
 unit. JIT work can include OCR, page-region rendering, expensive structural
-analysis, or semantic cleanup through injected processors.
+analysis, or semantic cleanup through injected processors. The implemented
+`PageRegionRenderer` boundary accepts only an explicit, non-empty ordered set
+of page or bounding-box selections; it has no automatic whole-document path.
+Its PyMuPDF adapter returns PNG bytes without publishing files and checks
+configured selection, per-region pixel-dimension, pixel-count, raster-byte,
+and aggregate request limits before the first rendering allocation. Fractional
+clips round outward to device pixels; results retain the requested box,
+effective source footprint, page rotation, and pixel-to-source transform.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
@@ -250,10 +258,13 @@ Cold extraction parses the complete PDF in the caller's process and currently
 reads the complete source blob into memory. PyMuPDF includes complex native
 parsing code; successful parsing is not validation that a PDF is trustworthy.
 Callers accepting untrusted documents are responsible for source-size, page
-count, time, memory, and concurrency limits. Deployments whose threat model
-requires containment should invoke the CLI or library inside an
-operating-system sandbox, container, or similarly restricted worker. This
-milestone does not provide a sandbox, daemon, or resource-enforcement service.
+count, time, memory, and concurrency limits before invoking cold extraction or
+region rendering. Deployments whose threat model requires containment should
+invoke the CLI or library inside an operating-system sandbox, container, or
+similarly restricted worker. This milestone does not provide a sandbox,
+daemon, or source-admission service. One shared ingestion source-admission
+policy must be established before applications accept untrusted or unbounded
+documents; a renderer-only byte limit would not satisfy that boundary.
 
 ## Failure and Confidence Model
 
@@ -266,14 +277,22 @@ result. Deferred OCR, layout, structure, figure, and equation processors may
 add their own source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
-represented in the result manifest.
+represented in the result manifest. Region rendering rejects source metadata
+mismatches, encrypted or malformed PDFs, invalid pages or coordinates, and
+resource-limit violations. It does not normalize or clip requested source
+boxes.
 
 ## Idempotency
 
 Given the same source bytes, adapter version, PyMuPDF backend version, and
 configuration, deterministic extraction must produce equivalent normalized
 content and stable identifiers. The concrete backend version participates in
-the manifest extractor identity and extraction cache key.
+the manifest extractor identity and extraction cache key. Region rendering
+similarly records adapter, backend, selection, and complete configuration
+identity alongside the exact PNG hash. Locator and printed-label display data
+do not enter stable region identity. Stable renderer bytes are demonstrated
+for repeated execution with one concrete installed PyMuPDF build; equivalence
+across distinct native builds reporting the same version is not claimed.
 
 Cache writes and downstream delivery must be retryable. Filesystem cache
 entries are flushed to exclusive same-directory temporaries and atomically

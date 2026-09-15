@@ -5,6 +5,10 @@ from typing import BinaryIO, Protocol
 
 from projectkoios.chunking import TextChunk
 from projectkoios.ingestion.models import ExtractionResult, SourceDocument
+from projectkoios.ingestion.pdf.models import (
+    PageRegionSelection,
+    RenderedRegion,
+)
 
 
 class ChunkIndexWriter(Protocol):
@@ -20,6 +24,18 @@ class SourceExtractor(Protocol):
         source: SourceDocument,
         content: BinaryIO,
     ) -> ExtractionResult: ...
+
+
+class PageRegionRenderer(Protocol):
+    name: str
+    version: str
+
+    def render(
+        self,
+        source: SourceDocument,
+        content: BinaryIO,
+        selections: Iterable[PageRegionSelection],
+    ) -> tuple[RenderedRegion, ...]: ...
 
 
 class ExtractionCache(Protocol):

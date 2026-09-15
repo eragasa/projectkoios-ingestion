@@ -50,19 +50,41 @@ coordination, and repair of corrupt entries are deferred/non-goals.
 **Validation:** cache unit and CLI hit tests, the PDF fixture matrix, full test
 and static-analysis suites.
 
-### ING-REGION-01 — Bounded PDF region renderer
+### ING-REGION-01 — Bounded PDF region renderer (implemented)
 
-Define `PageRegionSelection` and `RenderedRegion`, then implement a lazy
-PyMuPDF renderer for selected pages or bounding boxes.
+Immutable `PageRegionSelection`, `RegionRenderConfiguration`, and
+`RenderedRegion` contracts are exported with the `PageRegionRenderer` protocol.
+`PyMuPdfRegionRenderer` lazily loads PyMuPDF and returns in-memory,
+destination-independent PNG bytes for a required non-empty ordered selection.
+A selection explicitly chooses either a full physical page or one strict
+positive-area bounding box in the declared unrotated crop-box point coordinate
+system. Invalid pages and non-finite, inverted, empty, negative, or out-of-page
+boxes fail rather than being normalized or clipped.
+
+The renderer validates exact source bytes before parsing, preserves requested
+order, coalesces identical selections within one request, maps source boxes
+through page rotation, and records the physical page, exact printed label,
+requested and effective source boxes, pixel-to-source transform and rounding,
+logical and blob identities, resolution, opaque RGB/grayscale behavior, PNG
+media type/size/dimensions/SHA-256, configuration digest, and adapter/backend
+identities. Locator and printed-label display data do not enter the stable
+region identity, whose complete evidence is validated on construction.
+
+Defaults are 144 DPI, opaque RGB on white, at most 256 requested selections,
+16,384 pixels on either output dimension, 25,000,000 output pixels, and
+100,000,000 uncompressed raster bytes per region and across all unique regions
+in one request. Iterable consumption stops at the selection limit plus one;
+per-region and aggregate limits are calculated before the first pixmap
+allocation. Source-size admission remains the caller's repository-wide PDF
+trust-boundary responsibility. There is no empty or implicit render-all
+operation and no filesystem publication. OCR, region detection,
+layout/semantic interpretation, storage, and model calls are non-goals.
 
 **Depends on:** current `SourceSpan` and exact source-blob identity.
 
-**Deliverables:** destination-independent PNG bytes or asset descriptors,
-resolution and color configuration, source bounding box, content hash, and
-processor identity.
-
-**Acceptance:** only selected regions are rendered; coordinates round-trip;
-stable inputs give stable hashes; full-corpus rendering is not the default.
+**Validation:** focused synthetic crop-box/rotation/page-label tests, lazy
+optional dependency tests, fixture verification, and full test/static-analysis
+suites.
 
 ### ING-LAYOUT-01 — Reading-order and column analysis
 

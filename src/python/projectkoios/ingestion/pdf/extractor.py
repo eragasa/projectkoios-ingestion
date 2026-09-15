@@ -21,8 +21,7 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
-
-PYMUPDF_COORDINATE_SYSTEM = "pymupdf_unrotated_cropbox_points_top_left"
+from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
 
 
 class PdfDependencyUnavailableError(RuntimeError):
