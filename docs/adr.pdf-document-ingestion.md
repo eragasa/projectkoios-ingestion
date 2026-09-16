@@ -218,10 +218,15 @@ continuations. Each cell retains exact source blocks/spans or the original
 rendered-region evidence; continued-page rows and repeated headers are not
 silently coalesced. Unruled, mixed-boundary, or unresolved geometry stays
 warning-linked. The processor emits no Markdown and makes no proofread,
-semantic-correctness,
-scientific-validation, publication, or human-acceptance claim. The absence or
-failure of OCR execution must not be hidden by treating raw text extraction as
-a proofread transcription.
+semantic-correctness, scientific-validation, publication, or human-acceptance
+claim. A separate bounded figure detector now re-verifies exact embedded image
+and mask artifacts, retains bounded drawing-object evidence, and renders only
+captioned drawing-command diagram groups. Explicit source captions, subfigure
+labels, and legends remain confidence-bearing proposals. Captionless images stay
+ambiguous, and unassociated drawing groups are not silently treated as figures.
+The stage makes no pixel-semantic, relevance, publication, scientific-
+validation, or acceptance claim. The absence or failure of OCR execution must
+not be hidden by treating raw text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

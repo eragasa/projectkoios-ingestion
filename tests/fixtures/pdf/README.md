@@ -1,8 +1,9 @@
 # Redistributable PDF fixture matrix
 
 This directory implements `ING-QUALITY-01` and supplies redistributable evidence
-for `ING-LAYOUT-01` and focused ruled-table candidate coverage for
-`ING-TABLE-01` with twelve small, wholly synthetic PDFs. The matrix covers
+for `ING-LAYOUT-01`, focused ruled-table candidate coverage for
+`ING-TABLE-01`, and embedded-figure coverage for `ING-FIGURE-01` with twelve
+small, wholly synthetic PDFs. The matrix covers
 born-digital text, two-column layout, a spanning heading, a separated footnote,
 an uncertain sidebar, weak column separation, equation-shaped native text,
 positioned table text, an embedded figure image and caption, printed page
@@ -62,8 +63,11 @@ Maintained expected JSON files test raw extraction evidence only. Focused layout
 tests separately apply the deterministic processor to the same committed PDFs;
 they verify geometry-backed proposals and do not rewrite the expected cold
 projection. The fixtures make no claim about OCR, equation understanding, table
-reconstruction, figure-caption association, figure semantics, scientific
-validation, or proofread transcription. Focused table-detector tests use the
+reconstruction, figure semantics, scientific validation, or proofread
+transcription. Focused figure-detector tests use the maintained embedded-image
+and caption case as exact source evidence and separately generate drawing,
+legend, subfigure, mask, and ambiguity cases; their associations remain
+proposals rather than accepted semantics. Focused table-detector tests use the
 maintained ruled case and separately generated unruled, multi-page, and merged-
 cell-signal cases; those tests propose bounded regions and associations, not
 cell structure or accepted data. The `extraction_quality` value is only

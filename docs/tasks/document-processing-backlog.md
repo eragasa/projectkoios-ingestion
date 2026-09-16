@@ -444,16 +444,44 @@ immutability, stale identity rejection, and protocol typing. Markdown rendering,
 semantic correction, proofread accuracy, scientific validation, publication
 suitability, and human acceptance are outside this task.
 
-### ING-FIGURE-01 — Figure and caption extraction
+### ING-FIGURE-01 — Figure and caption extraction (implemented)
 
-Detect figures, subfigures, legends, and captions and produce selected-region or
-embedded-image artifacts.
+`DeterministicFigureCandidateDetector` consumes exact extraction/layout evidence
+and matching PDF bytes. Its lazy `PyMuPdfFigureInspector` re-verifies and retains
+exact embedded image and optional mask bytes, hashes, media types, source-block
+geometry, processor/backend provenance, and bounded PDF drawing-object extents.
+Line-only drawing commands remain exact zero-area extents and can form a
+positive-area diagram group. Captioned drawing groups are rendered through the
+injected bounded region renderer; unassociated drawings remain inspection
+evidence rather than silently becoming figures.
+
+Each destination-independent candidate has one or more ordered embedded-image or
+rendered-drawing components. Multiple visuals sharing a caption remain separate
+subfigure components. Exact `Figure`/`Fig.` captions, `(a)`-style labels, and
+explicit `Legend:`/`Key:` blocks are retained as source-backed associations with
+confidence. Captionless embedded images stay `ambiguous`. Render selections are
+clipped to page bounds, and exact component spans, boxes, artifact hashes,
+rendered-region identities, evidence, and warning links enter stable identity.
+
+Configuration hard-bounds source bytes, pages, blocks, text, spans, embedded
+asset/mask bytes, drawings/items and grouping comparisons, candidates,
+components, association comparisons and outputs, warnings, rendered PNG
+bytes/pixels, and retained
+result size. The detector
+writes no files and adds nothing to the raw extraction cache.
 
 **Depends on:** `ING-REGION-01`, `ING-LAYOUT-01`.
 
-**Acceptance:** figure/caption associations include confidence; crops are within
-page bounds; hashes and exact source regions are recorded; diagrams made from
-PDF drawing commands are supported through rendering.
+**Validation:** focused tests cover the maintained PDF matrix, exact embedded
+image and mask artifacts, caption associations, line-only drawing-command
+rendering, source-bounded crops, explicit legends, multi-component subfigures,
+captionless ambiguity, table-rule rejection, wrong-source and stale-layout
+rejection, pre-render embedded, drawing-group, and association-work limits,
+aggregate render limits, deterministic
+configuration-bound identity, immutability, stale IDs, and protocol typing.
+Figure relevance, pixel semantics, Markdown rendering, proofread accuracy,
+scientific validation, publication suitability, and human acceptance are
+outside this task.
 
 ### ING-FIGURE-02 — Figure relevance proposal protocol
 

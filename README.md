@@ -272,4 +272,27 @@ merged spans remain warnings. The model has no accepted state, does not alter
 source text, writes no files, and makes no proofread, semantic-correctness,
 scientific-validation, publication, Markdown, or human-acceptance claim.
 
+## Bounded figure candidates
+
+`DeterministicFigureCandidateDetector` consumes exact extraction and layout
+evidence plus the matching PDF bytes. The lazy `PyMuPdfFigureInspector` retains
+exact embedded image and mask bytes with their content hashes and media types,
+as well as bounded PDF drawing-object locators and source geometry. Embedded
+images remain embedded artifacts; captioned diagrams composed from drawing
+commands are rendered through the injected `PageRegionRenderer`.
+
+Candidates may contain one or more ordered components for subfigures. Explicit
+`Figure`/`Fig.` captions, `(a)`-style subfigure labels, and `Legend:`/`Key:` text
+remain exact source-backed associations with confidence. Captionless embedded
+images remain ambiguous. Drawing groups without explicit figure captions are
+retained as inspection evidence but are not promoted, preventing ruled tables
+from silently becoming figures. Render selections are clipped to page bounds,
+and every artifact records exact source regions, hashes, processor/backend
+identity, confidence, and warning links.
+
+The stage does not interpret pixels, infer scientific meaning, select relevant
+figures, render Markdown, publish files, or claim proofread accuracy,
+publication suitability, scientific validation, or human acceptance. Derived
+figure results are not stored in `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

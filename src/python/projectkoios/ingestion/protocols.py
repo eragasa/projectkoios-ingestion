@@ -10,6 +10,7 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionResult,
 )
 from projectkoios.ingestion.equations import EquationDetectionResult
+from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
     ExtractedDocument,
@@ -120,6 +121,17 @@ class EquationTranscriptionProcessor(Protocol):
     def process(
         self, request: EquationTranscriptionRequest
     ) -> EquationTranscriptionResult: ...
+
+
+class FigureCandidateDetector(Protocol):
+    name: str
+    version: str
+
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> FigureDetectionResult: ...
 
 
 class TableCandidateDetector(Protocol):

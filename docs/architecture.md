@@ -83,7 +83,10 @@ without turning recognition output into accepted source fact. Bounded table-
 candidate detection combines exact layout, PDF vector-rule observations, and
 rendered regions. The separate `DeterministicTableStructureReconstructor`
 proposes a complete destination-neutral cell grid, spans, headers, and explicit
-page continuations while preserving exact source and rendered evidence.
+page continuations while preserving exact source and rendered evidence. Bounded
+figure detection separately retains exact embedded image/mask artifacts and
+renders captioned PDF drawing-command diagrams with source-backed caption,
+subfigure-label, and legend associations.
 
 PDF document support follows an output-independent pipeline:
 
@@ -203,8 +206,19 @@ signals remain ambiguous spans, and multi-page continuations retain separate
 rows and repeated headers rather than silently merging cells. Warnings preserve
 unruled or mixed boundary geometry, unresolved headers, empty or multi-block
 cells, low confidence, and inherited candidate ambiguity. This stage changes
-no source text and does
-not render Markdown or claim table correctness.
+no source text, renders no Markdown, and claims no table correctness.
+
+Figure-candidate detection is another explicit derived stage. The default lazy
+inspector re-verifies embedded image and mask bytes against raw content-addressed
+references and retains bounded PDF drawing-object extents. Embedded images are
+components directly. Positive-area groups assembled from drawing commands,
+including zero-area line extents, are promoted only with a nearby explicit
+figure caption and rendered through the region boundary. Multiple visuals that
+share one caption remain ordered subfigure components. Explicit caption,
+subfigure-label, and legend blocks retain unchanged text, spans, method evidence,
+and confidence. Captionless embedded images stay ambiguous; unassociated drawing
+groups are not silently promoted. No pixel semantics or scientific relevance is
+inferred.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
@@ -231,7 +245,10 @@ candidates are also excluded from the raw cache. Table-structure identity binds
 the exact detection result, complete reconstruction configuration, processor
 version, proposed topology and text evidence, rendered-region identities, and
 warning links. Table structures likewise remain derived outputs outside the raw
-cache.
+cache. Figure identity includes the exact document/layout/embedded/drawing
+inspection evidence, complete configuration and processor versions, exact
+embedded hashes, rendered-region identities, associations, topology, and
+warnings. Figure candidates also remain outside the raw cache.
 
 ## Structural Model
 

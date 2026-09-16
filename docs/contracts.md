@@ -10,8 +10,9 @@ deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
-bounded table-candidate detection, and deterministic table-structure
-reconstruction are implemented and exported. `RoughChunk`
+bounded table-candidate detection, deterministic table-structure
+reconstruction, and bounded figure-candidate detection are implemented and
+exported. `RoughChunk`
 and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
@@ -432,6 +433,71 @@ The processor writes no file, performs no Markdown rendering or semantic
 correction, claims no proofread accuracy, scientific validity, publication
 suitability, or human acceptance, and stores no result in raw
 `ExtractionCache`.
+
+## Figure candidates
+
+Figure contract version 1.0 is a derived evidence contract separate from raw
+extraction and relevance selection. `FigureDetectionInput` binds one exact
+`ExtractedDocument`, one exact `PageLayoutResult` and `FigurePageEvidence` per
+page, and a complete `FigureDetectionConfiguration`. Stale source/blob/hash,
+page, dimension, rotation, coordinate, raw-block, layout, embedded-asset, or
+drawing evidence is rejected.
+
+`DeterministicFigureCandidateDetector` implements the injected
+`FigureCandidateDetector` boundary. It verifies matching PDF bytes, obtains
+layout and visual evidence through injected processors, detects source-backed
+visual/caption groups, and asks the injected `PageRegionRenderer` only to render
+promoted drawing-command components. The default lazy
+`PyMuPdfFigureInspector` records:
+
+- exact embedded image and optional mask bytes, SHA-256 content identities,
+  media types, pixel dimensions, byte lengths, raw image-block IDs/spans, and
+  source geometry; and
+- bounded PDF drawing-object IDs, ordered page indexes, item counts,
+  stroke/fill observations, and exact source extents. Zero-width or zero-height
+  line extents are retained and may form a positive-area diagram group.
+
+Inspector evidence is bound to the exact source blob, page geometry,
+processor/backend versions, and stable identities. The adapter re-verifies the
+cold extractor's image geometry, content hashes, media types, and mask evidence.
+Empty or geometrically unusable drawing records are counted rather than
+invented as visual commands. PyMuPDF remains a native parser, not an OS sandbox.
+
+Each immutable `FigureCandidate` contains one or more ordered
+`FigureComponent` values. An embedded component resolves to one exact
+`EmbeddedFigureArtifact`; a drawing component resolves to exact drawing IDs and
+a bounded `RenderedRegion` whose source selection contains the component
+geometry. Candidate source spans are exactly the ordered component spans, and
+the candidate box is their geometric union. Multiple visuals associated with
+one caption remain separate ordered components, allowing subfigure structure
+without flattening their evidence.
+
+`FigureTextAssociation` retains unchanged source text, block ID, spans,
+confidence, and method evidence for explicit `Figure`/`Fig.` captions,
+`(a)`-style subfigure labels, and explicitly prefixed `Legend:`/`Key:` blocks.
+Caption associations are candidate-wide; subfigure and legend associations
+identify one component. Captionless embedded images remain `ambiguous` with
+linked warnings. Drawing groups require a nearby explicit figure caption before
+promotion; unassociated drawings remain page-inspection evidence with an
+informational warning. This prevents a ruled table or decorative line group
+from silently becoming a figure candidate.
+
+Configuration hard-bounds source bytes, pages, blocks, text, spans, embedded
+asset and mask bytes, drawing objects/items and grouping comparisons,
+candidates, components, association comparisons and outputs, warnings,
+rendered PNG bytes/pixels, and
+retained result size.
+Association distance, drawing grouping, minimum drawing geometry, render
+padding, legend length, confidence threshold, and all limits enter stable input
+and result identity. Render boxes are clipped to exact page bounds. Embedded and
+rendered image bytes remain reachable through the result but are excluded from
+general retained-size accounting because their dedicated aggregate byte/pixel
+limits apply.
+
+The detector writes no files, interprets no image semantics, performs no figure
+relevance selection or destination rendering, and makes no proofread,
+scientific-validation, publication-suitability, or human-acceptance claim. It
+stores no derived result in raw `ExtractionCache`.
 
 ## `ExtractedArticle`
 
