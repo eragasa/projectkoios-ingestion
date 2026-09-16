@@ -86,7 +86,9 @@ proposes a complete destination-neutral cell grid, spans, headers, and explicit
 page continuations while preserving exact source and rendered evidence. Bounded
 figure detection separately retains exact embedded image/mask artifacts and
 renders captioned PDF drawing-command diagrams with source-backed caption,
-subfigure-label, and legend associations.
+subfigure-label, and legend associations. Engine-neutral relevance contracts
+then allow an injected processor to score those exact candidates against one
+review question without deleting proposed-not-necessary figures.
 
 PDF document support follows an output-independent pipeline:
 
@@ -220,6 +222,16 @@ and confidence. Captionless embedded images stay ambiguous; unassociated drawing
 groups are not silently promoted. No pixel semantics or scientific relevance is
 inferred.
 
+An application may separately inject `FigureRelevanceProcessor`. A request
+retains complete exact detection results and one candidate ID per ordered
+selection, plus the unchanged review question. A processor returns a normalized,
+method-described relevance score, optional confidence, rationale, and exact
+component/association evidence references. Explicit proposal levels distinguish
+necessary, supporting, and not-necessary recommendations without representing
+any as source fact or acceptance. Ordered completed, partial, and failed
+outcomes preserve every input selection, warnings, and typed failures. The
+boundary runs no default model and suppresses no candidate.
+
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
@@ -248,7 +260,11 @@ warning links. Table structures likewise remain derived outputs outside the raw
 cache. Figure identity includes the exact document/layout/embedded/drawing
 inspection evidence, complete configuration and processor versions, exact
 embedded hashes, rendered-region identities, associations, topology, and
-warnings. Figure candidates also remain outside the raw cache.
+warnings. Figure candidates also remain outside the raw cache. Figure-relevance
+cache identity additionally includes the exact review question, ordered complete
+detection evidence, configured thresholds and bounds, processor/backend
+versions, and immutable model/prompt/resource identities. Relevance results are
+not added to the raw extraction cache.
 
 ## Structural Model
 

@@ -67,10 +67,13 @@ reconstruction, figure semantics, scientific validation, or proofread
 transcription. Focused figure-detector tests use the maintained embedded-image
 and caption case as exact source evidence and separately generate drawing,
 legend, subfigure, mask, and ambiguity cases; their associations remain
-proposals rather than accepted semantics. Focused table-detector tests use the
-maintained ruled case and separately generated unruled, multi-page, and merged-
-cell-signal cases; those tests propose bounded regions and associations, not
-cell structure or accepted data. The `extraction_quality` value is only
+proposals rather than accepted semantics. Figure-relevance contract tests retain
+that exact figure evidence while exercising scored question-specific proposals;
+no fixture supplies an accepted relevance judgment. Focused table-detector tests
+use the maintained ruled case and separately generated unruled, multi-page, and
+merged-cell-signal cases; those tests propose bounded regions and
+associations, not cell structure or accepted data. The `extraction_quality`
+value is only
 the current extractor's text-density metric, while layout confidence is only a
 bounded heuristic score. Neither is a probability or scientific judgment. In
 particular, the equation and table cases preserve literal native text and block

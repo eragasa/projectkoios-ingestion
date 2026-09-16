@@ -225,8 +225,14 @@ captioned drawing-command diagram groups. Explicit source captions, subfigure
 labels, and legends remain confidence-bearing proposals. Captionless images stay
 ambiguous, and unassociated drawing groups are not silently treated as figures.
 The stage makes no pixel-semantic, relevance, publication, scientific-
-validation, or acceptance claim. The absence or failure of OCR execution must
-not be hidden by treating raw text extraction as a proofread transcription.
+validation, or acceptance claim. Selected candidates may flow to an engine-
+neutral figure-relevance boundary that retains the complete exact detection
+result and review question, then returns scored proposals, rationales, explicit
+confidence, warnings, typed failures, and processor/model resource identity.
+Proposed-not-necessary figures remain inspectable and cannot be suppressed by
+the result contract. No proposal is scientific validation, publication
+selection, or human acceptance. The absence or failure of OCR execution must not
+be hidden by treating raw text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

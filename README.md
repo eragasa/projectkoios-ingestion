@@ -295,4 +295,28 @@ figures, render Markdown, publish files, or claim proofread accuracy,
 publication suitability, scientific validation, or human acceptance. Derived
 figure results are not stored in `ExtractionCache`.
 
+## Engine-neutral figure relevance
+
+`FigureRelevanceProcessor` is the injected boundary for proposing how relevant
+selected figures are to one exact review question. Each selection retains its
+complete `FigureDetectionResult`, so embedded bytes, rendered regions, source
+associations, alternative candidates, and uncertainty remain inspectable.
+Processors return normalized method-described scores, optional independent
+confidence, exact evidence references, and a non-empty rationale. Unavailable
+confidence remains `None` and requires an explicit warning.
+
+Levels are explicitly `proposed_necessary`, `proposed_supporting`, or
+`proposed_not_necessary`; none is source fact, scientific validation, or human
+acceptance. Completed, partial, and failed selection-local outcomes preserve
+warnings and typed failures. Every requested selection must have one ordered
+result, including proposed-not-necessary figures, so the protocol cannot delete
+or silently suppress them.
+
+Request identity covers the exact question, ordered complete figure evidence,
+thresholds, and all resource limits. Derived cache identity additionally covers
+processor/backend versions and ordered immutable model, prompt, vocabulary, or
+other resource identities. The package chooses no model, service, executable,
+or destination, writes no files, and does not put relevance results in raw
+`ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

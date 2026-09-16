@@ -11,10 +11,9 @@ region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
 bounded table-candidate detection, deterministic table-structure
-reconstruction, and bounded figure-candidate detection are implemented and
-exported. `RoughChunk`
-and the
-general `ProcessingSelection`/`ProcessingResult`
+reconstruction, bounded figure-candidate detection, and engine-neutral figure-
+relevance contracts are implemented and exported. `RoughChunk` and the general
+`ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
 
@@ -498,6 +497,68 @@ The detector writes no files, interprets no image semantics, performs no figure
 relevance selection or destination rendering, and makes no proofread,
 scientific-validation, publication-suitability, or human-acceptance claim. It
 stores no derived result in raw `ExtractionCache`.
+
+## Figure relevance proposals
+
+Figure-relevance contract version 1.0 and configuration version 1 define an
+engine-neutral `FigureRelevanceProcessor`. An implementation exposes
+`identity_for(request)` and `process(request)`; the package selects no model,
+service, prompt, executable, or output destination.
+
+A `FigureRelevanceSelection` retains one complete exact
+`FigureDetectionResult` plus the ID of exactly one candidate in that result.
+This preserves the selected candidate, alternative candidates, embedded image
+and mask bytes, rendered drawing regions, captions, subfigure labels, legends,
+source spans, confidence, and detection warnings. `FigureRelevanceRequest`
+contains a non-empty ordered tuple of unique selections, one exact nonblank
+review question, and the complete immutable configuration. Request identity
+covers all of that evidence and configuration.
+
+A completed selection result contains exactly one `FigureRelevanceProposal`.
+The proposal records:
+
+- a normalized `FigureRelevanceScore` with explicit method, method version, and
+  scale;
+- optional independent `FigureRelevanceConfidence` with the same explicit score
+  semantics;
+- a non-empty rationale and optional exact component/association evidence IDs;
+  and
+- a level derived deterministically from configured thresholds:
+  `proposed_necessary`, `proposed_supporting`, or
+  `proposed_not_necessary`.
+
+Those names deliberately preserve proposal status. They are not source facts,
+scientific conclusions, publication decisions, or human acceptance. Every
+ordered request selection must have exactly one ordered selection result.
+Proposed-not-necessary figures remain in both the request and result and cannot
+be silently deleted or suppressed by the contract.
+
+Selection-local execution status is `completed`, `partial`, or `failed`.
+Partial output requires both a usable proposal and typed failure evidence;
+failed output requires typed failure evidence and contains no proposal. Typed
+failure kinds distinguish input rejection, stale input, resource limits,
+processor unavailability/error, invalid output, and incomplete output. Immutable
+warnings
+retain severity, evidence, and optional recovery guidance. Missing confidence
+is represented by `None` plus an explicit warning, not by an invented score.
+
+`FigureRelevanceProcessorIdentity` records processor/backend names and versions
+plus an ordered set of immutable SHA-256 or explicit model, prompt, vocabulary,
+or other resource identities. `build_figure_relevance_cache_key` includes the
+contract/configuration versions, exact question and ordered selections, complete
+configuration, and processor/backend/resource identity. It defines derived
+cache identity only and does not write to raw `ExtractionCache`.
+
+Configuration hard-bounds selections, distinct detection results, question and
+rationale characters, per-result and aggregate input artifact bytes, rendered
+pixels, warnings, failures, evidence, resources, total rationale, and retained
+result size. Dedicated upstream figure contracts continue to bound individual
+embedded and rendered artifacts; their bytes remain reachable but are excluded
+from general retained-size accounting to avoid double counting.
+
+The protocol performs no relevance acceptance, pixel interpretation, semantic
+correction, scientific validation, publication selection, destination
+rendering, or human approval. It writes no files and stores no derived result.
 
 ## `ExtractedArticle`
 

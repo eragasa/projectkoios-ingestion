@@ -477,21 +477,50 @@ image and mask artifacts, caption associations, line-only drawing-command
 rendering, source-bounded crops, explicit legends, multi-component subfigures,
 captionless ambiguity, table-rule rejection, wrong-source and stale-layout
 rejection, pre-render embedded, drawing-group, and association-work limits,
-aggregate render limits, deterministic
-configuration-bound identity, immutability, stale IDs, and protocol typing.
+aggregate render limits, deterministic configuration-bound identity,
+immutability, stale IDs, and protocol typing.
 Figure relevance, pixel semantics, Markdown rendering, proofread accuracy,
 scientific validation, publication suitability, and human acceptance are
 outside this task.
 
-### ING-FIGURE-02 — Figure relevance proposal protocol
+### ING-FIGURE-02 — Figure relevance proposal protocol (implemented)
 
-Define a processor that may propose which figures are necessary for a review
-question without deleting or suppressing other detected figures.
+The engine-neutral `FigureRelevanceProcessor` accepts an exact nonblank review
+question and ordered selections that each retain a complete
+`FigureDetectionResult` plus one exact candidate ID. It returns normalized,
+method-described relevance scores, optional independent confidence, non-empty
+rationales, exact component/association evidence references, warnings, and typed
+failures. No concrete model, service, prompt, executable, or destination is
+selected.
+
+Configured thresholds derive only self-describing proposal levels:
+`proposed_necessary`, `proposed_supporting`, and
+`proposed_not_necessary`. Every requested selection must have one ordered
+completed, partial, or failed result. Proposed-not-necessary candidates remain
+in the request and result, so the contract cannot silently delete or suppress
+them. Partial output preserves a usable proposal with typed failure evidence;
+failed output preserves failure evidence without inventing a proposal.
+
+Processor identity includes processor/backend versions and ordered immutable
+SHA-256 or explicit model, prompt, vocabulary, and other resource identities.
+The derived cache key binds the exact question, complete ordered figure
+evidence, thresholds, resource bounds, and processor/resources. Configuration
+hard-bounds selections, detection results, question/rationale text, embedded
+and rendered input artifacts, pixels, warnings, failures, evidence, resources,
+and retained output. The stage writes no files and adds nothing to raw
+`ExtractionCache`.
 
 **Depends on:** `ING-FIGURE-01`.
 
-**Acceptance:** relevance is a scored proposal with stated rationale and review
-question; selection is not represented as source fact or scientific acceptance.
+**Validation:** focused tests cover scored necessary/supporting/not-necessary
+proposals, exact retained artifacts, preservation of proposed-not-necessary
+selections, optional confidence, completed/partial/failed outcomes, stale-input
+and other typed failures, warnings, complete cache invalidation, unknown evidence
+rejection,
+selection coverage/order, question/rationale/artifact bounds, deterministic
+identity, immutability, stale IDs, and runtime protocol typing. Relevance remains
+a question-specific proposal, not source fact, pixel interpretation, scientific
+validation, publication selection, or human acceptance.
 
 ## Composition tasks
 

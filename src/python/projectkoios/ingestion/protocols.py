@@ -10,6 +10,11 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionResult,
 )
 from projectkoios.ingestion.equations import EquationDetectionResult
+from projectkoios.ingestion.figure_relevance import (
+    FigureRelevanceProcessorIdentity,
+    FigureRelevanceRequest,
+    FigureRelevanceResult,
+)
 from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
@@ -121,6 +126,21 @@ class EquationTranscriptionProcessor(Protocol):
     def process(
         self, request: EquationTranscriptionRequest
     ) -> EquationTranscriptionResult: ...
+
+
+class FigureRelevanceProcessor(Protocol):
+    """Injected question-specific relevance proposal boundary."""
+
+    name: str
+    version: str
+
+    def identity_for(
+        self, request: FigureRelevanceRequest
+    ) -> FigureRelevanceProcessorIdentity: ...
+
+    def process(
+        self, request: FigureRelevanceRequest
+    ) -> FigureRelevanceResult: ...
 
 
 class FigureCandidateDetector(Protocol):
