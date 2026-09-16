@@ -195,8 +195,13 @@ proposes source-backed front matter, heading hierarchy, bibliography
 observations, and appendices with explicit heading/reading-order confidence.
 The raw contract currently exposes no font metrics, so the processor does not
 invent them. Its hierarchy is neither semantic validation nor human acceptance.
-The absence or failure of OCR execution must not be hidden by treating raw text
-extraction as a proofread transcription.
+A separate bounded equation-candidate detector now retains native display/inline
+text, offsets, labels, surrounding block locators, and exact rendered-region
+evidence. Weak signals or missing geometry remain explicit warnings; unavailable
+font and drawing-command observations are not invented. A candidate makes no
+symbol-interpretation or transcription-quality claim. The absence or failure of
+OCR execution must not be hidden by treating raw text extraction as a proofread
+transcription.
 
 ## Relationship to existing decision
 

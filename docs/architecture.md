@@ -75,7 +75,9 @@ native page/layout evidence and proposes duplicate, disagreement, native-only,
 and OCR-only relationships without replacing either evidence stream. The
 `DeterministicArticleStructureAnalyzer` now proposes source-backed article front
 matter, headings, hierarchy, bibliography observations, and appendices from
-exact page-layout evidence.
+exact page-layout evidence. The bounded `DeterministicEquationCandidateDetector`
+proposes display and inline equation-shaped regions while retaining exact text,
+context, labels, and rendered source evidence.
 
 PDF document support follows an output-independent pipeline:
 
@@ -113,11 +115,13 @@ Cold processing may capture:
 - logical source identity and exact source-blob hash;
 - PDF metadata and page labels;
 - bookmarks and table-of-contents candidates;
-- page text blocks, reading order, and coordinates;
-- font and layout information;
-- image references and bounding boxes;
-- equation, figure, example, and problem candidates;
+- page text blocks in extractor-native order and source coordinates;
+- source-object references and image bounding boxes;
 - extraction quality and warnings.
+
+Font metrics, drawing commands, proposed reading order, and equation, figure,
+example, or problem candidates require separate derived contracts rather than
+being implied by the current cold extraction record.
 
 Cold results are reusable by every downstream destination. The implemented
 filesystem cache reuses unchanged sources when the contract/cache format,
@@ -162,6 +166,13 @@ text; disagreement proposals contain no chosen text. Native-only entries retain
 native text and unmatched OCR lines follow in OCR order. The proposal is not
 semantic correction, proofread transcription, scientific validation, or human
 acceptance, and it is not written to the raw extraction cache.
+
+Equation-candidate detection is another explicit derived stage. It consumes
+exact extraction/layout evidence, scans bounded native text, and asks an injected
+region renderer only for candidate boxes. Inline offsets remain tied to native
+text while their crop is explicitly block-scoped. Weak candidates and missing
+geometry remain warnings; no detected characters are interpreted as correct
+mathematics.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
@@ -220,6 +231,22 @@ does not retain font metrics, so font hierarchy is neither inferred nor
 invented. Every inferred node records its evidence, confidence, and warnings.
 Consumers can inspect or override uncertain structure without re-reading the
 source PDF.
+
+## Equation Candidate Model
+
+Equation candidates are append-only derived observations. Display candidates
+retain exact block text and source spans; inline candidates retain exact
+source-relative offsets. Both retain immediate same-page block locators and one
+validated rendered region. The rendered source selection may be padded but must
+contain all candidate geometry. A numbered source label remains an uninterpreted
+string.
+
+The deterministic detector uses explicit delimiters and transparent native-text
+signals together with layout order and source geometry. Confidence selects only
+`proposed` or `ambiguous`; it cannot express accepted, proofread, scientifically
+validated, or human-approved. The raw extraction contract does not currently
+retain font metrics or drawing-command objects, so the detector neither invents
+nor claims those evidence sources.
 
 ## Rough Chunking Boundary
 
@@ -282,6 +309,7 @@ The architecture depends on small protocols:
 - `ExtractionCache` retrieves and stores versioned extraction results;
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
+- `EquationCandidateDetector` proposes bounded rendered equation evidence;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 
@@ -329,8 +357,9 @@ warning/failure evidence for unavailable execution resources, resource limits,
 backend errors, and invalid TSV. Reconciliation adds object-linked warnings for
 incomplete OCR, inherited layout uncertainty, skipped comparisons, ambiguous
 matches, text disagreements, and conservatively appended OCR-only order.
-Deferred structure, figure, and equation processors may add their own
-source-backed warnings when implemented.
+Equation detection adds warnings for weak candidates, missing geometry, and
+ambiguous inline offset mapping. Deferred figure and equation-transcription
+processors may add their own source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. OCR selection failures are typed and linked

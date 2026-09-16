@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import BinaryIO, Protocol
 
 from projectkoios.chunking import TextChunk
+from projectkoios.ingestion.equations import EquationDetectionResult
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
     ExtractedDocument,
@@ -86,6 +87,17 @@ class OCRReconciler(Protocol):
     def reconcile(
         self, reconciliation_input: OCRReconciliationInput
     ) -> OCRReconciliationResult: ...
+
+
+class EquationCandidateDetector(Protocol):
+    name: str
+    version: str
+
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> EquationDetectionResult: ...
 
 
 class ExtractionCache(Protocol):

@@ -27,6 +27,20 @@ from projectkoios.ingestion.documents import (
     ExtractedArticle,
     ExtractedTextbook,
 )
+from projectkoios.ingestion.equations import (
+    EQUATION_CONTRACT_VERSION,
+    EQUATION_DETECTOR_VERSION,
+    DeterministicEquationCandidateDetector,
+    EquationCandidate,
+    EquationCandidateKind,
+    EquationContextDirection,
+    EquationContextReference,
+    EquationDetectionConfiguration,
+    EquationDetectionInput,
+    EquationDetectionLimitError,
+    EquationDetectionResult,
+    EquationEvidenceStatus,
+)
 from projectkoios.ingestion.layout import (
     LAYOUT_CONTRACT_VERSION,
     DeterministicLayoutProcessor,
@@ -91,6 +105,7 @@ from projectkoios.ingestion.pdf import (
 )
 from projectkoios.ingestion.protocols import (
     ChunkIndexWriter,
+    EquationCandidateDetector,
     ExtractionCache,
     OCRProcessor,
     OCRReconciler,
@@ -140,6 +155,8 @@ from projectkoios.ingestion.textbooks import (
 
 __all__ = [
     "CONTRACT_VERSION",
+    "EQUATION_CONTRACT_VERSION",
+    "EQUATION_DETECTOR_VERSION",
     "STRUCTURE_CONTRACT_VERSION",
     "ARTICLE_STRUCTURE_PROCESSOR_VERSION",
     "LAYOUT_CONTRACT_VERSION",
@@ -156,11 +173,22 @@ __all__ = [
     "DeterministicLayoutProcessor",
     "DeterministicOCRReconciler",
     "DeterministicArticleStructureAnalyzer",
+    "DeterministicEquationCandidateDetector",
     "ExtractedArticle",
     "ExtractedBlock",
     "ExtractedDocument",
     "ExtractedPage",
     "ExtractedTextbook",
+    "EquationCandidate",
+    "EquationCandidateDetector",
+    "EquationCandidateKind",
+    "EquationContextDirection",
+    "EquationContextReference",
+    "EquationDetectionConfiguration",
+    "EquationDetectionInput",
+    "EquationDetectionLimitError",
+    "EquationDetectionResult",
+    "EquationEvidenceStatus",
     "ExtractionCache",
     "ExtractionCacheCorruptionError",
     "ExtractionCacheError",

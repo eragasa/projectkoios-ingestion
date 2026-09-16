@@ -8,8 +8,9 @@ cache, filesystem-cache, article, textbook, versioned structural analysis,
 deterministic article-structure analysis, deterministic PyMuPDF cold extraction,
 deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
-Tesseract OCR adapter, and deterministic native-text/OCR reconciliation are
-implemented and exported. `RoughChunk` and the
+Tesseract OCR adapter, deterministic native-text/OCR reconciliation, and
+bounded equation-candidate detection are implemented and exported. `RoughChunk`
+and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
@@ -142,10 +143,11 @@ acceptance or validation state. `StructureNode` records:
   nodes are required to remain `observed`.
 
 Numbers remain strings because source numbering may contain Roman numerals,
-letters, decimals, or edition-specific notation. Node identity deliberately excludes parent/child, warning, and reading-order
-links so reciprocal hierarchies can be materialized without circular IDs and
-inserting earlier evidence does not renumber unrelated nodes. Complete hierarchy,
-warning links, and reading order enter analysis identity.
+letters, decimals, or edition-specific notation. Node identity deliberately
+excludes parent/child, warning, and reading-order links so reciprocal hierarchies
+can be materialized without circular IDs and inserting earlier evidence does not
+renumber unrelated nodes. Complete hierarchy, warning links, and reading order
+enter analysis identity.
 
 `StructureAnalysis.create` binds nodes to an exact logical/blob source, ordered
 layout-result identities, processor name/version, and configuration digest.
@@ -187,6 +189,63 @@ The output is a proposal, not semantic correction, proofread transcription,
 scientific validation, citation approval, or human acceptance. Bibliography
 entries are source observations, never approved references or final citekeys.
 The analyzer writes no files and stores no derived result.
+
+## Equation candidates
+
+Equation contract version 1.0 is a derived evidence contract separate from raw
+extraction. `EquationDetectionInput` binds one exact `ExtractedDocument`, one
+exact `PageLayoutResult` per page, every raw block/text/span payload relevant to
+identity, and a complete `EquationDetectionConfiguration`. Stale source, blob,
+page, dimension, rotation, coordinate, kind, block, span, or layout evidence is
+rejected.
+
+`DeterministicEquationCandidateDetector` implements the injected
+`EquationCandidateDetector` boundary. `detect(document, content)` derives page
+layouts through its injected layout processor; `detect_with_layout` accepts an
+exact caller-supplied tuple. PDF bytes are passed to the injected
+`PageRegionRenderer` only when at least one candidate requires rendering, and
+the renderer independently verifies them against the source hash.
+
+Each immutable `EquationCandidate` records:
+
+- display or inline kind, stable ID, exact detection-input/configuration and
+  processor identity;
+- one exact source text block, ordered source spans, and unmodified raw native
+  characters;
+- a preserved trailing equation label such as `(3.2)` when present;
+- source-relative inline character offsets when applicable;
+- exact preceding and following source-block locators on the same page when
+  available;
+- confidence, transparent matching evidence, `proposed` or `ambiguous` status,
+  and warning links; and
+- one validated bounded `RenderedRegion` whose selected source box contains all
+  candidate geometry. Inline rendering deliberately covers the containing text
+  block because the cold contract has no per-character geometry.
+
+Display proposals require bounded relation/operator/variable, strong
+mathematical-symbol, or LaTeX-like evidence, with label and centered geometry
+only increasing confidence. Inline proposals require explicit `$...$` or
+`\(...\)` delimiters or a conservative relational pattern. Long prose and
+text merely containing the word “equation” are not signals. Low-confidence
+relational candidates remain ambiguous with a linked warning. Equation-shaped
+text lacking complete positive-area source geometry is retained only through a
+source-backed warning and is not silently rendered as another region.
+
+Configuration hard-bounds pages, all input/text blocks, aggregate source spans
+and text, candidate count/text, inline candidates per block, warnings, retained
+result size, aggregate rendered PNG bytes/pixels, render padding, and the
+ambiguity threshold. Limits and settings enter input and result identity. Result
+validation rechecks exact text/offsets,
+labels, detector evidence, source reading order, immediate context, warnings,
+render provenance/rotation/containment, processor/configuration links, stable
+IDs, and retained size. PNG payload bytes are excluded from retained-result
+accounting because `RenderedRegion` enforces separate pixel/raster/PNG limits.
+
+The current raw contract retains text PDF object locators and geometry but not
+font metrics or PDF drawing-command objects. Detection does not invent them and
+does not claim symbol interpretation, semantic correctness, proofread
+transcription, scientific validation, publication suitability, or human
+acceptance. It writes no files and stores no derived result.
 
 ## `ExtractedArticle`
 

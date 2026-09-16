@@ -298,16 +298,41 @@ fallback and empty evidence, stale layout rejection, resource bounds, stable
 immutable identity, reciprocal hierarchy, and bibliography observation status;
 full fixture and static-analysis suites pass.
 
-### ING-EQUATION-01 — Equation candidate detection
+### ING-EQUATION-01 — Equation candidate detection (implemented)
 
-Detect display and inline equation regions using PDF object, font, geometry,
-and surrounding-text evidence.
+`DeterministicEquationCandidateDetector` consumes an exact extracted document,
+one exact layout result per page, and the matching PDF bytes only when a region
+must be rendered. It proposes bounded display candidates from transparent
+relation/operator/variable/strong-symbol/LaTeX signals plus geometry, and inline
+candidates from explicit delimiters or conservative relational spans. Exact
+source-block text is never replaced. Inline text retains source-relative
+character offsets while its image explicitly renders the containing text block.
+
+Every candidate carries exact source/blob/page spans, its raw text, preserved
+trailing source label, preceding/following source-block locators when available,
+confidence, evidence status, transparent signal counts, and a validated
+`RenderedRegion`. Weak relational candidates are `ambiguous` with linked
+warnings. Equation-shaped text without complete render geometry is not promoted
+and remains an explicit warning. Candidate, warning, renderer, layout,
+configuration, and processor identities enter stable result identity.
+
+Configuration hard-bounds pages, input/text blocks, source spans, text,
+candidates, inline candidates per block, warnings, candidate text, retained
+result size, aggregate rendered PNG bytes/pixels, render padding, and the
+ambiguity threshold. Detection and region rendering remain injected protocols.
+The current cold contract exposes text PDF
+object locators and geometry but not font metrics or drawing-command objects, so
+this detector does not invent that unavailable evidence. It makes no symbol
+interpretation, transcription-quality, scientific-validation, or human-
+acceptance claim and stores no derived result.
 
 **Depends on:** `ING-LAYOUT-01`, `ING-REGION-01`.
 
-**Acceptance:** candidates retain rendered regions and surrounding locators;
-numbered equations preserve source labels; the task makes no claim that symbols
-have been interpreted correctly.
+**Validation:** focused tests cover the maintained equation fixture, exact
+numbered labels, surrounding locators, inline offsets, ambiguous relational
+text, prose rejection, absent geometry, rotated rendering, stale layouts,
+pre-render candidate limits, stable identity, and immutability; full fixture and
+static-analysis suites pass.
 
 ### ING-EQUATION-02 — Equation transcription processor
 

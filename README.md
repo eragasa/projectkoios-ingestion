@@ -205,4 +205,21 @@ does not invent them. The result is not proofread transcription, semantic or
 scientific validation, human acceptance, a citekey decision, or a destination
 format, and it is not stored in `ExtractionCache`.
 
+## Bounded equation candidates
+
+`DeterministicEquationCandidateDetector` proposes display and inline
+equation-shaped evidence from exact extraction and page-layout inputs. Each
+candidate retains unchanged native characters, source spans and inline offsets,
+numbered labels, immediate source-block context, transparent confidence, and a
+validated bounded `RenderedRegion`. Inline crops explicitly cover their
+containing text block because character-level geometry is unavailable.
+
+The detector uses explicit delimiters and conservative relation/operator/symbol
+signals; prose containing only the word “equation” is not promoted. Weak
+relational candidates are ambiguous with warnings, and equation-shaped text
+without geometry is not rendered. The raw contract currently has no font or
+PDF drawing-command observations, so the detector does not invent them. Results
+make no symbol-interpretation, proofread-transcription, scientific-validation,
+human-acceptance, or publication claim and are not stored in `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
