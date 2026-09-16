@@ -16,7 +16,8 @@ The Tesseract adapter tests use this image with a hermetic executable double.
 They therefore validate subprocess isolation, TSV interpretation, evidence,
 limits, and failure behavior without requiring Tesseract on the test host. An
 optional real-engine smoke test runs when both variables point to exact local
-files:
+files. See the [Tesseract setup guide](../../../docs/tesseract.md) for
+installation and resource-discovery commands:
 
 ```bash
 KOIOS_TESSERACT_EXECUTABLE=/path/to/tesseract \

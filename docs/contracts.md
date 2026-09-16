@@ -368,7 +368,9 @@ Markdown format, destination, publication, or native/OCR reconciliation policy.
 
 `TesseractOCRProcessor` implements `OCRProcessor` as a lazy external-process
 adapter; importing the package does not import, bundle, or install Tesseract.
-Construction requires immutable `TesseractLanguageBinding` values that map each
+Installation and explicit resource discovery are documented in
+[`tesseract.md`](tesseract.md). Construction requires immutable
+`TesseractLanguageBinding` values that map each
 supported semantic language tag to one safe backend resource name and an
 explicit traineddata path. There is no implicit language-name conversion or
 fallback. A request missing a mapping produces `UNSUPPORTED_LANGUAGE`; a

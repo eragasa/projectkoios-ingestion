@@ -12,6 +12,7 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [Document-processing task status](docs/tasks/document-processing-backlog.md)
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
 - [Redistributable OCR image fixture](tests/fixtures/ocr/README.md)
+- [Tesseract installation and adapter setup](docs/tesseract.md)
 
 The optional deterministic PDF adapter is installed with `.[pdf]` and exposed
 through `koios-ingest-pdf`. It writes a versioned extraction contract and,
@@ -121,9 +122,28 @@ does not introduce a renderer-only source-size policy. Stable PNG bytes are
 verified for repeated execution with one concrete installed PyMuPDF build and
 are not claimed across different native builds that report the same version.
 
+## Bounded OCR
+
+Tesseract is an external executable, not a Python package dependency. Install it
+before using the concrete adapter:
+
+```bash
+# macOS
+brew install tesseract
+
+# Debian or Ubuntu
+sudo apt-get update
+sudo apt-get install tesseract-ocr tesseract-ocr-eng
+```
+
+Homebrew includes only `eng` and `osd`; `brew install tesseract-lang` adds the
+optional language collection. See the [Tesseract setup guide](docs/tesseract.md)
+for resource discovery, verification, adapter configuration, and the optional
+real-engine smoke test.
+
 Bounded OCR is exposed through immutable contracts and an `OCRProcessor`
-protocol. An
-`OCRRequest` preserves ordered exact `RenderedRegion` evidence and explicitly
+protocol. An `OCRRequest` preserves ordered exact `RenderedRegion` evidence and
+explicitly
 configures canonical semantic language tags, token/line output, and all
 resource limits. Native-text coexistence references are verified against the
 same extracted source page. Each output has in-image pixel geometry and a
@@ -141,8 +161,8 @@ traineddata files. Before execution it resolves `tesseract --version`, hashes
 the bounded normalized version report, executable, and each requested resource,
 and includes those engine/resource identities plus a digest of all adapter
 behavior/resource settings in the OCR cache identity. Missing executables,
-mappings, or resources become typed
-selection failures rather than imports or silent fallback.
+mappings, or resources become typed selection failures rather than imports or
+silent fallback.
 
 The adapter invokes no shell and uses one bounded POSIX subprocess per explicit
 selection. Exact PNG and traineddata snapshots are staged only in a private
