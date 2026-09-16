@@ -188,4 +188,21 @@ text. This stage does not perform semantic correction, certify accuracy or
 scientific validity, record human acceptance, publish files, or add derived
 results to `ExtractionCache`.
 
+## Deterministic article structure
+
+`DeterministicArticleStructureAnalyzer` derives a bounded, destination-neutral
+article hierarchy from an exact `ExtractedDocument` and its deterministic page
+layouts. It proposes title, explicit authors, abstract, keywords, numbered or
+conservative known-name sections, subsections, bibliography observations, and
+appendices while retaining exact source spans and block IDs. Heading level and
+reading order carry separate confidence; parent/child links are reciprocal and
+acyclic. Matching table-of-contents evidence can strengthen one unique heading.
+
+Fallback titles and layout uncertainty remain warnings. Bibliography entries
+are typed observations and cannot be represented as accepted or validated
+references. The current raw contract exposes no font metrics, so the analyzer
+does not invent them. The result is not proofread transcription, semantic or
+scientific validation, human acceptance, a citekey decision, or a destination
+format, and it is not stored in `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

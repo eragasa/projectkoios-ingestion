@@ -264,17 +264,39 @@ identity, and pre-matching resource bounds; full tests and static analysis pass.
 
 ## Structural tasks
 
-### ING-STRUCTURE-01 — Article structure analyzer
+### ING-STRUCTURE-01 — Article structure analyzer (implemented)
 
-Detect title, author block, abstract, keywords, sections, bibliography, and
-appendices using bookmarks, numbered headings, font evidence, and bounded
-fallbacks.
+`DeterministicArticleStructureAnalyzer` consumes one exact layout result per
+extracted page and proposes an immutable article hierarchy. It detects
+metadata-correlated or explicitly warned fallback titles, explicit author
+lines, abstracts and bounded abstract bodies, keyword lines, numbered and
+conservative known-name sections/subsections, bibliographies, bibliography
+entries, and appendices. Matching table-of-contents/bookmark evidence strengthens
+one unique source heading but never creates unanchored text.
+
+Structure contract version 1.0 adds exact source-block links, heading level and
+confidence, contiguous reading order and confidence, transparent evidence
+status, stable analysis identity, and bounded processor/layout provenance.
+Parent/child links must be reciprocal and acyclic. Bibliography entries are
+forced to `observed`; the enum deliberately contains no accepted or validated
+state. Missing/fallback titles, layout uncertainty, empty bibliographies, and
+missing text remain explicit warnings.
+
+The current raw extraction contract does not retain font metrics. This analyzer
+therefore uses table-of-contents evidence, numbering, explicit labels, known
+headings, geometry, and layout order rather than inventing font observations.
+Configuration hard-bounds pages, blocks/text, nodes, warnings, heading length,
+abstract extent, and bibliography entries. It writes no files, stores no
+derived result, and claims no semantic correction, scientific validation, or
+human acceptance.
 
 **Depends on:** `ING-LAYOUT-01`, `ING-QUALITY-01`.
 
-**Acceptance:** every node points to source spans; heading level and reading
-order have confidence; reciprocal hierarchy invariants pass; bibliography
-entries are observations, not approved reference records.
+**Validation:** focused tests cover full front matter/section/bibliography/
+appendix hierarchy, exact table-of-contents corroboration, abstract grouping,
+fallback and empty evidence, stale layout rejection, resource bounds, stable
+immutable identity, reciprocal hierarchy, and bibliography observation status;
+full fixture and static-analysis suites pass.
 
 ### ING-EQUATION-01 — Equation candidate detection
 

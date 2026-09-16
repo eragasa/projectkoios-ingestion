@@ -1,3 +1,9 @@
+from projectkoios.ingestion.article_structure import (
+    ARTICLE_STRUCTURE_PROCESSOR_VERSION,
+    ArticleStructureConfiguration,
+    ArticleStructureLimitError,
+    DeterministicArticleStructureAnalyzer,
+)
 from projectkoios.ingestion.articles import (
     ArticleIngester,
     ArticleStructureAnalyzer,
@@ -113,7 +119,9 @@ from projectkoios.ingestion.serialization import (
     serialize_contract,
 )
 from projectkoios.ingestion.structure import (
+    STRUCTURE_CONTRACT_VERSION,
     StructureAnalysis,
+    StructureEvidenceStatus,
     StructureKind,
     StructureNode,
 )
@@ -132,17 +140,22 @@ from projectkoios.ingestion.textbooks import (
 
 __all__ = [
     "CONTRACT_VERSION",
+    "STRUCTURE_CONTRACT_VERSION",
+    "ARTICLE_STRUCTURE_PROCESSOR_VERSION",
     "LAYOUT_CONTRACT_VERSION",
     "OCR_CONTRACT_VERSION",
     "OCR_RECONCILIATION_CONTRACT_VERSION",
     "EXTRACTION_CACHE_FORMAT_VERSION",
     "ArticleIngester",
     "ArticleStructureAnalyzer",
+    "ArticleStructureConfiguration",
+    "ArticleStructureLimitError",
     "ChunkIndexWriter",
     "CodeRepositoryIndexer",
     "CodeRepositoryIngester",
     "DeterministicLayoutProcessor",
     "DeterministicOCRReconciler",
+    "DeterministicArticleStructureAnalyzer",
     "ExtractedArticle",
     "ExtractedBlock",
     "ExtractedDocument",
@@ -223,6 +236,7 @@ __all__ = [
     "TesseractLanguageBinding",
     "TesseractOCRProcessor",
     "StructureAnalysis",
+    "StructureEvidenceStatus",
     "StructureKind",
     "StructureNode",
     "TextbookIngester",

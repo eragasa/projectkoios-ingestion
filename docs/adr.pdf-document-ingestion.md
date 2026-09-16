@@ -189,9 +189,14 @@ requires exact native page/layout provenance, retains both original streams,
 and proposes bounded duplicate, disagreement, native-only, and OCR-only
 relationships. It leaves ambiguity and disagreements explicit and makes no
 semantic-correction, scientific-validation, or human-acceptance claim. Derived
-OCR/reconciliation storage and semantic cleanup remain future work. The absence
-or failure of OCR execution must not be hidden by treating raw text extraction
-as a proofread transcription.
+OCR/reconciliation storage and semantic cleanup remain future work. A separate
+bounded article-structure processor now consumes exact page-layout evidence and
+proposes source-backed front matter, heading hierarchy, bibliography
+observations, and appendices with explicit heading/reading-order confidence.
+The raw contract currently exposes no font metrics, so the processor does not
+invent them. Its hierarchy is neither semantic validation nor human acceptance.
+The absence or failure of OCR execution must not be hidden by treating raw text
+extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

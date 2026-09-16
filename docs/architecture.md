@@ -72,8 +72,10 @@ and cache identities behind an injected protocol. The implemented
 adapter with exact traineddata identities. The separate
 `DeterministicOCRReconciler` consumes one exact OCR selection plus its verified
 native page/layout evidence and proposes duplicate, disagreement, native-only,
-and OCR-only relationships without replacing either evidence stream.
-Structural enrichment remains a future processor.
+and OCR-only relationships without replacing either evidence stream. The
+`DeterministicArticleStructureAnalyzer` now proposes source-backed article front
+matter, headings, hierarchy, bibliography observations, and appendices from
+exact page-layout evidence.
 
 PDF document support follows an output-independent pipeline:
 
@@ -127,7 +129,9 @@ contracts in hash-sharded version directories beneath an injected root.
 
 An application may request enrichment of a selected page range or structural
 unit. JIT work can include OCR, page-region rendering, expensive structural
-analysis, or semantic cleanup through injected processors. The implemented
+analysis, or semantic cleanup through injected processors. Deterministic
+article structure can also be derived for an extracted document through the
+injected `ArticleStructureAnalyzer` boundary. The implemented
 `PageRegionRenderer` boundary accepts only an explicit, non-empty ordered set
 of page or bounding-box selections; it has no automatic whole-document path.
 Its PyMuPDF adapter returns PNG bytes without publishing files and checks
@@ -199,16 +203,22 @@ The hierarchy is descriptive rather than destination-specific. Node labels
 preserve source labels as strings. File naming, zero padding, citekeys, and
 Markdown conventions are projection policies outside ingestion.
 
-Structure detection uses evidence in descending order of reliability:
+Structure detection uses available evidence in descending order of reliability:
 
-1. explicit PDF bookmarks;
-2. a parsed table of contents;
-3. numbered heading patterns;
-4. font and layout hierarchy;
-5. bounded page-range fallback.
+1. extracted metadata corroborated by exact source text and PDF bookmarks or
+   table-of-contents destinations;
+2. numbered and explicit article-heading patterns;
+3. deterministic page-layout order and source geometry;
+4. bounded, explicitly warned fallback.
 
-Every inferred node records its evidence, confidence, and warnings. Consumers
-must be able to inspect or override uncertain structure without re-reading the
+The implemented article analyzer requires one exact layout result per page,
+retains exact source spans and block IDs, records separate heading and reading
+order confidence, and emits a reciprocal acyclic hierarchy. It groups explicit
+front matter, recognizes conservative article section names, and records
+bibliography entries only as observations. The current raw extraction contract
+does not retain font metrics, so font hierarchy is neither inferred nor
+invented. Every inferred node records its evidence, confidence, and warnings.
+Consumers can inspect or override uncertain structure without re-reading the
 source PDF.
 
 ## Rough Chunking Boundary
@@ -266,6 +276,7 @@ The architecture depends on small protocols:
 
 - `SourceExtractor` converts a source into normalized extraction objects;
 - `StructuralAnalyzer` proposes a source-backed document hierarchy;
+- `ArticleStructureAnalyzer` specializes that boundary for articles;
 - `DocumentProcessor` derives enriched content while preserving provenance;
 - `ChunkProducer` converts structured content into source-backed chunks;
 - `ExtractionCache` retrieves and stores versioned extraction results;

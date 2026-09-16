@@ -4,8 +4,9 @@
 
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
-cache, filesystem-cache, article, textbook, structural-analysis, deterministic
-PyMuPDF cold extraction, deterministic page-layout analysis, bounded PDF
+cache, filesystem-cache, article, textbook, versioned structural analysis,
+deterministic article-structure analysis, deterministic PyMuPDF cold extraction,
+deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, and deterministic native-text/OCR reconciliation are
 implemented and exported. `RoughChunk` and the
@@ -121,27 +122,71 @@ navigation target.
 It does not contain destination paths, Markdown filenames, search scores, or
 vault links.
 
-## `StructureNode`
+## `StructureNode` and `StructureAnalysis`
 
-Describes a source-backed structural hypothesis.
+Structure contract version 1.0 represents source-backed hypotheses without an
+acceptance or validation state. `StructureNode` records:
 
-Fields include:
-
-- stable node ID;
-- node kind;
-- source label and title;
-- ordered source spans;
-- parent and ordered child IDs;
-- evidence type;
-- confidence;
-- warning references.
-
-Node kinds may include front matter, part, chapter, section, subsection,
-prose, equation, figure, table, example, problem set, problem, bibliography,
-and unknown.
+- a stable ID derived from kind, exact ordered source spans and source-block
+  IDs, evidence, title/label, heading observations, confidence, and evidence
+  status;
+- a kind including document, front matter, title, author, abstract, keywords,
+  section, subsection, appendix, bibliography, and bibliography entry;
+- reciprocal parent and ordered child IDs;
+- optional source label and title;
+- separate overall, heading-level, and reading-order confidence;
+- optional non-negative heading level and contiguous reading order;
+- transparent immutable evidence and warning links; and
+- `observed`, `proposed`, or `uncertain` evidence status. No accepted,
+  scientifically validated, or human-approved status exists. Bibliography-entry
+  nodes are required to remain `observed`.
 
 Numbers remain strings because source numbering may contain Roman numerals,
-letters, decimals, or edition-specific notation.
+letters, decimals, or edition-specific notation. Node identity deliberately excludes parent/child, warning, and reading-order
+links so reciprocal hierarchies can be materialized without circular IDs and
+inserting earlier evidence does not renumber unrelated nodes. Complete hierarchy,
+warning links, and reading order enter analysis identity.
+
+`StructureAnalysis.create` binds nodes to an exact logical/blob source, ordered
+layout-result identities, processor name/version, and configuration digest.
+It validates stable IDs, exact source provenance, immutable tuples, aggregate
+bounds, unique contiguous reading order, unique warnings, warning links,
+reciprocal parent/child links, and acyclic hierarchy. The original minimal
+`StructureAnalysis(nodes=...)` form remains available for injected legacy
+analyzers but cannot claim processor/layout identity.
+
+## Deterministic article structure
+
+`DeterministicArticleStructureAnalyzer` implements `ArticleStructureAnalyzer`.
+`analyze(document)` produces and consumes exact deterministic page-layout
+results; `analyze_with_layout(document, layouts)` accepts caller-supplied exact
+results and rejects stale source, page, dimensions, rotation, coordinate, raw
+block, kind, or span evidence.
+
+The processor preserves layout-proposed text order and retains excluded text
+after it in extractor-native order. It proposes a source-backed document root,
+optional grouped front matter, metadata-correlated or explicitly warned
+fallback title, explicitly prefixed authors, abstract and bounded abstract body,
+keywords, numbered and conservative known-name sections, subsections,
+bibliography, observed bibliography entries, and appendices. Matching PDF
+bookmarks/table-of-contents entries strengthen heading evidence and level only
+when exactly one source heading matches; they do not create unanchored text.
+Every content node has exact source spans, source-block IDs, contiguous reading
+order, and method-described confidence. Hierarchy links are reciprocal.
+
+Configuration places hard ceilings on pages, text blocks/characters, nodes,
+warnings, heading length, abstract blocks, and bibliography entries; all limits
+and the fallback-title geometry threshold enter configuration and analysis
+identity. Layout ambiguity, missing/fallback titles, empty bibliographies, and
+missing text remain explicit warnings. The current raw extraction contract does
+not retain font metrics, so the analyzer does not invent font evidence; its
+bounded evidence is bookmarks/table of contents, numbering, explicit labels,
+known headings, source geometry, and layout order.
+
+The output is a proposal, not semantic correction, proofread transcription,
+scientific validation, citation approval, or human acceptance. Bibliography
+entries are source observations, never approved references or final citekeys.
+The analyzer writes no files and stores no derived result.
 
 ## `ExtractedArticle`
 
