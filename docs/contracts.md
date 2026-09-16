@@ -8,9 +8,9 @@ cache, filesystem-cache, article, textbook, versioned structural analysis,
 deterministic article-structure analysis, deterministic PyMuPDF cold extraction,
 deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
-Tesseract OCR adapter, deterministic native-text/OCR reconciliation, and
-bounded equation-candidate detection are implemented and exported. `RoughChunk`
-and the
+Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
+equation-candidate detection, and engine-neutral equation-transcription
+contracts are implemented and exported. `RoughChunk` and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
@@ -235,8 +235,8 @@ Configuration hard-bounds pages, all input/text blocks, aggregate source spans
 and text, candidate count/text, inline candidates per block, warnings, retained
 result size, aggregate rendered PNG bytes/pixels, render padding, and the
 ambiguity threshold. Limits and settings enter input and result identity. Result
-validation rechecks exact text/offsets,
-labels, detector evidence, source reading order, immediate context, warnings,
+validation rechecks exact text/offsets, labels, detector evidence, source reading
+order, immediate context, warnings,
 render provenance/rotation/containment, processor/configuration links, stable
 IDs, and retained size. PNG payload bytes are excluded from retained-result
 accounting because `RenderedRegion` enforces separate pixel/raster/PNG limits.
@@ -246,6 +246,71 @@ font metrics or PDF drawing-command objects. Detection does not invent them and
 does not claim symbol interpretation, semantic correctness, proofread
 transcription, scientific validation, publication suitability, or human
 acceptance. It writes no files and stores no derived result.
+
+## Equation transcription proposals
+
+Equation-transcription contract version 1.0 and configuration version 1 define
+an engine-neutral `EquationTranscriptionProcessor` protocol. An implementation
+exposes `identity_for(request)` and `process(request)`; the package chooses no
+recognition engine, model, service, executable, or output destination.
+
+`EquationTranscriptionRequest` contains a non-empty ordered tuple of exact
+`EquationTranscriptionSelection` values and an immutable configuration. Each
+selection owns one complete `EquationCandidate`, including its original native
+text, source spans, context, detection uncertainty, and validated
+`RenderedRegion` PNG. Selection validation rechecks source/blob/page identity
+and requires the selected image box to contain every candidate source box.
+Shared block crops for multiple inline candidates remain representable, while
+each candidate may be selected only once per request.
+
+Configuration requests LaTeX, MathML, or both in exact order and records the
+low-confidence threshold. It hard-bounds selections, unique images, per-image
+and aggregate bytes/pixels, formats, proposals, output characters, symbol
+substrings, warnings, failure messages, model/resource identities, aggregate
+output/symbol/warning totals, identity size, and retained result size. Its
+explicit version and all values enter the configuration digest.
+
+`EquationTranscriptionProposal` is an unaccepted output observation. It retains
+exact selection/candidate/region IDs, output format and characters, optional
+method/version/scale-described proposal confidence, symbol-confidence coverage,
+ordered exact output substrings, warning links, and processor/backend/config
+provenance. Substring offsets must be ordered, non-overlapping, in range, and
+must reproduce the referenced output characters exactly. Coverage is:
+
+- `complete` only when assessed substrings cover every non-whitespace output
+  character;
+- `partial` when some output or substring confidence remains unassessed; or
+- `unavailable` when the backend supplies no symbol-level confidence.
+
+Each assessed substring below the configured threshold is
+`low_confidence`; a missing score is `unassessed`. Both states require warning
+links from the substring and containing proposal. There is no accepted,
+proofread, corrected, or validated symbol state.
+
+Each selection result is `completed`, `partial`, or `failed`; these are adapter
+execution outcomes, not review or acceptance states. Completed output requires
+every requested format, proposal confidence, and complete assessed
+substring coverage with no failure. Partial output retains at least one
+proposal plus typed failure and warning evidence. Failed output retains no
+proposal and requires typed failure and warning evidence. Overall status is
+derived from all ordered selection statuses. Failures distinguish rejected
+input, resource limits, unavailable processors, processor errors, unsupported
+formats, invalid output, and incomplete output.
+
+`EquationTranscriptionProcessorIdentity` records processor/backend names and
+versions plus ordered immutable model, vocabulary, or other resource identities
+using SHA-256 or explicit version strings. The derived cache key includes the
+contract/configuration versions, exact ordered candidate and PNG identities,
+all requested settings and bounds, and complete processor/backend/resource
+identity. The result retains that identity and cache key. The contract defines
+cache identity only: it does not put equation transcription into the raw
+`ExtractionCache`.
+
+PNG bytes remain directly available through each retained request selection but
+are excluded from result-size accounting because separate per-image and
+aggregate byte/pixel limits apply. Outputs are proposals from an adapter, not
+proofread transcription, semantic interpretation, mathematical correctness,
+scientific validation, publication suitability, or human acceptance.
 
 ## `ExtractedArticle`
 

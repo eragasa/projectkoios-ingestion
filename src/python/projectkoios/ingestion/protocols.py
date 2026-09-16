@@ -4,6 +4,11 @@ from collections.abc import Iterable
 from typing import BinaryIO, Protocol
 
 from projectkoios.chunking import TextChunk
+from projectkoios.ingestion.equation_transcription import (
+    EquationTranscriptionProcessorIdentity,
+    EquationTranscriptionRequest,
+    EquationTranscriptionResult,
+)
 from projectkoios.ingestion.equations import EquationDetectionResult
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
@@ -98,6 +103,21 @@ class EquationCandidateDetector(Protocol):
         document: ExtractedDocument,
         content: BinaryIO,
     ) -> EquationDetectionResult: ...
+
+
+class EquationTranscriptionProcessor(Protocol):
+    """Injected image-to-LaTeX/MathML proposal boundary."""
+
+    name: str
+    version: str
+
+    def identity_for(
+        self, request: EquationTranscriptionRequest
+    ) -> EquationTranscriptionProcessorIdentity: ...
+
+    def process(
+        self, request: EquationTranscriptionRequest
+    ) -> EquationTranscriptionResult: ...
 
 
 class ExtractionCache(Protocol):

@@ -334,16 +334,43 @@ text, prose rejection, absent geometry, rotated rendering, stale layouts,
 pre-render candidate limits, stable identity, and immutability; full fixture and
 static-analysis suites pass.
 
-### ING-EQUATION-02 — Equation transcription processor
+### ING-EQUATION-02 — Equation transcription processor (implemented)
 
-Define and implement an adapter boundary for proposing MathML or LaTeX from a
-selected equation region.
+The engine-neutral `EquationTranscriptionProcessor` boundary accepts a bounded,
+ordered `EquationTranscriptionRequest` over exact equation candidates. A
+selection retains the complete validated source `RenderedRegion`; callers can
+request LaTeX, MathML, or both in explicit order. Implementations return one
+completed, partial, or failed selection result with typed failures and linked
+warnings rather than raising away selection-local backend outcomes.
+
+Every proposal is explicitly unaccepted. It retains its exact candidate and
+rendered-region identities, format, output text, optional method-described
+confidence, processor/backend/configuration provenance, warnings, and ordered
+non-overlapping output substrings. Symbol confidence coverage is complete,
+partial, or unavailable. Every assessed score below the configured threshold is
+`low_confidence`; missing confidence is `unassessed`; both require warning links.
+A completed selection requires every requested format and complete assessed
+symbol coverage. Partial or failed selections require typed failure and warning
+evidence.
+
+Processor/backend versions, configuration version and digest, immutable model
+or vocabulary resource identities, requested formats, exact candidate/image
+identities, and all resource limits enter the derived cache key. The contract
+hard-bounds selections, unique source images, image bytes/pixels, formats,
+proposal/symbol text and counts, warnings, resources, aggregate output, identity
+size, and retained result size. It defines cache identity but does not add
+transcription results to `ExtractionCache` or select a concrete recognition
+engine.
 
 **Depends on:** `ING-EQUATION-01`, `ING-CACHE-01`.
 
-**Acceptance:** processor and configuration versions enter provenance; source
-image remains available; low-confidence symbols are marked; no proposal is
-called proofread or accepted.
+**Validation:** focused tests cover LaTeX and MathML proposals, exact retained
+PNG evidence, low-confidence marking, unavailable-confidence partial output,
+typed failure, cache invalidation by processor/resource/configuration/image,
+exact output ranges, image containment and bounds, stable identity,
+immutability, and runtime protocol annotations. Proposals make no proofread,
+semantic-correctness, scientific-validation, publication, or human-acceptance
+claim.
 
 ### ING-TABLE-01 — Table candidate detection
 

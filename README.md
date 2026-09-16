@@ -222,4 +222,20 @@ PDF drawing-command observations, so the detector does not invent them. Results
 make no symbol-interpretation, proofread-transcription, scientific-validation,
 human-acceptance, or publication claim and are not stored in `ExtractionCache`.
 
+## Engine-neutral equation transcription
+
+`EquationTranscriptionProcessor` is the injected boundary for proposing LaTeX,
+MathML, or both from selected equation images. Requests retain complete
+`EquationCandidate` and `RenderedRegion` evidence. Results retain explicit
+processor/backend/configuration versions, immutable model-resource identities,
+typed partial/failure outcomes, warnings, and a complete derived cache key.
+
+Output substrings carry method-described confidence. Scores below the configured
+threshold are `low_confidence`; missing scores are `unassessed`; both require
+warning links. Complete output requires assessed substring coverage for every
+requested format. No concrete recognition engine is selected, no result is put
+in the raw extraction cache, and no proposal is described as proofread,
+semantically correct, scientifically validated, publication-ready, accepted, or
+human-approved.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

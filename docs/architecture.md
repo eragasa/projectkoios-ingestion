@@ -77,7 +77,9 @@ and OCR-only relationships without replacing either evidence stream. The
 matter, headings, hierarchy, bibliography observations, and appendices from
 exact page-layout evidence. The bounded `DeterministicEquationCandidateDetector`
 proposes display and inline equation-shaped regions while retaining exact text,
-context, labels, and rendered source evidence.
+context, labels, and rendered source evidence. Engine-neutral equation-
+transcription contracts then allow injected adapters to propose LaTeX or MathML
+without turning recognition output into accepted source fact.
 
 PDF document support follows an output-independent pipeline:
 
@@ -174,6 +176,13 @@ text while their crop is explicitly block-scoped. Weak candidates and missing
 geometry remain warnings; no detected characters are interpreted as correct
 mathematics.
 
+An application may pass selected candidates to an
+`EquationTranscriptionProcessor`. The request retains each exact candidate and
+PNG; the adapter returns ordered LaTeX and/or MathML proposals with explicit
+processor/backend/model identity, substring confidence coverage, warnings, and
+typed failure evidence. Low-confidence and unassessed substrings are marked and
+warning-linked. The boundary executes no default engine and publishes no file.
+
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
@@ -188,8 +197,11 @@ its timeout, capture/resource limits, page segmentation mode, and engine mode
 into its effective processor version, while the normalized backend report and
 executable bytes have separate hashes in backend identity. A processor,
 backend, adapter setting, language mapping, or resource change invalidates its
-derived result without invalidating raw extraction. Derived OCR and
-reconciliation storage remain deferred and are not added to the raw
+derived result without invalidating raw extraction. Equation-transcription
+cache identity likewise includes its contract/configuration versions, exact
+candidate image, requested formats and limits, processor/backend versions, and
+model/resource identities. Derived OCR, reconciliation, and equation-
+transcription storage remain deferred and are not added to the raw
 `ExtractionCache`.
 
 ## Structural Model
@@ -247,6 +259,22 @@ signals together with layout order and source geometry. Confidence selects only
 validated, or human-approved. The raw extraction contract does not currently
 retain font metrics or drawing-command objects, so the detector neither invents
 nor claims those evidence sources.
+
+## Equation Transcription Model
+
+A transcription selection embeds one complete equation candidate rather than a
+caller-recreated image reference. Configuration requests ordered LaTeX and/or
+MathML formats and bounds images, outputs, confidence substrings, warnings,
+resources, and aggregate retained evidence. A completed selection requires all
+requested formats and confidence-assessed coverage of every non-whitespace
+output character. Partial and failed selections retain typed failure and warning
+evidence.
+
+Processor and backend versions plus immutable model/vocabulary identities enter
+the derived cache key with the exact candidate image and complete configuration.
+The output remains a proposal: status and confidence never mean proofread,
+mathematically correct, scientifically validated, accepted, or human-approved.
+No transcription result enters the cold extraction cache.
 
 ## Rough Chunking Boundary
 
@@ -310,6 +338,7 @@ The architecture depends on small protocols:
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
+- `EquationTranscriptionProcessor` proposes bounded LaTeX/MathML evidence;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 
@@ -358,8 +387,11 @@ backend errors, and invalid TSV. Reconciliation adds object-linked warnings for
 incomplete OCR, inherited layout uncertainty, skipped comparisons, ambiguous
 matches, text disagreements, and conservatively appended OCR-only order.
 Equation detection adds warnings for weak candidates, missing geometry, and
-ambiguous inline offset mapping. Deferred figure and equation-transcription
-processors may add their own source-backed warnings when implemented.
+ambiguous inline offset mapping. Equation transcription adds selection-local
+warnings for low or unavailable confidence and typed rejected-input, resource,
+availability, backend, format, invalid-output, and incomplete-output failures.
+Deferred figure processors may add their own source-backed warnings when
+implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. OCR selection failures are typed and linked

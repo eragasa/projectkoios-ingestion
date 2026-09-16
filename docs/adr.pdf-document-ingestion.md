@@ -199,9 +199,14 @@ A separate bounded equation-candidate detector now retains native display/inline
 text, offsets, labels, surrounding block locators, and exact rendered-region
 evidence. Weak signals or missing geometry remain explicit warnings; unavailable
 font and drawing-command observations are not invented. A candidate makes no
-symbol-interpretation or transcription-quality claim. The absence or failure of
-OCR execution must not be hidden by treating raw text extraction as a proofread
-transcription.
+symbol-interpretation or transcription-quality claim. Selected candidates may
+flow to an engine-neutral equation-transcription boundary that retains exact PNG
+evidence and returns bounded LaTeX/MathML proposals, confidence coverage,
+warnings, typed failures, complete processor/model provenance, and derived cache
+identity. Low and unavailable confidence stay explicit; no proposal is called
+proofread, mathematically correct, scientifically validated, or accepted. The
+absence or failure of OCR execution must not be hidden by treating raw text
+extraction as a proofread transcription.
 
 ## Relationship to existing decision
 
