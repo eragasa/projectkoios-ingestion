@@ -408,16 +408,41 @@ ambiguous, rotated, stale-layout, wrong-source, pre-render candidate-limit,
 render-aggregate-limit, stable-identity, immutability, and protocol cases; full
 fixture and static-analysis suites pass.
 
-### ING-TABLE-02 — Table structure reconstruction
+### ING-TABLE-02 — Table structure reconstruction (implemented)
 
-Propose rows, columns, spans, headers, and cell text as a destination-independent
-table model.
+`DeterministicTableStructureReconstructor` consumes one exact
+`TableDetectionResult` and produces immutable, destination-independent columns,
+rows, cells, merged-span proposals, and explicit page continuations. Every cell
+retains exact native block text and spans when available and always resolves to
+the candidate's bounded rendered-region evidence. Multi-block cell text records
+the deterministic join method rather than claiming a corrected transcription.
+
+Rule lines are used as proposed boundaries when they form a complete grid;
+otherwise bounded native-text geometry supplies midpoint boundaries. Explicit
+`Header` evidence proposes header roles. Unresolved headers, unruled or mixed
+boundary geometry, empty cells, multiple blocks in one cell, inherited
+ambiguity, low confidence,
+and merged-span signals remain linked warnings. Explicit multi-page candidates
+retain page-local rows and repeated headers separately instead of silently
+coalescing cells across pages.
+
+The contract has only `proposed` and `ambiguous` structure states. It preserves
+title/caption/note/continuation association identities without folding those
+blocks into cells. Configuration hard-bounds candidates, regions, rows,
+columns, cells, blocks per cell, spans, associations, continuations, warnings,
+text, and retained result size. Exact candidate, warning, configuration, and
+processor evidence enters stable identity. The stage writes no files and adds
+nothing to the raw extraction cache.
 
 **Depends on:** `ING-TABLE-01`.
 
-**Acceptance:** every cell resolves to source blocks or a rendered region;
-merged cells and multi-page continuation are representable; Markdown rendering
-is outside this task.
+**Validation:** focused tests cover the maintained ruled fixture, exact cell
+provenance and text, unruled/header ambiguity, merged-column spans, explicit
+multi-page continuation with retained repeated headers, deterministic and
+configuration-bound identity, pre-reconstruction resource rejection,
+immutability, stale identity rejection, and protocol typing. Markdown rendering,
+semantic correction, proofread accuracy, scientific validation, publication
+suitability, and human acceptance are outside this task.
 
 ### ING-FIGURE-01 — Figure and caption extraction
 

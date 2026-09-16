@@ -81,7 +81,9 @@ context, labels, and rendered source evidence. Engine-neutral equation-
 transcription contracts then allow injected adapters to propose LaTeX or MathML
 without turning recognition output into accepted source fact. Bounded table-
 candidate detection combines exact layout, PDF vector-rule observations, and
-rendered regions without reconstructing table cells.
+rendered regions. The separate `DeterministicTableStructureReconstructor`
+proposes a complete destination-neutral cell grid, spans, headers, and explicit
+page continuations while preserving exact source and rendered evidence.
 
 PDF document support follows an output-independent pipeline:
 
@@ -190,8 +192,19 @@ rule inspector retains bounded axis-aligned PDF drawing segments and ignored
 item counts; the detector combines those observations with native text
 alignment and nearby lexical associations. It renders only proposed regions.
 Explicit continuation labels may join adjacent pages, while merged-cell signals
-and prose-like geometry remain warned observations. No cell grid or header
-semantics are reconstructed.
+and prose-like geometry remain warned observations.
+
+An application may then inject `TableStructureReconstructor`. The deterministic
+implementation consumes the complete exact detection result. Complete vector
+grids or native-text midpoint geometry propose columns and page-local rows;
+every grid position becomes a cell grounded in exact source blocks/spans or the
+retained candidate-region PNG. Explicit header text can propose roles. Merged
+signals remain ambiguous spans, and multi-page continuations retain separate
+rows and repeated headers rather than silently merging cells. Warnings preserve
+unruled or mixed boundary geometry, unresolved headers, empty or multi-block
+cells, low confidence, and inherited candidate ambiguity. This stage changes
+no source text and does
+not render Markdown or claim table correctness.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
@@ -214,7 +227,11 @@ model/resource identities. Derived OCR, reconciliation, and equation-
 transcription storage remain deferred and are not added to the raw
 `ExtractionCache`. Table-candidate identity likewise includes exact document,
 layout, vector-rule, renderer, detector, and configuration evidence; table
-candidates are also excluded from the raw cache.
+candidates are also excluded from the raw cache. Table-structure identity binds
+the exact detection result, complete reconstruction configuration, processor
+version, proposed topology and text evidence, rendered-region identities, and
+warning links. Table structures likewise remain derived outputs outside the raw
+cache.
 
 ## Structural Model
 

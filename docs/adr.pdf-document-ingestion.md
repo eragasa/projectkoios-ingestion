@@ -210,9 +210,18 @@ lazily inspected axis-aligned PDF rules, source-backed title/caption/note and
 continuation locators, and exact rendered regions. Multi-page links require
 explicit continuation evidence; merged-cell observations remain warnings rather
 than reconstructed cells. A candidate makes no table-structure, semantic-
-correctness, publication, scientific-validation, or acceptance claim. The
-absence or failure of OCR execution must not be hidden by treating raw text
-extraction as a proofread transcription.
+correctness, publication, scientific-validation, or acceptance claim. A
+separate deterministic table-structure processor now consumes that complete
+exact candidate result and proposes bounded columns, page-local rows, complete
+cell coverage, header roles, ambiguous merged spans, and explicit page
+continuations. Each cell retains exact source blocks/spans or the original
+rendered-region evidence; continued-page rows and repeated headers are not
+silently coalesced. Unruled, mixed-boundary, or unresolved geometry stays
+warning-linked. The processor emits no Markdown and makes no proofread,
+semantic-correctness,
+scientific-validation, publication, or human-acceptance claim. The absence or
+failure of OCR execution must not be hidden by treating raw text extraction as
+a proofread transcription.
 
 ## Relationship to existing decision
 

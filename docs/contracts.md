@@ -10,7 +10,8 @@ deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
-and bounded table-candidate detection are implemented and exported. `RoughChunk`
+bounded table-candidate detection, and deterministic table-structure
+reconstruction are implemented and exported. `RoughChunk`
 and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
@@ -377,6 +378,60 @@ or multi-page cell continuation is reconstructed in this stage. Candidates are
 not proofread tables, semantically correct data, scientific validation,
 publication-ready output, or human acceptance. The stage writes no files and
 stores no derived result in `ExtractionCache`.
+
+## Table structure proposals
+
+Table-structure contract version 1.0 is a derived proposal contract over one
+complete exact `TableDetectionResult`. `TableStructureInput` binds that result,
+including candidate and detection warning links, to the complete immutable
+`TableStructureConfiguration`. It rejects candidate, region, association, row,
+column, cell, and predicted-grid counts above configured bounds before
+reconstruction.
+
+`DeterministicTableStructureReconstructor` implements the injected
+`TableStructureReconstructor` boundary. For every candidate it returns exactly
+one `TableStructure` containing:
+
+- contiguous destination-independent `TableColumn` values with normalized
+  proposed bounds and all contributing region identities;
+- page-local `TableRow` values in one contiguous cross-page reading order, with
+  exact source block IDs/spans and retained repeated-header observations;
+- a complete non-overlapping `TableCell` grid whose cells record row/column
+  position and span, `header`, `body`, or `unknown` role, exact ordered source
+  texts/blocks/spans, the deterministic text-join method, and the owning
+  candidate-region PNG identity; and
+- explicit `TableContinuation` values tied to source-backed continuation
+  associations. Page-local rows and repeated headers are retained rather than
+  silently coalesced across pages.
+
+A complete vector-rule grid supplies row/column boundaries when available;
+otherwise the processor uses native block geometry and records its
+rules-or-midpoints method. Explicit source text containing `Header` supplies
+header evidence. Candidate merged-row signals become full-column span
+proposals, never asserted facts. Unruled or mixed boundary geometry,
+unresolved headers, empty cells, multiple blocks in one cell, low candidate
+confidence, inherited candidate ambiguity, and merged spans produce linked
+warnings. An empty cell
+has no invented text and remains grounded in the retained PNG region.
+Multi-block text is a newline-joined proposal with exact component strings; it
+is not represented as source-native contiguous text.
+
+Structure and cell status is only `proposed` or `ambiguous`; no accepted,
+validated, corrected, or human-approved status exists. Stable input/result and
+column/row/cell/continuation/structure identities cover the exact detection
+result, candidate evidence, configuration, processor version, proposed
+geometry, roles, text, spans, rendered-region locators, warnings, and complete
+output topology. Configuration hard-bounds candidates, regions, columns, rows,
+cells, blocks per cell, source spans, associations, continuations, warnings,
+text, and retained result bytes. Exact PNG bytes remain reachable through the
+retained detection result but are excluded from retained-result accounting
+because their originating renderer/detector contracts already impose aggregate
+PNG and pixel limits.
+
+The processor writes no file, performs no Markdown rendering or semantic
+correction, claims no proofread accuracy, scientific validity, publication
+suitability, or human acceptance, and stores no result in raw
+`ExtractionCache`.
 
 ## `ExtractedArticle`
 

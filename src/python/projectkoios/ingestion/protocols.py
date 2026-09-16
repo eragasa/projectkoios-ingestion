@@ -30,6 +30,7 @@ from projectkoios.ingestion.reconciliation import (
     OCRReconciliationInput,
     OCRReconciliationResult,
 )
+from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
 
 
@@ -130,6 +131,17 @@ class TableCandidateDetector(Protocol):
         document: ExtractedDocument,
         content: BinaryIO,
     ) -> TableDetectionResult: ...
+
+
+class TableStructureReconstructor(Protocol):
+    """Propose table structure without accepting or proofreading it."""
+
+    name: str
+    version: str
+
+    def reconstruct(
+        self, detection_result: TableDetectionResult
+    ) -> TableStructureResult: ...
 
 
 class ExtractionCache(Protocol):

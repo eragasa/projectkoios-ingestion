@@ -249,9 +249,27 @@ warnings, and nearby title, caption, note, and continuation locators.
 The default rule inspector lazily reads axis-aligned PyMuPDF drawing commands and
 records unsupported drawing-item counts rather than inventing rule evidence.
 Long prose-like or weak candidates remain ambiguous. Merged-cell signals remain
-warnings, not reconstructed cells. This stage neither reconstructs table
-structure nor claims semantic correctness, scientific validation, publication
-suitability, human acceptance, or destination formatting, and its results are
-not stored in `ExtractionCache`.
+warnings, not reconstructed cells. This detection stage neither reconstructs
+table structure nor claims semantic correctness, scientific validation,
+publication suitability, human acceptance,
+or destination formatting, and its results are not stored in
+`ExtractionCache`.
+
+## Deterministic table structure
+
+`DeterministicTableStructureReconstructor` consumes an exact table-detection
+result and proposes destination-independent columns, page-local rows, cells,
+column spans, header roles, and explicit page continuations. Cells retain exact
+ordered native block text and source spans when available and always retain the
+original candidate-region PNG identity. Repeated headers on continued pages are
+marked but not discarded or silently merged.
+
+Complete vector grids provide proposed boundaries; otherwise native-text
+geometry provides transparent midpoint boundaries. Unruled or mixed boundary
+geometry, unresolved headers, empty or multi-block cells, low confidence,
+inherited ambiguity, and
+merged spans remain warnings. The model has no accepted state, does not alter
+source text, writes no files, and makes no proofread, semantic-correctness,
+scientific-validation, publication, Markdown, or human-acceptance claim.
 
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
