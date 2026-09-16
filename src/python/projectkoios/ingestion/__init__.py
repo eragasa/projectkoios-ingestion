@@ -57,6 +57,7 @@ from projectkoios.ingestion.ocr import (
     OCRFailureKind,
     OCRLanguageResourceIdentity,
     OCRLine,
+    OCRNativeTextBlockReference,
     OCROutputMode,
     OCRPageImage,
     OCRProcessorIdentity,
@@ -98,6 +99,13 @@ from projectkoios.ingestion.structure import (
     StructureAnalysis,
     StructureKind,
     StructureNode,
+)
+from projectkoios.ingestion.tesseract import (
+    TESSERACT_ADAPTER_VERSION,
+    TesseractAdapterConfiguration,
+    TesseractAdapterConfigurationError,
+    TesseractLanguageBinding,
+    TesseractOCRProcessor,
 )
 from projectkoios.ingestion.textbooks import (
     PdfTextbookIngester,
@@ -144,6 +152,7 @@ __all__ = [
     "OCRFailureKind",
     "OCRLanguageResourceIdentity",
     "OCRLine",
+    "OCRNativeTextBlockReference",
     "OCROutputMode",
     "OCRPageImage",
     "OCRProcessor",
@@ -176,6 +185,11 @@ __all__ = [
     "SourceExtractor",
     "SourceSpan",
     "TableOfContentsEntry",
+    "TESSERACT_ADAPTER_VERSION",
+    "TesseractAdapterConfiguration",
+    "TesseractAdapterConfigurationError",
+    "TesseractLanguageBinding",
+    "TesseractOCRProcessor",
     "StructureAnalysis",
     "StructureKind",
     "StructureNode",

@@ -6,8 +6,9 @@ This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
 cache, filesystem-cache, article, textbook, structural-analysis, deterministic
 PyMuPDF cold extraction, deterministic page-layout analysis, bounded PDF
-region-rendering, and bounded OCR request/result contracts are implemented and
-exported. `RoughChunk` and the general `ProcessingSelection`/`ProcessingResult`
+region-rendering, bounded OCR request/result contracts, and the bounded
+Tesseract OCR adapter are implemented and exported. `RoughChunk` and the
+general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
 
@@ -312,7 +313,9 @@ token, line, or token-and-line output and deterministic positive limits for
 selection and distinct-image counts, per-image and aggregate pixels/PNG bytes,
 language count and length, identity lengths, per-selection and aggregate
 tokens/lines/text/warnings, warning evidence/message sizes, and aggregate
-result size. Every choice and limit enters its configuration digest and cache
+result size. A request's aggregate warning capacity must permit at least one
+typed failure warning per selection, so every-selection failure remains
+representable. Every choice and limit enters its configuration digest and cache
 identity. Tuple fields require actual immutable tuples; booleans are not
 accepted as integers, invalid Unicode and duplicate IDs fail, and request
 iterables are consumed only through the configured selection limit plus one.
@@ -357,10 +360,59 @@ execution. That descriptor records processor and backend name/version plus an
 ordered one-to-one binding from every requested semantic language tag to the
 selected backend resource name and immutable SHA-256 or explicit versioned
 resource identity. `OCRProcessor.identity_for(request)` exposes this boundary
-to future callers. The contract does not change `ExtractionCache` or store OCR
-results. No OCR adapter, engine, executable, model, Markdown format,
-destination, publication, or native/OCR reconciliation policy is selected by
-these contracts.
+to callers. The contract does not change `ExtractionCache` or store OCR
+results. It does not itself select an adapter, engine, executable, model,
+Markdown format, destination, publication, or native/OCR reconciliation policy.
+
+## Tesseract OCR adapter
+
+`TesseractOCRProcessor` implements `OCRProcessor` as a lazy external-process
+adapter; importing the package does not import, bundle, or install Tesseract.
+Construction requires immutable `TesseractLanguageBinding` values that map each
+supported semantic language tag to one safe backend resource name and an
+explicit traineddata path. There is no implicit language-name conversion or
+fallback. A request missing a mapping produces `UNSUPPORTED_LANGUAGE`; a
+missing executable or resource produces `PROCESSOR_UNAVAILABLE`.
+
+`identity_for` resolves the executable without a shell, invokes bounded
+`tesseract --version`, hashes its bounded normalized version/dependency/capability
+report and the executable bytes, and incrementally hashes every requested
+traineddata file under individual and aggregate limits. `OCRProcessorIdentity`
+records those engine identities and ordered semantic-language/resource-name/
+SHA-256 bindings. The effective processor version additionally incorporates the
+complete `TesseractAdapterConfiguration` digest: timeout, stdout/stderr capture
+bounds,
+traineddata bounds, page segmentation mode, and optional engine mode. Only
+OCR-producing page-segmentation modes that do not require an implicit OSD
+resource are accepted. Thus engine, resource, mapping, and adapter-setting
+changes alter the OCR cache key.
+Before OCR invocation, the executable is rehashed and each traineddata file is
+copied into a private temporary snapshot while its hash is recomputed; a changed
+executable or resource fails closed.
+
+Processing uses one no-shell POSIX subprocess per explicit selection, a minimal
+locale/thread environment, a new process session, exact PNG input with its
+declared render DPI, staged traineddata, and TSV output. The adapter
+concurrently drains stdout and stderr,
+kills the process group on timeout or capture overflow, and removes temporary
+inputs/resources when the request ends. Raw stderr is deliberately not retained
+in result identity. Missing execution facilities, timeouts, output overflow,
+nonzero exits, malformed output, and contract-limit violations become typed
+selection-local warning/failure evidence. Usable strict TSV from a nonzero or
+timed-out process may be retained as partial output; unusable output fails.
+
+Tesseract level-5 TSV words become ordered tokens. Words are grouped by page,
+block, paragraph, and line identifiers; line text joins trimmed word text with a
+single space and line geometry is the union of member word boxes. TSV word
+confidence is normalized from `[0, 100]` to `[0, 1]` with an explicit method and
+scale; line confidence is present only when every member has a score and is the
+arithmetic mean of normalized word scores. These scores are backend evidence,
+not probabilities or proofread accuracy. Blank valid TSV is completed empty.
+Native-text references are never removed, replaced, or merged. The adapter does
+not publish files, store derived results, or implement reconciliation. Its
+subprocess/session boundary is not an operating-system sandbox and does not cap
+native-process memory; callers admitting untrusted PNG or traineddata bytes must
+supply deployment-level sandboxing and resource controls.
 
 ## `ProcessingSelection`
 

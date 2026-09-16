@@ -67,8 +67,10 @@ spanning arrangements explicitly uncertain. The implemented bounded region
 adapter renders only explicit full-page or bounding-box selections to in-memory
 PNG evidence. Implemented OCR contracts bind explicit ordered selections to
 that exact evidence and define bounded token/line, status, warning, coordinate,
-and cache identities behind an injected protocol; an OCR adapter and structural
-enrichment remain future processors.
+and cache identities behind an injected protocol. The implemented
+`TesseractOCRProcessor` is a lazy, no-shell, per-selection POSIX subprocess
+adapter with exact traineddata identities; native/OCR reconciliation and
+structural enrichment remain future processors.
 
 PDF document support follows an output-independent pipeline:
 
@@ -135,8 +137,13 @@ caller-recreated image metadata. OCR results preserve selection order and keep
 source/page-verified native text references as coexistence evidence while
 token/line streams remain separate. Completed, partial, and failed outcomes
 carry explicit output, warning, and typed-failure invariants; completed empty
-output represents a successfully processed blank region. No OCR engine is
-selected or run by the contract layer.
+output represents a successfully processed blank region. The contract layer
+selects no engine. Applications may explicitly inject `TesseractOCRProcessor`,
+which stages exact PNG and traineddata snapshots in a private temporary
+directory, invokes one bounded subprocess per selection, strictly interprets
+TSV, and cleans up without durable publication. Missing execution resources,
+timeouts, capture overflow, malformed output, and nonzero exits remain explicit
+selection-local outcomes rather than silent native-text replacement.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
@@ -147,10 +154,14 @@ evidence, contract version, processor/backend versions, and the complete
 processor configuration. The OCR boundary additionally includes native-text
 coexistence references, ordered canonical semantic language tags, output mode,
 every resource limit, and the exact backend language-resource names and
-immutable identities selected for those tags. A processor, backend, language
-mapping, or resource change invalidates its derived result without invalidating
-raw extraction. Derived OCR storage remains deferred and is not added to the
-raw `ExtractionCache`.
+immutable identities selected for those tags. The Tesseract adapter also folds
+its timeout, capture/resource limits, page segmentation mode, and engine mode
+into its effective processor version, while the normalized backend report and
+executable bytes have separate hashes in backend identity. A processor,
+backend, adapter setting, language mapping, or resource change invalidates its
+derived result without invalidating raw extraction. Derived OCR storage remains
+deferred and is not
+added to the raw `ExtractionCache`.
 
 ## Structural Model
 
@@ -287,8 +298,11 @@ text, nonzero page rotation, unsupported spanning positions, and documented
 geometry or payload exclusions. Unsupported coordinate systems fail closed. It
 treats an absent printed page label as normal optional
 evidence rather than a warning. Malformed and encrypted inputs are fatal errors
-and do not produce a result. Deferred OCR, structure, figure, and equation
-processors may add their own source-backed warnings when implemented.
+and do not produce a result. The Tesseract OCR adapter adds typed, source-linked
+warning/failure evidence for unavailable execution resources, resource limits,
+backend errors, and invalid TSV. Deferred structure, figure, equation, and OCR
+reconciliation processors may add their own source-backed warnings when
+implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. OCR selection failures are typed and linked

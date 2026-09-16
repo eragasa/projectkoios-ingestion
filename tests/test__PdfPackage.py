@@ -7,6 +7,7 @@ import sys
 
 def test__base_package_import__does_not_import_optional_pymupdf() -> None:
     script = """
+import subprocess
 import sys
 class BlockPyMuPdf:
     def find_spec(self, fullname, path=None, target=None):
@@ -14,8 +15,12 @@ class BlockPyMuPdf:
             raise AssertionError("base import attempted to load PyMuPDF")
         return None
 sys.meta_path.insert(0, BlockPyMuPdf())
+def reject_process(*args, **kwargs):
+    raise AssertionError("base import attempted to launch a subprocess")
+subprocess.Popen = reject_process
 import projectkoios.ingestion
 assert "pymupdf" not in sys.modules
+assert "pytesseract" not in sys.modules
 """
 
     completed = subprocess.run(

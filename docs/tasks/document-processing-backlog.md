@@ -184,8 +184,8 @@ proofreading result, or reconciliation claim.
 
 The deterministic OCR cache key includes contract version, ordered exact
 source/image/selection evidence, native block references, language/output
-choices, every behavior/resource limit, future processor/backend name and
-version, and ordered language-resource names plus immutable digests or explicit
+choices, every behavior/resource limit, processor/backend name and version, and
+ordered language-resource names plus immutable digests or explicit
 version identities. It defines only the cache identity boundary; it does not
 extend `ExtractionCache`. `OCRProcessor` is an injected protocol whose
 `identity_for` method exposes that descriptor before execution. No engine, adapter,
@@ -197,16 +197,37 @@ reconciliation policy is selected or invoked by this task.
 **Validation:** focused OCR contract and region tests, fixture verification,
 and full test/static-analysis suites.
 
-### ING-OCR-02 — Tesseract OCR adapter
+### ING-OCR-02 — Tesseract OCR adapter (implemented)
 
-Implement a lazy, subprocess-isolated Tesseract adapter for explicitly selected
-regions.
+`TesseractOCRProcessor` is a lazy, no-shell POSIX subprocess adapter for
+explicitly selected regions. Callers provide immutable mappings from canonical
+semantic language tags to safe Tesseract resource names and traineddata paths;
+there is no implicit backend-language conversion. Pre-execution identity
+contains hashes of the bounded normalized `tesseract --version` report and
+executable, ordered language/resource mapping, exact traineddata SHA-256 values,
+and an effective processor version covering timeout, capture/resource limits,
+page segmentation mode, and optional
+engine mode.
+
+Each selected PNG and the exact requested traineddata bytes are staged in a
+private temporary directory. Every selection gets an isolated process session,
+fixed locale/thread environment, bounded stdout/stderr draining, timeout with
+process-group termination, strict UTF-8 TSV validation, and cleanup. Word rows
+become ordered tokens; grouped word evidence becomes optional lines. Confidence
+retains explicit Tesseract/aggregation semantics. Blank TSV succeeds; usable
+output from a nonzero invocation is partial; unavailable executables/resources,
+unmapped languages, output overflow, timeout, invalid output, and contract
+limits become typed failures. Raw stderr and temporary paths are not retained.
+Native text remains separate and derived OCR storage is still deferred.
 
 **Depends on:** `ING-OCR-01`, `ING-CACHE-01`.
 
-**Acceptance:** missing executable produces a typed failure; language and engine
-versions enter the cache key; native text is not silently replaced; tests use a
-small redistributable image fixture.
+**Validation:** hermetic executable-double tests cover engine/resource/cache
+identity, all output modes, selection order, blank success, partial output,
+missing executable/resource/language mapping, timeout, malformed output, and
+capture/aggregate limits. The maintained wholly synthetic PNG fixture is
+regenerated and verified by `scripts/ocr_fixture.py`; an environment-configured
+real-engine smoke test remains optional.
 
 ### ING-OCR-03 — Native-text/OCR reconciliation
 

@@ -1280,6 +1280,10 @@ def _preflight_request(
         raise ValueError("an OCR request requires at least one selection")
     if len(selections) > configuration.max_selections:
         raise OCRContractLimitError("selection count exceeds max_selections")
+    if configuration.max_total_warnings < len(selections):
+        raise OCRContractLimitError(
+            "max_total_warnings must allow one failure warning per selection"
+        )
     if any(not isinstance(item, OCRSelection) for item in selections):
         raise TypeError("request selections must be OCRSelection values")
     selection_ids = tuple(selection.selection_id for selection in selections)

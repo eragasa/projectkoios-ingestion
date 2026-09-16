@@ -181,9 +181,12 @@ processor protocol are implemented over that exact rendered evidence. They use
 canonical semantic language tags, pre-execution backend/resource identities,
 source-verified native-text coexistence references, optional method-described
 confidence, and explicit completed/partial/failed outcomes, including blank
-success. No engine adapter is selected or executed; semantic cleanup remains
-future work. The absence of OCR execution must not be hidden by treating raw
-text extraction as a proofread transcription.
+success. A caller may now explicitly inject the lazy `TesseractOCRProcessor`,
+which runs one bounded no-shell POSIX subprocess per selected PNG, snapshots and
+hashes exact traineddata resources, and strictly maps TSV evidence without
+merging native text. Derived OCR storage, reconciliation, and semantic cleanup
+remain future work. The absence or failure of OCR execution must not be hidden
+by treating raw text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

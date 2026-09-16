@@ -11,6 +11,7 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
 - [Document-processing task status](docs/tasks/document-processing-backlog.md)
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
+- [Redistributable OCR image fixture](tests/fixtures/ocr/README.md)
 
 The optional deterministic PDF adapter is installed with `.[pdf]` and exposed
 through `koios-ingest-pdf`. It writes a versioned extraction contract and,
@@ -120,7 +121,8 @@ does not introduce a renderer-only source-size policy. Stable PNG bytes are
 verified for repeated execution with one concrete installed PyMuPDF build and
 are not claimed across different native builds that report the same version.
 
-Bounded OCR is exposed as contracts and an `OCRProcessor` protocol only. An
+Bounded OCR is exposed through immutable contracts and an `OCRProcessor`
+protocol. An
 `OCRRequest` preserves ordered exact `RenderedRegion` evidence and explicitly
 configures canonical semantic language tags, token/line output, and all
 resource limits. Native-text coexistence references are verified against the
@@ -130,8 +132,29 @@ optional adapter score with an explicit method/version/scale. A completed empty
 result represents a successfully processed blank region. Per-selection
 completed, partial, and failed statuses preserve mixed outcomes without merging
 or replacing native text. `build_ocr_cache_key` covers the contract, complete
-ordered input, configuration, future processor/backend identity, and ordered
+ordered input, configuration, processor/backend identity, and ordered
 language-resource identities without storing OCR data in `ExtractionCache`.
-This package currently selects or runs no OCR engine.
+
+`TesseractOCRProcessor` is the first concrete OCR adapter. It requires explicit
+`TesseractLanguageBinding` values mapping semantic request languages to exact
+traineddata files. Before execution it resolves `tesseract --version`, hashes
+the bounded normalized version report, executable, and each requested resource,
+and includes those engine/resource identities plus a digest of all adapter
+behavior/resource settings in the OCR cache identity. Missing executables,
+mappings, or resources become typed
+selection failures rather than imports or silent fallback.
+
+The adapter invokes no shell and uses one bounded POSIX subprocess per explicit
+selection. Exact PNG and traineddata snapshots are staged only in a private
+temporary directory; timeout, standard-output/error, individual resource, and
+aggregate resource limits are enforced. Strict UTF-8 Tesseract TSV is mapped to
+requested token/line evidence and normalized, method-described confidence.
+Blank output completes successfully; usable output from a nonzero invocation is
+partial and linked to typed warning/failure evidence. Native text remains a
+separate stream. The adapter does not install Tesseract, retain raw diagnostics,
+write durable artifacts, cache OCR results, reconcile streams, or publish a
+destination format. A subprocess is not an operating-system sandbox and the
+adapter does not impose a native-process memory limit; deployments accepting
+untrusted images or traineddata must add an appropriate OS isolation boundary.
 
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
