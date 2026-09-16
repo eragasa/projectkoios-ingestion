@@ -5,12 +5,11 @@
 This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
 cache, filesystem-cache, article, textbook, structural-analysis, deterministic
-PyMuPDF cold extraction, deterministic page-layout analysis, and bounded PDF
-region-rendering contracts are implemented and exported. `RoughChunk`, OCR,
-and the general
-`ProcessingSelection`/`ProcessingResult` JIT coordination specializations remain
-planned until implemented, tested, and exported; that deferred status does not
-include the implemented bounded region renderer.
+PyMuPDF cold extraction, deterministic page-layout analysis, bounded PDF
+region-rendering, and bounded OCR request/result contracts are implemented and
+exported. `RoughChunk` and the general `ProcessingSelection`/`ProcessingResult`
+JIT coordination specializations remain planned until implemented, tested, and
+exported.
 
 ## Contract Principles
 
@@ -276,20 +275,92 @@ Each immutable `RenderedRegion` directly carries PNG bytes and records:
 - region ID, configuration digest, renderer identity/version, and PyMuPDF
   backend identity/version.
 
-PNG signatures, dimensions, byte length, content hashes, and complete region
-identity are validated by the contract. Stable region identity excludes source
-locators and printed page labels. Printed labels are retained exactly as
-returned by the backend, with an empty label represented as unavailable.
+PNG signatures, ordered chunk structure, chunk CRCs, required IHDR/IDAT/IEND
+content, bounded decompression size, dimensions, color format, byte length,
+content hashes, immutable byte type, and complete region identity are validated
+by the contract. Stable region identity excludes source locators and printed
+page labels. Printed labels are retained exactly as returned by the backend,
+with an empty label represented as unavailable.
 PyMuPDF page rotation changes display orientation and therefore output pixel
 orientation, but the requested and effective source boxes remain in the
 declared unrotated coordinate system. For the recorded affine `(a, b, c, d, e,
 f)`, a PNG pixel-edge coordinate `(x, y)` maps to source point
 `(x*a + y*c + e, x*b + y*d + f)`. The effective box encloses the four mapped
 PNG boundary corners; it may extend beyond the requested box because scaled
-display coordinates are rounded outward to integer pixel boundaries. Rendering
-writes no files and performs no OCR,
-region detection, layout analysis, semantic interpretation, storage
-publication, or model calls.
+display coordinates are rounded outward to integer pixel boundaries. Rendering writes no files and performs no OCR, region detection, layout
+analysis, semantic interpretation, storage publication, or model calls.
+
+## OCR requests and results
+
+`OCRRequest` is a non-empty ordered tuple of explicit `OCRSelection` values.
+Each selection owns an `OCRPageImage` that nests one exact, already validated
+`RenderedRegion`; it therefore retains the logical source ID, exact blob/hash,
+page and region identity, requested and effective source footprints, PNG
+identity/bytes/dimensions, coordinate system, rotation, and complete
+pixel-to-source affine mapping without a lossy image alias. A selection may
+also retain ordered `OCRNativeTextBlockReference` values projected from a
+supplied `ExtractedPage`. The public factory verifies that every named block
+exists, is text, and has spans matching the same logical source, exact blob, and
+physical page as the rendered region. These references state only that native
+and OCR evidence coexist on the page; they never replace, merge, or reconcile
+the native stream.
+
+`OCRConfiguration` declares ordered canonical semantic language tags using the
+supported BCP 47 syntax; `und` is allowed, backend resource names are not, and
+registry/resource existence is deliberately not inferred. It also declares
+token, line, or token-and-line output and deterministic positive limits for
+selection and distinct-image counts, per-image and aggregate pixels/PNG bytes,
+language count and length, identity lengths, per-selection and aggregate
+tokens/lines/text/warnings, warning evidence/message sizes, and aggregate
+result size. Every choice and limit enters its configuration digest and cache
+identity. Tuple fields require actual immutable tuples; booleans are not
+accepted as integers, invalid Unicode and duplicate IDs fail, and request
+iterables are consumed only through the configured selection limit plus one.
+Cheap counts are checked before output traversal. Hard implementation ceilings
+prevent caller configuration from disabling those bounds. Result size is
+accounted incrementally before stable-ID canonicalization; retained request
+metadata is counted, while input PNG payload bytes are excluded because their
+per-image and aggregate byte limits are enforced separately.
+
+`OCRToken` and `OCRLine` retain text, contiguous order, warning links, strict
+positive-area pixel boxes, and mapped source boxes. Confidence is optional. If
+present, `OCRConfidence` includes the adapter-reported finite value in `[0, 1]`
+plus its method, method version, and scale. Scores from different methods are
+not assumed comparable and are not probabilities, proofread accuracy, or
+scientific validation. Pixel boxes must lie within the exact PNG. Source boxes
+are calculated from all four pixel-box corners through the region affine and
+are revalidated in `pymupdf_unrotated_cropbox_points_top_left`, including when
+the PNG orientation arose from page rotation. In combined output, line IDs
+retain ordered token membership and each token names its line order; membership
+must be complete, exclusive, and geometrically contained. Output identities
+cover text, both coordinates, confidence, warning links, order/membership,
+input/configuration identity, and processor/backend identity.
+
+Each `OCRSelectionResult` is completed, partial, or failed. Completed means the
+processor ran successfully and cannot claim a failure; an empty completed
+result truthfully represents a blank region with no recognized text. When a
+completed result has output, it must contain every stream required by the
+requested output mode. Partial results retain usable output and require both
+typed failure and linked warning evidence. Failed results require the same
+explicit failure/warning evidence and cannot contain tokens or lines. `OCRResult`
+preserves request order and is completed only when every selection completed,
+failed only when all failed, and partial otherwise. Direct construction
+revalidates stable identities, source/image/configuration links, output order,
+warning/failure links, token membership, coordinates, processor/backend
+identity, and aggregate limits.
+
+`build_ocr_cache_key` is the cache identity boundary for a future derived OCR
+cache. It includes OCR contract version, ordered exact image/source identities,
+selection and native-block evidence, language/output configuration, all
+behavior/resource settings, and an `OCRProcessorIdentity` available before
+execution. That descriptor records processor and backend name/version plus an
+ordered one-to-one binding from every requested semantic language tag to the
+selected backend resource name and immutable SHA-256 or explicit versioned
+resource identity. `OCRProcessor.identity_for(request)` exposes this boundary
+to future callers. The contract does not change `ExtractionCache` or store OCR
+results. No OCR adapter, engine, executable, model, Markdown format,
+destination, publication, or native/OCR reconciliation policy is selected by
+these contracts.
 
 ## `ProcessingSelection`
 

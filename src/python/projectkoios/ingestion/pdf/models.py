@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import zlib
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -11,6 +12,10 @@ from projectkoios.ingestion.models import BoundingBox, SourceDocument
 PYMUPDF_COORDINATE_SYSTEM = "pymupdf_unrotated_cropbox_points_top_left"
 PNG_MEDIA_TYPE = "image/png"
 PIXEL_ROUNDING_CONVENTION = "scaled_display_clip_outward_to_integer_pixels"
+_MAX_VALIDATED_PNG_DIMENSION = 16_384
+_MAX_VALIDATED_PNG_FILE_BYTES = 100_000_000
+_MAX_VALIDATED_PNG_RASTER_BYTES = 100_000_000
+_MAX_VALIDATED_PNG_CHUNKS = 16_384
 PixelToSourceMatrix = tuple[float, float, float, float, float, float]
 
 
@@ -221,6 +226,8 @@ class RenderedRegion:
         backend_name: str,
         backend_version: str,
     ) -> RenderedRegion:
+        if not isinstance(content, bytes):
+            raise TypeError("rendered region content must be immutable bytes")
         bounding_box = _validated_bounding_box(source_bounding_box)
         effective_box = _validated_effective_bounding_box(
             effective_source_bounding_box
@@ -340,6 +347,14 @@ class RenderedRegion:
             raise ValueError("rendered regions must use opaque PNG output")
         if self.media_type != PNG_MEDIA_TYPE:
             raise ValueError("rendered region media type must be image/png")
+        if not isinstance(self.content, bytes):
+            raise TypeError("rendered region content must be immutable bytes")
+        if (
+            isinstance(self.byte_length, bool)
+            or not isinstance(self.byte_length, int)
+            or self.byte_length < 0
+        ):
+            raise ValueError("rendered region byte_length must be an integer")
         if self.byte_length != len(self.content):
             raise ValueError(
                 "rendered region byte length does not match content"
@@ -348,10 +363,18 @@ class RenderedRegion:
             raise ValueError(
                 "rendered region content hash does not match content"
             )
-        if self.width_pixels <= 0 or self.height_pixels <= 0:
-            raise ValueError(
-                "rendered region pixel dimensions must be positive"
-            )
+        for name, value in (
+            ("width_pixels", self.width_pixels),
+            ("height_pixels", self.height_pixels),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+            ):
+                raise ValueError(
+                    f"rendered region {name} must be a positive integer"
+                )
         expected_effective_box = _effective_box_from_transform(
             pixel_to_source_matrix,
             self.width_pixels,
@@ -365,13 +388,7 @@ class RenderedRegion:
             raise ValueError(
                 "rendered region content hash must be a SHA-256 hex digest"
             )
-        if not self.content.startswith(b"\x89PNG\r\n\x1a\n"):
-            raise ValueError("rendered region content must be PNG bytes")
-        if len(self.content) < 24 or self.content[12:16] != b"IHDR":
-            raise ValueError("rendered region content has no PNG IHDR")
-        png_width = int.from_bytes(self.content[16:20], "big")
-        png_height = int.from_bytes(self.content[20:24], "big")
-        png_color_type = self.content[25]
+        png_width, png_height, png_color_type = _validated_png(self.content)
         expected_color_type = 2 if self.color_mode is RegionColorMode.RGB else 0
         if png_color_type != expected_color_type:
             raise ValueError(
@@ -416,6 +433,92 @@ class RenderedRegion:
         )
         if self.region_id != expected_region_id:
             raise ValueError("rendered region ID does not match its evidence")
+
+
+def _validated_png(content: bytes) -> tuple[int, int, int]:
+    if len(content) > _MAX_VALIDATED_PNG_FILE_BYTES:
+        raise ValueError("rendered region PNG exceeds safety limit")
+    if not content.startswith(b"\x89PNG\r\n\x1a\n"):
+        raise ValueError("rendered region content must be PNG bytes")
+    offset = 8
+    chunks: list[tuple[bytes, bytes]] = []
+    saw_iend = False
+    while offset < len(content):
+        if len(content) - offset < 12:
+            raise ValueError("rendered region PNG is truncated")
+        length = int.from_bytes(content[offset : offset + 4], "big")
+        chunk_end = offset + 12 + length
+        if chunk_end > len(content):
+            raise ValueError("rendered region PNG is truncated")
+        chunk_type = content[offset + 4 : offset + 8]
+        chunk_data = content[offset + 8 : offset + 8 + length]
+        expected_crc = int.from_bytes(
+            content[offset + 8 + length : chunk_end], "big"
+        )
+        actual_crc = zlib.crc32(chunk_type + chunk_data) & 0xFFFFFFFF
+        if expected_crc != actual_crc:
+            raise ValueError("rendered region PNG chunk CRC is invalid")
+        if saw_iend:
+            raise ValueError("rendered region PNG has data after IEND")
+        if len(chunks) >= _MAX_VALIDATED_PNG_CHUNKS:
+            raise ValueError("rendered region PNG has too many chunks")
+        chunks.append((chunk_type, chunk_data))
+        if chunk_type == b"IEND":
+            if length != 0:
+                raise ValueError("rendered region PNG IEND is invalid")
+            saw_iend = True
+        offset = chunk_end
+    if not saw_iend:
+        raise ValueError("rendered region PNG has no IEND")
+    if not chunks or chunks[0][0] != b"IHDR" or len(chunks[0][1]) != 13:
+        raise ValueError("rendered region PNG has no valid IHDR")
+    if sum(chunk_type == b"IHDR" for chunk_type, _ in chunks) != 1:
+        raise ValueError("rendered region PNG must contain one IHDR")
+    if sum(chunk_type == b"IEND" for chunk_type, _ in chunks) != 1:
+        raise ValueError("rendered region PNG must contain one IEND")
+    ihdr = chunks[0][1]
+    width = int.from_bytes(ihdr[0:4], "big")
+    height = int.from_bytes(ihdr[4:8], "big")
+    bit_depth = ihdr[8]
+    color_type = ihdr[9]
+    compression, filtering, interlace = ihdr[10:13]
+    if width <= 0 or height <= 0:
+        raise ValueError("rendered region PNG dimensions must be positive")
+    if bit_depth != 8 or color_type not in (0, 2):
+        raise ValueError("rendered region PNG pixel format is unsupported")
+    if compression != 0 or filtering != 0 or interlace != 0:
+        raise ValueError("rendered region PNG encoding is unsupported")
+    compressed = b"".join(
+        chunk_data
+        for chunk_type, chunk_data in chunks
+        if chunk_type == b"IDAT"
+    )
+    if not compressed:
+        raise ValueError("rendered region PNG has no image data")
+    channels = 3 if color_type == 2 else 1
+    expected_size = height * (1 + width * channels)
+    if width > _MAX_VALIDATED_PNG_DIMENSION or (
+        height > _MAX_VALIDATED_PNG_DIMENSION
+    ):
+        raise ValueError("rendered region PNG dimensions exceed safety limit")
+    if expected_size > _MAX_VALIDATED_PNG_RASTER_BYTES:
+        raise ValueError("rendered region PNG raster exceeds safety limit")
+    decompressor = zlib.decompressobj()
+    try:
+        pixels = decompressor.decompress(compressed, expected_size + 1)
+    except zlib.error as error:
+        raise ValueError("rendered region PNG image data is invalid") from error
+    if (
+        len(pixels) != expected_size
+        or not decompressor.eof
+        or decompressor.unused_data
+        or decompressor.unconsumed_tail
+    ):
+        raise ValueError("rendered region PNG image data size is invalid")
+    row_size = 1 + width * channels
+    if any(pixels[offset] > 4 for offset in range(0, len(pixels), row_size)):
+        raise ValueError("rendered region PNG row filter is invalid")
+    return width, height, color_type
 
 
 def _validated_bounding_box(bounding_box: BoundingBox) -> BoundingBox:

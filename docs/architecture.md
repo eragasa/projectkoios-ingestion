@@ -65,7 +65,10 @@ text references and geometry-backed groups while preserving the complete raw
 block sequence. It keeps sidebars, overlaps, weak separation, and unsupported
 spanning arrangements explicitly uncertain. The implemented bounded region
 adapter renders only explicit full-page or bounding-box selections to in-memory
-PNG evidence. OCR and structural enrichment remain bounded future processors.
+PNG evidence. Implemented OCR contracts bind explicit ordered selections to
+that exact evidence and define bounded token/line, status, warning, coordinate,
+and cache identities behind an injected protocol; an OCR adapter and structural
+enrichment remain future processors.
 
 PDF document support follows an output-independent pipeline:
 
@@ -127,24 +130,27 @@ configured selection, per-region pixel-dimension, pixel-count, raster-byte,
 and aggregate request limits before the first rendering allocation. Fractional
 clips round outward to device pixels; results retain the requested box,
 effective source footprint, page rotation, and pixel-to-source transform.
+Bounded OCR requests retain those complete `RenderedRegion` values rather than
+caller-recreated image metadata. OCR results preserve selection order and keep
+source/page-verified native text references as coexistence evidence while
+token/line streams remain separate. Completed, partial, and failed outcomes
+carry explicit output, warning, and typed-failure invariants; completed empty
+output represents a successfully processed blank region. No OCR engine is
+selected or run by the contract layer.
 
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
 
-JIT cache identity includes at least:
-
-```text
-logical source ID
-+ exact source-blob hash
-+ selected source spans
-+ extractor version
-+ processor version
-+ processor configuration digest
-```
-
-A processor change invalidates its derived result without invalidating the raw
-extraction.
+JIT cache identity includes exact logical/blob/image and ordered selection
+evidence, contract version, processor/backend versions, and the complete
+processor configuration. The OCR boundary additionally includes native-text
+coexistence references, ordered canonical semantic language tags, output mode,
+every resource limit, and the exact backend language-resource names and
+immutable identities selected for those tags. A processor, backend, language
+mapping, or resource change invalidates its derived result without invalidating
+raw extraction. Derived OCR storage remains deferred and is not added to the
+raw `ExtractionCache`.
 
 ## Structural Model
 
@@ -231,13 +237,14 @@ explicit consumer-provided writer.
 
 ## Extension Protocols
 
-The planned architecture depends on small protocols:
+The architecture depends on small protocols:
 
 - `SourceExtractor` converts a source into normalized extraction objects;
 - `StructuralAnalyzer` proposes a source-backed document hierarchy;
 - `DocumentProcessor` derives enriched content while preserving provenance;
 - `ChunkProducer` converts structured content into source-backed chunks;
 - `ExtractionCache` retrieves and stores versioned extraction results;
+- `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 
@@ -284,7 +291,14 @@ and do not produce a result. Deferred OCR, structure, figure, and equation
 processors may add their own source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
-represented in the result manifest. Region rendering rejects source metadata
+represented in the result manifest. OCR selection failures are typed and linked
+to warning evidence; mixed outcomes produce an explicit partial result without
+allowing failed selections to claim output. A completed empty OCR result is a
+successful observation of no recognized text. Adapter confidence is optional
+and records its method, method version, and scale rather than implying a
+probability or proofread-transcription claim. Semantic language tags remain
+separate from the exact backend language-resource identities used in future
+cache keys. Region rendering rejects source metadata
 mismatches, encrypted or malformed PDFs, invalid pages or coordinates, and
 resource-limit violations. It does not normalize or clip requested source
 boxes.

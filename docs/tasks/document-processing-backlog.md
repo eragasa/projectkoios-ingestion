@@ -160,15 +160,42 @@ deferred to their respective tasks or downstream review.
 
 ## OCR tasks
 
-### ING-OCR-01 — OCR request and result contracts
+### ING-OCR-01 — OCR request and result contracts (implemented)
 
-Define bounded OCR selections, page-image inputs, token or line outputs,
-coordinates, language configuration, confidence, warnings, and cache identity.
+Immutable, destination-independent OCR contracts retain each exact validated
+`RenderedRegion` as the page-image input to an explicit ordered selection.
+Requests configure ordered canonical semantic language tags, token, line, or
+token-and-line output, and deterministic hard-ceiling limits for
+selections/images, image pixels/bytes, language and identity strings, output
+counts/text, warnings, and aggregate result size.
+Pixel boxes are finite, positive-area, image-bounded rectangles; source boxes
+are derived and revalidated through the region's affine map in unrotated
+crop-box coordinates, including rotated rendered images.
+
+Per-selection completed, partial, and failed statuses roll up to an overall
+status without dropping request order. A completed empty result represents a
+successfully processed blank image. Partial and failed outcomes require a typed
+failure linked to explicit warning evidence; failed selections cannot contain
+successful output. Ordered native text references are verified against the
+same extracted source page and retained only as coexistence evidence; OCR
+output remains a separate stream. Confidence is optional and carries the
+adapter's method, method version, and scale; it is not a probability,
+proofreading result, or reconciliation claim.
+
+The deterministic OCR cache key includes contract version, ordered exact
+source/image/selection evidence, native block references, language/output
+choices, every behavior/resource limit, future processor/backend name and
+version, and ordered language-resource names plus immutable digests or explicit
+version identities. It defines only the cache identity boundary; it does not
+extend `ExtractionCache`. `OCRProcessor` is an injected protocol whose
+`identity_for` method exposes that descriptor before execution. No engine, adapter,
+executable, model, output format, destination, storage, or native/OCR
+reconciliation policy is selected or invoked by this task.
 
 **Depends on:** `ING-REGION-01`.
 
-**Acceptance:** the contracts represent partial failure and mixed native/OCR
-pages without selecting an OCR engine or Markdown format.
+**Validation:** focused OCR contract and region tests, fixture verification,
+and full test/static-analysis suites.
 
 ### ING-OCR-02 — Tesseract OCR adapter
 

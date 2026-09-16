@@ -120,4 +120,18 @@ does not introduce a renderer-only source-size policy. Stable PNG bytes are
 verified for repeated execution with one concrete installed PyMuPDF build and
 are not claimed across different native builds that report the same version.
 
+Bounded OCR is exposed as contracts and an `OCRProcessor` protocol only. An
+`OCRRequest` preserves ordered exact `RenderedRegion` evidence and explicitly
+configures canonical semantic language tags, token/line output, and all
+resource limits. Native-text coexistence references are verified against the
+same extracted source page. Each output has in-image pixel geometry and a
+validated source box mapped through the region affine, warning links, and an
+optional adapter score with an explicit method/version/scale. A completed empty
+result represents a successfully processed blank region. Per-selection
+completed, partial, and failed statuses preserve mixed outcomes without merging
+or replacing native text. `build_ocr_cache_key` covers the contract, complete
+ordered input, configuration, future processor/backend identity, and ordered
+language-resource identities without storing OCR data in `ExtractionCache`.
+This package currently selects or runs no OCR engine.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

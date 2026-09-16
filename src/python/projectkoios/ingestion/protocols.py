@@ -11,6 +11,11 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     SourceDocument,
 )
+from projectkoios.ingestion.ocr import (
+    OCRProcessorIdentity,
+    OCRRequest,
+    OCRResult,
+)
 from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
@@ -55,6 +60,17 @@ class PageRegionRenderer(Protocol):
         content: BinaryIO,
         selections: Iterable[PageRegionSelection],
     ) -> tuple[RenderedRegion, ...]: ...
+
+
+class OCRProcessor(Protocol):
+    """Injected OCR execution boundary; implementations remain adapters."""
+
+    name: str
+    version: str
+
+    def identity_for(self, request: OCRRequest) -> OCRProcessorIdentity: ...
+
+    def process(self, request: OCRRequest) -> OCRResult: ...
 
 
 class ExtractionCache(Protocol):

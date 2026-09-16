@@ -176,9 +176,14 @@ Selected-region
 rendering is implemented as an explicit non-empty ordered selection contract and
 lazy PyMuPDF adapter
 that returns validated in-memory PNG evidence under deterministic
-pre-allocation limits. OCR and semantic cleanup remain future bounded
-processors. Their absence must not be hidden by treating raw text extraction as
-a proofread transcription.
+pre-allocation limits. Bounded OCR request/result contracts and an injected
+processor protocol are implemented over that exact rendered evidence. They use
+canonical semantic language tags, pre-execution backend/resource identities,
+source-verified native-text coexistence references, optional method-described
+confidence, and explicit completed/partial/failed outcomes, including blank
+success. No engine adapter is selected or executed; semantic cleanup remains
+future work. The absence of OCR execution must not be hidden by treating raw
+text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 
