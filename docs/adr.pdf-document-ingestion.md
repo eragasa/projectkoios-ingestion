@@ -184,9 +184,14 @@ confidence, and explicit completed/partial/failed outcomes, including blank
 success. A caller may now explicitly inject the lazy `TesseractOCRProcessor`,
 which runs one bounded no-shell POSIX subprocess per selected PNG, snapshots and
 hashes exact traineddata resources, and strictly maps TSV evidence without
-merging native text. Derived OCR storage, reconciliation, and semantic cleanup
-remain future work. The absence or failure of OCR execution must not be hidden
-by treating raw text extraction as a proofread transcription.
+merging native text. A separate deterministic reconciliation processor now
+requires exact native page/layout provenance, retains both original streams,
+and proposes bounded duplicate, disagreement, native-only, and OCR-only
+relationships. It leaves ambiguity and disagreements explicit and makes no
+semantic-correction, scientific-validation, or human-acceptance claim. Derived
+OCR/reconciliation storage and semantic cleanup remain future work. The absence
+or failure of OCR execution must not be hidden by treating raw text extraction
+as a proofread transcription.
 
 ## Relationship to existing decision
 

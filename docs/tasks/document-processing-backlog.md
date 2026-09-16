@@ -229,14 +229,38 @@ capture/aggregate limits. The maintained wholly synthetic PNG fixture is
 regenerated and verified by `scripts/ocr_fixture.py`; an environment-configured
 real-engine smoke test remains optional.
 
-### ING-OCR-03 — Native-text/OCR reconciliation
+### ING-OCR-03 — Native-text/OCR reconciliation (implemented)
 
-Propose a merged reading stream while retaining both native and OCR evidence.
+`DeterministicOCRReconciler` consumes one exact OCR selection and requires the
+matching extracted page and layout result whenever native references exist.
+It preserves exact selected native blocks and exact OCR lines as independently
+selectable streams. Native block lines become bounded comparison segments with
+block/line provenance; normalization is used only for matching and never
+replaces source text.
+
+Known source geometry gates matching. Exact normalized text becomes a likely
+duplicate only when available geometry does not contradict it. Similar text
+becomes a disagreement only with sufficient geometry overlap. Matching is
+one-to-one and deterministic; competing near-ties remain separate and produce
+an ambiguity warning. The proposed merged stream covers every native segment
+and OCR line exactly once as duplicate, disagreement, native-only, or OCR-only.
+Duplicate/native-only/OCR-only proposals preserve an original payload;
+disagreement proposals deliberately choose no text.
+
+Configuration identities include all matching thresholds and hard limits for
+blocks, segments, OCR lines, pair count, comparison work, comparison/retained
+text, warnings, and retained output. Completed blank, OCR-only, native-only,
+partial/failed, rotated,
+and ambiguous evidence is represented without silent replacement. The result
+claims neither semantic correction, proofread accuracy, scientific validation,
+human acceptance, nor publication suitability. Derived reconciliation storage
+remains deferred.
 
 **Depends on:** `ING-OCR-02`, `ING-LAYOUT-01`.
 
-**Acceptance:** duplicate lines are identified, disagreements become warnings,
-and a consumer can select either original stream.
+**Validation:** focused reconciliation tests cover duplicates, disagreements,
+OCR-only, native-only, blank, rotated, ambiguous, stale-provenance, immutable
+identity, and pre-matching resource bounds; full tests and static analysis pass.
 
 ## Structural tasks
 

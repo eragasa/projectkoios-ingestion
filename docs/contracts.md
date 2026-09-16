@@ -6,8 +6,9 @@ This document specifies the public concepts for PDF document ingestion.
 Source, span, block, page, document, warning, manifest, result, extractor,
 cache, filesystem-cache, article, textbook, structural-analysis, deterministic
 PyMuPDF cold extraction, deterministic page-layout analysis, bounded PDF
-region-rendering, bounded OCR request/result contracts, and the bounded
-Tesseract OCR adapter are implemented and exported. `RoughChunk` and the
+region-rendering, bounded OCR request/result contracts, the bounded
+Tesseract OCR adapter, and deterministic native-text/OCR reconciliation are
+implemented and exported. `RoughChunk` and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
@@ -363,6 +364,66 @@ resource identity. `OCRProcessor.identity_for(request)` exposes this boundary
 to callers. The contract does not change `ExtractionCache` or store OCR
 results. It does not itself select an adapter, engine, executable, model,
 Markdown format, destination, publication, or native/OCR reconciliation policy.
+
+## Native-text/OCR reconciliation
+
+`DeterministicOCRReconciler` implements the injected `OCRReconciler` boundary.
+Reconciliation contract version 1.0 consumes one exact `OCRSelectionResult` and,
+when its selection names native blocks, requires the exact `ExtractedPage` and
+`PageLayoutResult` from which those references came. It rejects stale source,
+blob, page, rotation, coordinate, dimension, raw-block, kind, or source-span
+evidence rather than guessing how to align it.
+
+The result preserves three independently selectable views:
+
+- `native_stream`, containing exact selected native block text and source spans
+  in the layout-proposed order, with layout exclusions conservatively retained
+  after ordered blocks in extractor-native order;
+- `ocr_stream`, containing the exact ordered `OCRLine` objects from the selected
+  OCR result; and
+- `proposed_merged_stream`, containing a complete one-time coverage of every
+  native line segment and OCR line as duplicate, disagreement, native-only, or
+  OCR-only evidence.
+
+Native blocks remain the original native view. `OCRNativeLineSegment` is only a
+bounded line projection used for comparison; it retains its block identity,
+line index, exact text, normalized comparison text, order, and available union
+source box. The reconciler applies Unicode NFKC, case folding, and whitespace
+collapse only to matching. It never overwrites either original text payload.
+Exact normalized text is a duplicate candidate when known source geometry does
+not contradict it. Non-identical text can become a disagreement candidate only
+when source boxes meet the configured overlap threshold and bounded string
+similarity meets its threshold. Matching is deterministic and one-to-one.
+Near-tied candidates are left unmatched with an ambiguity warning rather than
+resolved by arbitrary selection.
+
+A duplicate proposal preserves native text. A disagreement has no proposed
+text and links a specific warning, forcing the consumer to choose or review the
+alternatives. Unmatched native items preserve native text. Unmatched OCR items
+preserve OCR text and are appended in OCR engine order after the layout-ordered
+native sequence with an explicit ordering-uncertainty warning; this is a
+conservative proposal, not a semantic reading-order claim. Completed blank OCR,
+native-only, OCR-only, partial, failed, rotated, and
+ambiguous inputs remain explicitly representable. Original OCR status,
+failures, warnings, tokens, image bytes, and processor identity remain
+transitively available through the retained input.
+
+Configuration records geometry, similarity, and ambiguity thresholds plus hard
+bounds for native blocks/segments, OCR lines, candidate pairs, text-comparison
+work, per-comparison text, retained text, warnings, and retained result size.
+Those settings enter input and result identity. Limits are checked before
+quadratic matching; token-only
+nonblank OCR output is rejected because it cannot provide the required line
+stream. Result validation checks exact evidence retention, contiguous orders,
+one-to-one links, geometry and similarity evidence, warning links, merged
+coverage, proposed text, configuration identity, and stable IDs. Input PNG bytes
+are excluded from retained-result accounting because OCR request limits already
+bound them.
+
+Reconciliation is evidence organization only. It does not claim semantic
+correction, proofread accuracy, scientific validation, human acceptance, or
+publication suitability. It writes no files, stores no derived result, changes
+no `ExtractionCache` entry, and performs no OCR or model call.
 
 ## Tesseract OCR adapter
 

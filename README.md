@@ -177,4 +177,15 @@ destination format. A subprocess is not an operating-system sandbox and the
 adapter does not impose a native-process memory limit; deployments accepting
 untrusted images or traineddata must add an appropriate OS isolation boundary.
 
+`DeterministicOCRReconciler` is the separate, injected reconciliation stage. It
+accepts one exact OCR selection and the matching native page/layout evidence,
+then performs bounded deterministic text-and-source-geometry matching. Its
+immutable result preserves exact native and OCR streams while proposing
+one-to-one duplicates, unresolved disagreements, native-only evidence, OCR-only
+evidence, and an optional merged order. Ambiguous near-ties remain unmatched.
+A consumer can select either original stream; disagreement proposals choose no
+text. This stage does not perform semantic correction, certify accuracy or
+scientific validity, record human acceptance, publish files, or add derived
+results to `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

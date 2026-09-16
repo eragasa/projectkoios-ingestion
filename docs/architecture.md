@@ -69,8 +69,11 @@ PNG evidence. Implemented OCR contracts bind explicit ordered selections to
 that exact evidence and define bounded token/line, status, warning, coordinate,
 and cache identities behind an injected protocol. The implemented
 `TesseractOCRProcessor` is a lazy, no-shell, per-selection POSIX subprocess
-adapter with exact traineddata identities; native/OCR reconciliation and
-structural enrichment remain future processors.
+adapter with exact traineddata identities. The separate
+`DeterministicOCRReconciler` consumes one exact OCR selection plus its verified
+native page/layout evidence and proposes duplicate, disagreement, native-only,
+and OCR-only relationships without replacing either evidence stream.
+Structural enrichment remains a future processor.
 
 PDF document support follows an output-independent pipeline:
 
@@ -145,6 +148,17 @@ TSV, and cleans up without durable publication. Missing execution resources,
 timeouts, capture overflow, malformed output, and nonzero exits remain explicit
 selection-local outcomes rather than silent native-text replacement.
 
+An application may separately inject `OCRReconciler`. The implemented
+deterministic reconciler requires line output and exact page/layout provenance,
+uses bounded normalized-text and source-geometry matching, rejects conflicting
+known geometry, and leaves near-tied candidates unmatched. Its result retains
+exact native blocks, exact OCR lines, explicit one-to-one matches, warnings,
+and a complete proposed merged sequence. Duplicate proposals preserve native
+text; disagreement proposals contain no chosen text. Native-only entries retain
+native text and unmatched OCR lines follow in OCR order. The proposal is not
+semantic correction, proofread transcription, scientific validation, or human
+acceptance, and it is not written to the raw extraction cache.
+
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
@@ -159,9 +173,9 @@ its timeout, capture/resource limits, page segmentation mode, and engine mode
 into its effective processor version, while the normalized backend report and
 executable bytes have separate hashes in backend identity. A processor,
 backend, adapter setting, language mapping, or resource change invalidates its
-derived result without invalidating raw extraction. Derived OCR storage remains
-deferred and is not
-added to the raw `ExtractionCache`.
+derived result without invalidating raw extraction. Derived OCR and
+reconciliation storage remain deferred and are not added to the raw
+`ExtractionCache`.
 
 ## Structural Model
 
@@ -256,6 +270,7 @@ The architecture depends on small protocols:
 - `ChunkProducer` converts structured content into source-backed chunks;
 - `ExtractionCache` retrieves and stores versioned extraction results;
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
+- `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 
@@ -300,9 +315,11 @@ treats an absent printed page label as normal optional
 evidence rather than a warning. Malformed and encrypted inputs are fatal errors
 and do not produce a result. The Tesseract OCR adapter adds typed, source-linked
 warning/failure evidence for unavailable execution resources, resource limits,
-backend errors, and invalid TSV. Deferred structure, figure, equation, and OCR
-reconciliation processors may add their own source-backed warnings when
-implemented.
+backend errors, and invalid TSV. Reconciliation adds object-linked warnings for
+incomplete OCR, inherited layout uncertainty, skipped comparisons, ambiguous
+matches, text disagreements, and conservatively appended OCR-only order.
+Deferred structure, figure, and equation processors may add their own
+source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. OCR selection failures are typed and linked

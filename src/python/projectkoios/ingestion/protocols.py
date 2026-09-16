@@ -20,6 +20,10 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
+from projectkoios.ingestion.reconciliation import (
+    OCRReconciliationInput,
+    OCRReconciliationResult,
+)
 
 
 class ChunkIndexWriter(Protocol):
@@ -71,6 +75,17 @@ class OCRProcessor(Protocol):
     def identity_for(self, request: OCRRequest) -> OCRProcessorIdentity: ...
 
     def process(self, request: OCRRequest) -> OCRResult: ...
+
+
+class OCRReconciler(Protocol):
+    """Propose relationships without replacing native or OCR evidence."""
+
+    name: str
+    version: str
+
+    def reconcile(
+        self, reconciliation_input: OCRReconciliationInput
+    ) -> OCRReconciliationResult: ...
 
 
 class ExtractionCache(Protocol):
