@@ -238,4 +238,20 @@ in the raw extraction cache, and no proposal is described as proofread,
 semantically correct, scientifically validated, publication-ready, accepted, or
 human-approved.
 
+## Bounded table candidates
+
+`DeterministicTableCandidateDetector` proposes ruled, unruled, mixed-boundary,
+and explicit multi-page table regions from exact native blocks, layout evidence,
+PDF vector-rule observations, and bounded PNG crops. Candidates retain source
+blocks/spans, row and column bands, possible merged-cell signals, confidence,
+warnings, and nearby title, caption, note, and continuation locators.
+
+The default rule inspector lazily reads axis-aligned PyMuPDF drawing commands and
+records unsupported drawing-item counts rather than inventing rule evidence.
+Long prose-like or weak candidates remain ambiguous. Merged-cell signals remain
+warnings, not reconstructed cells. This stage neither reconstructs table
+structure nor claims semantic correctness, scientific validation, publication
+suitability, human acceptance, or destination formatting, and its results are
+not stored in `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.

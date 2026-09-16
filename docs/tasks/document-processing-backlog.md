@@ -372,14 +372,41 @@ immutability, and runtime protocol annotations. Proposals make no proofread,
 semantic-correctness, scientific-validation, publication, or human-acceptance
 claim.
 
-### ING-TABLE-01 — Table candidate detection
+### ING-TABLE-01 — Table candidate detection (implemented)
 
-Detect table regions and associate titles, captions, notes, and source spans.
+`DeterministicTableCandidateDetector` consumes an exact extracted document,
+page-layout evidence, matching PDF bytes, and bounded page-rule evidence from an
+injected inspector. The default lazy `PyMuPdfTableRuleInspector` retains exact
+axis-aligned vector line segments, drawing object locators, stroke widths,
+processor/backend versions, and an explicit count of unsupported drawing items.
+The detector combines those rules with repeated row/column text alignment and
+renders only proposed table regions through the injected region renderer.
+
+Each immutable candidate retains one or more ordered page regions, exact source
+blocks and spans, row/column band counts, ruled/unruled/mixed boundary evidence,
+possible merged-cell block signals, exact PNG regions, confidence, evidence
+status, warnings, and nearby source-backed title, caption, note, or continuation
+associations. Explicit matching `Table N (continued)` evidence may join adjacent
+pages. Merged-cell observations remain warned signals rather than reconstructed
+cells. Long prose-like or otherwise weak geometry stays `ambiguous` with linked
+warnings.
+
+Configuration hard-bounds source bytes, pages, blocks, text, spans, drawings,
+drawing items, rule segments, candidates, regions, associations, warnings,
+rendered PNG bytes/pixels, and retained result size. Exact document/layout/rule,
+renderer, configuration, and processor identities enter stable result identity.
+The stage does not reconstruct rows, columns, headers, cell contents or spans,
+and makes no semantic-correctness, scientific-validation, publication, or
+human-acceptance claim.
 
 **Depends on:** `ING-LAYOUT-01`, `ING-REGION-01`.
 
-**Acceptance:** fixtures cover ruled, unruled, multi-page, and merged-cell
-tables; false or ambiguous candidates carry warnings.
+**Validation:** focused tests cover the full maintained PDF matrix (only the
+ruled table fixture is promoted) plus generated unruled, explicit multi-page
+continuation, merged-cell-signal, prose-like
+ambiguous, rotated, stale-layout, wrong-source, pre-render candidate-limit,
+render-aggregate-limit, stable-identity, immutability, and protocol cases; full
+fixture and static-analysis suites pass.
 
 ### ING-TABLE-02 — Table structure reconstruction
 

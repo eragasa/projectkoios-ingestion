@@ -204,7 +204,13 @@ flow to an engine-neutral equation-transcription boundary that retains exact PNG
 evidence and returns bounded LaTeX/MathML proposals, confidence coverage,
 warnings, typed failures, complete processor/model provenance, and derived cache
 identity. Low and unavailable confidence stay explicit; no proposal is called
-proofread, mathematically correct, scientifically validated, or accepted. The
+proofread, mathematically correct, scientifically validated, or accepted. A
+separate bounded table-candidate detector now combines exact layout evidence,
+lazily inspected axis-aligned PDF rules, source-backed title/caption/note and
+continuation locators, and exact rendered regions. Multi-page links require
+explicit continuation evidence; merged-cell observations remain warnings rather
+than reconstructed cells. A candidate makes no table-structure, semantic-
+correctness, publication, scientific-validation, or acceptance claim. The
 absence or failure of OCR execution must not be hidden by treating raw text
 extraction as a proofread transcription.
 

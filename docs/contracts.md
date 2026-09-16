@@ -9,8 +9,9 @@ deterministic article-structure analysis, deterministic PyMuPDF cold extraction,
 deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
-equation-candidate detection, and engine-neutral equation-transcription
-contracts are implemented and exported. `RoughChunk` and the
+equation-candidate detection, engine-neutral equation-transcription contracts,
+and bounded table-candidate detection are implemented and exported. `RoughChunk`
+and the
 general `ProcessingSelection`/`ProcessingResult`
 JIT coordination specializations remain planned until implemented, tested, and
 exported.
@@ -311,6 +312,71 @@ are excluded from result-size accounting because separate per-image and
 aggregate byte/pixel limits apply. Outputs are proposals from an adapter, not
 proofread transcription, semantic interpretation, mathematical correctness,
 scientific validation, publication suitability, or human acceptance.
+
+## Table candidates
+
+Table contract version 1.0 is a derived evidence contract separate from both raw
+extraction and table-structure reconstruction. `TableDetectionInput` binds one
+exact `ExtractedDocument`, one exact `PageLayoutResult` and
+`TablePageRuleEvidence` per page, and the complete
+`TableDetectionConfiguration`. Stale logical/blob/hash, page, dimension,
+rotation, coordinate, raw-block, layout, or rule evidence is rejected.
+
+`DeterministicTableCandidateDetector` implements the injected
+`TableCandidateDetector` boundary. It reads the caller's source stream once,
+verifies its exact bytes, derives page layouts and rule evidence through injected
+processors, then passes isolated streams to the inspector and region renderer;
+those adapters independently verify source identity. The
+default lazy `PyMuPdfTableRuleInspector` records bounded axis-aligned line and
+rectangle-edge segments from PDF drawing commands. Every segment retains exact
+source/blob/page identity, orientation, endpoints, stroke width, a drawing-item
+locator, stable ID, and inspector/backend provenance. Unsupported or non-axis-
+aligned drawing items are not converted into rules; their page-local count is
+retained explicitly. The inspector is an adapter, not an OS sandbox, and native
+backend memory remains a deployment/source-admission responsibility.
+
+Detection groups repeated source-block row positions and column anchors,
+requires configurable minimum row and column support, incorporates nearby
+horizontal/vertical rule segments, and keeps long prose-like geometry weak. It
+associates only explicit nearby lexical evidence: `Table` titles, `Caption:`
+blocks, `Note:`/`Notes:`/`Source:` blocks, and `Table N ... continued` labels.
+Adjacent page regions join only with an explicit continuation label, compatible
+source label, equal column count, and compatible normalized column anchors.
+
+Each immutable `TableCandidate` records:
+
+- stable input/configuration and detector identity;
+- `ruled`, `unruled`, or `mixed` boundary classification;
+- `proposed` or `ambiguous` evidence status, source label, confidence,
+  transparent evidence and warning links;
+- one or more unique page-ordered `TableRegionEvidence` values with exact block
+  IDs/spans, source bounding box, row/column band counts, contributing rule IDs,
+  possible merged-cell block signals, and validated bounded PNG evidence; and
+- source-backed title, caption, note, and continuation associations with exact
+  unchanged text, block ID, spans, confidence, and lexical evidence.
+
+Candidate source spans are the ordered table-region block spans; associated
+text retains its own spans and is not silently folded into cell evidence. Region
+validation re-derives block geometry, row/column counts, merged-row signals,
+rule orientation counts, boundary class, prose/title signals, confidence, and
+render containment. Candidate validation rechecks ordered pages, aggregate
+spans, labels, boundary class, confidence/status, association source blocks,
+warning links, and stable identity.
+
+Configuration hard-bounds source bytes, pages, raw/text blocks, text and spans,
+drawings and drawing items, page/aggregate rule segments, candidates, regions,
+blocks, associations, warnings, retained result size, aggregate rendered PNG
+bytes/pixels, row/column minima and tolerances, continuation/association gaps,
+render padding, confidence threshold, and prose threshold. All settings enter
+input and result identity. PNG bytes are excluded from retained-result size
+accounting because separate renderer and aggregate image limits apply.
+
+A single-block row crossing established column anchors is only a
+`merged_cell_signal` with a warning. No row, column, header, cell, merged span,
+or multi-page cell continuation is reconstructed in this stage. Candidates are
+not proofread tables, semantically correct data, scientific validation,
+publication-ready output, or human acceptance. The stage writes no files and
+stores no derived result in `ExtractionCache`.
 
 ## `ExtractedArticle`
 

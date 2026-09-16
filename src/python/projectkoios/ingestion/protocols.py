@@ -30,6 +30,7 @@ from projectkoios.ingestion.reconciliation import (
     OCRReconciliationInput,
     OCRReconciliationResult,
 )
+from projectkoios.ingestion.tables import TableDetectionResult
 
 
 class ChunkIndexWriter(Protocol):
@@ -118,6 +119,17 @@ class EquationTranscriptionProcessor(Protocol):
     def process(
         self, request: EquationTranscriptionRequest
     ) -> EquationTranscriptionResult: ...
+
+
+class TableCandidateDetector(Protocol):
+    name: str
+    version: str
+
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> TableDetectionResult: ...
 
 
 class ExtractionCache(Protocol):

@@ -79,7 +79,9 @@ exact page-layout evidence. The bounded `DeterministicEquationCandidateDetector`
 proposes display and inline equation-shaped regions while retaining exact text,
 context, labels, and rendered source evidence. Engine-neutral equation-
 transcription contracts then allow injected adapters to propose LaTeX or MathML
-without turning recognition output into accepted source fact.
+without turning recognition output into accepted source fact. Bounded table-
+candidate detection combines exact layout, PDF vector-rule observations, and
+rendered regions without reconstructing table cells.
 
 PDF document support follows an output-independent pipeline:
 
@@ -183,6 +185,14 @@ processor/backend/model identity, substring confidence coverage, warnings, and
 typed failure evidence. Low-confidence and unassessed substrings are marked and
 warning-linked. The boundary executes no default engine and publishes no file.
 
+Table-candidate detection is another explicit derived stage. Its default lazy
+rule inspector retains bounded axis-aligned PDF drawing segments and ignored
+item counts; the detector combines those observations with native text
+alignment and nearby lexical associations. It renders only proposed regions.
+Explicit continuation labels may join adjacent pages, while merged-cell signals
+and prose-like geometry remain warned observations. No cell grid or header
+semantics are reconstructed.
+
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
@@ -202,7 +212,9 @@ cache identity likewise includes its contract/configuration versions, exact
 candidate image, requested formats and limits, processor/backend versions, and
 model/resource identities. Derived OCR, reconciliation, and equation-
 transcription storage remain deferred and are not added to the raw
-`ExtractionCache`.
+`ExtractionCache`. Table-candidate identity likewise includes exact document,
+layout, vector-rule, renderer, detector, and configuration evidence; table
+candidates are also excluded from the raw cache.
 
 ## Structural Model
 
@@ -276,6 +288,21 @@ The output remains a proposal: status and confidence never mean proofread,
 mathematically correct, scientifically validated, accepted, or human-approved.
 No transcription result enters the cold extraction cache.
 
+## Table Candidate Model
+
+A table candidate contains one or more page-ordered regions. Each region retains
+exact source blocks/spans, row and column band counts, contributing PDF rule
+segments, possible merged-cell block signals, and one validated rendered PNG.
+Candidate-level associations retain unchanged title, caption, note, and explicit
+continuation text as separate source evidence.
+
+The deterministic detector proposes `ruled`, `unruled`, or `mixed` boundaries
+and only `proposed` or `ambiguous` status. Explicit continuation labels plus
+compatible normalized columns may join adjacent pages. A merged-row signal is
+not a reconstructed span, and completed detection is not semantic correctness,
+scientific validation, publication suitability, or human acceptance. Derived
+table candidates are not stored in the cold extraction cache.
+
 ## Rough Chunking Boundary
 
 The accepted repository boundary places chunking algorithms outside this
@@ -339,6 +366,7 @@ The architecture depends on small protocols:
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
 - `EquationTranscriptionProcessor` proposes bounded LaTeX/MathML evidence;
+- `TableCandidateDetector` proposes bounded rendered table evidence;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 
@@ -390,8 +418,9 @@ Equation detection adds warnings for weak candidates, missing geometry, and
 ambiguous inline offset mapping. Equation transcription adds selection-local
 warnings for low or unavailable confidence and typed rejected-input, resource,
 availability, backend, format, invalid-output, and incomplete-output failures.
-Deferred figure processors may add their own source-backed warnings when
-implemented.
+Table detection warns ambiguous or prose-like candidates, possible merged-cell
+rows, and mixed rule evidence. Deferred figure processors may add their own
+source-backed warnings when implemented.
 
 Fatal errors prevent creation of a valid result. Recoverable uncertainty is
 represented in the result manifest. OCR selection failures are typed and linked
