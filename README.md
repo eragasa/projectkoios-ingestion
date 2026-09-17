@@ -368,4 +368,4 @@ validation, publication suitability, or human acceptance. The stage emits no
 citekey, vault path, Obsidian syntax, reading status, or destination artifact,
 writes no files, and stores nothing in raw `ExtractionCache`.
 
-Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
+Repository routing is documented in `projectkoios-bootstrap/maps/repositories.md`.
