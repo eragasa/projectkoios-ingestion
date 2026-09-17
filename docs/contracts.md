@@ -249,6 +249,26 @@ does not claim symbol interpretation, semantic correctness, proofread
 transcription, scientific validation, publication suitability, or human
 acceptance. It writes no files and stores no derived result.
 
+## Equation retrieval projection
+
+Equation-retrieval contract version 1.0 is a compact derived projection over one exact `EquationDetectionResult`. `EquationRetrievalArtifact` binds the source ID and content hash, document ID, detection result and processor/configuration identities, and an ordered tuple of at most 256 unique `EquationRetrievalRecord` values.
+
+Each record retains its candidate ID, display/inline kind, proposed/ambiguous status, detector confidence, physical page index and printed label, exact source block and spans, unchanged native equation text and source label, immediate preceding/following block IDs and unchanged text when available, rendered-region ID/checksum and source geometry, and warning links. `retrieval_text` labels and concatenates only these exact strings for downstream indexing. `transcription_status` is necessarily `native_text_only`; this projection cannot represent inferred or corrected LaTeX or MathML.
+
+The projection excludes rendered PNG bytes while preserving their immutable identities. Consumers requiring visual evidence resolve the record through the full detection artifact. It is not a relevance judgment, mathematical interpretation, proofread transcription, scientific validation, or human acceptance.
+
+## Equation enrichment and index tiers
+
+Equation-enrichment contract version 1.0 preserves four distinct layers. `EquationDetectionResult` remains exact detector evidence. `EquationAssemblyArtifact` groups only geometrically compatible same-page display fragments, retains every candidate ID, detector evidence status, source span, block, raw fragment and label, records every sanitized control character, and owns a newly rendered union region. `EquationRecognitionArtifact` binds a supplied external executable, explicit backend version, temperature, and sorted exact resource hashes to unaccepted LaTeX and derived MathML proposals. `EquationIndexArtifact` contains compact purpose-neutral records without image bytes.
+
+An assembly never rewrites its raw fragments. Its sanitized view replaces non-whitespace control characters only in the derived searchable string and records the replacement count. Inline observations remain auxiliary. Explicit I/O typographic and repeated-fraction coordinate-tuple patterns are rejected from indexing while remaining retained in assembly, recognition-status, and rejected index records.
+
+`Pix2TexCliEquationRecognizer` invokes no shell, stages exact PNGs in a private temporary directory, runs one bounded CPU invocation for all selected display assemblies, enforces timeout and output/diagnostic limits, and parses outputs by exact staged path. The exact launcher hash is retained and rechecked; processor identity uses an additional launcher semantic hash that normalizes only the environment-specific shebang so an otherwise byte-identical installed wrapper remains relocatable. Model/configuration/tokenizer resources are hash-checked at construction and immediately before execution. Pix2tex exposes no calibrated confidence, so every successful output carries `recognition_confidence_unavailable`; a LaTeX proposal remains unaccepted. MathML is a deterministic derivative of that proposal when the optional converter accepts it.
+
+The `primary` retrieval tier requires detector-proposed display evidence, a minimum native-evidence length, bounded balanced LaTeX, successful MathML conversion, agreement with retained native relation/integral/sum/root/partial signals, and no detected prose, repetition, or excessive output. Ambiguous, inline, malformed, incomplete, or otherwise unqualified records are `auxiliary`. Explicit false positives are `rejected`. These tiers control index eligibility only and do not imply mathematical correctness, scientific validation, reference acceptance, or manuscript support.
+
+Because the concrete recognition backend is stochastic, immutable existing recognition is a derived-cache observation rather than a deterministic recomputation claim. A replay rederives and byte-compares the deterministic assembly, verifies source, assembly, processor and index linkages, and reuses the original recognition bytes. Changed resources or policy require a new artifact location or explicit migration.
+
 ## Equation transcription proposals
 
 Equation-transcription contract version 1.0 and configuration version 1 define

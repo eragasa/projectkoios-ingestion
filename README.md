@@ -13,6 +13,7 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
 - [Redistributable OCR image fixture](tests/fixtures/ocr/README.md)
 - [Tesseract installation and adapter setup](docs/tesseract.md)
+- [Pix2tex equation-recognition setup](docs/pix2tex.md)
 
 The optional deterministic PDF adapter is installed with `.[pdf]` and exposed
 through `koios-ingest-pdf`. It writes a versioned extraction contract and,
@@ -32,6 +33,38 @@ koios-ingest-pdf article.pdf \
   --output .koios/example2020/extraction.json \
   --raw-text-directory .koios/example2020/pages
 ```
+
+Recurring collections use a versioned, path-safe, hash-locked batch plan. Planning is the default and writes nothing; `--apply` is required. Every source byte size, SHA-256 identity, PDF header, and destination is preflighted before the first extraction, source identity is rechecked when read for extraction, existing item output directories are rejected, and the completed JSON summary reports source, document, manifest, artifact, coverage, quality, and warning identities.
+
+```json
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "source_id": "reference:example2020",
+      "pdf_path": "assets/example2020.pdf",
+      "output_directory": "example2020",
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "byte_size": 12345,
+      "locator": "assets/example2020.pdf"
+    }
+  ]
+}
+```
+
+```bash
+koios-ingest-pdf-batch batch.json \
+  --source-root ~/projectkoios \
+  --output-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache
+koios-ingest-pdf-batch batch.json \
+  --source-root ~/projectkoios \
+  --output-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache \
+  --apply
+```
+
+The batch command is not a multi-document transaction. Preflight prevents known collisions before mutation, and each item retains the single-document publication rollback guarantee. A later runtime failure leaves earlier completed items intact and reports how many completed; retry requires a new plan containing only unfinished items.
 
 Cache entries use canonical JSON envelopes at
 `CACHE_ROOT/v1/<key-prefix>/<sha256(cache-key)>.json`. Key identity covers the
@@ -221,6 +254,42 @@ without geometry is not rendered. The raw contract currently has no font or
 PDF drawing-command observations, so the detector does not invent them. Results
 make no symbol-interpretation, proofread-transcription, scientific-validation,
 human-acceptance, or publication claim and are not stored in `ExtractionCache`.
+
+`koios-detect-pdf-equations-batch` applies this derived stage to an existing raw batch. It accepts the same hash-locked `PdfBatchPlan`, verifies every source and raw-extraction identity before mutation, and is dry-run by default. Explicit `--apply` writes immutable `derived/equations/detection.json` evidence and a compact `retrieval.json` projection under each item directory. The retrieval projection contains native PDF equation text, immediate context, page and source-block locators, rendered-region identities, confidence, warnings, and an explicit `native_text_only` transcription status; it excludes image bytes and does not claim normalized LaTeX. Replaying identical inputs verifies byte-identical artifacts and reports `unchanged`; different or incomplete existing artifacts are preserved and rejected.
+
+```bash
+koios-detect-pdf-equations-batch batch.json \
+  --source-root ~/projectkoios \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache
+koios-detect-pdf-equations-batch batch.json \
+  --source-root ~/projectkoios \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache \
+  --apply
+```
+
+Equation retrieval records are intended as evidence-bearing inputs to a separate search index. Generated assessment prose must not be fed back into the same source corpus. Engine-backed LaTeX or MathML proposals remain a separate optional stage described below.
+
+`koios-enrich-pdf-equations-batch` performs the optional equation-enrichment stage after detection. It groups geometrically adjacent same-line display fragments without crossing detected page columns, rerenders their exact union, retains every raw fragment, creates a control-character-sanitized native-text view, rejects explicit I/O and coordinate-tuple false positives, and invokes a supplied `pix2tex_cli` executable only for non-rejected display assemblies. The executable, backend version, temperature, and every supplied model/configuration/tokenizer resource are hash-bound and rechecked immediately before execution. The package does not install pix2tex or its model files; MathML conversion is available through the optional `.[mathml]` extra.
+
+```bash
+koios-enrich-pdf-equations-batch batch.json \
+  --source-root ~/projectkoios \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache \
+  --pix2tex-executable /path/to/pix2tex_cli \
+  --pix2tex-backend-version 0.1.4 \
+  --pix2tex-resource model=/path/to/weights.pth \
+  --pix2tex-resource image-resizer=/path/to/image_resizer.pth \
+  --pix2tex-resource tokenizer=/path/to/tokenizer.json \
+  --pix2tex-resource config=/path/to/config.yaml \
+  --apply
+```
+
+The stage publishes three separate immutable layers: `assembly.json` contains exact grouping and rendered evidence, `recognition.json` contains unaccepted LaTeX/MathML proposals and explicit unavailable-confidence warnings, and `index.json` contains retrieval records partitioned into `primary`, `auxiliary`, and `rejected` tiers. Primary indexing requires a detector-proposed display assembly, sufficient native evidence, structurally bounded LaTeX, successful MathML conversion, source-signal agreement, and no detected prose/repetition anomaly. Ambiguous, inline, incomplete, malformed, or unassessed material remains auxiliary; explicit false positives remain inspectable but rejected. Raw fragments and rendered evidence are never replaced.
+
+Pix2tex is not claimed deterministic. The first bounded result is published immutably with exact processor/resource identity; subsequent identical workflow runs verify the deterministic assembly and linked stored recognition/index artifacts without invoking the stochastic backend again. Changing the executable, model resources, assembly, or policy requires a new artifact location or explicit migration rather than overwrite.
 
 ## Engine-neutral equation transcription
 

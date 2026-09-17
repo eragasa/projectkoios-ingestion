@@ -9,6 +9,16 @@ extraction is immutable evidence; derived output is append-only.
 
 ## Foundation tasks
 
+### ING-BATCH-01 — Manifest-driven PDF batch ingestion (implemented)
+
+`PdfBatchPlan` provides a bounded versioned collection of unique source IDs, source-root-relative PDF paths, output-root-relative directories, exact byte sizes and SHA-256 identities, and optional diagnostic locators. Paths must be normalized and traversal-free; plans are limited to 256 items.
+
+`koios-ingest-pdf-batch` is dry-run by default. It verifies every source file, planned byte identity, PDF header, root containment, unique destination, and destination absence before mutation. Explicit `--apply` rechecks source identity on the bytes read for extraction, invokes the existing single-PDF cache and exclusive artifact-publication path for each item, and emits a machine-readable summary with source, contract, processor, document, manifest, artifact-hash, coverage, quality, and warning evidence. A batch is not represented as an all-or-nothing filesystem transaction: a runtime failure preserves earlier complete items and reports the completed count, while the current item retains single-document rollback behavior.
+
+**Depends on:** current PDF CLI and `ING-CACHE-01`.
+
+**Validation:** plan contract, traversal, duplicate, dry-run, complete preflight, apply, cache, and no-overwrite tests plus full test/static-analysis suites.
+
 ### ING-CACHE-01 — Filesystem extraction cache (implemented)
 
 `FilesystemExtractionCache` implements the existing `ExtractionCache` protocol
@@ -371,6 +381,28 @@ exact output ranges, image containment and bounds, stable identity,
 immutability, and runtime protocol annotations. Proposals make no proofread,
 semantic-correctness, scientific-validation, publication, or human-acceptance
 claim.
+
+### ING-EQUATION-03 — Batch equation retrieval projection (implemented)
+
+`EquationRetrievalArtifact` converts an exact `EquationDetectionResult` into bounded compact records for a downstream retrieval index. Each record retains the candidate identity, native PDF text, immediate preceding and following source-block text, page and block locators, source spans, label, rendered-region identity and checksum, geometry, confidence, evidence status, and warning links. It explicitly reports `native_text_only`; it neither fabricates LaTeX nor claims successful engine-backed transcription.
+
+`koios-detect-pdf-equations-batch` consumes the hash-locked `PdfBatchPlan` used by cold ingestion and requires the corresponding immutable raw extraction directory. Dry-run verifies every source and raw artifact identity before mutation. Explicit apply deterministically writes `derived/equations/detection.json` and `derived/equations/retrieval.json`; an identical replay reports `unchanged`, while incomplete, symlinked, identity-mismatched, or byte-different existing artifacts fail closed without overwrite. Derived equation artifacts remain outside `ExtractionCache`.
+
+**Depends on:** `ING-EQUATION-01`, `ING-CACHE-01`.
+
+**Validation:** focused tests cover dry-run, exact fixture detection, compact context projection, explicit native-text-only status, immutable publication, deterministic unchanged replay, conflicting artifact rejection, and raw-extraction identity mismatch. The seven-article Wannier corpus provides a separate operational replay check.
+
+### ING-EQUATION-04 — Equation assembly, recognition, and retrieval gating (implemented)
+
+`DeterministicEquationAssembler` groups geometrically compatible same-line display fragments without crossing page columns, rerenders the exact union, and preserves detector statuses, all raw strings, source identities, context, geometry, and a separately identified sanitized searchable view. Explicit coordinate-tuple and I/O typographic false positives are retained but marked rejected. Inline and ambiguous evidence is never silently promoted.
+
+`Pix2TexCliEquationRecognizer` is a bounded external adapter with exact executable, backend, temperature, model, image-resizer, tokenizer, and configuration identities. It produces unaccepted LaTeX and optional MathML proposals with unavailable-confidence warnings. `EquationIndexArtifact` places only strictly complete detector-proposed display records in the `primary` tier; ambiguous, inline, short, malformed, prose-like, repetitive, signal-mismatched, or otherwise incomplete records remain `auxiliary`, and explicit false positives remain `rejected`.
+
+`koios-enrich-pdf-equations-batch` is dry-run by default and publishes separate immutable `assembly.json`, `recognition.json`, and `index.json` layers only on explicit apply. It treats the stochastic backend's first bounded output as an immutable derived-cache observation. Replay rederives the deterministic assembly and verifies all stored source, processor, assembly, recognition, and index links without claiming deterministic model recomputation.
+
+**Depends on:** `ING-EQUATION-01`, `ING-EQUATION-02`, `ING-EQUATION-03`, `ING-REGION-01`.
+
+**Validation:** focused tests cover layer separation, exact raw preservation, control-character sanitization, rendered evidence, LaTeX and MathML proposals, unavailable confidence, malformed/prose-like demotion, model-resource invalidation, dry-run/apply/cache replay, and primary/auxiliary/rejected partitioning. The seven-article operational run validates all four layers against exact PDF and extraction identities.
 
 ### ING-TABLE-01 — Table candidate detection (implemented)
 

@@ -77,7 +77,7 @@ and OCR-only relationships without replacing either evidence stream. The
 matter, headings, hierarchy, bibliography observations, and appendices from
 exact page-layout evidence. The bounded `DeterministicEquationCandidateDetector`
 proposes display and inline equation-shaped regions while retaining exact text,
-context, labels, and rendered source evidence. Engine-neutral equation-
+context, labels, and rendered source evidence. A compact equation-retrieval projection retains native equation text, immediate context, locators, geometry, image identities, and uncertainty without carrying PNG bytes into a search index. A separate enrichment stage conservatively assembles geometric fragments, retains exact and sanitized layers, invokes an explicitly identified image-to-LaTeX adapter, derives MathML, and partitions records into primary, auxiliary, and rejected retrieval tiers without accepting the mathematics. Engine-neutral equation-
 transcription contracts then allow injected adapters to propose LaTeX or MathML
 without turning recognition output into accepted source fact. Bounded table-
 candidate detection combines exact layout, PDF vector-rule observations, and

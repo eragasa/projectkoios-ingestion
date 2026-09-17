@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 from collections.abc import Sequence
 from io import BytesIO
@@ -19,6 +20,10 @@ Artifact = tuple[Path, str]
 
 class ArtifactPublicationError(RuntimeError):
     """Raised after a CLI artifact publication fails and is rolled back."""
+
+
+class ExtractionCacheOperationError(RuntimeError):
+    """Raised when the optional extraction cache cannot be used safely."""
 
 
 class _ArtifactWriteError(RuntimeError):
@@ -41,41 +46,98 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(arguments: list[str] | None = None) -> int:
-    parser = _parser()
-    args = parser.parse_args(arguments)
-    payload = args.pdf.read_bytes()
+def extract_pdf_evidence(
+    pdf: Path,
+    *,
+    source_id: str,
+    cache_root: Path | None = None,
+    locator: str | None = None,
+    low_text_threshold: int = 40,
+    expected_source_sha256: str | None = None,
+    expected_source_byte_size: int | None = None,
+) -> tuple[bytes, ExtractionResult]:
+    """Return exact PDF bytes and raw extraction, optionally from cache."""
+    payload = pdf.read_bytes()
+    if expected_source_byte_size is not None and (
+        len(payload) != expected_source_byte_size
+    ):
+        raise ValueError("PDF source size changed after planning")
+    if expected_source_sha256 is not None and (
+        hashlib.sha256(payload).hexdigest() != expected_source_sha256
+    ):
+        raise ValueError("PDF source hash changed after planning")
     source = SourceDocument.from_bytes(
         payload,
-        source_id=args.source_id,
+        source_id=source_id,
         media_type="application/pdf",
-        locator=args.locator or args.pdf.name,
+        locator=locator or pdf.name,
     )
     extractor = PyMuPdfExtractor(
-        low_text_character_threshold=args.low_text_threshold
+        low_text_character_threshold=low_text_threshold
     )
     result: ExtractionResult
-    if args.cache_root is None:
+    if cache_root is None:
         result = extractor.extract(source, content=BytesIO(payload))
     else:
-        cache = FilesystemExtractionCache(args.cache_root)
+        cache = FilesystemExtractionCache(cache_root)
         cache_key = extractor.cache_key(source)
         try:
             cached_result = cache.get(cache_key)
-        except (ExtractionCacheError, OSError) as error:
-            parser.error(f"extraction cache failure: {error}")
-        if cached_result is None:
-            result = extractor.extract(source, content=BytesIO(payload))
-            try:
+            if cached_result is None:
+                result = extractor.extract(source, content=BytesIO(payload))
                 cache.put(cache_key, result)
-            except (ExtractionCacheError, OSError, ValueError) as error:
-                parser.error(f"extraction cache failure: {error}")
-        else:
-            result = cached_result
-    artifacts = _raw_page_artifacts(args.raw_text_directory, result)
-    artifacts.append((args.output, serialize_contract(result) + "\n"))
+            else:
+                result = cached_result
+        except (ExtractionCacheError, OSError, ValueError) as error:
+            raise ExtractionCacheOperationError(str(error)) from error
+    return payload, result
+
+
+def ingest_pdf_artifacts(
+    pdf: Path,
+    *,
+    source_id: str,
+    output: Path,
+    raw_text_directory: Path | None = None,
+    cache_root: Path | None = None,
+    locator: str | None = None,
+    low_text_threshold: int = 40,
+    expected_source_sha256: str | None = None,
+    expected_source_byte_size: int | None = None,
+) -> ExtractionResult:
+    """Extract one PDF and exclusively publish its raw evidence artifacts."""
+    _, result = extract_pdf_evidence(
+        pdf,
+        source_id=source_id,
+        cache_root=cache_root,
+        locator=locator,
+        low_text_threshold=low_text_threshold,
+        expected_source_sha256=expected_source_sha256,
+        expected_source_byte_size=expected_source_byte_size,
+    )
+    artifacts = _raw_page_artifacts(raw_text_directory, result)
+    artifacts.append((output, serialize_contract(result) + "\n"))
+    _publish_artifacts(artifacts)
+    return result
+
+
+def main(arguments: list[str] | None = None) -> int:
+    parser = _parser()
+    args = parser.parse_args(arguments)
     try:
-        _publish_artifacts(artifacts)
+        ingest_pdf_artifacts(
+            args.pdf,
+            source_id=args.source_id,
+            output=args.output,
+            raw_text_directory=args.raw_text_directory,
+            cache_root=args.cache_root,
+            locator=args.locator,
+            low_text_threshold=args.low_text_threshold,
+        )
+    except ExtractionCacheOperationError as error:
+        parser.error(f"extraction cache failure: {error}")
+    except (OSError, ValueError) as error:
+        parser.error(f"PDF ingestion failure: {error}")
     except ArtifactPublicationError as error:
         parser.error(str(error))
     print(args.output)
@@ -98,9 +160,7 @@ def _raw_page_artifacts(
         )
         text = (
             f"<!-- pdf-page: {page.page_index + 1}; "
-            f"printed-page: {label} -->\n\n"
-            + "\n\n".join(blocks)
-            + "\n"
+            f"printed-page: {label} -->\n\n" + "\n\n".join(blocks) + "\n"
         )
         artifacts.append(
             (directory / f"page-{page.page_index + 1:04d}.txt", text)

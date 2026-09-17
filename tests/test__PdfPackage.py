@@ -5,6 +5,12 @@ import subprocess
 import sys
 
 
+def test__package_metadata__declares_core_runtime_dependency() -> None:
+    requirements = importlib.metadata.requires("projectkoios-ingestion") or []
+
+    assert "projectkoios==0.0.0" in requirements
+
+
 def test__base_package_import__does_not_import_optional_pymupdf() -> None:
     script = """
 import subprocess
@@ -139,3 +145,87 @@ def test__package_entry_point__targets_cli_and_module_help_works() -> None:
     assert completed.returncode == 0
     assert "--raw-text-directory" in completed.stdout
     assert "--cache-root" in completed.stdout
+
+
+def test__batch_package_entry_point__targets_cli_and_help_works() -> None:
+    entry_points = importlib.metadata.entry_points(
+        group="console_scripts",
+        name="koios-ingest-pdf-batch",
+    )
+    entry_point = next(
+        entry
+        for entry in entry_points
+        if entry.value == "projectkoios.ingestion.batch_cli:main"
+    )
+    assert entry_point.dist is not None
+    console_script = entry_point.dist.locate_file(
+        f"../../../bin/{entry_point.name}"
+    ).resolve()
+    completed = subprocess.run(
+        [str(console_script), "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert console_script.is_file()
+    assert completed.returncode == 0
+    assert "--source-root" in completed.stdout
+    assert "--output-root" in completed.stdout
+    assert "--apply" in completed.stdout
+
+
+def test__equation_batch_entry_point__targets_cli_and_help_works() -> None:
+    entry_points = importlib.metadata.entry_points(
+        group="console_scripts",
+        name="koios-detect-pdf-equations-batch",
+    )
+    entry_point = next(
+        entry
+        for entry in entry_points
+        if entry.value == "projectkoios.ingestion.equation_batch_cli:main"
+    )
+    assert entry_point.dist is not None
+    console_script = entry_point.dist.locate_file(
+        f"../../../bin/{entry_point.name}"
+    ).resolve()
+    completed = subprocess.run(
+        [str(console_script), "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert console_script.is_file()
+    assert completed.returncode == 0
+    assert "--source-root" in completed.stdout
+    assert "--ingestion-root" in completed.stdout
+    assert "--apply" in completed.stdout
+
+
+def test__equation_enrichment_entry_point__targets_cli_and_help_works() -> None:
+    entry_points = importlib.metadata.entry_points(
+        group="console_scripts",
+        name="koios-enrich-pdf-equations-batch",
+    )
+    entry_point = next(
+        entry
+        for entry in entry_points
+        if entry.value == "projectkoios.ingestion.equation_enrichment_cli:main"
+    )
+    assert entry_point.dist is not None
+    console_script = entry_point.dist.locate_file(
+        f"../../../bin/{entry_point.name}"
+    ).resolve()
+    completed = subprocess.run(
+        [str(console_script), "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert console_script.is_file()
+    assert completed.returncode == 0
+    assert "--pix2tex-executable" in completed.stdout
+    assert "--pix2tex-resource" in completed.stdout
+    assert "--apply" in completed.stdout
