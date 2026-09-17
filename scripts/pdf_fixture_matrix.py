@@ -529,7 +529,7 @@ def refresh() -> None:
         pdf_path.write_bytes(payload)
         expected_path.write_bytes(expected)
         rights = {
-            "license": "MIT",
+            "license": "Apache-2.0",
             "license_file": "LICENSE",
             "copyright": "Copyright (c) 2026 Eugene Ragasa",
         }

@@ -3,7 +3,7 @@
 `synthetic-text.png` is a wholly synthetic RGB PNG spelling `KOIOS OCR 42` in
 a tiny bitmap alphabet. It contains no external document, scan, typeface, or
 image content. The fixture and its generation source are licensed under the
-repository's [MIT license](../../../LICENSE).
+repository's [Apache License 2.0](../../../LICENSE).
 
 Regenerate or verify the exact bytes from the repository root:
 

@@ -17,7 +17,7 @@ pixels and PNG bytes directly, assigns those images the standard PDF
 `DeviceRGB` color space without embedding a dependency-supplied ICC profile,
 and uses a PDF standard font without embedding an external font file. Eugene
 Ragasa licenses the generated fixtures and generation source under the
-repository's [MIT license](../../../LICENSE). Per-case purpose, provenance,
+repository's [Apache License 2.0](../../../LICENSE). Per-case purpose, provenance,
 rights, source byte size and SHA-256, maintained expected-output byte size and
 SHA-256, and focused assertion descriptions are recorded in
 [`manifest.json`](manifest.json).

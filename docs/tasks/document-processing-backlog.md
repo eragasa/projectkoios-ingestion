@@ -141,7 +141,7 @@ full test/static-analysis suites.
 The compact synthetic matrix in `tests/fixtures/pdf/` covers born-digital text,
 two-column layout, equations, tables, figures, printed page labels, blank
 pages, and image-only pages. Its machine-readable manifest records per-case
-purpose, provenance, MIT rights, exact source and expected-output SHA-256
+purpose, provenance, Apache-2.0 rights, exact source and expected-output SHA-256
 identities, sizes, and focused cold-extraction assertions. The checked-in
 sources are canonical because generation is PyMuPDF-version-sensitive;
 `scripts/pdf_fixture_matrix.py` provides explicit refresh and verification

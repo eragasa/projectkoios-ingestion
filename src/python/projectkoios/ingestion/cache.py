@@ -31,6 +31,36 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.serialization import contract_dict
 
 _ENTRY_SUFFIX = ".json"
+_MAX_JSON_NESTING = 512
+
+
+def _require_bounded_json_nesting(text: str) -> None:
+    """Reject excessive nesting before version-dependent JSON parsing."""
+    depth = 0
+    in_string = False
+    escaped = False
+    for character in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in "[{":
+            depth += 1
+            if depth > _MAX_JSON_NESTING:
+                raise ValueError(
+                    "JSON container nesting exceeds the supported limit"
+                )
+        elif character in "]}":
+            depth -= 1
+            if depth < 0:
+                return
+
 
 
 class ExtractionCacheError(RuntimeError):
@@ -323,6 +353,7 @@ class FilesystemExtractionCache:
     ) -> ExtractionResult:
         try:
             text = payload.decode("utf-8")
+            _require_bounded_json_nesting(text)
             value = json.loads(
                 text,
                 object_pairs_hook=_object_without_duplicates,

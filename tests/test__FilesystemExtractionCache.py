@@ -263,6 +263,26 @@ def test__filesystem_cache__excessive_json_nesting_is_corruption(
         cache.get(result.manifest.cache_key)
 
 
+def test__filesystem_cache__brackets_inside_strings_do_not_count_as_nesting(
+    tmp_path: Path,
+) -> None:
+    result = _result()
+    root = tmp_path / "cache"
+    cache = FilesystemExtractionCache(root)
+    cache.put(result.manifest.cache_key, result)
+    envelope = _read_envelope(root, result.manifest.cache_key)
+    locator = "[" * 1_000 + "]" * 1_000
+    envelope["result"]["document"]["source"]["locator"] = locator
+    envelope["identity"]["source_locator"] = locator
+    _rehash_result(envelope)
+    _write_envelope(root, result.manifest.cache_key, envelope)
+
+    restored = cache.get(result.manifest.cache_key)
+
+    assert restored is not None
+    assert restored.document.source.locator == locator
+
+
 def test__filesystem_cache__oversized_numeric_content_is_corruption(
     tmp_path: Path,
 ) -> None:

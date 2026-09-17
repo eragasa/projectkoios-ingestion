@@ -42,7 +42,7 @@ def test__pdf_fixture_matrix__manifest_integrity_and_expected_outputs() -> None:
 
         rights = {
             "copyright": "Copyright (c) 2026 Eugene Ragasa",
-            "license": "MIT",
+            "license": "Apache-2.0",
             "license_file": "LICENSE",
         }
         assert source["rights"] == rights
