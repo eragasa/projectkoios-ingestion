@@ -231,8 +231,17 @@ result and review question, then returns scored proposals, rationales, explicit
 confidence, warnings, typed failures, and processor/model resource identity.
 Proposed-not-necessary figures remain inspectable and cannot be suppressed by
 the result contract. No proposal is scientific validation, publication
-selection, or human acceptance. The absence or failure of OCR execution must not
-be hidden by treating raw text extraction as a proofread transcription.
+selection, or human acceptance. A bounded generic JIT coordinator now resolves
+explicit source-span, physical/printed-page, structure-node, or union selections
+into work items that expose only selected evidence. It invokes one injected
+processor per ordered selection, retains completed/partial/failed attempts,
+retries only wholly retryable failed invocations within a configured bound, and
+computes processor/resource-bound derived cache keys. Failed results are not
+eligible for the optional injected derived cache, and no derived result enters
+raw `ExtractionCache`. The coordinator selects no engine, model, source loader,
+cache persistence, or destination writer. The absence or failure of OCR
+execution must not be hidden by treating raw text extraction as a proofread
+transcription.
 
 ## Relationship to existing decision
 

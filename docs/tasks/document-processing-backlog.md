@@ -515,24 +515,58 @@ and retained output. The stage writes no files and adds nothing to raw
 **Validation:** focused tests cover scored necessary/supporting/not-necessary
 proposals, exact retained artifacts, preservation of proposed-not-necessary
 selections, optional confidence, completed/partial/failed outcomes, stale-input
-and other typed failures, warnings, complete cache invalidation, unknown evidence
-rejection,
-selection coverage/order, question/rationale/artifact bounds, deterministic
+and other typed failures, warnings, complete cache invalidation, unknown
+evidence rejection, selection coverage/order, question/rationale/artifact
+bounds, deterministic
 identity, immutability, stale IDs, and runtime protocol typing. Relevance remains
 a question-specific proposal, not source fact, pixel interpretation, scientific
 validation, publication selection, or human acceptance.
 
 ## Composition tasks
 
-### ING-JIT-01 — Bounded processing coordinator
+### ING-JIT-01 — Bounded processing coordinator (implemented)
 
-Implement `ProcessingSelection`, processor invocation, derived cache keys,
-partial completion, and retry behavior.
+`ProcessingSelection` accepts exact source spans, inclusive physical or uniquely
+resolved printed-page ranges, exact structure node IDs, or an explicit union.
+Wrong blobs, stale page labels/objects/nodes, missing pages, and out-of-page
+geometry fail closed. `ProcessingRequest` resolves each ordered selection to a
+`ProcessingWorkItem` containing only selected full pages, spans, nodes, and
+source-backed object IDs; it passes neither the complete extracted document nor
+source bytes to the injected `ProcessingProcessor`.
+
+Completed, partial, and failed invocations retain immutable derived artifacts,
+warnings, typed failures, and source-bounded provenance. The coordinator keeps
+one result per ordered selection and preserves every attempt. It retries only
+fully failed invocations whose failures are all retryable, up to the configured
+bound. Partial output is retained without automatic retry or merging;
+non-retryable selection failures do not prevent later selections from running.
+Unexpected exceptions become generic non-retryable failure evidence without raw
+exception text.
+
+Derived cache identity binds the exact resolved evidence, processing contract
+and coordinator versions, every coordination limit, processor/backend versions,
+processor configuration digest, and ordered immutable resources. An optional
+`DerivedProcessingCache` may reuse only exact completed or partial selection
+results. Failed results are never stored, stale cache entries fail closed, and
+no derived result is added to raw `ExtractionCache`.
+
+Configuration hard-bounds selections, ranges, pages, spans, nodes, object IDs,
+attempts, artifacts/bytes, warnings, failures, messages, evidence, resources,
+and retained result size. Iterable requests stop after one item beyond the
+configured selection bound. The coordinator chooses no engine, model, source
+loader, cache persistence, execution sandbox, or destination writer.
 
 **Depends on:** `ING-CACHE-01` and at least one bounded processor.
 
-**Acceptance:** a page, region, or structure-node selection can be processed
-without invoking work on unselected pages; partial failures remain inspectable.
+**Validation:** focused tests cover physical, printed, region, structure-node,
+and union selection resolution; absence of unselected pages in processor work
+items; ordered completed/partial/failed aggregation; retry success and
+exhaustion; no partial/non-retryable retry; completed cache reuse; failed-result
+cache exclusion; complete derived cache invalidation; per-selection and
+aggregate typed output resource limits; rejection of unselected output
+provenance and stale source blobs;
+bounded iterables; deterministic identity; immutability; stale IDs; and runtime
+processor/cache protocol typing.
 
 ### ING-TRANSCRIPT-01 — Structured transcription proposal
 

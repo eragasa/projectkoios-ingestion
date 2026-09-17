@@ -11,10 +11,9 @@ region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
 bounded table-candidate detection, deterministic table-structure
-reconstruction, bounded figure-candidate detection, and engine-neutral figure-
-relevance contracts are implemented and exported. `RoughChunk` and the general
-`ProcessingSelection`/`ProcessingResult`
-JIT coordination specializations remain planned until implemented, tested, and
+reconstruction, bounded figure-candidate detection, engine-neutral figure-
+relevance contracts, and bounded JIT processing coordination are implemented
+and exported. `RoughChunk` remains planned until implemented, tested, and
 exported.
 
 ## Contract Principles
@@ -894,31 +893,91 @@ subprocess/session boundary is not an operating-system sandbox and does not cap
 native-process memory; callers admitting untrusted PNG or traineddata bytes must
 supply deployment-level sandboxing and resource controls.
 
-## `ProcessingSelection`
+## Bounded JIT processing coordination
 
-Requests bounded JIT processing. A selection may identify:
+Processing contract version 1.0, coordinator version 1, and configuration
+version 1 define destination-neutral bounded coordination. A
+`ProcessingSelection` retains one exact `ExtractedDocument` and at least one of:
 
-- source spans;
-- physical or printed page ranges;
-- structure node IDs;
-- an application-supplied union of selections.
+- ordered exact source spans;
+- inclusive physical page ranges;
+- inclusive printed-page ranges whose endpoints resolve uniquely;
+- ordered structure node IDs from an exact same-source `StructureAnalysis`; or
+- an explicit union of those selectors.
 
-Textbook-specific filenames and destination selectors are not valid source
-selections.
+Selection construction rejects wrong blobs, missing pages, stale printed labels,
+out-of-page geometry, unknown source objects, stale structure nodes, and stale
+node block links. Physical and printed ranges resolve to source order. The
+selection identity binds the exact source blob, selector form, selected pages,
+selected nodes, and structure-analysis identity. Textbook-specific filenames,
+destination selectors, and implicit whole-document selection are not valid
+selectors.
 
-## `ProcessingResult`
+`ProcessingRequest` contains a non-empty ordered tuple of unique selections and
+a complete immutable `ProcessingConfiguration`. It resolves each selection to
+one `ProcessingWorkItem`. A work item exposes only:
 
-Records a derivation over selected extracted content:
+- explicitly selected full `ExtractedPage` objects;
+- exact selected, page-block, and selected-node source spans;
+- exact selected `StructureNode` objects; and
+- source-backed input object IDs.
 
-- result ID and contract version;
-- input object IDs and source spans;
-- processor identity, version, and configuration digest;
-- derived objects;
-- warnings;
-- cache identity;
-- completion status.
+It does not expose the complete `ExtractedDocument` or source bytes to the
+processor. The injected processor may already hold application-supplied source
+access, but it is responsible for honoring the work-item boundary and must not
+dereference `SourceDocument.locator` as implicit authorization for whole-source
+work.
 
-Partial results distinguish completed selections from failed selections.
+`ProcessingProcessor` exposes `identity_for(work_item)` and
+`process(work_item)`. `ProcessingProcessorIdentity` records processor/backend
+names and versions, the processor's complete configuration digest, and ordered
+immutable SHA-256 or explicit model/prompt/resource identities. Identity
+resolution must succeed and agree with the processor's declared name/version
+before invocation; otherwise coordination fails rather than inventing
+provenance.
+
+A processor returns a `ProcessingInvocationResult`. Completed output has no
+failures and may be empty for a successfully processed blank selection. Partial
+output has both retained `ProcessingDerivedArtifact` values and typed failures.
+Failed output has typed failures and no artifacts. Artifacts retain immutable
+bytes, media type, SHA-256, exact input object IDs/source spans, and evidence.
+Warnings and failures remain work-item-local and source-backed. Output referring
+to another source, unselected object, or span outside the selected page/region
+becomes an `output_invalid` failure instead of being published.
+
+`ProcessingSelectionResult` preserves every ordered `ProcessingAttempt`, the
+resolved work item, processor identity, cache key, final status, and whether
+retryable failure exhausted its attempt bound. The coordinator retries only a
+fully failed invocation for which every failure is retryable. It never retries
+or attempts to merge partial output automatically. Non-retryable failures stop
+that selection without stopping later selections. A processor may raise
+`ProcessingProcessorError` for typed expected failure; unexpected exceptions
+become generic non-retryable `processor_error` evidence without retaining raw
+exception text.
+
+`ProcessingResult` preserves one ordered selection result per request selection.
+Its execution status is `completed` when all final invocations complete,
+`failed` when all fail, and `partial` for every mixed or partial outcome. These
+statuses report execution only; they do not assert semantic correctness,
+scientific validation, publication suitability, or human acceptance.
+
+`build_derived_processing_cache_key` covers the processing contract and
+coordinator versions, exact resolved work item, complete coordination
+configuration, processor/backend versions, processor configuration digest, and
+ordered immutable resource identities. An optional `DerivedProcessingCache`
+may return or store only exact completed or partial selection results. Failed
+results are never stored. Cache entries with a wrong key, work item, processor
+identity, configuration limits, or failed status are rejected. This derived
+cache is distinct from raw `ExtractionCache`; no derived cache implementation or
+storage location is selected by the package.
+
+Configuration hard-bounds selection/range/span/node/object counts, attempts,
+artifacts and bytes, warnings, failures, messages, evidence, resources, and
+retained result size. Requests built from iterables stop after one item beyond
+the configured selection bound. Output that exceeds configured limits becomes a
+typed non-retryable resource-limit failure. The coordinator chooses no model,
+engine, source loader, sandbox, cache persistence, or destination writer and
+writes no files.
 
 ## `IngestionWarning`
 

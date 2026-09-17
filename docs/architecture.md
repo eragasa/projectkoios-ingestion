@@ -88,7 +88,10 @@ figure detection separately retains exact embedded image/mask artifacts and
 renders captioned PDF drawing-command diagrams with source-backed caption,
 subfigure-label, and legend associations. Engine-neutral relevance contracts
 then allow an injected processor to score those exact candidates against one
-review question without deleting proposed-not-necessary figures.
+review question without deleting proposed-not-necessary figures. A bounded JIT
+coordinator resolves page, region, and structure-node selections into isolated
+work items, invokes one injected processor per selection, preserves retries and
+partial failures, and computes separate derived cache identities.
 
 PDF document support follows an output-independent pipeline:
 
@@ -232,6 +235,22 @@ any as source fact or acceptance. Ordered completed, partial, and failed
 outcomes preserve every input selection, warnings, and typed failures. The
 boundary runs no default model and suppresses no candidate.
 
+For generic JIT composition, `BoundedProcessingCoordinator` resolves each exact
+`ProcessingSelection` to a `ProcessingWorkItem` containing only selected full
+pages, source spans, structure nodes, and input object IDs. It does not pass the
+complete document or source bytes to `ProcessingProcessor`. The processor
+returns bounded immutable artifacts plus warnings and typed failures. Fully
+failed, wholly retryable invocations may be retried within the configured
+attempt bound; partial output is retained without automatic retry or merge.
+Every attempt remains inspectable, and non-retryable selection failure does not
+prevent later selections from running.
+
+An optional `DerivedProcessingCache` may reuse exact completed or partial
+selection results. Failed results are never written. Cache keys bind the exact
+resolved selection, all coordination limits, processor/backend/configuration
+identity, and ordered immutable resources. The coordinator supplies no cache
+implementation and does not mix derived results into raw `ExtractionCache`.
+
 The ingestion package defines and coordinates the request and result contracts.
 It does not choose when retrieval should trigger the request, which model to
 run, or where a projected artifact should be written.
@@ -264,7 +283,10 @@ warnings. Figure candidates also remain outside the raw cache. Figure-relevance
 cache identity additionally includes the exact review question, ordered complete
 detection evidence, configured thresholds and bounds, processor/backend
 versions, and immutable model/prompt/resource identities. Relevance results are
-not added to the raw extraction cache.
+not added to the raw extraction cache. Generic JIT cache identity separately
+binds the resolved selected evidence, coordinator contract and configuration,
+and processor/backend/configuration/resource provenance. Only exact completed or
+partial selection results are eligible for an injected derived cache.
 
 ## Structural Model
 
@@ -412,6 +434,9 @@ The architecture depends on small protocols:
 - `DocumentProcessor` derives enriched content while preserving provenance;
 - `ChunkProducer` converts structured content into source-backed chunks;
 - `ExtractionCache` retrieves and stores versioned extraction results;
+- `ProcessingProcessor` derives artifacts from one exact bounded work item;
+- `DerivedProcessingCache` optionally stores non-failed derived selection
+  results;
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
@@ -422,7 +447,9 @@ The architecture depends on small protocols:
 
 Concrete implementations depend inward on these contracts. Optional PDF,
 OCR, or model dependencies must not be imported merely by importing the base
-package.
+package. The generic coordinator catches selection-local processor failures but
+requires truthful processor identity resolution; it supplies no engine, source-
+byte loader, filesystem cache, or execution sandbox.
 
 ## Dependency Rules
 

@@ -32,6 +32,12 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
+from projectkoios.ingestion.processing import (
+    ProcessingInvocationResult,
+    ProcessingProcessorIdentity,
+    ProcessingSelectionResult,
+    ProcessingWorkItem,
+)
 from projectkoios.ingestion.reconciliation import (
     OCRReconciliationInput,
     OCRReconciliationResult,
@@ -174,6 +180,33 @@ class TableStructureReconstructor(Protocol):
     def reconstruct(
         self, detection_result: TableDetectionResult
     ) -> TableStructureResult: ...
+
+
+class ProcessingProcessor(Protocol):
+    """Injected processor over one exact bounded processing work item."""
+
+    name: str
+    version: str
+
+    def identity_for(
+        self, work_item: ProcessingWorkItem
+    ) -> ProcessingProcessorIdentity: ...
+
+    def process(
+        self, work_item: ProcessingWorkItem
+    ) -> ProcessingInvocationResult: ...
+
+
+class DerivedProcessingCache(Protocol):
+    """Optional cache for non-failed derived selection results."""
+
+    def get(self, cache_key: str) -> ProcessingSelectionResult | None: ...
+
+    def put(
+        self,
+        cache_key: str,
+        result: ProcessingSelectionResult,
+    ) -> None: ...
 
 
 class ExtractionCache(Protocol):

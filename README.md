@@ -319,4 +319,29 @@ other resource identities. The package chooses no model, service, executable,
 or destination, writes no files, and does not put relevance results in raw
 `ExtractionCache`.
 
+## Bounded just-in-time processing coordination
+
+`BoundedProcessingCoordinator` invokes one injected `ProcessingProcessor` over
+ordered immutable selections. A `ProcessingSelection` may identify exact source
+spans, physical page ranges, uniquely resolved printed-page ranges, structure
+node IDs, or their explicit union. Resolution creates a `ProcessingWorkItem`
+that exposes only selected full pages, spans, nodes, and object IDs; the
+coordinator does not pass the complete extracted document or source bytes to the
+processor.
+
+Selection-local completed, partial, and failed results retain immutable derived
+artifacts, warnings, typed failures, and every retry attempt. Only fully failed
+results whose failures are all retryable are retried, up to the configured
+bound. Partial output is retained without automatic merging or retry. Unexpected
+processor exceptions become generic non-retryable failure evidence without
+retaining exception text.
+
+Derived cache keys cover the exact resolved work item, coordinator contract and
+configuration, processor/backend versions, processor configuration digest, and
+ordered immutable resources. An optional `DerivedProcessingCache` may reuse only
+completed or partial selection results; failed results are never published to
+it. This cache is separate from raw `ExtractionCache`, and the package provides
+no default persistence, engine, model, source-byte loader, or destination
+writer.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
