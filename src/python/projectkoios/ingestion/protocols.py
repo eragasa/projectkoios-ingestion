@@ -44,6 +44,10 @@ from projectkoios.ingestion.reconciliation import (
 )
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
+from projectkoios.ingestion.transcription import (
+    StructuredTranscriptionResult,
+    TranscriptionInput,
+)
 
 
 class ChunkIndexWriter(Protocol):
@@ -207,6 +211,17 @@ class DerivedProcessingCache(Protocol):
         cache_key: str,
         result: ProcessingSelectionResult,
     ) -> None: ...
+
+
+class StructuredTranscriptionComposer(Protocol):
+    """Compose exact derived evidence without choosing a destination."""
+
+    name: str
+    version: str
+
+    def compose(
+        self, transcription_input: TranscriptionInput
+    ) -> StructuredTranscriptionResult: ...
 
 
 class ExtractionCache(Protocol):

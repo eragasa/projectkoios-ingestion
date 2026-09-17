@@ -72,8 +72,10 @@ that exact figure evidence while exercising scored question-specific proposals;
 no fixture supplies an accepted relevance judgment. Focused table-detector tests
 use the maintained ruled case and separately generated unruled, multi-page, and
 merged-cell-signal cases; those tests propose bounded regions and
-associations, not cell structure or accepted data. The `extraction_quality`
-value is only
+associations, not cell structure or accepted data. Structured-transcription
+tests compose the maintained born-digital, equation, table, and figure cases as
+exact typed evidence; no fixture supplies an accepted or proofread transcript.
+The `extraction_quality` value is only
 the current extractor's text-density metric, while layout confidence is only a
 bounded heuristic score. Neither is a probability or scientific judgment. In
 particular, the equation and table cases preserve literal native text and block

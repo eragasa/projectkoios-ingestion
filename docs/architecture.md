@@ -91,7 +91,10 @@ then allow an injected processor to score those exact candidates against one
 review question without deleting proposed-not-necessary figures. A bounded JIT
 coordinator resolves page, region, and structure-node selections into isolated
 work items, invokes one injected processor per selection, preserves retries and
-partial failures, and computes separate derived cache identities.
+partial failures, and computes separate derived cache identities. Deterministic
+structured composition then proposes ordered page anchors, prose, headings,
+equations, tables, and figures while retaining every exact upstream object and
+making omissions and uncertain order explicit.
 
 PDF document support follows an output-independent pipeline:
 
@@ -287,6 +290,10 @@ not added to the raw extraction cache. Generic JIT cache identity separately
 binds the resolved selected evidence, coordinator contract and configuration,
 and processor/backend/configuration/resource provenance. Only exact completed or
 partial selection results are eligible for an injected derived cache.
+Structured-transcription cache identity binds the exact document and complete
+structure/equation/table/figure result identities, the whitespace-normalization
+method, all composition limits, and composer version. Structured transcription
+also remains outside the raw extraction cache.
 
 ## Structural Model
 
@@ -375,6 +382,31 @@ not a reconstructed span, and completed detection is not semantic correctness,
 scientific validation, publication suitability, or human acceptance. Derived
 table candidates are not stored in the cold extraction cache.
 
+## Structured Transcription Model
+
+The deterministic composer consumes one exact document and complete exact
+structure analysis, equation detection, table reconstruction, and figure
+detection results. It produces destination-neutral page anchors, normalized
+heading/prose items, and typed equation/table/figure references. It does not
+flatten tables or figures into prose and does not replace equation candidates
+with recognized mathematics.
+
+Text normalization only joins exact ordered source strings, collapses Unicode
+whitespace runs to one ASCII space, and trims the result. Exact raw strings,
+block IDs, and spans remain adjacent evidence. Typed items retain complete
+upstream objects through the input contract. Every raw block is accounted for by
+an item or an explicit omission; duplicate typed/structural representation and
+unrepresented non-text blocks cannot disappear silently.
+
+Ordering records whether it uses page anchoring, proposed source geometry,
+proposed structure reading order, or a warned uncertain source-order fallback.
+Stable item identity is source-local and excludes global list position, while
+the result identity includes the complete order. `proposed` and
+`proposed_with_uncertainty` are composition states only, not proofread,
+scientifically validated, accepted, or publication-ready states. The model owns
+no Markdown, citekeys, filenames, vault paths, Obsidian syntax, reading status,
+or scientific-acceptance field.
+
 ## Rough Chunking Boundary
 
 The accepted repository boundary places chunking algorithms outside this
@@ -442,6 +474,8 @@ The architecture depends on small protocols:
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
 - `EquationTranscriptionProcessor` proposes bounded LaTeX/MathML evidence;
 - `TableCandidateDetector` proposes bounded rendered table evidence;
+- `StructuredTranscriptionComposer` composes exact typed evidence without
+  choosing a destination;
 - `ArtifactWriter` accepts destination-neutral artifacts;
 - `ChunkIndexWriter` accepts chunk streams.
 

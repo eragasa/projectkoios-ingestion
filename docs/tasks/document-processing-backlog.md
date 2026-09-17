@@ -564,21 +564,54 @@ items; ordered completed/partial/failed aggregation; retry success and
 exhaustion; no partial/non-retryable retry; completed cache reuse; failed-result
 cache exclusion; complete derived cache invalidation; per-selection and
 aggregate typed output resource limits; rejection of unselected output
-provenance and stale source blobs;
-bounded iterables; deterministic identity; immutability; stale IDs; and runtime
+provenance and stale source blobs; bounded iterables; deterministic identity,
+immutability, stale IDs, and runtime
 processor/cache protocol typing.
 
-### ING-TRANSCRIPT-01 — Structured transcription proposal
+### ING-TRANSCRIPT-01 — Structured transcription proposal (implemented)
 
-Compose ordered prose, headings, equation candidates, tables, figures, and page
-anchors into a destination-independent transcription model.
+`TranscriptionInput` retains one exact document and complete exact structure,
+equation-detection, table-structure, and figure-detection results. Every stage
+must refer to the same logical source and exact blob; missing processing must be
+represented by a valid empty result rather than silently inferred. Input
+identity binds a hash of the complete extracted-document value, all upstream
+result IDs, and complete composition configuration.
+
+`DeterministicStructuredTranscriptionComposer` emits ordered page anchors,
+headings, prose, equation candidates, table structures, and figure candidates.
+Typed items link complete upstream objects rather than flattening tables or
+figures into prose or claiming corrected equation text. Text normalization only
+joins exact ordered raw strings, collapses Unicode whitespace runs to one ASCII
+space, and trims the result. Exact strings, block IDs, and spans remain retained
+and cross-validated.
+
+Order status distinguishes page anchors, proposed geometry, proposed structure
+order, and warned uncertain source-order fallback. Duplicate typed/structural
+representation, absent text payloads, and unrepresented non-text blocks become
+immutable omissions. Represented omissions link replacement item IDs, and every
+raw block is covered by an item or omission. Item IDs remain source-local and do
+not include global order index; complete order enters result identity.
+
+Status is only `proposed` or `proposed_with_uncertainty`, never proofread,
+scientifically validated, publication-ready, or human-accepted. The model has no
+citekey, vault path, Obsidian syntax, reading status, or scientific-acceptance
+field. Derived cache identity covers every exact input result, configuration,
+normalization method, and composer version; no transcription is stored in raw
+`ExtractionCache`.
+
+Configuration hard-bounds blocks, nodes, typed objects, items, omissions,
+warnings, spans, text, rendered/embedded input bytes, and retained result size.
+The composer writes no files and chooses no destination renderer.
 
 **Depends on:** `ING-STRUCTURE-01`, `ING-EQUATION-01`, `ING-TABLE-02`, and
 `ING-FIGURE-01`.
 
-**Acceptance:** normalized text links to raw blocks; omissions and uncertain
-ordering are explicit; the result contains no citekey, vault path, Obsidian
-syntax, reading status, or scientific-acceptance status.
+**Validation:** focused tests cover exact whitespace-normalized raw text,
+complete page anchors, equation/table/figure links, typed replacement omissions,
+explicit uncertain ordering and raw fallback warnings, complete cache
+invalidation, cross-source rejection, artifact/output limits, source-local
+identity, deterministic reruns, immutability, stale IDs, public exports, and
+runtime protocol typing.
 
 ### ING-PROVENANCE-01 — Derivation audit validator
 

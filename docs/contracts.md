@@ -12,8 +12,9 @@ Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
 bounded table-candidate detection, deterministic table-structure
 reconstruction, bounded figure-candidate detection, engine-neutral figure-
-relevance contracts, and bounded JIT processing coordination are implemented
-and exported. `RoughChunk` remains planned until implemented, tested, and
+relevance contracts, bounded JIT processing coordination, and deterministic
+structured-transcription proposals are implemented and exported. `RoughChunk`
+remains planned until implemented, tested, and
 exported.
 
 ## Contract Principles
@@ -558,6 +559,75 @@ from general retained-size accounting to avoid double counting.
 The protocol performs no relevance acceptance, pixel interpretation, semantic
 correction, scientific validation, publication selection, destination
 rendering, or human approval. It writes no files and stores no derived result.
+
+## Structured transcription proposals
+
+Structured-transcription contract version 1.0, composer version 1, and
+configuration version 1 define deterministic destination-neutral composition.
+`TranscriptionInput` retains one exact `ExtractedDocument`, complete same-source
+`StructureAnalysis`, `EquationDetectionResult`, `TableStructureResult`, and
+`FigureDetectionResult`, plus every composition limit. Missing stages are not
+silently interpreted as empty; an upstream stage may explicitly supply a valid
+empty result.
+
+Input validation requires exact document equality across all derived stages,
+complete structure-analysis identity, globally unique raw block IDs, current
+structure/candidate block links, same-source in-page finite spans, and bounded
+rendered/embedded artifact bytes. A `document_evidence_id` hashes the complete
+immutable extracted-document value. The input ID binds that evidence ID, every
+upstream result ID, the logical and exact blob identities, and complete
+configuration.
+
+`DeterministicStructuredTranscriptionComposer` emits an ordered tuple of
+immutable `TranscriptionItem` values:
+
+- one `page_anchor` for every physical page, preserving its printed label;
+- `heading` and `prose` items linked to exact structure nodes or raw fallback
+  blocks;
+- `equation` items linked to complete equation candidates;
+- `table` items linked to complete reconstructed table structures; and
+- `figure` items linked to complete figure candidates.
+
+Each item records its source-object kind/ID, physical and printed page, source
+block IDs/spans, evidence status, confidence, order index/status, warnings, and
+bounded evidence. Table and figure items intentionally contain no invented text;
+the complete typed objects remain reachable through `TranscriptionInput`.
+Equation item text is detector-native raw evidence, not a corrected mathematical
+transcription.
+
+Text items preserve every exact source string. Their only normalization joins
+ordered source strings with a newline, collapses each Unicode whitespace run to
+one ASCII space, and trims leading/trailing whitespace. The method is explicitly
+`collapse_unicode_whitespace_v1`. It performs no Unicode compatibility
+normalization, spelling correction, symbol interpretation, or semantic rewrite.
+Direct construction verifies normalized text against exact source strings.
+
+Ordering is always explicit. `page_anchor`, `proposed_geometric`, and
+`proposed_structure` identify their evidence; `uncertain_source_order` requires
+a warning when neither geometry nor structure order is available. The composer
+uses stable source-object identity as its final tie breaker. Item IDs exclude
+global order index so inserting an earlier item does not rename unrelated items;
+the complete order and warning links enter result identity.
+
+`TranscriptionOmission` makes duplicate or absent representation explicit.
+Reasons distinguish content represented by a typed object, content represented
+by an earlier item, source blocks with no text payload, and unrepresented
+non-text blocks. Represented omissions link exact replacement item IDs. Every
+raw block must be covered by at least one item or omission, and all omission,
+warning, source-object, block, and span links are validated.
+
+Result status is only `proposed` or `proposed_with_uncertainty`. Omissions,
+warnings, ambiguous evidence, or uncertain ordering select the latter. Neither
+status asserts proofread accuracy, semantic correctness, scientific validation,
+publication suitability, or human acceptance. The contract contains no citekey,
+vault path, Obsidian syntax, reading status, or scientific-acceptance field.
+
+`build_transcription_cache_key` binds the exact input, contract/configuration
+versions, composer name/version, normalization method, and every resource limit.
+It defines derived identity only; the composer writes no files and stores no
+result in raw `ExtractionCache`. Configuration hard-bounds raw blocks, structure
+nodes, typed objects, items, omissions, warnings, source spans, per-item and
+total text, exact input artifact bytes, and retained result size.
 
 ## `ExtractedArticle`
 

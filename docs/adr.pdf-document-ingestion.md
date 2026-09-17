@@ -239,9 +239,15 @@ retries only wholly retryable failed invocations within a configured bound, and
 computes processor/resource-bound derived cache keys. Failed results are not
 eligible for the optional injected derived cache, and no derived result enters
 raw `ExtractionCache`. The coordinator selects no engine, model, source loader,
-cache persistence, or destination writer. The absence or failure of OCR
-execution must not be hidden by treating raw text extraction as a proofread
-transcription.
+cache persistence, or destination writer. A deterministic structured-
+transcription composer now combines exact structure, equation, table, and figure
+evidence into ordered page anchors and typed destination-neutral items. It
+retains exact source strings beside whitespace-only normalization, records
+uncertain ordering and every raw-block omission explicitly, and does not flatten
+tables/figures or claim equation interpretation. It defines no citekey, vault
+path, Obsidian syntax, reading status, publication decision, scientific
+validation, or human acceptance. The absence or failure of OCR execution must
+not be hidden by treating raw text extraction as a proofread transcription.
 
 ## Relationship to existing decision
 

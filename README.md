@@ -344,4 +344,28 @@ it. This cache is separate from raw `ExtractionCache`, and the package provides
 no default persistence, engine, model, source-byte loader, or destination
 writer.
 
+## Deterministic structured transcription proposals
+
+`DeterministicStructuredTranscriptionComposer` combines one exact document,
+structure analysis, equation detection result, table structure result, and
+figure detection result. It emits ordered destination-neutral page anchors,
+headings, prose, equation candidates, table structures, and figure candidates.
+Typed items retain links to their complete upstream objects rather than being
+flattened into Markdown or accepted text.
+
+Text normalization is limited to joining exact raw source strings and collapsing
+Unicode whitespace with the declared `collapse_unicode_whitespace_v1` method.
+Every normalized string retains its exact source strings, raw block IDs, and
+source spans. Equation text remains detector-native evidence; tables and figures
+remain typed references with no invented textual representation.
+
+Ordering is an explicit proposal based on source geometry, structure reading
+order, or a warned uncertain source-order fallback. Duplicate representation and
+unrepresented non-text blocks become immutable `TranscriptionOmission` records;
+every raw block is covered by an item or omission. Result status is only
+`proposed` or `proposed_with_uncertainty`, never proofread accuracy, scientific
+validation, publication suitability, or human acceptance. The stage emits no
+citekey, vault path, Obsidian syntax, reading status, or destination artifact,
+writes no files, and stores nothing in raw `ExtractionCache`.
+
 Routing and role split live in `projectkoios-bootstrap/docs/agent-charter.md`.
