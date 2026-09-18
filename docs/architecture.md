@@ -290,7 +290,7 @@ and processor/backend/configuration/resource provenance. Only exact completed or
 partial selection results are eligible for an injected derived cache.
 Structured-transcription cache identity binds the exact document and complete
 structure/equation/table/figure result identities, the whitespace-normalization
-method, all composition limits, and composer version. Structured transcription also remains outside the raw extraction cache. Clean-transcript identity binds the exact structured-transcription result, layouts, included raw blocks and cleaned text, typed exclusions, transformation counts, page projections, processor/configuration identity, and final UTF-8 hash. The batch materializer persists only the compact clean projection, plain text, complete audit report, and an identity manifest; bulky deterministic intermediate graphs remain reconstructible rather than duplicated on disk.
+method, all composition limits, and composer version. Structured transcription also remains outside the raw extraction cache. Clean-transcript identity binds the exact structured-transcription result, layouts, included raw blocks and cleaned text, typed exclusions, transformation counts, page projections, processor/configuration identity, and final UTF-8 hash. The batch materializer persists the compact clean projection, plain text, complete audit report, Proposed reference-evidence projection, and an identity manifest; bulky deterministic intermediate graphs remain reconstructible rather than duplicated on disk. Owner-internal transcript batch manifest schema 2 identifies this five-file set and binds the schema into manifest identity. It is separate from clean-transcript artifact generation 1 and reference-evidence schema generation 1. Legacy four-file schema-1 sets remain immutable and fail closed as incomplete rather than being relabeled or repaired.
 
 ## Structural Model
 
@@ -453,7 +453,19 @@ or structure node must not renumber unrelated objects.
 
 The derivation-audit boundary accepts exact source bytes and explicitly registered typed artifacts. It validates only supplied layers, but a supplied downstream layer cannot hide an unregistered dependency: embedded OCR, layout, detection, structure, transcription, or clean-projection inputs must match the registered upstream object exactly. Clean records and exclusions must reproduce exact root block text/spans, remain on their root page, preserve page-local record order, and consolidate to the artifact text exactly. The validator traverses immutable in-memory contracts rather than Markdown, vault paths, or storage records. It produces stable findings and a stable report without repairing, normalizing, publishing, or accepting evidence.
 
-A derivation audit is a fail-closed software-integrity gate, not a semantic validator. Passing it confirms that source identities, regions, processor identities, hashes, stable IDs, and references form one internally consistent bounded graph. Scientific, mathematical, pedagogical, publication, and lifecycle judgments remain outside ingestion.
+The Proposed reference-evidence projection publishes a compact,
+content-addressed view of one exact completed extraction,
+`automated_unreviewed` clean transcript, and recorded derivation audit. It binds
+source hash/size/media identity, producer contract and generator versions,
+artifact identities and digests, and the complete named audit lineage without
+serializing source locators, filenames, private paths, workspace names, or
+protected text. Consumers receive record bytes through an injected boundary;
+the producer's materialization path is not an API. Strict parsing and
+source-identity verification fail closed for unsupported generations,
+noncanonical or unknown fields, incomplete coverage, and stale or mismatched
+source evidence.
+
+A derivation audit is a fail-closed software-integrity gate, not a semantic validator. Passing it confirms that source identities, regions, processor identities, hashes, stable IDs, and references form one internally consistent bounded graph. The reference-evidence record identifies this as a recorded producer audit and explicitly sets independent revalidation false. Scientific, mathematical, pedagogical, publication, and lifecycle judgments remain outside ingestion.
 
 ## Artifact Ownership
 

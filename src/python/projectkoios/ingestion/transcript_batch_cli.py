@@ -32,6 +32,10 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,
 )
+from projectkoios.ingestion.reference_evidence import (
+    build_reference_evidence,
+    serialize_reference_evidence,
+)
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
@@ -48,6 +52,8 @@ from projectkoios.ingestion.transcription import (
     TranscriptionInput,
 )
 
+TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION = 2
+
 
 @dataclass(frozen=True)
 class _TranscriptTarget:
@@ -55,6 +61,7 @@ class _TranscriptTarget:
     clean_artifact: Path
     clean_text: Path
     audit_artifact: Path
+    reference_evidence: Path
     manifest: Path
     existing: bool
 
@@ -66,6 +73,7 @@ class _TranscriptTarget:
             clean_artifact=root / "clean.json",
             clean_text=root / "clean.txt",
             audit_artifact=root / "audit.json",
+            reference_evidence=root / "reference-evidence.json",
             manifest=root / "manifest.json",
             existing=False,
         )
@@ -83,16 +91,18 @@ class _TranscriptTarget:
             clean_artifact=target.clean_artifact,
             clean_text=target.clean_text,
             audit_artifact=target.audit_artifact,
+            reference_evidence=target.reference_evidence,
             manifest=target.manifest,
             existing=all(existence),
         )
 
     @property
-    def paths(self) -> tuple[Path, Path, Path, Path]:
+    def paths(self) -> tuple[Path, Path, Path, Path, Path]:
         return (
             self.clean_artifact,
             self.clean_text,
             self.audit_artifact,
+            self.reference_evidence,
             self.manifest,
         )
 
@@ -128,10 +138,13 @@ def _manifest_text(
     clean_text_sha256: str,
     audit_report_id: str,
     audit_artifact_sha256: str,
+    reference_evidence_record_id: str,
+    reference_evidence_sha256: str,
     counts: dict[str, int],
 ) -> str:
     manifest_id = stable_id(
         "pdf-transcription-batch-manifest",
+        TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION,
         item.item.source_id,
         item.item.sha256,
         item.extraction_artifact_sha256,
@@ -148,10 +161,12 @@ def _manifest_text(
         clean_text_sha256,
         audit_report_id,
         audit_artifact_sha256,
+        reference_evidence_record_id,
+        reference_evidence_sha256,
         tuple(sorted(counts.items())),
     )
     value: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION,
         "manifest_id": manifest_id,
         "source_id": item.item.source_id,
         "source_sha256": item.item.sha256,
@@ -170,6 +185,8 @@ def _manifest_text(
         "clean_text_sha256": clean_text_sha256,
         "derivation_audit_report_id": audit_report_id,
         "derivation_audit_artifact_sha256": audit_artifact_sha256,
+        "reference_evidence_record_id": reference_evidence_record_id,
+        "reference_evidence_sha256": reference_evidence_sha256,
         "counts": dict(sorted(counts.items())),
         "status": "automated_unreviewed",
         "intermediate_policy": (
@@ -193,7 +210,7 @@ def _derive(
     *,
     cache_root: Path | None,
     low_text_threshold: int,
-) -> tuple[tuple[str, str, str, str], dict[str, object]]:
+) -> tuple[tuple[str, str, str, str, str], dict[str, object]]:
     if target.root.resolve() != target.root or any(
         path.is_symlink() for path in target.paths
     ):
@@ -272,6 +289,16 @@ def _derive(
     clean_artifact_text = serialize_contract(clean) + "\n"
     clean_text = clean.text
     audit_text = serialize_contract(audit) + "\n"
+    reference_evidence = build_reference_evidence(
+        extraction_result=extraction,
+        extraction_artifact=extraction_bytes,
+        clean_transcript=clean,
+        clean_transcript_artifact=clean_artifact_text.encode("utf-8"),
+        derivation_audit=audit,
+        derivation_audit_artifact=audit_text.encode("utf-8"),
+    )
+    reference_evidence_bytes = serialize_reference_evidence(reference_evidence)
+    reference_evidence_text = reference_evidence_bytes.decode("utf-8")
     if structure.analysis_id is None:
         raise ValueError("article structure analysis has no stable identity")
     counts = {
@@ -303,9 +330,19 @@ def _derive(
         clean_text_sha256=_sha256_text(clean_text),
         audit_report_id=audit.report_id,
         audit_artifact_sha256=_sha256_text(audit_text),
+        reference_evidence_record_id=reference_evidence.record_id,
+        reference_evidence_sha256=hashlib.sha256(
+            reference_evidence_bytes
+        ).hexdigest(),
         counts=counts,
     )
-    texts = (clean_artifact_text, clean_text, audit_text, manifest_text)
+    texts = (
+        clean_artifact_text,
+        clean_text,
+        audit_text,
+        reference_evidence_text,
+        manifest_text,
+    )
     action = "created"
     if target.existing:
         for path, expected in zip(target.paths, texts, strict=True):
@@ -323,10 +360,17 @@ def _derive(
         "output_directory": item.item.output_directory.as_posix(),
         "action": action,
         "manifest_id": manifest["manifest_id"],
+        "transcript_batch_manifest_schema_version": (
+            TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION
+        ),
         "clean_transcript_artifact_id": clean.artifact_id,
         "clean_text_sha256": clean.text_sha256,
         "derivation_audit_report_id": audit.report_id,
         "audit_status": audit.status.value,
+        "reference_evidence_record_id": reference_evidence.record_id,
+        "reference_evidence_sha256": hashlib.sha256(
+            reference_evidence_bytes
+        ).hexdigest(),
         "counts": counts,
     }
     return texts, summary
@@ -358,6 +402,9 @@ def main(arguments: list[str] | None = None) -> int:
             json.dumps(
                 {
                     "schema_version": 1,
+                    "transcript_batch_manifest_schema_version": (
+                        TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION
+                    ),
                     "status": "planned",
                     "items": [
                         {
@@ -410,6 +457,9 @@ def main(arguments: list[str] | None = None) -> int:
         json.dumps(
             {
                 "schema_version": 1,
+                "transcript_batch_manifest_schema_version": (
+                    TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION
+                ),
                 "status": "completed",
                 "items": completed,
             },

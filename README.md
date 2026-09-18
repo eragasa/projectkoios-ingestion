@@ -443,7 +443,18 @@ writes no files, and stores nothing in raw `ExtractionCache`.
 
 `DeterministicCleanTranscriptProjector` creates a separate immutable, automated, unreviewed projection over one complete structured-transcription result and its exact layouts. It preserves each included block's exact raw text, source spans, physical and printed page, proposed order, cleaned text, and typed transformation counts. Excluded repeated margin text, page numbers, and content empty after control-character sanitization retain their exact raw evidence and typed reason. Cleanup is limited to removing soft hyphens, replacing C0 control characters, joining conservative ASCII line-break hyphenations, and collapsing Unicode whitespace; it performs no spelling, symbol, semantic, or scientific correction.
 
-`koios-compose-pdf-transcripts-batch` consumes the same hash-locked `PdfBatchPlan` after raw extraction and equation detection. Dry-run is the default. Explicit `--apply` deterministically runs layout, article structure, equation replay, table detection/reconstruction, figure detection, structured composition, clean projection, and a complete derivation audit. It publishes an all-or-none per-item set at `derived/transcription/`: `clean.json`, `clean.txt`, `audit.json`, and `manifest.json`. The manifest binds all reconstructible intermediate result IDs and artifact hashes; bulky intermediate table, figure, and full transcription graphs are not materialized. Exact replay verifies all four files byte-for-byte and reports `unchanged`; incomplete, unsafe, or different existing sets fail closed.
+`koios-compose-pdf-transcripts-batch` consumes the same hash-locked `PdfBatchPlan` after raw extraction and equation detection. Dry-run is the default. Explicit `--apply` deterministically runs layout, article structure, equation replay, table detection/reconstruction, figure detection, structured composition, clean projection, and a complete derivation audit. It publishes an all-or-none per-item set containing the clean artifact/text, derivation audit, Proposed reference-evidence projection, and batch manifest. Owner-internal transcript batch manifest schema `2` identifies this five-file artifact-set shape; it is distinct from clean-transcript artifact generation `1` and reference-evidence schema generation `1`. The manifest binds its schema version, every reconstructible intermediate result identity, and all artifact hashes; bulky intermediate table, figure, and full transcription graphs are not materialized. Exact replay verifies all five files byte-for-byte and reports `unchanged`. Legacy four-file schema-`1` sets, incomplete sets, unsafe sets, and different existing sets are preserved and fail closed rather than being relabeled or repaired.
+
+External consumers receive the canonical reference-evidence bytes through an
+injected boundary; they do not discover them by constructing this private
+workspace layout. The record binds exact source bytes, completed extraction,
+`automated_unreviewed` transcript generation `1`, and the recorded derivation
+audit while omitting source locators, filenames, paths, and protected text.
+Strict parse and verify APIs reject unsupported generations, unknown fields,
+noncanonical bytes, incomplete lineage, and source mismatch. This Proposed
+projection does not claim independent revalidation, proofreading, extraction
+accuracy, scientific validity, or publication suitability; references-side
+consumption and cross-repository conformance remain pending.
 
 ```bash
 koios-compose-pdf-transcripts-batch batch.json \

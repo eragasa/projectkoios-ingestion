@@ -13,8 +13,9 @@ equation-candidate detection, engine-neutral equation-transcription contracts,
 bounded table-candidate detection, deterministic table-structure
 reconstruction, bounded figure-candidate detection, engine-neutral figure-
 relevance contracts, bounded JIT processing coordination, deterministic
-structured-transcription proposals, and deterministic derivation auditing are
-implemented and exported. `RoughChunk`
+structured-transcription proposals, deterministic derivation auditing, and the
+Proposed deterministic reference-evidence projection are implemented and
+exported. `RoughChunk`
 remains planned until implemented, tested, and
 exported.
 
@@ -658,7 +659,46 @@ Each `CleanTranscriptBlock` retains one exact root block ID, physical and printe
 
 `DeterministicCleanTranscriptProjector` requires one exact layout per root page. It applies no compatibility normalization, dictionary, model, or semantic rewrite. It replaces bounded C0 controls with spaces, removes soft hyphens, joins only conservative ASCII hyphen-plus-line-break word continuations, collapses Unicode whitespace, and trims each included block. Repeated header/footer detection is restricted to configurable top/bottom margins and requires a bounded repeated normalized key across multiple pages; decimal and lowercase Roman page numbers are removed only in those margins. Every excluded block remains exact evidence.
 
-The batch command publishes `clean.json`, `clean.txt`, `audit.json`, and `manifest.json` as one immutable per-item set. The manifest binds every deterministic intermediate result identity, the clean and audit artifact hashes, counts, limitations, and the explicit `deterministically_reconstructible_not_materialized` policy for bulky intermediate graphs. Replay requires byte identity. The projection is suitable as extraction-derived retrieval input but is never represented as human-proofread, semantically corrected, mathematically correct, scientifically validated, publication-ready, accepted, or human-approved.
+The batch command publishes the clean artifact/text, derivation audit,
+reference-evidence projection, and manifest as one immutable per-item set.
+Owner-internal transcript batch manifest schema `2` identifies this five-file
+shape and is distinct from clean-transcript artifact generation `1` and
+reference-evidence schema generation `1`. The manifest binds its schema version,
+every deterministic intermediate result identity, the clean, audit, and
+reference-evidence artifact hashes, counts, limitations, and the explicit
+`deterministically_reconstructible_not_materialized` policy for bulky
+intermediate graphs. Replay requires byte identity. Existing four-file schema-1
+sets are preserved and fail closed as incomplete rather than being relabeled or
+repaired. The clean projection is
+suitable as extraction-derived retrieval input but is never represented as
+human-proofread, semantically corrected, mathematically correct, scientifically
+validated, publication-ready, accepted, or human-approved.
+
+## Reference evidence projection
+
+The Proposed `projectkoios.ingestion.reference-evidence@0.1.0` projection is a
+bounded, canonical JSON summary of one exact completed extraction, one
+`automated_unreviewed` clean-transcript artifact, and one recorded passing
+complete derivation audit. It exposes source blob/hash/byte/media identity,
+extraction manifest/document/status/generator evidence, transcript generation,
+identity/status/generator evidence, and exact audit scope/status/identity. It
+contains artifact digests and complete named lineage but no source locator,
+filename, workspace path, protected text, or machine locator.
+
+`build_reference_evidence` rejects mismatched-source, contradictory, incomplete,
+failed-audit, and noncanonical artifact inputs. `parse_reference_evidence`
+strictly rejects unknown fields, noncanonical JSON, unsupported versions or
+artifact generations, inconsistent identities, incomplete records, and bounded
+resource violations. `verify_reference_evidence` binds the record to a
+consumer-known source hash/size/media type and optionally to exact producer
+artifact bytes. Recorded passing audit remains explicitly distinct from
+independent revalidation.
+
+The projection preserves `automated_unreviewed` and makes no proofreading,
+extraction-accuracy, semantic-correction, scientific-validity, publication, or
+human-acceptance claim. Its Proposed status, pending references consumer, and
+remaining cross-repository conformance evidence are specified in
+[`contracts/reference-evidence.md`](contracts/reference-evidence.md).
 
 ## `ExtractedArticle`
 

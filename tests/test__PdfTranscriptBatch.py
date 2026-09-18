@@ -6,7 +6,12 @@ import shutil
 from pathlib import Path, PurePosixPath
 
 import pytest
-from projectkoios.ingestion import PdfBatchItem, PdfBatchPlan
+from projectkoios.ingestion import (
+    PdfBatchItem,
+    PdfBatchPlan,
+    parse_reference_evidence,
+    verify_reference_evidence,
+)
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
 from projectkoios.ingestion.transcript_batch_cli import main as transcript_batch
@@ -84,11 +89,14 @@ def test__transcript_batch__plans_and_materializes_audited_projection(
 
     assert transcript_batch(arguments) == 2
     planned = json.loads(capsys.readouterr().out)
+    assert planned["transcript_batch_manifest_schema_version"] == 2
     assert planned["items"][0]["action"] == "create"
 
     assert transcript_batch([*arguments, "--apply"]) == 0
     completed = json.loads(capsys.readouterr().out)
     item = completed["items"][0]
+    assert completed["transcript_batch_manifest_schema_version"] == 2
+    assert item["transcript_batch_manifest_schema_version"] == 2
     assert item["action"] == "created"
     assert item["audit_status"] == "passed"
     assert item["counts"]["source_pages"] == 1
@@ -100,16 +108,20 @@ def test__transcript_batch__plans_and_materializes_audited_projection(
         "clean.json",
         "clean.txt",
         "manifest.json",
+        "reference-evidence.json",
     }
     clean = json.loads((derived / "clean.json").read_text())
     manifest = json.loads((derived / "manifest.json").read_text())
     audit = json.loads((derived / "audit.json").read_text())
+    evidence_bytes = (derived / "reference-evidence.json").read_bytes()
+    evidence = parse_reference_evidence(evidence_bytes)
     text = (derived / "clean.txt").read_text()
     assert clean["status"] == "automated_unreviewed"
     assert clean["text"] == text
     assert "E = m c^2" in text
     assert clean["blocks"][0]["raw_text"]
     assert clean["blocks"][0]["source_spans"]
+    assert manifest["schema_version"] == 2
     assert manifest["status"] == "automated_unreviewed"
     assert manifest["intermediate_policy"] == (
         "deterministically_reconstructible_not_materialized"
@@ -120,6 +132,53 @@ def test__transcript_batch__plans_and_materializes_audited_projection(
     )
     assert clean["artifact_id"] in audit["audited_artifact_ids"]
     assert not audit["findings"]
+    assert item["reference_evidence_record_id"] == evidence.record_id
+    assert manifest["reference_evidence_record_id"] == evidence.record_id
+    assert evidence.source.content_sha256 == manifest["source_sha256"]
+    assert evidence.source.byte_length == manifest["source_byte_size"]
+    assert evidence.transcript.artifact_id == clean["artifact_id"]
+    assert evidence.derivation_audit.report_id == audit["report_id"]
+    assert evidence.derivation_audit.independently_revalidated is False
+    verify_reference_evidence(
+        evidence,
+        source_sha256=manifest["source_sha256"],
+        source_byte_length=manifest["source_byte_size"],
+        source_media_type="application/pdf",
+        extraction_artifact=(
+            ingestion / "article/extraction.json"
+        ).read_bytes(),
+        clean_transcript_artifact=(derived / "clean.json").read_bytes(),
+        derivation_audit_artifact=(derived / "audit.json").read_bytes(),
+    )
+    assert b"assets/equations.pdf" not in evidence_bytes
+    assert b"derived/transcription" not in evidence_bytes
+
+
+def test__transcript_batch__preserves_legacy_schema_one_set(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, plan, ingestion = _setup(tmp_path)
+    capsys.readouterr()
+    target = ingestion / "article/derived/transcription"
+    target.mkdir()
+    legacy_payloads = {
+        "clean.json": b'{"legacy":"clean"}\n',
+        "clean.txt": b"legacy clean text\n",
+        "audit.json": b'{"legacy":"audit"}\n',
+        "manifest.json": b'{"schema_version":1}\n',
+    }
+    for name, payload in legacy_payloads.items():
+        (target / name).write_bytes(payload)
+
+    with pytest.raises(SystemExit, match="2"):
+        transcript_batch([*_arguments(source, plan, ingestion), "--apply"])
+
+    assert "transcription artifact set is incomplete" in capsys.readouterr().err
+    assert not (target / "reference-evidence.json").exists()
+    assert {
+        name: (target / name).read_bytes() for name in legacy_payloads
+    } == legacy_payloads
 
 
 def test__transcript_batch__replay_is_immutable_and_tampering_fails(
