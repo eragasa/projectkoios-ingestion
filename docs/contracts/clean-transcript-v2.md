@@ -1,5 +1,18 @@
 # Transcript v2 evidence-conservative cleanup contract
 
+## Contract metadata
+
+| Field | Value |
+|---|---|
+| Contract ID | `projectkoios.ingestion.clean-transcript` |
+| Owner | `projectkoios-ingestion` |
+| Status | Proposed |
+| Contract version | Unassigned (`v2` candidate) |
+| Architecture record | [`ADR20260918`](https://github.com/eragasa/projectkoios/blob/main/docs/adr.20260918.evidence-grounded-scientific-rag.md) |
+| Task | [`ING-TRANSCRIPT-03`](https://github.com/eragasa/projectkoios-ingestion/issues/2) |
+| Supersedes | Clean-transcript contract v1 only if separately accepted |
+| Consumers | `projectkoios-search`, managed ingestion clients |
+
 ## Status
 
 Proposed under

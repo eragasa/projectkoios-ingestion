@@ -7,7 +7,8 @@ and index writers through destination-independent interfaces. It does not own
 search storage, bibliography management, Markdown projection, or vault writes.
 
 - [Architecture](docs/architecture.md)
-- [Public data contracts](docs/contracts.md)
+- [Contract catalog](docs/contracts/README.md)
+- [Legacy aggregate of implemented data contracts](docs/contracts.md)
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
 - [Document-processing task status](docs/tasks/document-processing-backlog.md)
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
