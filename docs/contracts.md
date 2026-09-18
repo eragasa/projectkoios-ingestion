@@ -12,8 +12,9 @@ Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
 equation-candidate detection, engine-neutral equation-transcription contracts,
 bounded table-candidate detection, deterministic table-structure
 reconstruction, bounded figure-candidate detection, engine-neutral figure-
-relevance contracts, bounded JIT processing coordination, and deterministic
-structured-transcription proposals are implemented and exported. `RoughChunk`
+relevance contracts, bounded JIT processing coordination, deterministic
+structured-transcription proposals, and deterministic derivation auditing are
+implemented and exported. `RoughChunk`
 remains planned until implemented, tested, and
 exported.
 
@@ -649,6 +650,16 @@ result in raw `ExtractionCache`. Configuration hard-bounds raw blocks, structure
 nodes, typed objects, items, omissions, warnings, source spans, per-item and
 total text, exact input artifact bytes, and retained result size.
 
+## Automated clean transcript projections
+
+Clean-transcript contract version 1.0 and projector version 1 define a compact source-linked view over one complete `StructuredTranscriptionResult` and its exact `PageLayoutResult` tuple. `CleanTranscriptArtifact` binds the structured result ID, root document/source/blob/hash, ordered layout result IDs, included records, exclusions, pages, consolidated UTF-8 text/hash/length, processor/configuration identity, warnings, and the fixed `automated_unreviewed` status.
+
+Each `CleanTranscriptBlock` retains one exact root block ID, physical and printed page, global proposed order, exact raw text, cleaned text, exact source spans, and sorted transformation evidence. Each `CleanTranscriptExclusion` retains exact raw text/spans and one typed reason: `repeated_margin`, `page_number`, or `empty_after_sanitization`. `CleanTranscriptPage` binds ordered record IDs, an explicit physical/printed page marker, page text, and text hash. Artifact construction verifies stable identities, hashes, object counts, and deterministic bounds.
+
+`DeterministicCleanTranscriptProjector` requires one exact layout per root page. It applies no compatibility normalization, dictionary, model, or semantic rewrite. It replaces bounded C0 controls with spaces, removes soft hyphens, joins only conservative ASCII hyphen-plus-line-break word continuations, collapses Unicode whitespace, and trims each included block. Repeated header/footer detection is restricted to configurable top/bottom margins and requires a bounded repeated normalized key across multiple pages; decimal and lowercase Roman page numbers are removed only in those margins. Every excluded block remains exact evidence.
+
+The batch command publishes `clean.json`, `clean.txt`, `audit.json`, and `manifest.json` as one immutable per-item set. The manifest binds every deterministic intermediate result identity, the clean and audit artifact hashes, counts, limitations, and the explicit `deterministically_reconstructible_not_materialized` policy for bulky intermediate graphs. Replay requires byte identity. The projection is suitable as extraction-derived retrieval input but is never represented as human-proofread, semantically corrected, mathematically correct, scientifically validated, publication-ready, accepted, or human-approved.
+
 ## `ExtractedArticle`
 
 Specializes an extracted document with article-oriented structure, including
@@ -1068,6 +1079,16 @@ the configured selection bound. Output that exceeds configured limits becomes a
 typed non-retryable resource-limit failure. The coordinator chooses no model,
 engine, source loader, sandbox, cache persistence, or destination writer and
 writes no files.
+
+## Derivation audit
+
+Derivation-audit contract version 1.0 and processor version 2 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, JIT-processing, structured-transcription, and clean-transcript results. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
+
+`DerivationAuditValidator` hashes the source bytes and verifies byte length, raw manifest coverage, unique raw block identities, exact logical source/blob/hash lineage, page membership, printed-page labels, finite source geometry within the root page, retained byte hashes and lengths, nonempty extractor/processor/backend/configuration/contract identities, and each dataclass's intrinsic stable-ID contract. It resolves block, layout, structure-node, OCR line, equation candidate, table region/structure, figure component/evidence, processing work-item, transcription item/omission, and clean block/exclusion/page references transitively. Clean artifacts must register their exact transcription/layout dependencies, reproduce root raw text/spans, preserve page-local record order, and consolidate exactly to their retained text.
+
+A `DerivationAuditFinding` has a stable code, exact object path, optional object identity, bounded evidence, and stable finding ID. A `DerivationAuditReport` binds the root source, ordered audited artifact IDs, sorted layer counts, ordered finding IDs, and validator identity. Its status is `passed` exactly when findings are empty; `require_valid()` and `DerivationAuditValidator.validate()` raise `DerivationAuditError` otherwise. Object traversal, per-layer artifact counts, and retained findings are hard-bounded and raise `DerivationAuditLimitError` before unbounded work.
+
+Audit success establishes internal software provenance consistency only. It is not source proofreading, OCR accuracy validation, mathematical or semantic correction, scientific validation, publication suitability, lifecycle acceptance, or human approval.
 
 ## `IngestionWarning`
 

@@ -22,6 +22,7 @@ from projectkoios.ingestion import (
     TableDetectionResult,
     TableEvidenceStatus,
 )
+from projectkoios.ingestion.tables import _axis_segments
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -173,6 +174,34 @@ def test__table_detector__rejects_other_maintained_pdf_shapes() -> None:
     assert detected["tables"] == 1
     assert all(
         count == 0 for name, count in detected.items() if name != "tables"
+    )
+
+
+def test__table_rule_inspection__ignores_zero_length_segments() -> None:
+    point = pymupdf.Point(10, 10)
+
+    assert _axis_segments(("l", point, point)) == ()
+    assert _axis_segments(("re", pymupdf.Rect(10, 10, 10, 10))) == ()
+
+
+def test__table_detector__ignores_fill_only_drawings_without_width() -> None:
+    document = pymupdf.open()
+    page = document.new_page(width=520, height=420)
+    page.insert_text((50, 50), "Ordinary prose, not a table.", fontsize=11)
+    page.draw_rect(
+        pymupdf.Rect(40, 80, 160, 130),
+        color=None,
+        fill=(0.2, 0.4, 0.6),
+    )
+    payload = document.tobytes()
+    document.close()
+
+    result = _detect(payload, "fill-only")
+
+    assert result.candidates == ()
+    assert (
+        result.detection_input.page_rule_evidence[0].ignored_drawing_item_count
+        > 0
     )
 
 

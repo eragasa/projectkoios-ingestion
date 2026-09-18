@@ -41,12 +41,14 @@ _MAX_PAGES = 512
 _MAX_INPUT_BLOCKS = 16_384
 _MAX_TEXT_BLOCKS = 8_192
 _MAX_TEXT_CHARACTERS = 5_000_000
-_MAX_SOURCE_SPANS = 32_768
+_MAX_SOURCE_SPANS = 250_000
 _MAX_EMBEDDED_ASSETS = 8_192
 _MAX_EMBEDDED_ASSET_BYTES = 100_000_000
 _MAX_TOTAL_EMBEDDED_BYTES = 100_000_000
+_MAX_BACKEND_DRAWINGS_PER_PAGE = 2_000_000
+_MAX_BACKEND_DRAWING_ITEMS_PER_PAGE = 10_000_000
 _MAX_DRAWINGS_PER_PAGE = 100_000
-_MAX_DRAWING_ITEMS_PER_PAGE = 200_000
+_MAX_DRAWING_ITEMS_PER_PAGE = 500_000
 _MAX_TOTAL_DRAWINGS = 200_000
 _MAX_DRAWING_GROUP_COMPARISONS = 10_000_000
 _MAX_CANDIDATES = 256
@@ -56,7 +58,7 @@ _MAX_ASSOCIATION_COMPARISONS = 10_000_000
 _MAX_WARNINGS = 4_096
 _MAX_RESULT_BYTES = 128_000_000
 _MAX_TOTAL_RENDERED_PNG_BYTES = 100_000_000
-_MAX_TOTAL_RENDERED_PIXELS = 25_000_000
+_MAX_TOTAL_RENDERED_PIXELS = 100_000_000
 _MAX_IDENTITY_CHARACTERS = 4_096
 _MAX_TEXT_FIELD_CHARACTERS = 65_536
 _MAX_METADATA_CHARACTERS = 100_000
@@ -133,10 +135,14 @@ class FigureDetectionConfiguration:
     max_embedded_assets: int = _MAX_EMBEDDED_ASSETS
     max_embedded_asset_bytes: int = _MAX_EMBEDDED_ASSET_BYTES
     max_total_embedded_bytes: int = _MAX_TOTAL_EMBEDDED_BYTES
+    max_backend_drawings_per_page: int = _MAX_BACKEND_DRAWINGS_PER_PAGE
+    max_backend_drawing_items_per_page: int = (
+        _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE
+    )
     max_drawings_per_page: int = _MAX_DRAWINGS_PER_PAGE
     max_drawing_items_per_page: int = _MAX_DRAWING_ITEMS_PER_PAGE
     max_total_drawings: int = _MAX_TOTAL_DRAWINGS
-    max_drawing_group_comparisons: int = 1_000_000
+    max_drawing_group_comparisons: int = _MAX_DRAWING_GROUP_COMPARISONS
     max_candidates: int = _MAX_CANDIDATES
     max_components: int = _MAX_COMPONENTS
     max_associations: int = _MAX_ASSOCIATIONS
@@ -164,6 +170,14 @@ class FigureDetectionConfiguration:
             ("max_embedded_assets", _MAX_EMBEDDED_ASSETS),
             ("max_embedded_asset_bytes", _MAX_EMBEDDED_ASSET_BYTES),
             ("max_total_embedded_bytes", _MAX_TOTAL_EMBEDDED_BYTES),
+            (
+                "max_backend_drawings_per_page",
+                _MAX_BACKEND_DRAWINGS_PER_PAGE,
+            ),
+            (
+                "max_backend_drawing_items_per_page",
+                _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE,
+            ),
             ("max_drawings_per_page", _MAX_DRAWINGS_PER_PAGE),
             ("max_drawing_items_per_page", _MAX_DRAWING_ITEMS_PER_PAGE),
             ("max_total_drawings", _MAX_TOTAL_DRAWINGS),
@@ -1265,19 +1279,39 @@ class PyMuPdfFigureInspector:
                         "embedded artifact extraction is incomplete"
                     )
                 raw_drawings = page.get_drawings()
-                if len(raw_drawings) > configuration.max_drawings_per_page:
+                if (
+                    len(raw_drawings)
+                    > configuration.max_backend_drawings_per_page
+                ):
                     raise FigureDetectionLimitError(
-                        "drawings exceed max_drawings_per_page"
+                        "backend drawings exceed their per-page limit"
                     )
+                backend_item_count = sum(
+                    len(drawing.get("items", ())) for drawing in raw_drawings
+                )
+                if (
+                    backend_item_count
+                    > configuration.max_backend_drawing_items_per_page
+                ):
+                    raise FigureDetectionLimitError(
+                        "backend drawing items exceed their per-page limit"
+                    )
+                retain_stroked_only = (
+                    len(raw_drawings) > configuration.max_drawings_per_page
+                )
                 drawings: list[FigureDrawingEvidence] = []
                 ignored = 0
                 item_count = 0
                 for drawing_index, drawing in enumerate(raw_drawings):
                     items = drawing.get("items", ())
+                    has_stroke = drawing.get("color") is not None
+                    if retain_stroked_only and not has_stroke:
+                        ignored += 1
+                        continue
                     item_count += len(items)
                     if item_count > configuration.max_drawing_items_per_page:
                         raise FigureDetectionLimitError(
-                            "drawing items exceed max_drawing_items_per_page"
+                            "retained drawing items exceed their per-page limit"
                         )
                     box_value = tuple(
                         float(value) for value in drawing.get("rect", ())
@@ -1287,7 +1321,8 @@ class PyMuPdfFigureInspector:
                         continue
                     box = _validated_extent_box(box_value)
                     if not _box_within_page(box, extracted_page):
-                        raise ValueError("drawing bounds exceed extracted page")
+                        ignored += 1
+                        continue
                     if not items:
                         ignored += 1
                         continue
@@ -1302,10 +1337,14 @@ class PyMuPdfFigureInspector:
                                 f"drawing:{drawing_index}"
                             ),
                             item_count=len(items),
-                            has_stroke=drawing.get("color") is not None,
+                            has_stroke=has_stroke,
                             has_fill=drawing.get("fill") is not None,
                         )
                     )
+                    if len(drawings) > configuration.max_drawings_per_page:
+                        raise FigureDetectionLimitError(
+                            "retained drawings exceed their per-page limit"
+                        )
                     total_drawings += 1
                     if total_drawings > configuration.max_total_drawings:
                         raise FigureDetectionLimitError(
@@ -1347,7 +1386,10 @@ class DeterministicFigureCandidateDetector:
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer()
+        self.region_renderer = region_renderer or PyMuPdfRegionRenderer(
+            max_total_pixels=_MAX_TOTAL_RENDERED_PIXELS,
+            max_total_raster_bytes=_MAX_TOTAL_RENDERED_PNG_BYTES,
+        )
         self.figure_inspector = figure_inspector or PyMuPdfFigureInspector()
 
     @property
@@ -1828,36 +1870,71 @@ def _drawing_groups(
     drawings: tuple[FigureDrawingEvidence, ...],
     configuration: FigureDetectionConfiguration,
 ) -> tuple[tuple[FigureDrawingEvidence, ...], ...]:
-    groups: list[list[FigureDrawingEvidence]] = []
+    if not drawings:
+        return ()
+    gap = configuration.drawing_group_gap_points
+    cell_size = max(gap, 1.0)
+    spatial: dict[tuple[int, int], list[int]] = {}
+    parents = list(range(len(drawings)))
     comparisons = 0
-    for drawing in drawings:
-        touching: list[int] = []
-        for index, group in enumerate(groups):
-            group_touches = False
-            for item in group:
-                comparisons += 1
-                if comparisons > configuration.max_drawing_group_comparisons:
-                    raise FigureDetectionLimitError(
-                        "drawing grouping exceeds max_drawing_group_comparisons"
-                    )
-                if _boxes_within(
-                    drawing.source_bounding_box,
-                    item.source_bounding_box,
-                    configuration.drawing_group_gap_points,
-                ):
-                    group_touches = True
-                    break
-            if group_touches:
-                touching.append(index)
-        if not touching:
-            groups.append([drawing])
-            continue
-        target = touching[0]
-        groups[target].append(drawing)
-        for index in reversed(touching[1:]):
-            groups[target].extend(groups.pop(index))
+
+    def find(index: int) -> int:
+        while parents[index] != index:
+            parents[index] = parents[parents[index]]
+            index = parents[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parents[max(left_root, right_root)] = min(left_root, right_root)
+
+    def cells_for(
+        box: BoundingBox, *, padding: float
+    ) -> tuple[tuple[int, int], ...]:
+        x0, y0, x1, y1 = box
+        first_x = math.floor((x0 - padding) / cell_size)
+        last_x = math.floor((x1 + padding) / cell_size)
+        first_y = math.floor((y0 - padding) / cell_size)
+        last_y = math.floor((y1 + padding) / cell_size)
+        return tuple(
+            (x, y)
+            for x in range(first_x, last_x + 1)
+            for y in range(first_y, last_y + 1)
+        )
+
+    for index, drawing in enumerate(drawings):
+        candidates = {
+            prior
+            for cell in cells_for(drawing.source_bounding_box, padding=0.0)
+            for prior in spatial.get(cell, ())
+        }
+        touched_roots: set[int] = set()
+        for prior in sorted(candidates):
+            root = find(prior)
+            if root in touched_roots:
+                continue
+            comparisons += 1
+            if comparisons > configuration.max_drawing_group_comparisons:
+                raise FigureDetectionLimitError(
+                    "drawing grouping exceeds max_drawing_group_comparisons"
+                )
+            if _boxes_within(
+                drawing.source_bounding_box,
+                drawings[prior].source_bounding_box,
+                gap,
+            ):
+                union(index, prior)
+                touched_roots.add(root)
+        for cell in cells_for(drawing.source_bounding_box, padding=gap):
+            spatial.setdefault(cell, []).append(index)
+
+    grouped: dict[int, list[FigureDrawingEvidence]] = {}
+    for index, drawing in enumerate(drawings):
+        grouped.setdefault(find(index), []).append(drawing)
     retained: list[tuple[FigureDrawingEvidence, ...]] = []
-    for group in groups:
+    for group in grouped.values():
         ordered = tuple(sorted(group, key=lambda item: item.source_object_id))
         box = _union_boxes_allowing_extents(
             tuple(item.source_bounding_box for item in ordered)
@@ -2064,12 +2141,16 @@ def _validate_input_parts(
                 artifact.mask_byte_length or 0
             )
             total_embedded_assets += 1
+        if len(evidence.drawings) > configuration.max_drawings_per_page:
+            raise FigureDetectionLimitError(
+                "retained drawings exceed their per-page limit"
+            )
         if (
             len(evidence.drawings) + evidence.ignored_drawing_count
-            > configuration.max_drawings_per_page
+            > configuration.max_backend_drawings_per_page
         ):
             raise FigureDetectionLimitError(
-                "drawings exceed max_drawings_per_page"
+                "backend drawings exceed their per-page limit"
             )
         if len({item.drawing_id for item in evidence.drawings}) != len(
             evidence.drawings
@@ -2834,7 +2915,7 @@ def _box_is_ordered(value: object) -> bool:
         return False
     try:
         box = tuple(float(item) for item in value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return False
     return (
         len(box) == 4

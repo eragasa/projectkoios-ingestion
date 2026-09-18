@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections import Counter
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 
@@ -1135,7 +1136,7 @@ def _reconstruct_candidate(
                 for record in group
                 if record.block.block_id in region.merged_cell_signal_block_ids
             ]
-            if merged_records:
+            if len(group) == 1 and len(merged_records) == 1:
                 merged = merged_records[0]
                 cell = _cell_from_records(
                     structure_input,
@@ -1165,6 +1166,24 @@ def _reconstruct_candidate(
                     )
                 )
                 continue
+            if merged_records:
+                specs.append(
+                    _WarningSpec(
+                        code="table_structure.merged_span_unresolved",
+                        message=(
+                            "Merged-cell geometry overlaps other row blocks; "
+                            "all blocks remain ambiguous column proposals"
+                        ),
+                        object_ids=tuple(
+                            record.block.block_id for record in merged_records
+                        ),
+                        source_spans=tuple(
+                            span
+                            for record in merged_records
+                            for span in record.block.source_spans
+                        ),
+                    )
+                )
             for record in group:
                 column_index = _column_for(record.center_x, column_bounds)
                 slots[column_index].append(record)
@@ -1172,7 +1191,9 @@ def _reconstruct_candidate(
                 assigned = tuple(slots[column_index])
                 if not assigned:
                     status = TableStructureEvidenceStatus.AMBIGUOUS
-                elif len(assigned) > 1:
+                elif len(assigned) > 1 or any(
+                    record in merged_records for record in assigned
+                ):
                     status = TableStructureEvidenceStatus.AMBIGUOUS
                 else:
                     status = TableStructureEvidenceStatus.PROPOSED
@@ -1856,7 +1877,8 @@ def _validate_structure_against_candidate(
     if occupied != expected_positions:
         raise ValueError("table cell grid is incomplete")
     for region_id, assigned in assigned_by_region.items():
-        if tuple(assigned) != region_by_id[region_id].block_ids:
+        expected = region_by_id[region_id].block_ids
+        if len(assigned) != len(expected) or set(assigned) != set(expected):
             raise ValueError(
                 "region source blocks are not assigned exactly once"
             )
@@ -1874,8 +1896,9 @@ def _validate_structure_against_candidate(
             span for cell in row_cells for span in cell.source_spans
         )
         if (
-            row.source_block_ids != expected_block_ids
-            or row.source_spans != expected_spans
+            len(row.source_block_ids) != len(expected_block_ids)
+            or set(row.source_block_ids) != set(expected_block_ids)
+            or Counter(row.source_spans) != Counter(expected_spans)
         ):
             raise ValueError(
                 "row source evidence is inconsistent with its cells"

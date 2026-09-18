@@ -239,6 +239,18 @@ from projectkoios.ingestion.protocols import (
     TableCandidateDetector,
     TableStructureReconstructor,
 )
+from projectkoios.ingestion.provenance import (
+    DERIVATION_AUDIT_CONTRACT_VERSION,
+    DERIVATION_AUDIT_PROCESSOR_VERSION,
+    DerivationAuditError,
+    DerivationAuditFinding,
+    DerivationAuditFindingCode,
+    DerivationAuditInput,
+    DerivationAuditLimitError,
+    DerivationAuditReport,
+    DerivationAuditStatus,
+    DerivationAuditValidator,
+)
 from projectkoios.ingestion.reconciliation import (
     OCR_RECONCILIATION_CONTRACT_VERSION,
     DeterministicOCRReconciler,
@@ -314,6 +326,19 @@ from projectkoios.ingestion.textbooks import (
     TextbookIngester,
     TextbookStructureAnalyzer,
 )
+from projectkoios.ingestion.transcript_projection import (
+    CLEAN_TRANSCRIPT_CONTRACT_VERSION,
+    CLEAN_TRANSCRIPT_PROCESSOR_VERSION,
+    CleanTranscriptArtifact,
+    CleanTranscriptBlock,
+    CleanTranscriptConfiguration,
+    CleanTranscriptExclusion,
+    CleanTranscriptExclusionReason,
+    CleanTranscriptLimitError,
+    CleanTranscriptPage,
+    CleanTranscriptStatus,
+    DeterministicCleanTranscriptProjector,
+)
 from projectkoios.ingestion.transcription import (
     TRANSCRIPTION_COMPOSER_VERSION,
     TRANSCRIPTION_CONFIGURATION_VERSION,
@@ -336,7 +361,11 @@ from projectkoios.ingestion.transcription import (
 )
 
 __all__ = [
+    "CLEAN_TRANSCRIPT_CONTRACT_VERSION",
+    "CLEAN_TRANSCRIPT_PROCESSOR_VERSION",
     "CONTRACT_VERSION",
+    "DERIVATION_AUDIT_CONTRACT_VERSION",
+    "DERIVATION_AUDIT_PROCESSOR_VERSION",
     "EQUATION_CONTRACT_VERSION",
     "EQUATION_DETECTOR_VERSION",
     "EQUATION_ENRICHMENT_CONTRACT_VERSION",
@@ -372,8 +401,25 @@ __all__ = [
     "ArticleStructureLimitError",
     "BoundedProcessingCoordinator",
     "ChunkIndexWriter",
+    "CleanTranscriptArtifact",
+    "CleanTranscriptBlock",
+    "CleanTranscriptConfiguration",
+    "CleanTranscriptExclusion",
+    "CleanTranscriptExclusionReason",
+    "CleanTranscriptLimitError",
+    "CleanTranscriptPage",
+    "CleanTranscriptStatus",
     "CodeRepositoryIndexer",
     "CodeRepositoryIngester",
+    "DerivationAuditError",
+    "DerivationAuditFinding",
+    "DerivationAuditFindingCode",
+    "DerivationAuditInput",
+    "DerivationAuditLimitError",
+    "DerivationAuditReport",
+    "DerivationAuditStatus",
+    "DerivationAuditValidator",
+    "DeterministicCleanTranscriptProjector",
     "DeterministicLayoutProcessor",
     "DeterministicOCRReconciler",
     "DeterministicArticleStructureAnalyzer",

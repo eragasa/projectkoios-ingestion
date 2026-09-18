@@ -92,9 +92,7 @@ review question without deleting proposed-not-necessary figures. A bounded JIT
 coordinator resolves page, region, and structure-node selections into isolated
 work items, invokes one injected processor per selection, preserves retries and
 partial failures, and computes separate derived cache identities. Deterministic
-structured composition then proposes ordered page anchors, prose, headings,
-equations, tables, and figures while retaining every exact upstream object and
-making omissions and uncertain order explicit.
+structured composition then proposes ordered page anchors, prose, headings, equations, tables, and figures while retaining every exact upstream object and making omissions and uncertain order explicit. A separate deterministic clean-transcript projection removes only typed repeated margins, page numbers, control-only blocks, soft hyphens, conservative line-break hyphenation, and whitespace artifacts while retaining exact raw block evidence, exclusions, uncertainty, and proposed layout order.
 
 PDF document support follows an output-independent pipeline:
 
@@ -292,8 +290,7 @@ and processor/backend/configuration/resource provenance. Only exact completed or
 partial selection results are eligible for an injected derived cache.
 Structured-transcription cache identity binds the exact document and complete
 structure/equation/table/figure result identities, the whitespace-normalization
-method, all composition limits, and composer version. Structured transcription
-also remains outside the raw extraction cache.
+method, all composition limits, and composer version. Structured transcription also remains outside the raw extraction cache. Clean-transcript identity binds the exact structured-transcription result, layouts, included raw blocks and cleaned text, typed exclusions, transformation counts, page projections, processor/configuration identity, and final UTF-8 hash. The batch materializer persists only the compact clean projection, plain text, complete audit report, and an identity manifest; bulky deterministic intermediate graphs remain reconstructible rather than duplicated on disk.
 
 ## Structural Model
 
@@ -407,6 +404,14 @@ scientifically validated, accepted, or publication-ready states. The model owns
 no Markdown, citekeys, filenames, vault paths, Obsidian syntax, reading status,
 or scientific-acceptance field.
 
+## Clean Transcript Projection Model
+
+The deterministic projector consumes one complete structured-transcription result and its exact page layouts. Each included record retains the root block ID, exact raw text, exact source spans, physical and printed page, proposed order, cleaned text, and deterministic transformation counts. Each excluded record retains the same root evidence and a typed `repeated_margin`, `page_number`, or `empty_after_sanitization` reason. Repeated margins require matching normalized margin evidence across a bounded minimum number and fraction of pages; standalone decimal or lowercase Roman page labels are excluded only in page margins.
+
+Cleanup does not use a language model or dictionary. It removes soft hyphens, replaces bounded C0 control characters, joins only ASCII letter sequences split by a hyphen plus line break when the continuation begins lowercase, collapses Unicode whitespace, and emits explicit page markers. It does not normalize Unicode compatibility characters, repair equations, reorder words within a block, infer missing text, or claim semantic correction. Proposed multi-column order and any raw-order fallback remain warned evidence.
+
+The projection is `automated_unreviewed` regardless of apparent quality. It is a source-linked retrieval input, not a proofread edition, canonical bibliography decision, scientific validation, manuscript support decision, or Markdown note. Generated relevance prose must never be indexed back into the extraction-derived corpus.
+
 ## Rough Chunking Boundary
 
 The accepted repository boundary places chunking algorithms outside this
@@ -445,6 +450,10 @@ Logical source identity is supplied independently of source bytes. Exact blob,
 block, and extraction identities derive from the source-blob hash and
 source-local evidence, not from global list positions. Adding an earlier chunk
 or structure node must not renumber unrelated objects.
+
+The derivation-audit boundary accepts exact source bytes and explicitly registered typed artifacts. It validates only supplied layers, but a supplied downstream layer cannot hide an unregistered dependency: embedded OCR, layout, detection, structure, transcription, or clean-projection inputs must match the registered upstream object exactly. Clean records and exclusions must reproduce exact root block text/spans, remain on their root page, preserve page-local record order, and consolidate to the artifact text exactly. The validator traverses immutable in-memory contracts rather than Markdown, vault paths, or storage records. It produces stable findings and a stable report without repairing, normalizing, publishing, or accepting evidence.
+
+A derivation audit is a fail-closed software-integrity gate, not a semantic validator. Passing it confirms that source identities, regions, processor identities, hashes, stable IDs, and references form one internally consistent bounded graph. Scientific, mathematical, pedagogical, publication, and lifecycle judgments remain outside ingestion.
 
 ## Artifact Ownership
 
@@ -609,6 +618,7 @@ collections. They verify:
 
 - deterministic output and stable IDs;
 - exact page and bounding-box provenance;
+- fail-closed transitive derivation audits and stable findings;
 - article and textbook structure behavior;
 - layout warnings for ambiguous pages and extraction warnings for image-only pages;
 - cache invalidation by source and processor version;

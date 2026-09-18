@@ -40,8 +40,10 @@ _MAX_INPUT_BLOCKS = 16_384
 _MAX_TEXT_BLOCKS = 8_192
 _MAX_TEXT_CHARACTERS = 5_000_000
 _MAX_SOURCE_SPANS = 16_384
+_MAX_BACKEND_DRAWINGS_PER_PAGE = 2_000_000
+_MAX_BACKEND_DRAWING_ITEMS_PER_PAGE = 10_000_000
 _MAX_DRAWINGS_PER_PAGE = 100_000
-_MAX_DRAWING_ITEMS_PER_PAGE = 200_000
+_MAX_DRAWING_ITEMS_PER_PAGE = 500_000
 _MAX_RULE_SEGMENTS_PER_PAGE = 100_000
 _MAX_TOTAL_RULE_SEGMENTS = 200_000
 _MAX_CANDIDATES = 256
@@ -51,7 +53,7 @@ _MAX_ASSOCIATIONS_PER_CANDIDATE = 256
 _MAX_WARNINGS = 4_096
 _MAX_RESULT_BYTES = 128_000_000
 _MAX_TOTAL_RENDERED_PNG_BYTES = 100_000_000
-_MAX_TOTAL_RENDERED_PIXELS = 25_000_000
+_MAX_TOTAL_RENDERED_PIXELS = 100_000_000
 _MAX_IDENTITY_CHARACTERS = 4_096
 _MAX_TEXT_FIELD_CHARACTERS = 65_536
 _MAX_METADATA_CHARACTERS = 100_000
@@ -129,6 +131,10 @@ class TableDetectionConfiguration:
     max_text_blocks: int = _MAX_TEXT_BLOCKS
     max_text_characters: int = _MAX_TEXT_CHARACTERS
     max_source_spans: int = _MAX_SOURCE_SPANS
+    max_backend_drawings_per_page: int = _MAX_BACKEND_DRAWINGS_PER_PAGE
+    max_backend_drawing_items_per_page: int = (
+        _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE
+    )
     max_drawings_per_page: int = _MAX_DRAWINGS_PER_PAGE
     max_drawing_items_per_page: int = _MAX_DRAWING_ITEMS_PER_PAGE
     max_rule_segments_per_page: int = _MAX_RULE_SEGMENTS_PER_PAGE
@@ -160,6 +166,14 @@ class TableDetectionConfiguration:
             ("max_text_blocks", _MAX_TEXT_BLOCKS),
             ("max_text_characters", _MAX_TEXT_CHARACTERS),
             ("max_source_spans", _MAX_SOURCE_SPANS),
+            (
+                "max_backend_drawings_per_page",
+                _MAX_BACKEND_DRAWINGS_PER_PAGE,
+            ),
+            (
+                "max_backend_drawing_items_per_page",
+                _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE,
+            ),
             ("max_drawings_per_page", _MAX_DRAWINGS_PER_PAGE),
             ("max_drawing_items_per_page", _MAX_DRAWING_ITEMS_PER_PAGE),
             ("max_rule_segments_per_page", _MAX_RULE_SEGMENTS_PER_PAGE),
@@ -945,28 +959,53 @@ class PyMuPdfTableRuleInspector:
                         "PDF page geometry does not match extracted document"
                     )
                 drawings = pdf_page.get_drawings()
-                if len(drawings) > configuration.max_drawings_per_page:
+                if len(drawings) > configuration.max_backend_drawings_per_page:
                     raise TableDetectionLimitError(
-                        "drawings exceed max_drawings_per_page"
+                        "backend drawings exceed their per-page limit"
+                    )
+                backend_item_count = sum(
+                    len(drawing.get("items", ())) for drawing in drawings
+                )
+                if (
+                    backend_item_count
+                    > configuration.max_backend_drawing_items_per_page
+                ):
+                    raise TableDetectionLimitError(
+                        "backend drawing items exceed their per-page limit"
                     )
                 segments: list[TableRuleSegment] = []
                 item_count = 0
                 ignored_item_count = 0
+                retained_drawing_count = 0
                 for drawing_index, drawing in enumerate(drawings):
                     items = drawing.get("items", ())
+                    has_stroke = drawing.get("color") is not None
+                    if not has_stroke:
+                        ignored_item_count += len(items)
+                        continue
+                    retained_drawing_count += 1
+                    if (
+                        retained_drawing_count
+                        > configuration.max_drawings_per_page
+                    ):
+                        raise TableDetectionLimitError(
+                            "stroked drawings exceed their per-page limit"
+                        )
                     item_count += len(items)
                     if item_count > configuration.max_drawing_items_per_page:
                         raise TableDetectionLimitError(
-                            "drawing items exceed max_drawing_items_per_page"
+                            "stroked drawing items exceed their per-page limit"
                         )
-                    width = _nonnegative_float(
-                        "drawing stroke width", drawing.get("width", 0.0)
+                    width = (
+                        _nonnegative_float(
+                            "drawing stroke width",
+                            drawing.get("width", 0.0),
+                        )
+                        if has_stroke
+                        else 0.0
                     )
-                    has_stroke = drawing.get("color") is not None
                     for item_index, item in enumerate(items):
-                        axis_segments = (
-                            _axis_segments(item) if has_stroke else ()
-                        )
+                        axis_segments = _axis_segments(item)
                         if not axis_segments:
                             ignored_item_count += 1
                         for start, end, suffix in axis_segments:
@@ -1086,7 +1125,10 @@ class DeterministicTableCandidateDetector:
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer()
+        self.region_renderer = region_renderer or PyMuPdfRegionRenderer(
+            max_total_pixels=_MAX_TOTAL_RENDERED_PIXELS,
+            max_total_raster_bytes=_MAX_TOTAL_RENDERED_PNG_BYTES,
+        )
         self.rule_inspector = rule_inspector or PyMuPdfTableRuleInspector()
 
     @property
@@ -1912,7 +1954,7 @@ def _validate_input_parts(
         total_rules += len(rules.segments)
         if (
             rules.ignored_drawing_item_count
-            > configuration.max_drawing_items_per_page
+            > configuration.max_backend_drawing_items_per_page
         ):
             raise TableDetectionLimitError(
                 "ignored drawing items exceed their per-page limit"
@@ -2426,7 +2468,7 @@ def _validate_page_rules(
     _nonnegative_integer(
         "ignored drawing item count", ignored_drawing_item_count
     )
-    if ignored_drawing_item_count > _MAX_DRAWING_ITEMS_PER_PAGE:
+    if ignored_drawing_item_count > _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE:
         raise TableDetectionLimitError(
             "ignored drawing items exceed their hard limit"
         )
@@ -2804,7 +2846,7 @@ def _axis_segments(
     if kind == "l" and len(item) >= 3:
         start = _point_from_backend(item[1])
         end = _point_from_backend(item[2])
-        if start[0] == end[0] or start[1] == end[1]:
+        if start != end and (start[0] == end[0] or start[1] == end[1]):
             return ((start, end, "line"),)
         return ()
     if kind == "re" and len(item) >= 2:
@@ -2814,13 +2856,16 @@ def _axis_segments(
             y0 = float(rectangle.y0)
             x1 = float(rectangle.x1)
             y1 = float(rectangle.y1)
-        except (AttributeError, TypeError, ValueError):
+        except AttributeError, TypeError, ValueError:
             return ()
-        return (
+        proposed = (
             ((x0, y0), (x1, y0), "rect-top"),
             ((x1, y0), (x1, y1), "rect-right"),
             ((x1, y1), (x0, y1), "rect-bottom"),
             ((x0, y1), (x0, y0), "rect-left"),
+        )
+        return tuple(
+            segment for segment in proposed if segment[0] != segment[1]
         )
     return ()
 
@@ -2858,7 +2903,7 @@ def _block_box(spans: tuple[SourceSpan, ...]) -> BoundingBox | None:
                 max(box[3] for box in boxes),
             )
         )
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

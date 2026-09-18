@@ -15,6 +15,7 @@ koios-ingest-pdf = "projectkoios.ingestion.cli:main"
 koios-ingest-pdf-batch = "projectkoios.ingestion.batch_cli:main"
 koios-detect-pdf-equations-batch = "projectkoios.ingestion.equation_batch_cli:main"
 koios-enrich-pdf-equations-batch = "projectkoios.ingestion.equation_enrichment_cli:main"
+koios-compose-pdf-transcripts-batch = "projectkoios.ingestion.transcript_batch_cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0.0"]

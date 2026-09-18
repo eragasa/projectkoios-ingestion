@@ -94,6 +94,56 @@ def _drawing_pdf() -> bytes:
     return payload
 
 
+def test__figure_detector__bounds_dense_fill_only_evidence() -> None:
+    pdf = pymupdf.open()
+    page = pdf.new_page(width=500, height=400)
+    page.draw_rect(pymupdf.Rect(40, 40, 120, 120), color=None, fill=(1, 0, 0))
+    page.draw_rect(pymupdf.Rect(140, 40, 220, 120), color=None, fill=(0, 1, 0))
+    page.draw_rect(pymupdf.Rect(240, 40, 340, 160), color=(0, 0, 0))
+    page.insert_text((240, 190), "Figure 1. Stroked evidence.", fontsize=11)
+    payload = pdf.tobytes()
+    pdf.close()
+
+    result = _detect(
+        payload,
+        "dense-fill",
+        FigureDetectionConfiguration(
+            max_backend_drawings_per_page=10,
+            max_backend_drawing_items_per_page=100,
+            max_drawings_per_page=1,
+        ),
+    )
+
+    evidence = result.detection_input.page_evidence[0]
+    assert evidence.ignored_drawing_count == 2
+    assert len(evidence.drawings) == 1
+    assert evidence.drawings[0].has_stroke
+
+
+def test__figure_detector__uses_bounded_spatial_drawing_grouping() -> None:
+    pdf = pymupdf.open()
+    page = pdf.new_page(width=1200, height=100)
+    for index in range(100):
+        left = 5.0 + index * 10.0
+        page.draw_rect(pymupdf.Rect(left, 20, left + 2, 22), color=(0, 0, 0))
+    payload = pdf.tobytes()
+    pdf.close()
+
+    result = _detect(
+        payload,
+        "spatial-groups",
+        FigureDetectionConfiguration(
+            drawing_group_gap_points=0.0,
+            max_drawing_group_comparisons=10,
+            minimum_drawing_dimension_points=1.0,
+            minimum_drawing_area_points=1.0,
+        ),
+    )
+
+    assert result.candidates == ()
+    assert len(result.detection_input.page_evidence[0].drawings) == 100
+
+
 def test__figure_detector__detects_maintained_embedded_fixture() -> None:
     fixture = Path(__file__).parent / "fixtures" / "pdf" / "figures.pdf"
     result = _detect(fixture.read_bytes(), "fixture")

@@ -316,8 +316,7 @@ PDF vector-rule observations, and bounded PNG crops. Candidates retain source
 blocks/spans, row and column bands, possible merged-cell signals, confidence,
 warnings, and nearby title, caption, note, and continuation locators.
 
-The default rule inspector lazily reads axis-aligned PyMuPDF drawing commands and
-records unsupported drawing-item counts rather than inventing rule evidence.
+The default rule inspector lazily reads axis-aligned PyMuPDF drawing commands and records unsupported drawing-item counts rather than inventing rule evidence. Fill-only commands are counted but not treated as table rules; separate backend-observation and retained-rule bounds allow dense publisher artwork to remain explicit without materializing millions of irrelevant rule objects.
 Long prose-like or weak candidates remain ambiguous. Merged-cell signals remain
 warnings, not reconstructed cells. This detection stage neither reconstructs
 table structure nor claims semantic correctness, scientific validation,
@@ -350,6 +349,8 @@ exact embedded image and mask bytes with their content hashes and media types,
 as well as bounded PDF drawing-object locators and source geometry. Embedded
 images remain embedded artifacts; captioned diagrams composed from drawing
 commands are rendered through the injected `PageRegionRenderer`.
+
+On pages whose backend drawing count exceeds the retained-evidence limit, the inspector deterministically retains bounded stroked objects and reports the exact count of ignored fill-only or unusable objects. Separate hard backend limits still fail closed before an unbounded derived artifact is built. Off-page decorative drawing extents are counted as ignored rather than converted into invalid source spans.
 
 Candidates may contain one or more ordered components for subfigures. Explicit
 `Figure`/`Fig.` captions, `(a)`-style subfigure labels, and `Legend:`/`Key:` text
@@ -437,5 +438,31 @@ every raw block is covered by an item or omission. Result status is only
 validation, publication suitability, or human acceptance. The stage emits no
 citekey, vault path, Obsidian syntax, reading status, or destination artifact,
 writes no files, and stores nothing in raw `ExtractionCache`.
+
+## Automated clean transcript materialization
+
+`DeterministicCleanTranscriptProjector` creates a separate immutable, automated, unreviewed projection over one complete structured-transcription result and its exact layouts. It preserves each included block's exact raw text, source spans, physical and printed page, proposed order, cleaned text, and typed transformation counts. Excluded repeated margin text, page numbers, and content empty after control-character sanitization retain their exact raw evidence and typed reason. Cleanup is limited to removing soft hyphens, replacing C0 control characters, joining conservative ASCII line-break hyphenations, and collapsing Unicode whitespace; it performs no spelling, symbol, semantic, or scientific correction.
+
+`koios-compose-pdf-transcripts-batch` consumes the same hash-locked `PdfBatchPlan` after raw extraction and equation detection. Dry-run is the default. Explicit `--apply` deterministically runs layout, article structure, equation replay, table detection/reconstruction, figure detection, structured composition, clean projection, and a complete derivation audit. It publishes an all-or-none per-item set at `derived/transcription/`: `clean.json`, `clean.txt`, `audit.json`, and `manifest.json`. The manifest binds all reconstructible intermediate result IDs and artifact hashes; bulky intermediate table, figure, and full transcription graphs are not materialized. Exact replay verifies all four files byte-for-byte and reports `unchanged`; incomplete, unsafe, or different existing sets fail closed.
+
+```bash
+koios-compose-pdf-transcripts-batch batch.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache
+koios-compose-pdf-transcripts-batch batch.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache \
+  --apply
+```
+
+The plain-text file includes explicit physical/printed page markers and is suitable as source-linked retrieval input, not as a human-proofread edition. Markdown notes and generated relevance assessments remain downstream views and must not replace or feed back into this source corpus.
+
+## Derivation provenance audit
+
+`DerivationAuditValidator` validates one exact source byte string and its `ExtractionResult` together with any supplied OCR, OCR reconciliation, layout, structure, equation, table-detection, table-structure, figure, bounded-processing, structured-transcription, and clean-transcript artifacts. It walks the complete retained dataclass graph under deterministic object and finding bounds, rechecks each artifact's intrinsic contract, verifies source/blob/hash and processor/configuration identities, checks source spans and rendered regions against root-page extents, and requires every supplied transitive dependency to be registered exactly. Clean projections are checked against their registered transcription/layout dependencies, exact root blocks and exclusions, page membership/order, and consolidated text.
+
+The immutable `DerivationAuditReport` is `passed` only when no findings remain. Wrong source bytes or blobs, missing upstream artifacts, mismatched embedded artifacts, orphan block/node/candidate/region references, out-of-range geometry, altered retained content, and missing processor or contract versions produce stable path-addressed findings. `require_valid()` and `validate()` fail closed with `DerivationAuditError`. A passing report verifies software provenance consistency only; it does not establish extraction accuracy, semantic correctness, mathematical correctness, scientific validity, publication suitability, or human acceptance.
 
 Repository routing is documented in `projectkoios-bootstrap/maps/repositories.md`.

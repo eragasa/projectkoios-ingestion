@@ -645,12 +645,24 @@ invalidation, cross-source rejection, artifact/output limits, source-local
 identity, deterministic reruns, immutability, stale IDs, public exports, and
 runtime protocol typing.
 
-### ING-PROVENANCE-01 — Derivation audit validator
+### ING-TRANSCRIPT-02 — Automated clean transcript batch (implemented)
 
-Validate transitive provenance across raw blocks, OCR, layout, structure,
-equations, tables, figures, and transcription composition.
+`DeterministicCleanTranscriptProjector` produces a separately identified `automated_unreviewed` projection from one complete structured-transcription result and its exact layouts. Included records retain exact raw text, source spans, block/page/order links, cleaned text, and typed transformation counts. Exclusions retain exact raw evidence and distinguish repeated margin content, page numbers, and content empty after sanitization. Cleanup is restricted to C0 control replacement, soft-hyphen removal, conservative ASCII line-break dehyphenation, and Unicode-whitespace collapse; it performs no semantic, spelling, symbol, mathematical, or scientific correction.
+
+`koios-compose-pdf-transcripts-batch` is dry-run by default and consumes the existing hash-locked batch plan after raw extraction and equation detection. Explicit `--apply` replays equation evidence, derives layouts, article structure, tables, figures, and complete structured transcription, projects clean text, and requires a passing derivation audit that includes the clean projection. Each item atomically publishes immutable `derived/transcription/clean.json`, `clean.txt`, `audit.json`, and `manifest.json`. The manifest binds reconstructible intermediate result identities and all persisted hashes while avoiding multi-hundred-megabyte duplication of complete table, figure, and transcription graphs. Replay is byte-identical; incomplete, unsafe, or different existing artifacts fail closed.
+
+Dense PDF drawing streams use separate backend-observation and retained-evidence limits. Fill-only drawing commands are ignored for table rules. Figure inspection retains bounded stroked evidence on pages exceeding the retained drawing limit while recording exact ignored-object counts; hard backend drawing/item limits remain enforced. Zero-length rules and off-page decorative drawing extents are ignored rather than converted into invalid source evidence.
+
+**Depends on:** `ING-TRANSCRIPT-01`, `ING-PROVENANCE-01`, and the implemented layout/structure/equation/table/figure stages.
+
+**Validation:** focused projection and batch tests cover deterministic cleanup, exact source links and exclusions, automated-unreviewed status, page markers, immutable publication/replay, tamper rejection, complete clean-projection auditing, dense/fill-only/zero-length drawing behavior, and the full corpus acceptance run.
+
+### ING-PROVENANCE-01 — Derivation audit validator (implemented)
+
+`DerivationAuditValidator` validates one exact source byte string and its raw extraction together with explicitly supplied OCR, reconciliation, layout, structure, equation, table-detection, table-structure, figure, bounded-processing, structured-transcription, and clean-transcript artifacts. Optional layers remain optional, but every dependency retained or referenced by a supplied downstream layer must be registered and byte-for-byte/dataclass-equal to its upstream artifact.
+
+The bounded graph walk rechecks source bytes, manifests, intrinsic stable-ID contracts, exact source/blob/hash lineage, pages, printed labels, source geometry, rendered and derived content hashes, processor/backend/configuration/contract identities, and transitive block/node/candidate/region/work-item/transcription/clean-projection references. Clean records and exclusions must exactly reproduce root blocks; page memberships/order and consolidated text are independently checked. It returns immutable stable findings and a stable pass/fail report; fail-closed helpers raise `DerivationAuditError` without repairing evidence.
 
 **Depends on:** `ING-JIT-01`, `ING-TRANSCRIPT-01`.
 
-**Acceptance:** orphan derived objects, wrong source blobs, out-of-range regions,
-and missing processor versions fail validation.
+**Validation:** focused tests cover deterministic passing reports, complete equation/table/figure transcription pipelines, OCR and reconciliation evidence, bounded JIT processing, exact source-byte mismatch, wrong source blobs, orphan derived references, unregistered transitive dependencies, out-of-page regions, missing processor versions, fail-closed report enforcement, and public exports. Audit success remains software-provenance consistency rather than semantic, mathematical, scientific, publication, lifecycle, or human acceptance.
