@@ -1,17 +1,24 @@
-# Transcript v2 evidence-conservative cleanup contract
+# Transcript v2 contract suite
 
-## Contract metadata
+## Contract metadata: clean transcript
 
 | Field | Value |
 |---|---|
 | Contract ID | `projectkoios.ingestion.clean-transcript` |
-| Owner | `projectkoios-ingestion` |
+| Target version | `0.1.0` |
+| Artifact generation | `2` candidate; existing implementation identifiers are not renumbered |
 | Status | Proposed |
-| Contract version | Unassigned (`v2` candidate) |
+| Specification revision | Git commit containing this document |
+| Owner | `projectkoios-ingestion` |
+| Acceptance authority | Project Koios operator after owner and materially affected consumer review |
 | Architecture record | [`ADR20260918`](https://github.com/eragasa/projectkoios/blob/main/docs/adr.20260918.evidence-grounded-scientific-rag.md) |
 | Task | [`ING-TRANSCRIPT-03`](https://github.com/eragasa/projectkoios-ingestion/issues/2) |
-| Supersedes | Clean-transcript contract v1 only if separately accepted |
+| Predecessor | Legacy clean-transcript contract `1.0` is an owner-internal implementation identifier, not a formal cross-repository release |
+| Supersedes | None while proposed |
+| Dependencies | Owner-internal extraction, layout, structured-transcription, equation, table, figure, and derivation-audit contracts identified below |
 | Consumers | `projectkoios-search`, managed ingestion clients |
+| Compatibility | Breaking artifact-generation change relative to transcript v1; migration not yet defined |
+| Effective baseline | None while proposed |
 
 ## Status
 
@@ -22,6 +29,16 @@ publication, or use of its output as claim-grade evidence.
 
 ## Purpose
 
+This suite contains two independently versioned contracts:
+
+- `projectkoios.ingestion.clean-transcript`; and
+- `projectkoios.ingestion.transcript-batch-plan`.
+
+The clean-transcript contract governs artifact evidence and transformation
+semantics. The batch-plan contract governs reproducible multi-document planning
+and publication inputs. A change to one does not automatically change the
+other.
+
 Transcript v2 defines a new immutable automated projection over exact PDF
 extraction and structured-transcription evidence. Its purpose is to improve
 retrieval readability without hiding ambiguity or claiming semantic
@@ -31,6 +48,27 @@ or publication suitability.
 Transcript v2 supersedes neither raw extraction nor structured transcription.
 It does not mutate transcript v1. Each layer remains separately identified and
 recoverable.
+
+## Normative scope and conformance
+
+The sections from **Authority and inputs** through **Warnings and status**, plus
+**Audit requirements** and the applicable **Acceptance evidence**, are
+normative for `projectkoios.ingestion.clean-transcript`. The **Durable batch
+planning** section and its metadata are normative only for
+`projectkoios.ingestion.transcript-batch-plan`. Purpose, examples, rationale,
+and deferred decisions are informative.
+
+The clean-transcript conformance subjects are the projector, immutable artifact
+publisher, artifact consumer, and derivation-audit validator. The batch-plan
+conformance subjects are the planner, plan parser, and batch publisher. Each
+conformance claim MUST identify contract ID, target or accepted version, exact
+specification commit, implementation commit, and validation result.
+
+Existing lowercase requirements in the named normative sections express
+requirements for these proposed contracts. Before acceptance, they MUST be
+converted to the shared capitalized normative vocabulary or mapped explicitly
+to conformance tests. Unresolved alternatives or terms such as “conservative”
+and “equivalent evidence” block acceptance when they affect observable output.
 
 ## Authority and inputs
 
@@ -211,9 +249,28 @@ bounded, and included in stable identity. At minimum they cover:
 A manual spot check may create separate review evidence. It does not change the
 artifact into a human-proofread edition.
 
+## Contract metadata: transcript batch plan
+
+| Field | Value |
+|---|---|
+| Contract ID | `projectkoios.ingestion.transcript-batch-plan` |
+| Target version | `0.1.0` |
+| Status | Proposed |
+| Specification revision | Git commit containing this document |
+| Owner | `projectkoios-ingestion` |
+| Acceptance authority | Project Koios operator after ingestion and reference-boundary review |
+| Architecture record | [`ADR20260918`](https://github.com/eragasa/projectkoios/blob/main/docs/adr.20260918.evidence-grounded-scientific-rag.md) |
+| Task | [`ING-TRANSCRIPT-03`](https://github.com/eragasa/projectkoios-ingestion/issues/2) |
+| Predecessor | None registered; the temporary local plan is operational evidence, not a contract |
+| Supersedes | None while proposed |
+| Dependencies | `projectkoios.ingestion.clean-transcript@0.1.0` plus owner-internal acquisition, source, extraction, equation, and transcription identities |
+| Consumers | `projectkoios-ingestion`, verified acquisition-manifest producers |
+| Compatibility | Unknown until deterministic regeneration and legacy-plan migration are demonstrated |
+| Effective baseline | None while proposed |
+
 ## Durable batch planning
 
-Recovery must not depend on a plan stored only in a temporary directory. A
+Recovery MUST NOT depend on a plan stored only in a temporary directory. A
 batch plan is either:
 
 - an immutable managed operational artifact under the owner-defined `.koios`
