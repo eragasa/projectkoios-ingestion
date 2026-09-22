@@ -456,6 +456,17 @@ projection does not claim independent revalidation, proofreading, extraction
 accuracy, scientific validity, or publication suitability; references-side
 consumption and cross-repository conformance remain pending.
 
+`ReferencePageLocatorChecker` provides the separate bounded navigation step. It
+requires that complete reference evidence and the supplied clean transcript
+form one exact source/document/transcript lineage, then searches one explicit
+page for complete Unicode-normalized token phrases. Token boundaries prevent
+`mass` from matching `biomass`; punctuation differences such as
+`effective-mass` versus `effective mass` remain searchable. Results retain only
+page and lineage identities, page-text identity, hashed topic-anchor identities,
+the match partition, processor identity, and explicit limitations. They do not
+embed the phrase-bearing locator, retain text, or make a claim-support,
+proofreading, scientific-validation, acceptance, or publication assertion.
+
 ```bash
 koios-compose-pdf-transcripts-batch batch.json \
   --source-root ~/projectkoios/assets/references \
