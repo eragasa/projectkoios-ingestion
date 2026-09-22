@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass, fields, is_dataclass
 from enum import StrEnum
@@ -27,6 +28,12 @@ from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.transcript_projection import CleanTranscriptArtifact
+from projectkoios.ingestion.transcript_v2 import (
+    ClassificationDisposition,
+    CleanTranscriptV2Artifact,
+    CleanTranscriptV2ExclusionReason,
+    PageNumberOutcome,
+)
 from projectkoios.ingestion.transcription import (
     StructuredTranscriptionResult,
     TranscriptionSourceObjectKind,
@@ -34,6 +41,7 @@ from projectkoios.ingestion.transcription import (
 
 DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"
 DERIVATION_AUDIT_PROCESSOR_VERSION = "2"
+DERIVATION_AUDIT_V2_PROCESSOR_VERSION = "3"
 _MAX_ARTIFACTS_PER_LAYER = 4_096
 _MAX_FINDINGS = 8_192
 _MAX_VISITED_OBJECTS = 250_000
@@ -148,6 +156,7 @@ class DerivationAuditInput:
     transcription_results: tuple[StructuredTranscriptionResult, ...] = ()
     clean_transcript_artifacts: tuple[CleanTranscriptArtifact, ...] = ()
     contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
+    clean_transcript_v2_artifacts: tuple[CleanTranscriptV2Artifact, ...] = ()
 
     def __post_init__(self) -> None:
         if self.contract_version != DERIVATION_AUDIT_CONTRACT_VERSION:
@@ -292,6 +301,7 @@ _LAYER_TYPES: dict[str, type[object]] = {
     "processing_results": ProcessingResult,
     "transcription_results": StructuredTranscriptionResult,
     "clean_transcript_artifacts": CleanTranscriptArtifact,
+    "clean_transcript_v2_artifacts": CleanTranscriptV2Artifact,
 }
 _LAYER_FIELDS = (
     "ocr_results",
@@ -305,6 +315,7 @@ _LAYER_FIELDS = (
     "processing_results",
     "transcription_results",
     "clean_transcript_artifacts",
+    "clean_transcript_v2_artifacts",
 )
 
 
@@ -320,6 +331,7 @@ class _Registry:
     processing: dict[str, ProcessingResult]
     transcriptions: dict[str, StructuredTranscriptionResult]
     clean_transcripts: dict[str, CleanTranscriptArtifact]
+    clean_transcripts_v2: dict[str, CleanTranscriptV2Artifact]
 
 
 class DerivationAuditValidator:
@@ -329,7 +341,12 @@ class DerivationAuditValidator:
     version = DERIVATION_AUDIT_PROCESSOR_VERSION
 
     def audit(self, audit_input: DerivationAuditInput) -> DerivationAuditReport:
-        state = _AuditState(audit_input, self.name, self.version)
+        processor_version = (
+            DERIVATION_AUDIT_V2_PROCESSOR_VERSION
+            if audit_input.clean_transcript_v2_artifacts
+            else self.version
+        )
+        state = _AuditState(audit_input, self.name, processor_version)
         state.run()
         return state.report()
 
@@ -410,6 +427,11 @@ class _AuditState:
                 "artifact_id",
                 "clean_transcript_artifacts",
             ),
+            clean_transcripts_v2=self._index(
+                audit_input.clean_transcript_v2_artifacts,
+                "artifact_id",
+                "clean_transcript_v2_artifacts",
+            ),
         )
 
     def run(self) -> None:
@@ -426,6 +448,7 @@ class _AuditState:
         self._audit_processing_references()
         self._audit_transcription_references()
         self._audit_clean_transcript_references()
+        self._audit_clean_transcript_v2_references()
         self._walk(self.extraction, "extraction_result")
         for layer_name in _LAYER_FIELDS:
             for index, artifact in enumerate(
@@ -449,6 +472,8 @@ class _AuditState:
                     *(
                         (name, str(len(getattr(self.audit_input, name))))
                         for name in _LAYER_FIELDS
+                        if name != "clean_transcript_v2_artifacts"
+                        or self.audit_input.clean_transcript_v2_artifacts
                     ),
                 )
             )
@@ -692,6 +717,30 @@ class _AuditState:
                         DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
                         f"{prefix}.layout_result_ids[{layout_index}]",
                         "clean transcript references an unregistered layout",
+                        layout_id,
+                    )
+        for index, v2_artifact in enumerate(
+            self.audit_input.clean_transcript_v2_artifacts
+        ):
+            prefix = f"clean_transcript_v2_artifacts[{index}]"
+            if (
+                v2_artifact.transcription_result_id
+                not in self.registry.transcriptions
+            ):
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                    f"{prefix}.transcription_result_id",
+                    "transcript v2 references an unregistered transcription",
+                    v2_artifact.transcription_result_id,
+                )
+            for layout_index, layout_id in enumerate(
+                v2_artifact.layout_result_ids
+            ):
+                if layout_id not in self.registry.layouts:
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                        f"{prefix}.layout_result_ids[{layout_index}]",
+                        "transcript v2 references an unregistered layout",
                         layout_id,
                     )
 
@@ -1419,6 +1468,428 @@ class _AuditState:
                     "clean transcript text differs from its page projections",
                     artifact.artifact_id,
                 )
+
+    def _audit_clean_transcript_v2_references(self) -> None:
+        root_page_indexes = tuple(
+            page.page_index for page in self.document.pages
+        )
+        eligible_root_ids = tuple(
+            block.block_id
+            for page in self.document.pages
+            for block in page.blocks
+            if block.kind == "text" and block.text is not None
+        )
+        for artifact_index, artifact in enumerate(
+            self.audit_input.clean_transcript_v2_artifacts
+        ):
+            prefix = f"clean_transcript_v2_artifacts[{artifact_index}]"
+            if (
+                artifact.document_id != self.document.document_id
+                or artifact.source_id != self.source.source_id
+                or artifact.source_blob_id != self.source.blob_id
+                or artifact.source_content_hash != self.source.content_hash
+            ):
+                self._add(
+                    DerivationAuditFindingCode.SOURCE_DOCUMENT_MISMATCH,
+                    prefix,
+                    "transcript v2 differs from the root source document",
+                    artifact.artifact_id,
+                )
+            included_by_block = {
+                record.block_id: record for record in artifact.blocks
+            }
+            excluded_by_block = {
+                exclusion.block_id: exclusion
+                for exclusion in artifact.exclusions
+            }
+            coverage_counts = Counter(
+                (
+                    *(record.block_id for record in artifact.blocks),
+                    *(item.block_id for item in artifact.exclusions),
+                )
+            )
+            for block_id in eligible_root_ids:
+                count = coverage_counts[block_id]
+                if count == 0:
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                        f"{prefix}.blocks_and_exclusions",
+                        "eligible root block is absent from transcript v2",
+                        block_id,
+                    )
+                elif count > 1:
+                    self._add(
+                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
+                        f"{prefix}.blocks_and_exclusions",
+                        "root block occurs more than once in transcript v2",
+                        block_id,
+                    )
+            for record_index, record in enumerate(artifact.blocks):
+                path = f"{prefix}.blocks[{record_index}]"
+                root = self.blocks.get(record.block_id)
+                root_page = self.block_pages.get(record.block_id)
+                if root is None or root_page is None:
+                    self._orphan(f"{path}.block_id", record.block_id)
+                elif (
+                    root.kind != "text"
+                    or root.text is None
+                    or root.text != record.raw_text
+                    or root.source_spans != record.source_spans
+                    or root_page.page_index != record.page_index
+                    or root_page.printed_page_label != record.printed_page_label
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "transcript-v2 block differs from its root block",
+                        record.record_id,
+                    )
+            for exclusion_index, exclusion in enumerate(artifact.exclusions):
+                path = f"{prefix}.exclusions[{exclusion_index}]"
+                root = self.blocks.get(exclusion.block_id)
+                root_page = self.block_pages.get(exclusion.block_id)
+                if root is None or root_page is None:
+                    self._orphan(f"{path}.block_id", exclusion.block_id)
+                elif (
+                    root.kind != "text"
+                    or root.text is None
+                    or root.text != exclusion.raw_text
+                    or root.source_spans != exclusion.source_spans
+                    or root_page.page_index != exclusion.page_index
+                    or root_page.printed_page_label
+                    != exclusion.printed_page_label
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "transcript-v2 exclusion differs from its root block",
+                        exclusion.exclusion_id,
+                    )
+            page_classification_by_id = {
+                item.classification_id: item
+                for item in artifact.page_number_classifications
+            }
+            publisher_by_id = {
+                item.classification_id: item
+                for item in artifact.publisher_front_matter
+            }
+            exclusions_by_decision = {
+                item.decision_id: item
+                for item in artifact.exclusions
+                if item.decision_id is not None
+            }
+            for decision_index, decision in enumerate(
+                artifact.dehyphenation_decisions
+            ):
+                path = f"{prefix}.dehyphenation_decisions[{decision_index}]"
+                root = self.blocks.get(decision.block_id)
+                root_page = self.block_pages.get(decision.block_id)
+                if root is None or root_page is None or root.text is None:
+                    self._orphan(f"{path}.block_id", decision.block_id)
+                elif (
+                    root.source_spans != decision.source_spans
+                    or root_page.page_index != decision.page_index
+                    or root_page.printed_page_label
+                    != decision.printed_page_label
+                    or decision.end_offset > len(root.text)
+                    or root.text[decision.start_offset : decision.end_offset]
+                    != decision.raw_fragment
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "dehyphenation decision differs from source evidence",
+                        decision.decision_id,
+                    )
+            for classification_index, page_classification in enumerate(
+                artifact.page_number_classifications
+            ):
+                path = (
+                    f"{prefix}.page_number_classifications"
+                    f"[{classification_index}]"
+                )
+                root = self.blocks.get(page_classification.block_id)
+                root_page = self.block_pages.get(page_classification.block_id)
+                boxes = (
+                    tuple(
+                        span.bounding_box
+                        for span in root.source_spans
+                        if span.bounding_box is not None
+                    )
+                    if root is not None
+                    else ()
+                )
+                expected_box = (
+                    (
+                        min(box[0] for box in boxes),
+                        min(box[1] for box in boxes),
+                        max(box[2] for box in boxes),
+                        max(box[3] for box in boxes),
+                    )
+                    if boxes
+                    else None
+                )
+                if root is None or root_page is None or root.text is None:
+                    self._orphan(
+                        f"{path}.block_id", page_classification.block_id
+                    )
+                elif (
+                    root.text != page_classification.raw_text
+                    or root.source_spans != page_classification.source_spans
+                    or root_page.page_index != page_classification.page_index
+                    or root_page.printed_page_label
+                    != page_classification.printed_page_label
+                    or page_classification.bounding_box != expected_box
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "page-number decision differs from source evidence",
+                        page_classification.classification_id,
+                    )
+                page_exclusion = exclusions_by_decision.get(
+                    page_classification.classification_id
+                )
+                if (
+                    page_classification.outcome is PageNumberOutcome.PAGE_NUMBER
+                    and (
+                        page_exclusion is None
+                        or page_exclusion.reason
+                        is not CleanTranscriptV2ExclusionReason.PAGE_NUMBER
+                    )
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                        path,
+                        "page-number decision lacks its typed exclusion",
+                        page_classification.classification_id,
+                    )
+                if (
+                    page_classification.outcome
+                    is not PageNumberOutcome.PAGE_NUMBER
+                    and page_exclusion is not None
+                    and page_exclusion.reason
+                    is CleanTranscriptV2ExclusionReason.PAGE_NUMBER
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "non-page-number evidence was excluded as a page "
+                        "number",
+                        page_classification.classification_id,
+                    )
+            for classification_index, publisher_classification in enumerate(
+                artifact.publisher_front_matter
+            ):
+                path = (
+                    f"{prefix}.publisher_front_matter[{classification_index}]"
+                )
+                root = self.blocks.get(publisher_classification.block_id)
+                root_page = self.block_pages.get(
+                    publisher_classification.block_id
+                )
+                if root is None or root_page is None:
+                    self._orphan(
+                        f"{path}.block_id",
+                        publisher_classification.block_id,
+                    )
+                elif (
+                    root.source_spans != publisher_classification.source_spans
+                    or root_page.page_index
+                    != publisher_classification.page_index
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "publisher classification differs from source evidence",
+                        publisher_classification.classification_id,
+                    )
+                publisher_exclusion = exclusions_by_decision.get(
+                    publisher_classification.classification_id
+                )
+                if (
+                    publisher_classification.disposition
+                    is ClassificationDisposition.EXCLUDED
+                    and (
+                        publisher_exclusion is None
+                        or publisher_exclusion.reason
+                        is not (
+                            CleanTranscriptV2ExclusionReason.PUBLISHER_FRONT_MATTER
+                        )
+                    )
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                        path,
+                        "publisher exclusion lacks its classification",
+                        publisher_classification.classification_id,
+                    )
+            for finding_index, finding in enumerate(
+                artifact.private_use_glyph_findings
+            ):
+                path = f"{prefix}.private_use_glyph_findings[{finding_index}]"
+                root = self.blocks.get(finding.block_id)
+                root_page = self.block_pages.get(finding.block_id)
+                if root is None or root_page is None or root.text is None:
+                    self._orphan(f"{path}.block_id", finding.block_id)
+                elif (
+                    root.source_spans != finding.source_spans
+                    or root_page.page_index != finding.page_index
+                    or root_page.printed_page_label
+                    != finding.printed_page_label
+                    or finding.character_offset >= len(root.text)
+                    or root.text[finding.character_offset]
+                    != finding.raw_character
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        path,
+                        "private-use finding differs from source evidence",
+                        finding.finding_id,
+                    )
+            expected_private_use = {
+                (block.block_id, offset, character)
+                for page in self.document.pages
+                for block in page.blocks
+                if block.kind == "text" and block.text is not None
+                for offset, character in enumerate(block.text)
+                if unicodedata.category(character) == "Co"
+            }
+            actual_private_use = {
+                (item.block_id, item.character_offset, item.raw_character)
+                for item in artifact.private_use_glyph_findings
+            }
+            if actual_private_use != expected_private_use:
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                    f"{prefix}.private_use_glyph_findings",
+                    "private-use findings do not exactly cover source glyphs",
+                    artifact.artifact_id,
+                )
+            actual_page_indexes = tuple(
+                page.page_index for page in artifact.pages
+            )
+            if actual_page_indexes != root_page_indexes:
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                    f"{prefix}.pages",
+                    "transcript-v2 pages do not exactly cover root pages",
+                    artifact.artifact_id,
+                )
+            layouts = tuple(
+                self.registry.layouts[layout_id]
+                for layout_id in artifact.layout_result_ids
+                if layout_id in self.registry.layouts
+            )
+            layout_by_page = {layout.page_index: layout for layout in layouts}
+            expected_record_ids: list[str] = []
+            expected_exclusion_ids: list[str] = []
+            for page_index, root_page in enumerate(self.document.pages):
+                block_by_id = {
+                    block.block_id: block for block in root_page.blocks
+                }
+                text_ids = tuple(
+                    block.block_id
+                    for block in root_page.blocks
+                    if block.kind == "text" and block.text is not None
+                )
+                layout = layout_by_page.get(root_page.page_index)
+                ordered_ids = (
+                    tuple(
+                        block_id
+                        for block_id in layout.proposed_order
+                        if block_id in block_by_id
+                        and block_by_id[block_id].kind == "text"
+                        and block_by_id[block_id].text is not None
+                    )
+                    if layout is not None
+                    else text_ids
+                )
+                root_order = (
+                    *ordered_ids,
+                    *(
+                        block_id
+                        for block_id in text_ids
+                        if block_id not in ordered_ids
+                    ),
+                )
+                page_record_ids = tuple(
+                    included_by_block[block_id].record_id
+                    for block_id in root_order
+                    if block_id in included_by_block
+                )
+                expected_record_ids.extend(page_record_ids)
+                expected_exclusion_ids.extend(
+                    excluded_by_block[block_id].exclusion_id
+                    for block_id in root_order
+                    if block_id in excluded_by_block
+                )
+                if (
+                    page_index >= len(artifact.pages)
+                    or artifact.pages[page_index].block_record_ids
+                    != page_record_ids
+                    or artifact.pages[page_index].printed_page_label
+                    != root_page.printed_page_label
+                ):
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                        f"{prefix}.pages[{page_index}]",
+                        "transcript-v2 page membership differs from layout",
+                        artifact.artifact_id,
+                    )
+            if tuple(item.record_id for item in artifact.blocks) != tuple(
+                expected_record_ids
+            ):
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                    f"{prefix}.blocks",
+                    "transcript-v2 blocks are not in exact layout order",
+                    artifact.artifact_id,
+                )
+            if tuple(
+                item.exclusion_id for item in artifact.exclusions
+            ) != tuple(expected_exclusion_ids):
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                    f"{prefix}.exclusions",
+                    "transcript-v2 exclusions are not in exact layout order",
+                    artifact.artifact_id,
+                )
+            if tuple(item.order_index for item in artifact.blocks) != tuple(
+                range(len(artifact.blocks))
+            ):
+                self._add(
+                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
+                    f"{prefix}.blocks",
+                    "transcript-v2 retained order is not contiguous",
+                    artifact.artifact_id,
+                )
+            expected_text = (
+                "\n\n".join(page.text for page in artifact.pages) + "\n"
+            )
+            if artifact.text != expected_text:
+                self._add(
+                    DerivationAuditFindingCode.CONTENT_IDENTITY_MISMATCH,
+                    f"{prefix}.text",
+                    "transcript-v2 text differs from page projections",
+                    artifact.artifact_id,
+                )
+            for record in artifact.blocks:
+                if record.page_number_classification_id is not None and (
+                    record.page_number_classification_id
+                    not in page_classification_by_id
+                ):
+                    self._orphan(
+                        f"{prefix}.blocks.page_number_classification_id",
+                        record.page_number_classification_id,
+                    )
+                if record.publisher_classification_id is not None and (
+                    record.publisher_classification_id not in publisher_by_id
+                ):
+                    self._orphan(
+                        f"{prefix}.blocks.publisher_classification_id",
+                        record.publisher_classification_id,
+                    )
 
     def _walk(self, value: object, path: str) -> None:
         if isinstance(
