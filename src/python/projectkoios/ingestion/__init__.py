@@ -268,6 +268,14 @@ from projectkoios.ingestion.reconciliation import (
     OCRReconciliationStreamChoice,
     OCRReconciliationWarning,
 )
+from projectkoios.ingestion.reference_claim_candidate import (
+    REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID,
+    REFERENCE_CLAIM_CANDIDATE_CONTRACT_VERSION,
+    ReferenceClaimCandidate,
+    ReferenceClaimCandidateError,
+    ReferenceClaimCandidateStatus,
+    ReferenceClaimCandidateVerificationError,
+)
 from projectkoios.ingestion.reference_evidence import (
     REFERENCE_EVIDENCE_CONTRACT_ID,
     REFERENCE_EVIDENCE_CONTRACT_VERSION,
@@ -476,6 +484,8 @@ __all__ = [
     "PROCESSING_CONFIGURATION_VERSION",
     "PROCESSING_CONTRACT_VERSION",
     "PROCESSING_COORDINATOR_VERSION",
+    "REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID",
+    "REFERENCE_CLAIM_CANDIDATE_CONTRACT_VERSION",
     "REFERENCE_EVIDENCE_CONTRACT_ID",
     "REFERENCE_EVIDENCE_CONTRACT_VERSION",
     "REFERENCE_EVIDENCE_GENERATOR_NAME",
@@ -732,6 +742,10 @@ __all__ = [
     "RegionColorMode",
     "RegionRenderConfiguration",
     "RenderedRegion",
+    "ReferenceClaimCandidate",
+    "ReferenceClaimCandidateError",
+    "ReferenceClaimCandidateStatus",
+    "ReferenceClaimCandidateVerificationError",
     "ReferenceEvidenceArtifact",
     "ReferenceEvidenceAudit",
     "ReferenceEvidenceAuditScope",
