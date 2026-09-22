@@ -287,6 +287,16 @@ Plans contain repository-relative or logical artifact identities in public
 records. Machine paths and protected source details remain in private managed
 state.
 
+The implementation candidate uses transcript-batch-plan schema `1`. Each item
+binds the source byte identity, safe relative source and ingestion paths,
+raw-extraction artifact hash and manifest identity, equation-detection artifact
+hash and result identity, complete cleanup configuration, processor version,
+and generation-specific destination. The generation-1 command and artifacts
+remain unchanged. Generation 2 is published only under
+`derived/transcription/generation-2/`; dry-run remains the default, and explicit
+`--apply` is required for durable-plan or artifact publication. This
+implementation detail does not change the Proposed contract status.
+
 ## Audit requirements
 
 The derivation audit verifies:

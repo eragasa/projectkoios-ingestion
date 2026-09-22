@@ -16,6 +16,8 @@ koios-ingest-pdf-batch = "projectkoios.ingestion.batch_cli:main"
 koios-detect-pdf-equations-batch = "projectkoios.ingestion.equation_batch_cli:main"
 koios-enrich-pdf-equations-batch = "projectkoios.ingestion.equation_enrichment_cli:main"
 koios-compose-pdf-transcripts-batch = "projectkoios.ingestion.transcript_batch_cli:main"
+koios-plan-pdf-transcripts-v2-batch = "projectkoios.ingestion.transcript_v2_plan_cli:main"
+koios-compose-pdf-transcripts-v2-batch = "projectkoios.ingestion.transcript_v2_batch_cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0.0"]
@@ -32,6 +34,11 @@ dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning",
+    "ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 80

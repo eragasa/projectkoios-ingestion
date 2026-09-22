@@ -468,6 +468,36 @@ koios-compose-pdf-transcripts-batch batch.json \
   --apply
 ```
 
+Transcript generation 2 uses separate commands and never changes the generation-1
+command or files. `koios-plan-pdf-transcripts-v2-batch` deterministically binds
+the verified source, extraction artifact, equation-detection artifact, complete
+cleanup configuration, processor version, and generation-specific destination
+into an immutable durable plan. Planning and composition are dry-run by default.
+Explicit `--apply` publishes the plan or one complete per-item artifact directory.
+Each generation-2 directory is published with a same-filesystem rename only after
+all four files have been written and synced. Existing byte-identical sets report
+`unchanged`; partial, different, extra, symlinked, or stale-predecessor sets fail
+closed. Generation 2 is written only under
+`derived/transcription/generation-2/` and remains `automated_unreviewed`.
+
+```bash
+koios-plan-pdf-transcripts-v2-batch batch.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --output ~/projectkoios/.koios/plans/transcript-v2.json
+koios-plan-pdf-transcripts-v2-batch batch.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --output ~/projectkoios/.koios/plans/transcript-v2.json \
+  --apply
+koios-compose-pdf-transcripts-v2-batch \
+  ~/projectkoios/.koios/plans/transcript-v2.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --cache-root ~/projectkoios/.koios/extraction-cache \
+  --apply
+```
+
 The plain-text file includes explicit physical/printed page markers and is suitable as source-linked retrieval input, not as a human-proofread edition. Markdown notes and generated relevance assessments remain downstream views and must not replace or feed back into this source corpus.
 
 ## Derivation provenance audit
