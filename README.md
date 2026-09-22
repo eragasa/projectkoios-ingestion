@@ -2,6 +2,8 @@
 
 Source ingestion and document processing pipeline for Project Koios.
 
+Hosted software verification is documented in [`docs/ci.md`](docs/ci.md).
+
 This package coordinates source loaders, document processors, chunk producers,
 and index writers through destination-independent interfaces. It does not own
 search storage, bibliography management, Markdown projection, or vault writes.
@@ -466,6 +468,14 @@ page and lineage identities, page-text identity, hashed topic-anchor identities,
 the match partition, processor identity, and explicit limitations. They do not
 embed the phrase-bearing locator, retain text, or make a claim-support,
 proofreading, scientific-validation, acceptance, or publication assertion.
+
+`ReferenceClaimCandidate.create` binds an externally owned
+`research-claim:sha256` identity to one positive locator result and its exact
+reusable reference-evidence lineage. The candidate retains only identities,
+digests, lengths, matched anchor identities, and explicit limitations. It
+contains no claim text, quotation, page text, path, authority, decision, or
+publication state. Its only status is `manual_review_required`; a positive
+candidate is not claim support or citation acceptance.
 
 ```bash
 koios-compose-pdf-transcripts-batch batch.json \

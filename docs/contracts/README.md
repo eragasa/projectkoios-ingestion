@@ -9,6 +9,7 @@ by `projectkoios-ingestion`.
 | `projectkoios.ingestion.transcript-batch-plan` | [`clean-transcript-v2.md`](clean-transcript-v2.md#contract-metadata-transcript-batch-plan) | Reproducible transcript batch planning |
 | `projectkoios.ingestion.reference-evidence` | [`reference-evidence.md`](reference-evidence.md#contract-metadata) | Source-bound extraction/transcript/audit evidence for external consumers |
 | `projectkoios.ingestion.reference-page-locator` | [`reference-page-locator.md`](reference-page-locator.md#contract-metadata) | Bounded whole-token page navigation over exact transcript evidence |
+| `projectkoios.ingestion.reference-claim-candidate` | [`reference-claim-candidate.md`](reference-claim-candidate.md#contract-metadata) | Payload-free claim-to-page candidate evidence requiring manual review |
 
 The existing [`../contracts.md`](../contracts.md) remains the legacy aggregate
 for implemented ingestion contracts. It is not moved by this documentation
