@@ -181,7 +181,7 @@ processor protocol are implemented over that exact rendered evidence. They use
 canonical semantic language tags, pre-execution backend/resource identities,
 source-verified native-text coexistence references, optional method-described
 confidence, and explicit completed/partial/failed outcomes, including blank
-success. A caller may now explicitly inject the lazy `TesseractOCRProcessor`,
+success. A caller may now explicitly inject the lazy `TesseractOcrProcessor`,
 which runs one bounded no-shell POSIX subprocess per selected PNG, snapshots and
 hashes exact traineddata resources, and strictly maps TSV evidence without
 merging native text. A separate deterministic reconciliation processor now

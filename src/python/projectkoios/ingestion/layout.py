@@ -4,6 +4,7 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.ingestion.base import BasePageLayoutProcessor
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -797,7 +798,7 @@ class _Item:
     box: BoundingBox
 
 
-class DeterministicLayoutProcessor:
+class DeterministicLayoutProcessor(BasePageLayoutProcessor):
     """Propose bounded page-local text order from transparent geometry only."""
 
     name = "deterministic-page-layout"

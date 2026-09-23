@@ -23,10 +23,10 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     SourceDocument,
 )
-from projectkoios.ingestion.ocr import (
-    OCRProcessorIdentity,
-    OCRRequest,
-    OCRResult,
+from projectkoios.ingestion.ocr.models import (
+    OcrProcessorIdentity,
+    OcrRequest,
+    OcrResult,
 )
 from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
@@ -96,9 +96,9 @@ class OCRProcessor(Protocol):
     name: str
     version: str
 
-    def identity_for(self, request: OCRRequest) -> OCRProcessorIdentity: ...
+    def identity_for(self, request: OcrRequest) -> OcrProcessorIdentity: ...
 
-    def process(self, request: OCRRequest) -> OCRResult: ...
+    def process(self, request: OcrRequest) -> OcrResult: ...
 
 
 class OCRReconciler(Protocol):

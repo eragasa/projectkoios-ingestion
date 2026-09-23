@@ -8,6 +8,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, fields
 from enum import StrEnum
 
+from projectkoios.ingestion.base import BaseCleanTranscriptV2Projector
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
@@ -1060,7 +1061,9 @@ class _NumericCandidate:
     page_height: float
 
 
-class DeterministicCleanTranscriptV2Projector:
+class DeterministicCleanTranscriptV2Projector(
+    BaseCleanTranscriptV2Projector
+):
     """Create an evidence-conservative transcript-v2 projection."""
 
     name = "deterministic-clean-transcript-projector"

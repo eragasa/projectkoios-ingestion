@@ -22,10 +22,10 @@ from projectkoios.ingestion import (
     OCROutputMode,
     OCRPageImage,
     OCRProcessor,
-    OCRProcessorIdentity,
-    OCRRequest,
+    OcrProcessorIdentity,
+    OcrRequest,
     OCRResourceIdentityKind,
-    OCRResult,
+    OcrResult,
     OCRResultStatus,
     OCRSelection,
     OCRSelectionResult,
@@ -174,7 +174,7 @@ def _request(
     images: tuple[OCRPageImage, ...] | None = None,
     native_ids: tuple[tuple[str, ...], ...] | None = None,
     **configuration_changes: object,
-) -> OCRRequest:
+) -> OcrRequest:
     actual_images = images or (_image(),)
     ids = native_ids or tuple(() for _ in actual_images)
     configuration = OCRConfiguration(
@@ -191,7 +191,7 @@ def _request(
         )
         for image, block_ids in zip(actual_images, ids, strict=True)
     )
-    return OCRRequest.create(selections, configuration=configuration)
+    return OcrRequest.create(selections, configuration=configuration)
 
 
 def _confidence(value: float) -> OCRConfidence:
@@ -208,9 +208,9 @@ def _processor_identity(
     *,
     resource_suffix: str = "v1",
     **changes: str,
-) -> OCRProcessorIdentity:
+) -> OcrProcessorIdentity:
     values = {**IDENTITY, **changes}
-    return OCRProcessorIdentity(
+    return OcrProcessorIdentity(
         processor_name=values["processor_name"],
         processor_version=values["processor_version"],
         backend_name=values["backend_name"],
@@ -240,7 +240,7 @@ def _warning(
 
 
 def _token(
-    request: OCRRequest,
+    request: OcrRequest,
     *,
     selection_index: int = 0,
     order: int = 0,
@@ -262,7 +262,7 @@ def _token(
 
 
 def _line(
-    request: OCRRequest,
+    request: OcrRequest,
     *,
     selection_index: int = 0,
     token_ids: tuple[str, ...] = (),
@@ -281,7 +281,7 @@ def _line(
 
 
 def _completed(
-    request: OCRRequest, selection_index: int = 0
+    request: OcrRequest, selection_index: int = 0
 ) -> OCRSelectionResult:
     mode = request.configuration.output_mode
     token = (
@@ -313,13 +313,13 @@ def _completed(
 
 
 def _result(
-    request: OCRRequest,
+    request: OcrRequest,
     selection_results: tuple[OCRSelectionResult, ...],
     *,
     resource_suffix: str = "v1",
     **identity_changes: str,
-) -> OCRResult:
-    return OCRResult.create(
+) -> OcrResult:
+    return OcrResult.create(
         request=request,
         selection_results=selection_results,
         processor_identity=_processor_identity(
@@ -331,7 +331,7 @@ def _result(
 
 
 def _failed(
-    request: OCRRequest, selection_index: int = 0
+    request: OcrRequest, selection_index: int = 0
 ) -> OCRSelectionResult:
     selection = request.selections[selection_index]
     warning = _warning(selection, "ocr.processor_error")
@@ -507,7 +507,7 @@ def test__ocr_coordinates__map_pixels_to_source_for_rotated_image(
 def test__ocr_request__preserves_order_and_bounds_infinite_iterables() -> None:
     first = OCRSelection.create(_image(page_index=0))
     second = OCRSelection.create(_image(page_index=1))
-    request = OCRRequest.create((second, first))
+    request = OcrRequest.create((second, first))
     assert [
         item.image.rendered_region.page_index for item in request.selections
     ] == [
@@ -526,7 +526,7 @@ def test__ocr_request__preserves_order_and_bounds_infinite_iterables() -> None:
             yield first
 
     with pytest.raises(OCRContractLimitError, match="max_selections"):
-        OCRRequest.create(
+        OcrRequest.create(
             selections(),
             configuration=OCRConfiguration(max_selections=2),
         )
@@ -577,7 +577,7 @@ def test__ocr_cache_identity__is_stable_and_covers_every_dimension() -> None:
         images=(_image(page_index=0), _image(page_index=1)),
         native_ids=(("native:1",), ()),
     )
-    reversed_order = OCRRequest.create(
+    reversed_order = OcrRequest.create(
         tuple(reversed(ordered.selections)),
         configuration=ordered.configuration,
     )

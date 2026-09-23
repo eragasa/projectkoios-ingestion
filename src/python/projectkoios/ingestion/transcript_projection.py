@@ -8,6 +8,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.ingestion.base import BaseCleanTranscriptProjector
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import Metadata, SourceSpan
@@ -427,7 +428,7 @@ class CleanTranscriptArtifact:
             raise ValueError("clean-transcript artifact ID is inconsistent")
 
 
-class DeterministicCleanTranscriptProjector:
+class DeterministicCleanTranscriptProjector(BaseCleanTranscriptProjector):
     """Produce readable, source-linked text without claiming proofreading."""
 
     name = "deterministic-clean-transcript-projector"

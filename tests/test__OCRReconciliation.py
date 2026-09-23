@@ -24,7 +24,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.models import (
     OCRConfidence,
     OCRConfiguration,
     OCRFailure,
@@ -33,10 +33,10 @@ from projectkoios.ingestion.ocr import (
     OCRLine,
     OCROutputMode,
     OCRPageImage,
-    OCRProcessorIdentity,
-    OCRRequest,
+    OcrProcessorIdentity,
+    OcrRequest,
     OCRResourceIdentityKind,
-    OCRResult,
+    OcrResult,
     OCRSelection,
     OCRSelectionResult,
     OCRSelectionStatus,
@@ -77,8 +77,8 @@ def _png(width: int = 100, height: int = 50) -> bytes:
     )
 
 
-def _processor_identity() -> OCRProcessorIdentity:
-    return OCRProcessorIdentity(
+def _processor_identity() -> OcrProcessorIdentity:
+    return OcrProcessorIdentity(
         processor_name=PROCESSOR_NAME,
         processor_version=PROCESSOR_VERSION,
         backend_name=BACKEND_NAME,
@@ -100,7 +100,7 @@ def _fixture(
     ocr: tuple[tuple[str, tuple[float, float, float, float]], ...],
     rotation: int = 0,
     status: OCRSelectionStatus = OCRSelectionStatus.COMPLETED,
-) -> tuple[OCRResult, ExtractedPage | None, PageLayoutResult | None]:
+) -> tuple[OcrResult, ExtractedPage | None, PageLayoutResult | None]:
     source = SourceDocument.from_bytes(
         b"synthetic-reconciliation-pdf" + bytes((rotation,)),
         source_id=f"document:reconciliation:{rotation}",
@@ -178,7 +178,7 @@ def _fixture(
         selection = OCRSelection.create(image)
         layout = None
     configuration = OCRConfiguration(output_mode=OCROutputMode.LINES)
-    request = OCRRequest.create((selection,), configuration=configuration)
+    request = OcrRequest.create((selection,), configuration=configuration)
     lines = tuple(
         OCRLine.create(
             selection=selection,
@@ -233,7 +233,7 @@ def _fixture(
         backend_name=BACKEND_NAME,
         backend_version=BACKEND_VERSION,
     )
-    result = OCRResult.create(
+    result = OcrResult.create(
         request=request,
         selection_results=(selection_result,),
         processor_identity=_processor_identity(),

@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum, StrEnum
 
+from projectkoios.ingestion.base import BaseStructuredTranscriptionComposer
 from projectkoios.ingestion.equations import (
     EquationCandidate,
     EquationDetectionResult,
@@ -579,7 +580,9 @@ class _Draft:
         )
 
 
-class DeterministicStructuredTranscriptionComposer:
+class DeterministicStructuredTranscriptionComposer(
+    BaseStructuredTranscriptionComposer
+):
     """Compose exact evidence into a destination-independent proposal."""
 
     name = "deterministic-structured-transcription-composer"

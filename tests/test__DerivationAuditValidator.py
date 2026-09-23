@@ -23,12 +23,12 @@ from projectkoios.ingestion import (
     OCRLanguageResourceIdentity,
     OCRLine,
     OCRPageImage,
-    OCRProcessorIdentity,
+    OcrProcessorIdentity,
     OCRReconciliationInput,
     OCRReconciliationResult,
-    OCRRequest,
+    OcrRequest,
     OCRResourceIdentityKind,
-    OCRResult,
+    OcrResult,
     OCRSelection,
     OCRSelectionResult,
     OCRSelectionStatus,
@@ -603,7 +603,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
             figure_detection_result=figures,
         )
     )
-    ocr_results: tuple[OCRResult, ...] = ()
+    ocr_results: tuple[OcrResult, ...] = ()
     reconciliation_results: tuple[OCRReconciliationResult, ...] = ()
     if equations.candidates:
         candidate = equations.candidates[0]
@@ -646,7 +646,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
             backend_name=backend_name,
             backend_version=backend_version,
         )
-        request = OCRRequest.create((selection,), configuration=configuration)
+        request = OcrRequest.create((selection,), configuration=configuration)
         selection_result = OCRSelectionResult.create(
             selection=selection,
             configuration=configuration,
@@ -658,7 +658,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
             backend_name=backend_name,
             backend_version=backend_version,
         )
-        identity = OCRProcessorIdentity(
+        identity = OcrProcessorIdentity(
             processor_name=processor_name,
             processor_version=processor_version,
             backend_name=backend_name,
@@ -673,7 +673,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
             ),
         )
         ocr_results = (
-            OCRResult.create(
+            OcrResult.create(
                 request=request,
                 selection_results=(selection_result,),
                 processor_identity=identity,

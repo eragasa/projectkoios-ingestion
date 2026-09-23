@@ -5,6 +5,7 @@ import math
 from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
+from projectkoios.ingestion.base import BaseSourceExtractor
 from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
@@ -28,7 +29,7 @@ class PdfDependencyUnavailableError(RuntimeError):
     """Raised when the optional PyMuPDF adapter dependency is absent."""
 
 
-class PyMuPdfExtractor:
+class PyMuPdfExtractor(BaseSourceExtractor):
     """Deterministic cold PDF extraction through a lazy optional adapter."""
 
     name = "pymupdf"

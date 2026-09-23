@@ -2,10 +2,11 @@
 
 ## Status
 
-**Components implemented; composition root planned for iteration two.**
+**Components implemented; first pilot composition prefix executable.**
 Deterministic ingestion v0 is a family of bounded, independently versioned
-components. The planned `DeterministicProcessor` orders those components without
-collapsing their contracts or identities.
+components. `DeterministicProcessor` marks the generic ordering boundary and
+remains a stub. `PilotDeterministicProcessor` now executes the validated
+extraction-to-layout prefix without collapsing component contracts or identities.
 
 See [architecture.md](architecture.md) for the component relationships and
 [implementation.md](implementation.md) for the source and test map.
@@ -22,10 +23,10 @@ Optional OCR and recognition implementations are injected boundaries. Their
 outputs may be consumed as immutable evidence, but the v0 architecture does not
 relabel a stochastic backend as deterministic.
 
-`BaseDeterministicProcessor` and `DeterministicProcessor` form the planned
-iteration-two composition boundary. `PilotDeterministicProcessor` encapsulates
-one verified `PdfProcessedDocument` and executes only a validated prefix of the
-canonical component order.
+`BaseDeterministicProcessor` and the `DeterministicProcessor` stub form the
+iteration-two composition boundary. `PilotDeterministicProcessor` requires one
+`PdfProcessedDocument` with retained extraction evidence and executes the first
+canonical stage through an injected `BasePageLayoutProcessor`.
 
 ## Schematic
 
@@ -36,7 +37,8 @@ flowchart TD
     PdfProcessed --> Pilot
     Pilot --> Raw[ExtractedDocument and exact source evidence]
 
-    Raw --> Layout[DeterministicLayoutProcessor]
+    Raw --> Layout[Injected BasePageLayoutProcessor]
+    Layout --> PilotResult[PilotDeterministicProcessedDocument]
     Raw --> OCR[Injected OCR processor]
     OCR --> Reconcile[DeterministicOCRReconciler]
     Layout --> Reconcile
@@ -61,12 +63,11 @@ flowchart TD
     Layout --> CleanV2
 ```
 
-The currently implemented pilot facade documented by
-[ingestion v0](../index.md) does not implicitly run this graph.
-`PdfDocumentProcessor` projects and retains cold extraction. The planned
-`PilotDeterministicProcessor` will add the graph incrementally in canonical
-order; until each prefix is implemented, deterministic derivations remain
-explicit caller-selected stages.
+The pilot facade documented by [ingestion v0](../index.md) now runs the first
+validated prefix of this graph. `PdfDocumentProcessor` projects and retains cold
+extraction, and `PilotDeterministicProcessor` derives and retains page layout.
+Later deterministic derivations remain explicit caller-selected stages until
+their ordered prefixes are implemented.
 
 ## Key Classes
 
@@ -79,6 +80,7 @@ explicit caller-selected stages.
 - **`DeterministicStructuredTranscriptionComposer`** — composes typed evidence into an ordered transcript proposal.
 - **`DeterministicCleanTranscriptProjector`** and **`DeterministicCleanTranscriptV2Projector`** — produce conservative clean projections.
 - **`DerivationAuditValidator`** — deterministically validates retained provenance consistency.
-- **`BaseDeterministicProcessor`**, **`DeterministicProcessor`**, and
-  **`PilotDeterministicProcessor`** — planned ordered composition boundaries;
-  they are not yet implemented.
+- **`BaseDeterministicProcessor`** and **`DeterministicProcessor`** — shared
+  contract and generic composition-root stub.
+- **`PilotDeterministicProcessor`** — executable extraction-to-layout prefix
+  producing `PilotDeterministicProcessedDocument`.

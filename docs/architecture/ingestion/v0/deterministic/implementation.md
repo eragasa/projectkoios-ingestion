@@ -24,12 +24,20 @@ The component protocols are declared in
 Public implementations and models are re-exported from
 [`projectkoios.ingestion`](../../../../../src/python/projectkoios/ingestion/__init__.py).
 
-There is not yet an implemented v0 `DeterministicProcessor` composition root.
-Iteration two designs `BaseDeterministicProcessor`, `DeterministicProcessor`,
-and `PilotDeterministicProcessor` as an ordered composition boundary around a
-verified `PdfProcessedDocument`. Until that prefix is implemented and tested,
-callers compose the existing components directly or use the existing batch
-entry points.
+Iteration two provides `BaseDeterministicProcessor`, the generic
+`DeterministicProcessor` stub, and an executable `PilotDeterministicProcessor`.
+The pilot requires retained extraction evidence, invokes an injected
+`BasePageLayoutProcessor`, and returns `PilotDeterministicProcessedDocument`
+with the exact source, pages, extraction result, and ordered page layouts.
+Later stages remain explicit caller-selected components until their processing
+prefixes are implemented and tested.
+
+Each established component now explicitly inherits its matching abstract class
+from its owning base module. Shared component contracts remain in
+[`base.py`](../../../../../src/python/projectkoios/ingestion/base.py); OCR owns
+`BaseOcrProcessor` in `ocr/processors/base.py`. This covers layout, OCR,
+reconciliation, structure, equation, table, figure, transcription,
+clean-transcript, and derivation-audit boundaries.
 
 See [architecture.md](architecture.md) for the governing invariants and
 [index.md](index.md) for the summary.

@@ -8,6 +8,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import StrEnum
 from typing import Any
 
+from projectkoios.ingestion.base import BaseDerivationAuditValidator
 from projectkoios.ingestion.equations import EquationDetectionResult
 from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.identity import stable_id
@@ -20,7 +21,7 @@ from projectkoios.ingestion.models import (
     SourceDocument,
     SourceSpan,
 )
-from projectkoios.ingestion.ocr import OCRResult
+from projectkoios.ingestion.ocr.models import OcrResult
 from projectkoios.ingestion.pdf.models import RenderedRegion
 from projectkoios.ingestion.processing import ProcessingResult
 from projectkoios.ingestion.reconciliation import OCRReconciliationResult
@@ -144,7 +145,7 @@ class DerivationAuditFinding:
 class DerivationAuditInput:
     source_content: bytes
     extraction_result: ExtractionResult
-    ocr_results: tuple[OCRResult, ...] = ()
+    ocr_results: tuple[OcrResult, ...] = ()
     reconciliation_results: tuple[OCRReconciliationResult, ...] = ()
     layout_results: tuple[PageLayoutResult, ...] = ()
     structure_analyses: tuple[StructureAnalysis, ...] = ()
@@ -290,7 +291,7 @@ class DerivationAuditReport:
 
 
 _LAYER_TYPES: dict[str, type[object]] = {
-    "ocr_results": OCRResult,
+    "ocr_results": OcrResult,
     "reconciliation_results": OCRReconciliationResult,
     "layout_results": PageLayoutResult,
     "structure_analyses": StructureAnalysis,
@@ -323,7 +324,7 @@ _LAYER_FIELDS = (
 class _Registry:
     layouts: dict[str, PageLayoutResult]
     structures: dict[str, StructureAnalysis]
-    ocr_results: dict[str, OCRResult]
+    ocr_results: dict[str, OcrResult]
     equations: dict[str, EquationDetectionResult]
     table_detections: dict[str, TableDetectionResult]
     table_structures: dict[str, TableStructureResult]
@@ -334,7 +335,7 @@ class _Registry:
     clean_transcripts_v2: dict[str, CleanTranscriptV2Artifact]
 
 
-class DerivationAuditValidator:
+class DerivationAuditValidator(BaseDerivationAuditValidator):
     """Validate exact transitive provenance without changing any artifact."""
 
     name = "deterministic-derivation-audit-validator"

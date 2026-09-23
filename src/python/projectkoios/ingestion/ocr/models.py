@@ -180,7 +180,7 @@ class OCRLanguageResourceIdentity:
 
 
 @dataclass(frozen=True)
-class OCRProcessorIdentity:
+class OcrProcessorIdentity:
     """Request-specific processor/backend and language-resource identity."""
 
     processor_name: str
@@ -209,7 +209,7 @@ class OCRProcessorIdentity:
         if len(set(languages)) != len(languages):
             raise ValueError("language resource bindings must be unique")
 
-    def validate_for(self, request: OCRRequest) -> None:
+    def validate_for(self, request: OcrRequest) -> None:
         languages = tuple(item.language for item in self.language_resources)
         if languages != request.configuration.languages:
             raise ValueError(
@@ -509,7 +509,7 @@ class OCRSelection:
 
 
 @dataclass(frozen=True)
-class OCRRequest:
+class OcrRequest:
     """A non-empty, ordered, bounded OCR request."""
 
     request_id: str
@@ -523,7 +523,7 @@ class OCRRequest:
         selections: Iterable[OCRSelection],
         *,
         configuration: OCRConfiguration | None = None,
-    ) -> OCRRequest:
+    ) -> OcrRequest:
         config = configuration or OCRConfiguration()
         bounded = tuple(islice(selections, config.max_selections + 1))
         if len(bounded) > config.max_selections:
@@ -1056,28 +1056,28 @@ class OCRSelectionResult:
 
 
 @dataclass(frozen=True)
-class OCRResult:
+class OcrResult:
     """Ordered OCR outcomes retaining their complete bounded request."""
 
     result_id: str
-    request: OCRRequest
+    request: OcrRequest
     selection_results: tuple[OCRSelectionResult, ...]
     status: OCRResultStatus
     cache_key: str
-    processor_identity: OCRProcessorIdentity
+    processor_identity: OcrProcessorIdentity
     contract_version: str = OCR_CONTRACT_VERSION
 
     @classmethod
     def create(
         cls,
         *,
-        request: OCRRequest,
+        request: OcrRequest,
         selection_results: tuple[OCRSelectionResult, ...],
-        processor_identity: OCRProcessorIdentity,
-    ) -> OCRResult:
-        if not isinstance(processor_identity, OCRProcessorIdentity):
+        processor_identity: OcrProcessorIdentity,
+    ) -> OcrResult:
+        if not isinstance(processor_identity, OcrProcessorIdentity):
             raise TypeError(
-                "processor_identity must be an OCRProcessorIdentity"
+                "processor_identity must be an OcrProcessorIdentity"
             )
         processor_identity.validate_for(request)
         _require_tuple("selection_results", selection_results)
@@ -1135,11 +1135,11 @@ class OCRResult:
     def __post_init__(self) -> None:
         if self.contract_version != OCR_CONTRACT_VERSION:
             raise ValueError("unsupported OCR result contract version")
-        if not isinstance(self.request, OCRRequest):
-            raise TypeError("request must be an OCRRequest")
-        if not isinstance(self.processor_identity, OCRProcessorIdentity):
+        if not isinstance(self.request, OcrRequest):
+            raise TypeError("request must be an OcrRequest")
+        if not isinstance(self.processor_identity, OcrProcessorIdentity):
             raise TypeError(
-                "processor_identity must be an OCRProcessorIdentity"
+                "processor_identity must be an OcrProcessorIdentity"
             )
         self.processor_identity.validate_for(self.request)
         _require_tuple("selection_results", self.selection_results)
@@ -1191,8 +1191,8 @@ class OCRResult:
 
 def build_ocr_cache_key(
     *,
-    request: OCRRequest,
-    processor_identity: OCRProcessorIdentity,
+    request: OcrRequest,
+    processor_identity: OcrProcessorIdentity,
     contract_version: str = OCR_CONTRACT_VERSION,
 ) -> str:
     """Build the complete derived-cache identity without storing a result."""
@@ -1202,8 +1202,8 @@ def build_ocr_cache_key(
         request.configuration.max_identity_field_characters,
         nonempty=True,
     )
-    if not isinstance(processor_identity, OCRProcessorIdentity):
-        raise TypeError("processor_identity must be an OCRProcessorIdentity")
+    if not isinstance(processor_identity, OcrProcessorIdentity):
+        raise TypeError("processor_identity must be an OcrProcessorIdentity")
     processor_identity.validate_for(request)
     return stable_id(
         "ocr-cache",
@@ -1358,7 +1358,7 @@ def _preflight_request(
 
 
 def _preflight_result_counts(
-    request: OCRRequest,
+    request: OcrRequest,
     selection_results: tuple[OCRSelectionResult, ...],
 ) -> None:
     configuration = request.configuration
@@ -1934,7 +1934,7 @@ def _ocr_selection_result_id(
 
 
 def _ocr_result_id(
-    request: OCRRequest,
+    request: OcrRequest,
     selection_results: tuple[OCRSelectionResult, ...],
     status: OCRResultStatus,
     cache_key: str,

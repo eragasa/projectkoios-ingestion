@@ -851,7 +851,7 @@ analysis, semantic interpretation, storage publication, or model calls.
 
 ## OCR requests and results
 
-`OCRRequest` is a non-empty ordered tuple of explicit `OCRSelection` values.
+`OcrRequest` is a non-empty ordered tuple of explicit `OCRSelection` values.
 Each selection owns an `OCRPageImage` that nests one exact, already validated
 `RenderedRegion`; it therefore retains the logical source ID, exact blob/hash,
 page and region identity, requested and effective source footprints, PNG
@@ -903,7 +903,7 @@ result truthfully represents a blank region with no recognized text. When a
 completed result has output, it must contain every stream required by the
 requested output mode. Partial results retain usable output and require both
 typed failure and linked warning evidence. Failed results require the same
-explicit failure/warning evidence and cannot contain tokens or lines. `OCRResult`
+explicit failure/warning evidence and cannot contain tokens or lines. `OcrResult`
 preserves request order and is completed only when every selection completed,
 failed only when all failed, and partial otherwise. Direct construction
 revalidates stable identities, source/image/configuration links, output order,
@@ -913,7 +913,7 @@ identity, and aggregate limits.
 `build_ocr_cache_key` is the cache identity boundary for a future derived OCR
 cache. It includes OCR contract version, ordered exact image/source identities,
 selection and native-block evidence, language/output configuration, all
-behavior/resource settings, and an `OCRProcessorIdentity` available before
+behavior/resource settings, and an `OcrProcessorIdentity` available before
 execution. That descriptor records processor and backend name/version plus an
 ordered one-to-one binding from every requested semantic language tag to the
 selected backend resource name and immutable SHA-256 or explicit versioned
@@ -984,7 +984,7 @@ no `ExtractionCache` entry, and performs no OCR or model call.
 
 ## Tesseract OCR adapter
 
-`TesseractOCRProcessor` implements `OCRProcessor` as a lazy external-process
+`TesseractOcrProcessor` implements `OCRProcessor` as a lazy external-process
 adapter; importing the package does not import, bundle, or install Tesseract.
 Installation and explicit resource discovery are documented in
 [`tesseract.md`](tesseract.md). Construction requires immutable
@@ -997,7 +997,7 @@ missing executable or resource produces `PROCESSOR_UNAVAILABLE`.
 `identity_for` resolves the executable without a shell, invokes bounded
 `tesseract --version`, hashes its bounded normalized version/dependency/capability
 report and the executable bytes, and incrementally hashes every requested
-traineddata file under individual and aggregate limits. `OCRProcessorIdentity`
+traineddata file under individual and aggregate limits. `OcrProcessorIdentity`
 records those engine identities and ordered semantic-language/resource-name/
 SHA-256 bindings. The effective processor version additionally incorporates the
 complete `TesseractAdapterConfiguration` digest: timeout, stdout/stderr capture

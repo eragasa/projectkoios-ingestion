@@ -25,7 +25,9 @@ flowchart TD
         Processor --> Extractor[PyMuPdfExtractor]
         Processor --> Projection[PdfProcessedDocument]
         Corpus --> Projection
-        Projection --> Chunker[PilotProcessedDocumentChunker]
+        Projection --> DeterministicPilot[PilotDeterministicProcessor]
+        DeterministicPilot --> LayoutPrefix[Verified extraction and page layouts]
+        LayoutPrefix --> Chunker[PilotProcessedDocumentChunker]
         Chunker --> Chunks[BaseProcessedDocumentChunks]
         Chunks --> RAG[PilotRAG]
     end
@@ -54,8 +56,12 @@ classDiagram
     BaseProcessedDocument <|-- PdfProcessedDocument
     BaseProcessedPage <|-- ProcessedPdfPage
     BaseDocumentProcessor <|-- PdfDocumentProcessor
+    BaseOcrProcessor <|-- TesseractOcrProcessor
+    BaseOcrProcessor <|-- OcrProcessor
+    OcrProcessor o-- TesseractOcrProcessor
     BaseDeterministicProcessor <|-- DeterministicProcessor
     DeterministicProcessor <|-- PilotDeterministicProcessor
+    PdfProcessedDocument <|-- PilotDeterministicProcessedDocument
     BaseIngestor <|-- PilotIngestor
     BaseProcessedDocumentChunker <|-- PilotProcessedDocumentChunker
     BaseRAG <|-- PilotRAG
@@ -64,28 +70,46 @@ classDiagram
     PdfProcessedDocument *-- ProcessedPdfPage
     PdfProcessedDocument *-- ExtractionResult
     PdfProcessedDocuments *-- PdfProcessedDocument
+    BaseProcessedDocumentDeserializer <|-- ProcessedPdfDocumentDeserializer
+    BaseProcessedDocumentsDeserializer <|-- ProcessedPdfDocumentsDeserializer
     ProcessedPdfDocumentDeserializer --> PdfProcessedDocument
+    ProcessedPdfDocument o-- ProcessedPdfDocumentDeserializer
     ProcessedPdfDocumentsDeserializer --> PdfProcessedDocuments
-    ProcessedPdfDocumentsDeserializer o-- ProcessedPdfDocumentDeserializer
+    ProcessedPdfDocumentsDeserializer o-- ProcessedPdfDocument
     BaseDocumentPersister o-- BaseDocumentPersistanceStore
     BaseProcessedDocumentPersister o-- BaseProcessedDocumentPersistanceStore
     ProcessedPdfDocumentDeserializer o-- BaseDocumentPersistanceStore
     ProcessedPdfDocumentDeserializer o-- BaseProcessedDocumentPersistanceStore
-    PilotDeterministicProcessor *-- PdfProcessedDocument
+    PilotDeterministicProcessor o-- BasePageLayoutProcessor
+    PilotDeterministicProcessor --> PilotDeterministicProcessedDocument
+    PilotDeterministicProcessedDocument *-- PageLayoutResult
     BaseProcessedDocumentChunks *-- BaseProcessedDocumentChunk
 
     PilotIngestor o-- BaseDocumentProcessor
     PilotIngestionPipeline o-- BaseIngestor
+    PilotIngestionPipeline o-- BaseDeterministicProcessor
     PilotIngestionPipeline o-- BaseProcessedDocumentChunker
     PilotIngestionPipeline o-- BaseRAG
     PdfDocumentProcessor o-- PyMuPdfExtractor
 ```
+
+Each implemented component now has an abstract contract in its owning base
+module or the shared `base.py`. OCR uses `ocr/processors/base.py`:
+`TesseractOcrProcessor(BaseOcrProcessor)` owns the bounded backend adapter and
+`OcrProcessor(BaseOcrProcessor)` encapsulates it. `PilotOcrProcessor` is the
+intentional alias of `OcrProcessor`. `OcrProcessorIdentity`, `OcrRequest`, and
+`OcrResult` are canonical; the uppercase spellings and
+`TesseractOCRProcessor` remain warning-emitting
+compatibility names only. Other examples include
+`DeterministicLayoutProcessor(BasePageLayoutProcessor)` and
+`DerivationAuditValidator(BaseDerivationAuditValidator)`.
 
 ## Dependency Schematic
 
 ```mermaid
 flowchart LR
     Pipeline[PilotIngestionPipeline] --> BaseIngestor
+    Pipeline --> BaseDeterministicProcessor
     Pipeline --> BaseChunker[BaseProcessedDocumentChunker]
     Pipeline --> BaseRAG
     PilotIngestor --> BaseProcessor[BaseDocumentProcessor]
@@ -95,11 +119,14 @@ flowchart LR
 
     DocumentPersister[BaseDocumentPersister] --> DocumentStore[BaseDocumentPersistanceStore]
     ProcessedPersister[BaseProcessedDocumentPersister] --> ProcessedStore[BaseProcessedDocumentPersistanceStore]
-    PdfDeserializer[ProcessedPdfDocumentDeserializer] --> DocumentStore
-    PdfDeserializer --> ProcessedStore
+    PdfFacade[ProcessedPdfDocument] --> PdfDeserializer[ProcessedPdfDocumentDeserializer]
+    PdfDeserializer -. planned store injection .-> DocumentStore
+    PdfDeserializer -. planned store injection .-> ProcessedStore
 
     PilotDeterministic[PilotDeterministicProcessor] --> Deterministic[DeterministicProcessor]
     PilotDeterministic --> PdfDocument
+    PilotDeterministic --> LayoutProcessor[BasePageLayoutProcessor]
+    PilotDeterministic --> PilotResult[PilotDeterministicProcessedDocument]
 ```
 
 ## Persistence and deserialization design
@@ -116,27 +143,33 @@ bytes and location evidence are retained.
 - `BaseProcessedDocumentPersister` writes through
   `BaseProcessedDocumentPersistanceStore`. The store retains the canonical,
   versioned `extraction.json` artifact and its location.
-- `ProcessedPdfDocumentDeserializer` is the corresponding read boundary. It
-  receives a citation key plus explicit BibTeX, PDF, and processed-document
-  locations, loads through the two stores, and reconstructs one verified
-  `PdfProcessedDocument`.
+- `ProcessedPdfDocument` encapsulates the concrete
+  `ProcessedPdfDocumentDeserializer`. The deserializer receives a citation key
+  plus explicit BibTeX, PDF, and processed-document locations and reconstructs
+  one verified `PdfProcessedDocument`. Store injection is the next persistence
+  slice; the current concrete implementation still performs bounded file reads.
 - `ProcessedPdfDocumentsDeserializer` preserves manifest order and returns
   `PdfProcessedDocuments`, which contains many `PdfProcessedDocument` values.
 
-The base stores define location and byte access; they do not select a concrete
-filesystem, database, object store, directory layout, or publication policy.
+The base store stubs define location and byte access; they do not select a
+concrete filesystem, database, object store, directory layout, or publication
+policy.
 Concrete stores remain injected deployment adapters. Neither stores nor
 deserializers crawl directories, infer relationships from filenames, mutate
 source files, or treat a locator as canonical document identity.
 
 ## Deterministic pilot composition design
 
-Iteration two adds `BaseDeterministicProcessor` and its concrete
-`DeterministicProcessor` composition boundary. `PilotDeterministicProcessor`
-specializes that boundary and encapsulates one verified `PdfProcessedDocument`.
-`PdfProcessedDocuments` supplies the ordered corpus; each contained document is
-processed independently so a failure cannot silently remove or alter another
-item.
+Iteration two provides `BaseDeterministicProcessor`, the generic
+`DeterministicProcessor` composition boundary, and the first executable
+`PilotDeterministicProcessor` prefix. The pilot requires one
+`PdfProcessedDocument` with retained extraction evidence, executes its injected
+layout processor, and returns an immutable
+`PilotDeterministicProcessedDocument` containing the exact extraction and one
+ordered layout result per extracted page. Later ordered stages remain
+unimplemented. `PdfProcessedDocuments` supplies the ordered corpus; future
+corpus orchestration will process each contained document independently so a
+failure cannot silently remove or alter another item.
 
 Components are added only in this dependency order:
 
@@ -173,8 +206,8 @@ notes must not be fed back into the source-evidence corpus.
 - PyMuPDF is isolated behind the existing PDF adapter and composed only by the
   PDF document processor.
 - The ingestor depends on a document-processor abstraction, not on PyMuPDF.
-- The pipeline composes ingestion, chunking, and answering without owning their
-  algorithms.
+- The pipeline composes ingestion, the deterministic processing prefix,
+  chunking, and answering without owning their algorithms.
 - `PdfProcessedDocument` retains rich extraction evidence alongside its page-
   text projection for deterministic components.
 - Corpus loading uses explicit BibTeX, PDF, and `extraction.json` locations;

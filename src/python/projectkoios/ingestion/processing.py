@@ -7,6 +7,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 
+from projectkoios.ingestion.base import BaseProcessingCoordinator
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     ExtractedDocument,
@@ -1112,7 +1113,7 @@ class ProcessingResult:
         return tuple(item.cache_key for item in self.selection_results)
 
 
-class BoundedProcessingCoordinator:
+class BoundedProcessingCoordinator(BaseProcessingCoordinator):
     """Coordinate one injected processor over exact bounded selections."""
 
     name = "bounded-processing-coordinator"

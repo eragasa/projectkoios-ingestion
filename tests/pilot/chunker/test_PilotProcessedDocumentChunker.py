@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from projectkoios.ingestion.bibtex import BibTexRecord
-from projectkoios.ingestion.documents.pdf import (
+from projectkoios.ingestion.documents.pdf.models import (
     PdfProcessedDocument,
     ProcessedPdfPage,
 )

@@ -16,23 +16,23 @@
 | `BaseProcessedDocumentChunker` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) |
 | `BaseRAG` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) |
 
-### Planned iteration-two contracts
+### Iteration-two contracts and first composition prefix
 
-The following design contracts are not implemented yet:
+| Class | Source | Stub responsibility |
+|---|---|---|
+| `BaseDocumentPersister` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) | Validate and serialize one exact source document through an injected store. |
+| `BaseDocumentPersistanceStore` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) | Retain and resolve exact original BibTeX and source-document bytes and locations. |
+| `BaseProcessedDocumentPersister` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) | Validate and serialize one processed-document contract through an injected store. |
+| `BaseProcessedDocumentPersistanceStore` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) | Retain and resolve canonical processed-artifact bytes and locations. |
+| `BaseDeterministicProcessor` | [`base.py`](../../../../src/python/projectkoios/ingestion/base.py) | Define the ordered deterministic composition contract. |
+| `DeterministicProcessor` | [`deterministic.py`](../../../../src/python/projectkoios/ingestion/deterministic.py) | Mark the composition root; ordered execution is not implemented yet. |
+| `PilotDeterministicProcessor` | [`pilot/deterministic.py`](../../../../src/python/projectkoios/ingestion/pilot/deterministic.py) | Require retained extraction evidence and execute the extraction-to-layout prefix. |
+| `PilotDeterministicProcessedDocument` | [`pilot/models.py`](../../../../src/python/projectkoios/ingestion/pilot/models.py) | Retain the verified PDF document and one ordered layout result per extracted page. |
 
-| Class | Planned responsibility |
-|---|---|
-| `BaseDocumentPersister` | Validate and serialize one exact source document through an injected store. |
-| `BaseDocumentPersistanceStore` | Retain and resolve exact original BibTeX and PDF source bytes and locations. |
-| `BaseProcessedDocumentPersister` | Validate and serialize one processed-document contract through an injected store. |
-| `BaseProcessedDocumentPersistanceStore` | Retain and resolve canonical `extraction.json` bytes and locations. |
-| `BaseDeterministicProcessor` | Define the ordered deterministic composition contract. |
-| `DeterministicProcessor` | Execute a validated prefix of the deterministic component order. |
-| `PilotDeterministicProcessor` | Encapsulate one verified `PdfProcessedDocument` for pilot composition. |
-
-These names describe the planned iteration-two direction in
-[architecture.md](architecture.md); their source and focused tests will be added
-only with their implementation slices.
+[`test__ImplementationBaseContracts.py`](../../../../tests/test__ImplementationBaseContracts.py)
+validates abstract and concrete inheritance. Focused pilot tests validate the
+implemented extraction-to-layout prefix without claiming that later ordered
+stages or persistence are complete.
 
 ### BibTeX facade
 
@@ -42,29 +42,55 @@ only with their implementation slices.
 | `BibtexParser` | [`bibtex.py`](../../../../src/python/projectkoios/ingestion/bibtex.py) | [`test_BibtexParser.py`](../../../../tests/bibtex/test_BibtexParser.py) |
 | `BibtexReferenceError` | [`bibtex.py`](../../../../src/python/projectkoios/ingestion/bibtex.py) | [`test_BaseDocument.py`](../../../../tests/base/test_BaseDocument.py) and [`test_BibtexParser.py`](../../../../tests/bibtex/test_BibtexParser.py) |
 
+### OCR processing
+
+| Class | Implementation | Focused validation |
+|---|---|---|
+| `OcrProcessorIdentity` | [`ocr/models.py`](../../../../src/python/projectkoios/ingestion/ocr/models.py) | [`test__OCRContracts.py`](../../../../tests/test__OCRContracts.py) |
+| `OcrRequest` | [`ocr/models.py`](../../../../src/python/projectkoios/ingestion/ocr/models.py) | [`test__OCRContracts.py`](../../../../tests/test__OCRContracts.py) |
+| `OcrResult` | [`ocr/models.py`](../../../../src/python/projectkoios/ingestion/ocr/models.py) | [`test__OCRContracts.py`](../../../../tests/test__OCRContracts.py) |
+| `BaseOcrProcessor` | [`ocr/processors/base.py`](../../../../src/python/projectkoios/ingestion/ocr/processors/base.py) | [`test_OcrModuleBoundaries.py`](../../../../tests/ocr/test_OcrModuleBoundaries.py) |
+| `TesseractOcrProcessor` | [`ocr/processors/tesseract/processor.py`](../../../../src/python/projectkoios/ingestion/ocr/processors/tesseract/processor.py) | [`test__TesseractOCRProcessor.py`](../../../../tests/test__TesseractOCRProcessor.py) |
+| `OcrProcessor` | [`ocr/processors/ocr.py`](../../../../src/python/projectkoios/ingestion/ocr/processors/ocr.py) | [`test__TesseractOCRProcessor.py`](../../../../tests/test__TesseractOCRProcessor.py) |
+| `PilotOcrProcessor` | [`ocr/processors/ocr.py`](../../../../src/python/projectkoios/ingestion/ocr/processors/ocr.py) | [`test_OcrModuleBoundaries.py`](../../../../tests/ocr/test_OcrModuleBoundaries.py) |
+
+`OcrProcessorIdentity`, `OcrRequest`, and `OcrResult` are the canonical model
+names. `OcrProcessor` encapsulates and delegates to one validated
+`TesseractOcrProcessor`. `PilotOcrProcessor` is its intentional alias. The old
+uppercase model names and old `tesseract.py` surface emit deprecation warnings.
+
 ### PDF processing and corpus loading
 
 | Class | Implementation | Focused validation |
 |---|---|---|
-| `ProcessedPdfPage` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
-| `PdfProcessedDocument` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
-| `PdfProcessedDocuments` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_ProcessedPdfDocumentsDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentsDeserializer.py) |
-| `PdfDocumentProcessor` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
-| `ProcessedPdfDocumentDeserializer` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_ProcessedPdfDocumentDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentDeserializer.py) |
-| `ProcessedPdfDocumentsDeserializer` | [`documents/pdf.py`](../../../../src/python/projectkoios/ingestion/documents/pdf.py) | [`test_ProcessedPdfDocumentsDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentsDeserializer.py) |
+| `ProcessedPdfPage` | [`documents/pdf/models.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/models.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
+| `BaseProcessedDocumentDeserializer` | [`documents/pdf/deserialization.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/deserialization.py) | [`test_module_boundaries.py`](../../../../tests/documents/pdf/test_module_boundaries.py) |
+| `BaseProcessedDocumentsDeserializer` | [`documents/pdf/deserialization.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/deserialization.py) | [`test_module_boundaries.py`](../../../../tests/documents/pdf/test_module_boundaries.py) |
+| `PdfProcessedDocument` | [`documents/pdf/models.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/models.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
+| `PdfProcessedDocuments` | [`documents/pdf/models.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/models.py) | [`test_ProcessedPdfDocumentsDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentsDeserializer.py) |
+| `PdfDocumentProcessor` | [`documents/pdf/processor.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/processor.py) | [`test_PdfDocumentProcessor.py`](../../../../tests/documents/pdf/test_PdfDocumentProcessor.py) |
+| `ProcessedPdfDocument` | [`documents/pdf/processed_document.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/processed_document.py) | [`test_module_boundaries.py`](../../../../tests/documents/pdf/test_module_boundaries.py) |
+| `ProcessedPdfDocumentDeserializer` | [`documents/pdf/processed_document.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/processed_document.py) | [`test_ProcessedPdfDocumentDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentDeserializer.py) |
+| `ProcessedPdfDocumentsDeserializer` | [`documents/pdf/processed_documents.py`](../../../../src/python/projectkoios/ingestion/documents/pdf/processed_documents.py) | [`test_ProcessedPdfDocumentsDeserializer.py`](../../../../tests/documents/pdf/test_ProcessedPdfDocumentsDeserializer.py) |
 
 `PdfDocumentProcessor` translates the pilot document to the existing
 `SourceDocument`, calls
 [`PyMuPdfExtractor`](../../../../src/python/projectkoios/ingestion/pdf/extractor.py),
 and projects the extraction result to page text while retaining the validated
 `ExtractionResult`. The existing extractor remains the PyMuPDF adapter and
-continues to own rich extraction evidence.
+continues to own rich extraction evidence. PDF models are collected in
+`models.py`, custom errors in `errors.py`, and `deserialization.py` contains only
+the deserialization base classes. Shared helper behavior is attached to model or
+base classes rather than exposed as module-level functions. Canonical imports
+come from those owning submodules; the former `documents.pdf` module-level
+names are warning-emitting deprecated compatibility exports.
 
 ### Pilot composition
 
 | Class | Implementation | Focused validation |
 |---|---|---|
 | `PilotDocument` | [`pilot/models.py`](../../../../src/python/projectkoios/ingestion/pilot/models.py) | [`test_PilotDocument.py`](../../../../tests/pilot/models/test_PilotDocument.py) |
+| `PilotDeterministicProcessedDocument` | [`pilot/models.py`](../../../../src/python/projectkoios/ingestion/pilot/models.py) | [`test_PilotIngestionPipeline.py`](../../../../tests/pilot/pipeline/test_PilotIngestionPipeline.py) |
 | `PilotIngestor` | [`pilot/ingestor.py`](../../../../src/python/projectkoios/ingestion/pilot/ingestor.py) | [`test_PilotIngestor.py`](../../../../tests/pilot/ingestor/test_PilotIngestor.py) |
 | `PilotProcessedDocumentChunker` | [`pilot/chunker.py`](../../../../src/python/projectkoios/ingestion/pilot/chunker.py) | [`test_PilotProcessedDocumentChunker.py`](../../../../tests/pilot/chunker/test_PilotProcessedDocumentChunker.py) |
 | `PilotRAG` | [`pilot/rag.py`](../../../../src/python/projectkoios/ingestion/pilot/rag.py) | [`test_PilotRAG.py`](../../../../tests/pilot/rag/test_PilotRAG.py) |
@@ -135,9 +161,13 @@ size character ranges, and creates `BaseProcessedDocumentChunk` values carrying
 page index and text. It performs no tokenization, overlap, semantic splitting,
 or embedding.
 
-`PilotIngestionPipeline.ingest()` calls the configured ingestor and chunker,
-stores the resulting `BaseProcessedDocumentChunks`, and returns that same
-object. `PilotRAG.answer()` remains separate: it computes case-folded
+`PilotIngestionPipeline.ingest()` calls the configured ingestor, deterministic
+processor, and chunker in order, stores the resulting
+`BaseProcessedDocumentChunks`, and returns that same object. The current
+`PilotDeterministicProcessor` requires retained extraction evidence, derives one
+`PageLayoutResult` per extracted page through its injected layout processor, and
+returns an immutable `PilotDeterministicProcessedDocument` retaining both raw
+extraction and layout evidence. `PilotRAG.answer()` remains separate: it computes case-folded
 whitespace-token overlap and returns the first highest-scoring chunk text, or an
 empty string when no chunks exist. It currently performs retrieval rather than
 generation.

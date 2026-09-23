@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from typing import Any
+from warnings import warn
+
 from projectkoios.ingestion.article_structure import (
     ARTICLE_STRUCTURE_PROCESSOR_VERSION,
     ArticleStructureConfiguration,
@@ -157,7 +162,7 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.models import (
     OCR_CONTRACT_VERSION,
     PIXEL_COORDINATE_SYSTEM,
     OCRConfidence,
@@ -170,10 +175,10 @@ from projectkoios.ingestion.ocr import (
     OCRNativeTextBlockReference,
     OCROutputMode,
     OCRPageImage,
-    OCRProcessorIdentity,
-    OCRRequest,
+    OcrProcessorIdentity,
+    OcrRequest,
     OCRResourceIdentityKind,
-    OCRResult,
+    OcrResult,
     OCRResultStatus,
     OCRSelection,
     OCRSelectionResult,
@@ -181,6 +186,24 @@ from projectkoios.ingestion.ocr import (
     OCRToken,
     OCRWarning,
     build_ocr_cache_key,
+)
+from projectkoios.ingestion.ocr.processors.base import BaseOcrProcessor
+from projectkoios.ingestion.ocr.processors.ocr import (
+    OcrProcessor,
+    PilotOcrProcessor,
+)
+from projectkoios.ingestion.ocr.processors.tesseract.constants import (
+    TESSERACT_ADAPTER_VERSION,
+)
+from projectkoios.ingestion.ocr.processors.tesseract.errors import (
+    TesseractAdapterConfigurationError,
+)
+from projectkoios.ingestion.ocr.processors.tesseract.models import (
+    TesseractAdapterConfiguration,
+    TesseractLanguageBinding,
+)
+from projectkoios.ingestion.ocr.processors.tesseract.processor import (
+    TesseractOcrProcessor,
 )
 from projectkoios.ingestion.pdf import (
     PYMUPDF_COORDINATE_SYSTEM,
@@ -367,13 +390,6 @@ from projectkoios.ingestion.tables import (
     TableRuleOrientation,
     TableRuleSegment,
     TableTextAssociation,
-)
-from projectkoios.ingestion.tesseract import (
-    TESSERACT_ADAPTER_VERSION,
-    TesseractAdapterConfiguration,
-    TesseractAdapterConfigurationError,
-    TesseractLanguageBinding,
-    TesseractOCRProcessor,
 )
 from projectkoios.ingestion.textbooks import (
     PdfTextbookIngester,
@@ -673,7 +689,7 @@ __all__ = [
     "OCROutputMode",
     "OCRPageImage",
     "OCRProcessor",
-    "OCRProcessorIdentity",
+    "OcrProcessorIdentity",
     "OCRReconciledItem",
     "OCRReconciledItemKind",
     "OCRReconciler",
@@ -685,9 +701,12 @@ __all__ = [
     "OCRReconciliationResult",
     "OCRReconciliationStreamChoice",
     "OCRReconciliationWarning",
-    "OCRRequest",
+    "BaseOcrProcessor",
+    "OcrProcessor",
+    "OcrRequest",
     "OCRResourceIdentityKind",
-    "OCRResult",
+    "OcrResult",
+    "PilotOcrProcessor",
     "OCRResultStatus",
     "OCRSelection",
     "OCRSelectionResult",
@@ -805,7 +824,7 @@ __all__ = [
     "TesseractAdapterConfiguration",
     "TesseractAdapterConfigurationError",
     "TesseractLanguageBinding",
-    "TesseractOCRProcessor",
+    "TesseractOcrProcessor",
     "StructuredTranscriptionComposer",
     "StructuredTranscriptionResult",
     "StructureAnalysis",
@@ -844,3 +863,22 @@ __all__ = [
     "serialize_reference_evidence",
     "verify_reference_evidence",
 ]
+
+_DEPRECATED_OCR_NAMES = {
+    "OCRProcessorIdentity": OcrProcessorIdentity,
+    "OCRRequest": OcrRequest,
+    "OCRResult": OcrResult,
+    "TesseractOCRProcessor": TesseractOcrProcessor,
+}
+
+
+def __getattr__(name: str) -> Any:
+    value = _DEPRECATED_OCR_NAMES.get(name)
+    if value is None:
+        raise AttributeError(name)
+    warn(
+        f"projectkoios.ingestion.{name} is deprecated; use {value.__name__}",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return value

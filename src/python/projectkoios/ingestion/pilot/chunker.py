@@ -6,7 +6,7 @@ from projectkoios.ingestion.base import (
     BaseProcessedDocumentChunker,
     BaseProcessedDocumentChunks,
 )
-from projectkoios.ingestion.documents.pdf import PdfProcessedDocument
+from projectkoios.ingestion.documents.pdf.models import PdfProcessedDocument
 
 
 class PilotProcessedDocumentChunker(BaseProcessedDocumentChunker):

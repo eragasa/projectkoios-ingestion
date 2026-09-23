@@ -5,7 +5,7 @@ from projectkoios.ingestion.base import (
     BaseProcessedDocumentChunks,
 )
 from projectkoios.ingestion.bibtex import BibTexRecord
-from projectkoios.ingestion.documents.pdf import PdfProcessedDocument
+from projectkoios.ingestion.documents.pdf.models import PdfProcessedDocument
 from projectkoios.ingestion.pilot import PilotDocument, PilotRAG
 
 

@@ -9,6 +9,10 @@ from enum import Enum, StrEnum
 from io import BytesIO
 from typing import Any, BinaryIO, Protocol, cast
 
+from projectkoios.ingestion.base import (
+    BaseFigureCandidateDetector,
+    BaseFigureInspector,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
@@ -1136,7 +1140,7 @@ class _WarningSpec:
     evidence: Metadata = ()
 
 
-class PyMuPdfFigureInspector:
+class PyMuPdfFigureInspector(BaseFigureInspector):
     """Lazily retain exact embedded bytes and bounded drawing locators."""
 
     name = "pymupdf-figure-inspector"
@@ -1368,7 +1372,7 @@ class PyMuPdfFigureInspector:
             pdf.close()
 
 
-class DeterministicFigureCandidateDetector:
+class DeterministicFigureCandidateDetector(BaseFigureCandidateDetector):
     """Detect source-backed figures without semantic interpretation."""
 
     name = "deterministic-figure-candidate-detector"

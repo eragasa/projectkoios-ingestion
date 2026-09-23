@@ -7,6 +7,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from difflib import SequenceMatcher
 from enum import Enum, StrEnum
 
+from projectkoios.ingestion.base import BaseOcrReconciler
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
@@ -17,9 +18,9 @@ from projectkoios.ingestion.models import (
     SourceSpan,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.models import (
     OCRLine,
-    OCRResult,
+    OcrResult,
     OCRSelection,
     OCRSelectionResult,
     OCRSelectionStatus,
@@ -557,7 +558,7 @@ class OCRReconciledItem:
 @dataclass(frozen=True)
 class OCRReconciliationInput:
     input_id: str
-    ocr_result: OCRResult
+    ocr_result: OcrResult
     selection_index: int
     native_page: ExtractedPage | None
     layout_result: PageLayoutResult | None
@@ -568,7 +569,7 @@ class OCRReconciliationInput:
     def create(
         cls,
         *,
-        ocr_result: OCRResult,
+        ocr_result: OcrResult,
         selection_index: int,
         native_page: ExtractedPage | None = None,
         layout_result: PageLayoutResult | None = None,
@@ -755,7 +756,7 @@ class _Candidate:
     ocr_order: int
 
 
-class DeterministicOCRReconciler:
+class DeterministicOCRReconciler(BaseOcrReconciler):
     """Conservatively propose a merged stream without replacing evidence."""
 
     name = "deterministic-ocr-reconciler"
@@ -844,14 +845,14 @@ class DeterministicOCRReconciler:
 
 
 def _validate_input_parts(
-    ocr_result: OCRResult,
+    ocr_result: OcrResult,
     selection_index: int,
     native_page: ExtractedPage | None,
     layout_result: PageLayoutResult | None,
     configuration: OCRReconciliationConfiguration,
 ) -> None:
-    if not isinstance(ocr_result, OCRResult):
-        raise TypeError("ocr_result must be OCRResult")
+    if not isinstance(ocr_result, OcrResult):
+        raise TypeError("ocr_result must be OcrResult")
     _nonnegative_integer("selection_index", selection_index)
     if selection_index >= len(ocr_result.request.selections):
         raise ValueError("selection_index is outside the OCR result")
@@ -936,7 +937,7 @@ def _validate_input_parts(
 
 
 def _input_id(
-    ocr_result: OCRResult,
+    ocr_result: OcrResult,
     selection_index: int,
     native_page: ExtractedPage | None,
     layout_result: PageLayoutResult | None,

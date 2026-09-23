@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from itertools import islice
 from typing import Any, BinaryIO
 
+from projectkoios.ingestion.base import BasePageRegionRenderer
 from projectkoios.ingestion.models import BoundingBox, SourceDocument
 from projectkoios.ingestion.pdf.extractor import PdfDependencyUnavailableError
 from projectkoios.ingestion.pdf.models import (
@@ -37,7 +38,7 @@ class _RenderPlan:
     device_y: int
 
 
-class PyMuPdfRegionRenderer:
+class PyMuPdfRegionRenderer(BasePageRegionRenderer):
     """Render only explicitly selected PDF pages or regions to PNG bytes."""
 
     name = "pymupdf-region-renderer"

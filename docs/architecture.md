@@ -68,8 +68,11 @@ adapter renders only explicit full-page or bounding-box selections to in-memory
 PNG evidence. Implemented OCR contracts bind explicit ordered selections to
 that exact evidence and define bounded token/line, status, warning, coordinate,
 and cache identities behind an injected protocol. The implemented
-`TesseractOCRProcessor` is a lazy, no-shell, per-selection POSIX subprocess
-adapter with exact traineddata identities. The separate
+`TesseractOcrProcessor` is a lazy, no-shell, per-selection POSIX subprocess
+adapter with exact traineddata identities. `OcrProcessor` encapsulates that
+adapter behind `BaseOcrProcessor`; `PilotOcrProcessor` is its intentional pilot
+alias. Canonical identity, request, and result models are
+`OcrProcessorIdentity`, `OcrRequest`, and `OcrResult`. The separate
 `DeterministicOCRReconciler` consumes one exact OCR selection plus its verified
 native page/layout evidence and proposes duplicate, disagreement, native-only,
 and OCR-only relationships without replacing either evidence stream. The
@@ -164,7 +167,7 @@ source/page-verified native text references as coexistence evidence while
 token/line streams remain separate. Completed, partial, and failed outcomes
 carry explicit output, warning, and typed-failure invariants; completed empty
 output represents a successfully processed blank region. The contract layer
-selects no engine. Applications may explicitly inject `TesseractOCRProcessor`,
+selects no engine. Applications may explicitly inject `TesseractOcrProcessor`,
 which stages exact PNG and traineddata snapshots in a private temporary
 directory, invokes one bounded subprocess per selection, strictly interprets
 TSV, and cleans up without durable publication. Missing execution resources,

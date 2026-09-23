@@ -9,6 +9,10 @@ from enum import Enum, StrEnum
 from io import BytesIO
 from typing import Any, BinaryIO, Protocol, cast
 
+from projectkoios.ingestion.base import (
+    BaseTableCandidateDetector,
+    BaseTableRuleInspector,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
@@ -914,7 +918,7 @@ class TableDetectionResult:
             raise ValueError("table detection-result ID is inconsistent")
 
 
-class PyMuPdfTableRuleInspector:
+class PyMuPdfTableRuleInspector(BaseTableRuleInspector):
     """Lazily inspect bounded axis-aligned PDF vector line evidence."""
 
     name = "pymupdf-table-rule-inspector"
@@ -1107,7 +1111,7 @@ class _ProvisionalCandidate:
     warning_codes: tuple[str, ...]
 
 
-class DeterministicTableCandidateDetector:
+class DeterministicTableCandidateDetector(BaseTableCandidateDetector):
     """Detect and render conservative table-shaped source evidence."""
 
     name = "deterministic-table-candidate-detector"

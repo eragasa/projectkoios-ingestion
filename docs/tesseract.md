@@ -1,9 +1,10 @@
 # Installing and configuring Tesseract
 
-`TesseractOCRProcessor` invokes the external `tesseract` executable. Tesseract
+`TesseractOcrProcessor` invokes the external `tesseract` executable. Tesseract
 is not a Python dependency and is not installed by this package. Install the
 engine and the exact traineddata files required by the application's semantic
-language mappings.
+language mappings. `TesseractOCRProcessor` remains only as a deprecated
+compatibility name; new code must use `TesseractOcrProcessor`.
 
 ## macOS with Homebrew
 
@@ -83,11 +84,12 @@ import os
 from pathlib import Path
 
 from projectkoios.ingestion import (
+    OcrProcessor,
     TesseractLanguageBinding,
-    TesseractOCRProcessor,
+    TesseractOcrProcessor,
 )
 
-processor = TesseractOCRProcessor(
+backend = TesseractOcrProcessor(
     executable=Path(os.environ["KOIOS_TESSERACT_EXECUTABLE"]),
     language_bindings=(
         TesseractLanguageBinding(
@@ -99,8 +101,9 @@ processor = TesseractOCRProcessor(
         ),
     ),
 )
+processor = OcrProcessor(backend)
 
-# Given an OCRRequest named request:
+# Given an OcrRequest named request:
 identity = processor.identity_for(request)
 result = processor.process(request)
 ```
@@ -110,9 +113,22 @@ bindings. Add one binding per supported semantic tag; do not silently translate
 or fall back to another language. Multiple semantic tags may explicitly share
 the same backend resource.
 
+## Implementation boundary
+
+The adapter is divided by responsibility under `ocr/processors/tesseract/`:
+
+- `processor.py` orchestrates requests and constructs results.
+- `inspection.py` verifies executable and traineddata identities and stages
+  resources.
+- `runner.py` owns bounded subprocess execution.
+- `tsv.py` parses TSV and projects tokens and lines.
+- `models.py` owns adapter configuration and internal evidence models.
+- `resources.py`, `identity.py`, and `errors.py` own their respective concerns.
+- `base.py` defines the Tesseract-specific model and runner contracts.
+
 The adapter hashes the bounded normalized version report, configured executable,
 and exact requested traineddata bytes. Upgrading Tesseract or replacing a
-resource therefore changes `OCRProcessorIdentity` and the OCR cache key.
+resource therefore changes `OcrProcessorIdentity` and the OCR cache key.
 
 ## Operational boundary
 

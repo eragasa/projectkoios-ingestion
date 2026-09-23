@@ -7,6 +7,7 @@ from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 from typing import BinaryIO, Protocol
 
+from projectkoios.ingestion.base import BaseEquationCandidateDetector
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
@@ -531,7 +532,7 @@ class _ProvisionalCandidate:
     warning_code: str | None
 
 
-class DeterministicEquationCandidateDetector:
+class DeterministicEquationCandidateDetector(BaseEquationCandidateDetector):
     """Detect and render bounded equation-shaped source evidence."""
 
     name = "deterministic-equation-candidate-detector"

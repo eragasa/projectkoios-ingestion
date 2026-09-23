@@ -13,15 +13,17 @@ source-backed proposals. Reconstruction and composition stages combine exact
 upstream artifacts. Clean transcript projectors remove only typed artifacts and
 retain the evidence needed to reproduce and audit each decision.
 
-## Planned composition root
+## Composition root
 
-Iteration two adds `BaseDeterministicProcessor` and its concrete
-`DeterministicProcessor` implementation. `PilotDeterministicProcessor`
-specializes the concrete processor and encapsulates one verified
-`PdfProcessedDocument`, including its retained exact `ExtractionResult`.
+Iteration two provides `BaseDeterministicProcessor`, the generic
+`DeterministicProcessor` stub, and an executable `PilotDeterministicProcessor`.
+The pilot requires one `PdfProcessedDocument` with retained exact
+`ExtractionResult`, executes an injected `BasePageLayoutProcessor`, and returns
+`PilotDeterministicProcessedDocument` with one ordered layout result per page.
 
-The composition root is an ordering boundary, not a replacement contract. It
-runs only a validated prefix of extraction verification, layout, structure,
+Composition is an ordering boundary, not a replacement contract. The current
+validated prefix is extraction verification followed by layout. Future prefixes
+will extend it in order through structure,
 equation detection, table detection and reconstruction, figure detection,
 structured transcription, clean transcript v2, derivation audit, and audited
 corpus projection. Every stage retains its existing result type, processor and
@@ -59,8 +61,8 @@ recomputed byte-for-byte.
 The generic `BoundedProcessingCoordinator` is also outside the deterministic
 component family: it coordinates isolated work items and preserves processor
 failures and cache identity, while the injected `ProcessingProcessor` determines
-the actual derivation. It is not the planned top-level
-`DeterministicProcessor` and is not implicitly invoked by that name.
+the actual derivation. It is not the top-level `DeterministicProcessor` and is
+not implicitly invoked by that name.
 
 ## Component Architecture
 

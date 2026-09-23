@@ -6,6 +6,7 @@ import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
 
+from projectkoios.ingestion.base import BaseArticleStructureAnalyzer
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
@@ -220,7 +221,7 @@ class _Heading:
     confidence: float
 
 
-class DeterministicArticleStructureAnalyzer:
+class DeterministicArticleStructureAnalyzer(BaseArticleStructureAnalyzer):
     """Propose bounded article structure from exact text/layout evidence."""
 
     name = "deterministic-article-structure"

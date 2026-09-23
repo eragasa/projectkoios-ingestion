@@ -4,9 +4,11 @@ from pathlib import Path
 
 import pytest
 from projectkoios.ingestion.bibtex import BibtexParser
-from projectkoios.ingestion.documents.pdf import PdfDocumentProcessor
+from projectkoios.ingestion.documents.pdf.processor import PdfDocumentProcessor
 from projectkoios.ingestion.pdf import PyMuPdfExtractor
 from projectkoios.ingestion.pilot import (
+    PilotDeterministicProcessedDocument,
+    PilotDeterministicProcessor,
     PilotDocument,
     PilotIngestionPipeline,
     PilotIngestor,
@@ -34,6 +36,7 @@ def test__PilotIngestionPipeline__ingest__stores_chunks_for_rag() -> None:
                 PyMuPdfExtractor(low_text_character_threshold=0)
             )
         ),
+        deterministic_processor=PilotDeterministicProcessor(),
         chunker=PilotProcessedDocumentChunker(max_characters=30),
         rag=PilotRAG(),
     )
@@ -42,4 +45,8 @@ def test__PilotIngestionPipeline__ingest__stores_chunks_for_rag() -> None:
     answer = pipeline.rag.answer("retrieval evidence", pipeline.chunks)
 
     assert chunks is pipeline.chunks
+    assert isinstance(chunks.document, PilotDeterministicProcessedDocument)
+    assert len(chunks.document.page_layouts) == len(
+        chunks.document.extraction.document.pages
+    )
     assert answer == "Beta retrieval evidence"

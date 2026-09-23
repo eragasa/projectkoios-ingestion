@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from projectkoios.ingestion.base import BaseProcessedPage
 from projectkoios.ingestion.bibtex import BibtexParser
-from projectkoios.ingestion.documents.pdf import PdfDocumentProcessor
+from projectkoios.ingestion.documents.pdf.processor import PdfDocumentProcessor
 from projectkoios.ingestion.pdf import PyMuPdfExtractor
 from projectkoios.ingestion.pilot import PilotDocument
 

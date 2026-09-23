@@ -19,11 +19,13 @@ from projectkoios.ingestion import (
     OCROutputMode,
     OCRPageImage,
     OCRProcessor,
-    OCRRequest,
+    OcrProcessor,
+    OcrRequest,
     OCRResourceIdentityKind,
     OCRResultStatus,
     OCRSelection,
     OCRSelectionStatus,
+    PilotOcrProcessor,
     RegionRenderConfiguration,
     RenderedRegion,
     SourceDocument,
@@ -31,7 +33,7 @@ from projectkoios.ingestion import (
     TesseractAdapterConfiguration,
     TesseractAdapterConfigurationError,
     TesseractLanguageBinding,
-    TesseractOCRProcessor,
+    TesseractOcrProcessor,
     build_ocr_cache_key,
 )
 
@@ -58,7 +60,7 @@ def _request(
     languages: tuple[str, ...] = ("en",),
     native_text: bool = False,
     **configuration_changes: object,
-) -> OCRRequest:
+) -> OcrRequest:
     content = FIXTURE.read_bytes()
     source = SourceDocument.from_bytes(
         b"%PDF-1.7\nsynthetic OCR fixture source\n",
@@ -128,7 +130,7 @@ def _request(
         output_mode=output_mode,
         **configuration_changes,  # type: ignore[arg-type]
     )
-    return OCRRequest.create(tuple(selections), configuration=configuration)
+    return OcrRequest.create(tuple(selections), configuration=configuration)
 
 
 def _resource(tmp_path: Path, content: bytes = b"traineddata-v1") -> Path:
@@ -215,12 +217,12 @@ def _processor(
     configuration: TesseractAdapterConfiguration | None = None,
     executable: str | Path | None = None,
     resource: Path | None = None,
-) -> TesseractOCRProcessor:
+) -> TesseractOcrProcessor:
     actual_executable = executable or _fake_tesseract(
         tmp_path, behavior=behavior, version=version
     )
     actual_resource = resource or _resource(tmp_path)
-    return TesseractOCRProcessor(
+    return TesseractOcrProcessor(
         executable=actual_executable,
         language_bindings=(
             TesseractLanguageBinding(
@@ -231,6 +233,18 @@ def _processor(
         ),
         configuration=configuration,
     )
+
+
+def test__OcrProcessor__encapsulates_tesseract_processor(
+    tmp_path: Path,
+) -> None:
+    backend = _processor(tmp_path)
+    processor = OcrProcessor(backend)
+
+    assert processor.processor is backend
+    assert processor.name == backend.name
+    assert processor.version == backend.version
+    assert PilotOcrProcessor is OcrProcessor
 
 
 def test__tesseract_configuration__is_bounded_and_immutable(
@@ -359,7 +373,7 @@ def test__tesseract_processor__deduplicates_shared_backend_resources(
     tmp_path: Path,
 ) -> None:
     resource = _resource(tmp_path)
-    processor = TesseractOCRProcessor(
+    processor = TesseractOcrProcessor(
         executable=_fake_tesseract(tmp_path),
         language_bindings=(
             TesseractLanguageBinding(
@@ -701,7 +715,7 @@ def test__tesseract_processor__optional_real_engine_smoke() -> None:
     resource = os.environ.get("KOIOS_TESSERACT_ENG_TRAINEDDATA")
     if executable is None or resource is None:
         pytest.skip("real Tesseract smoke test is not configured")
-    processor = TesseractOCRProcessor(
+    processor = TesseractOcrProcessor(
         executable=Path(executable),
         language_bindings=(
             TesseractLanguageBinding(

@@ -209,7 +209,7 @@ and full test/static-analysis suites.
 
 ### ING-OCR-02 — Tesseract OCR adapter (implemented)
 
-`TesseractOCRProcessor` is a lazy, no-shell POSIX subprocess adapter for
+`TesseractOcrProcessor` is a lazy, no-shell POSIX subprocess adapter for
 explicitly selected regions. Callers provide immutable mappings from canonical
 semantic language tags to safe Tesseract resource names and traineddata paths;
 there is no implicit backend-language conversion. Pre-execution identity

@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 
+from projectkoios.ingestion.base import BaseTableStructureReconstructor
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -937,7 +938,9 @@ class _WarningSpec:
     evidence: Metadata = ()
 
 
-class DeterministicTableStructureReconstructor:
+class DeterministicTableStructureReconstructor(
+    BaseTableStructureReconstructor
+):
     """Propose bounded rows, columns, cells, spans, and continuations."""
 
     name = "deterministic-table-structure-reconstructor"

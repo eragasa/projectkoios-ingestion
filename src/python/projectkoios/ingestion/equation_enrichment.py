@@ -12,6 +12,10 @@ from enum import StrEnum
 from io import BytesIO
 from pathlib import Path
 
+from projectkoios.ingestion.base import (
+    BaseEquationAssembler,
+    BaseEquationRecognizer,
+)
 from projectkoios.ingestion.equations import (
     EquationCandidate,
     EquationCandidateKind,
@@ -362,7 +366,7 @@ class EquationIndexArtifact:
             raise ValueError("equation index artifact ID is inconsistent")
 
 
-class DeterministicEquationAssembler:
+class DeterministicEquationAssembler(BaseEquationAssembler):
     """Group same-line display fragments and preserve all evidence layers."""
 
     def __init__(
@@ -428,7 +432,7 @@ class DeterministicEquationAssembler:
         )
 
 
-class Pix2TexCliEquationRecognizer:
+class Pix2TexCliEquationRecognizer(BaseEquationRecognizer):
     """Bounded external pix2tex adapter with explicit model identities."""
 
     def __init__(
