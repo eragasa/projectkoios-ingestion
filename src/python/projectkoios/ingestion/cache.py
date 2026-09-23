@@ -62,6 +62,30 @@ def _require_bounded_json_nesting(text: str) -> None:
                 return
 
 
+def deserialize_extraction_result(text: str) -> ExtractionResult:
+    """Deserialize and fully validate one canonical extraction artifact."""
+    if not isinstance(text, str):
+        raise TypeError("extraction artifact must be text")
+    try:
+        _require_bounded_json_nesting(text)
+        value = json.loads(
+            text,
+            object_pairs_hook=_object_without_duplicates,
+            parse_constant=_reject_json_constant,
+        )
+        result = _decode_result(value)
+        _validate_result(result)
+    except (
+        json.JSONDecodeError,
+        KeyError,
+        OverflowError,
+        RecursionError,
+        TypeError,
+        ValueError,
+    ) as error:
+        raise ValueError(f"invalid extraction artifact: {error}") from error
+    return result
+
 
 class ExtractionCacheError(RuntimeError):
     """Base error for filesystem extraction cache failures."""

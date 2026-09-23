@@ -3,7 +3,7 @@ from __future__ import annotations
 from projectkoios.ingestion.bibtex import BibTexRecord
 from projectkoios.ingestion.documents.pdf import (
     PdfProcessedDocument,
-    PdfProcessedPage,
+    ProcessedPdfPage,
 )
 from projectkoios.ingestion.pilot import (
     PilotDocument,
@@ -20,8 +20,8 @@ def test__PilotProcessedDocumentChunker__chunk__preserves_page_index() -> None:
             content=b"%PDF",
         ),
         pages=(
-            PdfProcessedPage(0, None, "Alpha evidence"),
-            PdfProcessedPage(1, None, "Beta evidence"),
+            ProcessedPdfPage(page_index=0, text="Alpha evidence"),
+            ProcessedPdfPage(page_index=1, text="Beta evidence"),
         ),
     )
 

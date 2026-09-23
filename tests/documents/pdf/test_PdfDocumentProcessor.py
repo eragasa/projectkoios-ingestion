@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from projectkoios.ingestion.base import BaseProcessedPage
 from projectkoios.ingestion.bibtex import BibtexParser
 from projectkoios.ingestion.documents.pdf import PdfDocumentProcessor
 from projectkoios.ingestion.pdf import PyMuPdfExtractor
@@ -29,6 +30,11 @@ def test__PdfDocumentProcessor__process__extracts_pdf_page_by_page() -> None:
         PyMuPdfExtractor(low_text_character_threshold=0)
     ).process(_document())
 
+    assert processed.extraction is not None
+    assert processed.extraction.document.source.content_hash == (
+        processed.extraction.manifest.source_content_hash
+    )
+    assert all(isinstance(page, BaseProcessedPage) for page in processed.pages)
     assert [page.page_index for page in processed.pages] == [0, 1]
     assert [page.text for page in processed.pages] == [
         "Alpha evidence",

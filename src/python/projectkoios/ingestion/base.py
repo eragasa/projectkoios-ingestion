@@ -27,6 +27,22 @@ class BaseProcessedDocument:
 
 
 @dataclass(frozen=True)
+class BaseProcessedPage:
+    page_index: int
+    text: str
+
+    def __post_init__(self) -> None:
+        if isinstance(self.page_index, bool) or not isinstance(
+            self.page_index, int
+        ):
+            raise TypeError("page_index must be an integer")
+        if self.page_index < 0:
+            raise ValueError("page_index must be non-negative")
+        if not isinstance(self.text, str):
+            raise TypeError("page text must be a string")
+
+
+@dataclass(frozen=True)
 class BaseProcessedDocumentChunk:
     page_index: int
     text: str
@@ -88,5 +104,6 @@ __all__ = [
     "BaseProcessedDocumentChunk",
     "BaseProcessedDocumentChunker",
     "BaseProcessedDocumentChunks",
+    "BaseProcessedPage",
     "BaseRAG",
 ]
