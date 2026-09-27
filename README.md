@@ -6,7 +6,7 @@ This package coordinates source loaders, document processors, chunk producers,
 and index writers through destination-independent interfaces. It does not own
 search storage, bibliography management, Markdown projection, or vault writes.
 
-- [Architecture](docs/architecture.md)
+- [Architecture](docs/architecture/ingestion/v0/index.md)
 - [Contract catalog](docs/contracts/README.md)
 - [Legacy aggregate of implemented data contracts](docs/contracts.md)
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
