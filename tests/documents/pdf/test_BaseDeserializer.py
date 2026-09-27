@@ -105,6 +105,59 @@ def test__BaseDeserializer__reads_safe_parent_components(
     )
 
 
+def test__BaseDeserializer__pins_parent_components_with_nofollow_any(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    trusted = tmp_path / "trusted"
+    pivot = trusted / "pivot"
+    pivot.mkdir(parents=True)
+    (trusted / "source.bin").write_bytes(b"trusted")
+    attacker = tmp_path / "attacker"
+    attacker.mkdir()
+    (attacker / "source.bin").write_bytes(b"attacker")
+    original_open = os.open
+    substituted = False
+
+    monkeypatch.setattr(
+        os,
+        "O_NOFOLLOW_ANY",
+        getattr(os, "O_NOFOLLOW_ANY", 0),
+        raising=False,
+    )
+
+    def substituting_open(
+        path: str | bytes | os.PathLike[str] | os.PathLike[bytes],
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        nonlocal substituted
+        descriptor = original_open(path, flags, mode, dir_fd=dir_fd)
+        if path == "pivot" and dir_fd is not None and not substituted:
+            substituted = True
+            pivot.rename(attacker / "pivot")
+        return descriptor
+
+    monkeypatch.setattr(
+        os,
+        "supports_dir_fd",
+        {*os.supports_dir_fd, substituting_open},
+    )
+    monkeypatch.setattr(os, "open", substituting_open)
+
+    assert (
+        BaseDeserializer._read_regular_file(
+            pivot / ".." / "source.bin",
+            limit=100,
+            label="source",
+        )
+        == b"trusted"
+    )
+    assert substituted
+
+
 def test__BaseDeserializer__does_not_normalize_away_missing_component(
     tmp_path: Path,
 ) -> None:

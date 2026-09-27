@@ -78,7 +78,7 @@ class BaseDeserializer:
             | getattr(os, "O_NONBLOCK", 0)
         )
         nofollow_any = getattr(os, "O_NOFOLLOW_ANY", None)
-        if nofollow_any is not None:
+        if nofollow_any is not None and ".." not in source.parts:
             try:
                 return os.open(source, file_flags | nofollow_any)
             except OSError as error:
