@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, BinaryIO
 
@@ -23,21 +24,49 @@ from projectkoios.ingestion.models import (
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
 
+DEFAULT_MAXIMUM_PDF_PAGES = 10_000
+_HARD_MAXIMUM_PDF_PAGES = 100_000
+
 
 class PdfDependencyUnavailableError(RuntimeError):
     """Raised when the optional PyMuPDF adapter dependency is absent."""
 
 
-class PyMuPdfExtractor:
-    """Deterministic cold PDF extraction through a lazy optional adapter."""
+class PdfPageLimitError(ValueError):
+    """Raised before page loading when a PDF exceeds the explicit page bound."""
 
-    name = "pymupdf"
-    version = "2"
+    def __init__(self, *, page_count: int, maximum_pages: int) -> None:
+        super().__init__(
+            f"PDF page count {page_count} exceeds maximum_pages "
+            f"({maximum_pages})"
+        )
+        self.page_count = page_count
+        self.maximum_pages = maximum_pages
 
-    def __init__(self, *, low_text_character_threshold: int = 40) -> None:
-        if low_text_character_threshold < 0:
-            raise ValueError("low-text threshold must be non-negative")
-        self.low_text_character_threshold = low_text_character_threshold
+
+@dataclass(frozen=True)
+class PdfExtractionConfiguration:
+    low_text_character_threshold: int = 40
+    maximum_pages: int = DEFAULT_MAXIMUM_PDF_PAGES
+
+    def __post_init__(self) -> None:
+        for name, value, maximum in (
+            (
+                "low_text_character_threshold",
+                self.low_text_character_threshold,
+                10_000_000,
+            ),
+            ("maximum_pages", self.maximum_pages, _HARD_MAXIMUM_PDF_PAGES),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value < (0 if name == "low_text_character_threshold" else 1)
+                or value > maximum
+            ):
+                raise ValueError(
+                    f"{name} must be within its supported integer bound"
+                )
 
     @property
     def configuration_digest(self) -> str:
@@ -46,9 +75,36 @@ class PyMuPdfExtractor:
             {
                 "low_text_character_threshold": (
                     self.low_text_character_threshold
-                )
+                ),
+                "maximum_pages": self.maximum_pages,
             },
         )
+
+
+class PyMuPdfExtractor:
+    """Deterministic cold PDF extraction through a lazy optional adapter."""
+
+    name = "pymupdf"
+    version = "2"
+
+    def __init__(
+        self,
+        *,
+        low_text_character_threshold: int = 40,
+        maximum_pages: int = DEFAULT_MAXIMUM_PDF_PAGES,
+    ) -> None:
+        self.configuration = PdfExtractionConfiguration(
+            low_text_character_threshold=low_text_character_threshold,
+            maximum_pages=maximum_pages,
+        )
+        self.low_text_character_threshold = (
+            self.configuration.low_text_character_threshold
+        )
+        self.maximum_pages = self.configuration.maximum_pages
+
+    @property
+    def configuration_digest(self) -> str:
+        return self.configuration.configuration_digest
 
     def cache_key(self, source: SourceDocument) -> str:
         """Return the key extraction will record for this source and backend."""
@@ -88,9 +144,21 @@ class PyMuPdfExtractor:
         try:
             if document_handle.needs_pass:
                 raise ValueError("encrypted PDF requires a password")
+            page_count = document_handle.page_count
+            if (
+                isinstance(page_count, bool)
+                or not isinstance(page_count, int)
+                or page_count < 0
+            ):
+                raise ValueError("PDF backend returned an invalid page count")
+            if page_count > self.maximum_pages:
+                raise PdfPageLimitError(
+                    page_count=page_count,
+                    maximum_pages=self.maximum_pages,
+                )
             pages: list[ExtractedPage] = []
             warnings: list[IngestionWarning] = []
-            for page_index in range(document_handle.page_count):
+            for page_index in range(page_count):
                 page: Any = document_handle.load_page(page_index)
                 extracted_page, page_warnings = self._extract_page(
                     source,

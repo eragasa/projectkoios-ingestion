@@ -11,9 +11,16 @@ from projectkoios.ingestion.cache import (
     ExtractionCacheError,
     FilesystemExtractionCache,
 )
-from projectkoios.ingestion.models import ExtractionResult, SourceDocument
-from projectkoios.ingestion.pdf import PyMuPdfExtractor
-from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.models import ExtractionResult
+from projectkoios.ingestion.pdf import (
+    DEFAULT_MAXIMUM_PDF_PAGES,
+    RAW_EXTRACTION_RELATIVE_PATH,
+    PdfExtractionConfiguration,
+    PyMuPdfExtractor,
+    build_pdf_extraction_artifacts,
+    extract_pdf_bytes,
+    prepare_pdf_bytes_extraction,
+)
 
 Artifact = tuple[Path, str]
 
@@ -43,6 +50,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-root", type=Path)
     parser.add_argument("--locator")
     parser.add_argument("--low-text-threshold", type=int, default=40)
+    parser.add_argument(
+        "--maximum-pages", type=int, default=DEFAULT_MAXIMUM_PDF_PAGES
+    )
     return parser
 
 
@@ -55,30 +65,45 @@ def extract_pdf_evidence(
     low_text_threshold: int = 40,
     expected_source_sha256: str | None = None,
     expected_source_byte_size: int | None = None,
+    maximum_pages: int = DEFAULT_MAXIMUM_PDF_PAGES,
 ) -> tuple[bytes, ExtractionResult]:
     """Return exact PDF bytes and raw extraction, optionally from cache."""
     payload = pdf.read_bytes()
-    if expected_source_byte_size is not None and (
-        len(payload) != expected_source_byte_size
-    ):
-        raise ValueError("PDF source size changed after planning")
-    if expected_source_sha256 is not None and (
-        hashlib.sha256(payload).hexdigest() != expected_source_sha256
-    ):
-        raise ValueError("PDF source hash changed after planning")
-    source = SourceDocument.from_bytes(
-        payload,
-        source_id=source_id,
-        media_type="application/pdf",
-        locator=locator or pdf.name,
+    actual_sha256 = hashlib.sha256(payload).hexdigest()
+    planned_sha256 = expected_source_sha256 or actual_sha256
+    planned_size = (
+        len(payload)
+        if expected_source_byte_size is None
+        else expected_source_byte_size
     )
-    extractor = PyMuPdfExtractor(
-        low_text_character_threshold=low_text_threshold
-    )
+    actual_locator = locator or pdf.name
     result: ExtractionResult
     if cache_root is None:
-        result = extractor.extract(source, content=BytesIO(payload))
+        result = extract_pdf_bytes(
+            payload,
+            source_id=source_id,
+            locator=actual_locator,
+            low_text_character_threshold=low_text_threshold,
+            expected_source_sha256=planned_sha256,
+            expected_source_byte_size=planned_size,
+            maximum_pages=maximum_pages,
+        )
     else:
+        source, configuration = prepare_pdf_bytes_extraction(
+            payload,
+            source_id=source_id,
+            locator=actual_locator,
+            low_text_character_threshold=low_text_threshold,
+            expected_source_sha256=planned_sha256,
+            expected_source_byte_size=planned_size,
+            maximum_pages=maximum_pages,
+        )
+        extractor = PyMuPdfExtractor(
+            low_text_character_threshold=(
+                configuration.low_text_character_threshold
+            ),
+            maximum_pages=configuration.maximum_pages,
+        )
         cache = FilesystemExtractionCache(cache_root)
         cache_key = extractor.cache_key(source)
         try:
@@ -104,6 +129,7 @@ def ingest_pdf_artifacts(
     low_text_threshold: int = 40,
     expected_source_sha256: str | None = None,
     expected_source_byte_size: int | None = None,
+    maximum_pages: int = DEFAULT_MAXIMUM_PDF_PAGES,
 ) -> ExtractionResult:
     """Extract one PDF and exclusively publish its raw evidence artifacts."""
     _, result = extract_pdf_evidence(
@@ -114,9 +140,34 @@ def ingest_pdf_artifacts(
         low_text_threshold=low_text_threshold,
         expected_source_sha256=expected_source_sha256,
         expected_source_byte_size=expected_source_byte_size,
+        maximum_pages=maximum_pages,
     )
-    artifacts = _raw_page_artifacts(raw_text_directory, result)
-    artifacts.append((output, serialize_contract(result) + "\n"))
+    configuration = PdfExtractionConfiguration(
+        low_text_character_threshold=low_text_threshold,
+        maximum_pages=maximum_pages,
+    )
+    bundle = build_pdf_extraction_artifacts(
+        result,
+        configuration=configuration,
+    )
+    extraction_artifact = bundle.artifacts[0]
+    if extraction_artifact.relative_path != RAW_EXTRACTION_RELATIVE_PATH:
+        raise RuntimeError("owner extraction artifact order is invalid")
+    artifacts: list[Artifact] = []
+    if raw_text_directory is not None:
+        artifacts.extend(
+            (
+                raw_text_directory / Path(item.relative_path).name,
+                item.content.decode("utf-8", errors="strict"),
+            )
+            for item in bundle.artifacts[1:]
+        )
+    artifacts.append(
+        (
+            output,
+            extraction_artifact.content.decode("utf-8", errors="strict"),
+        )
+    )
     _publish_artifacts(artifacts)
     return result
 
@@ -133,6 +184,7 @@ def main(arguments: list[str] | None = None) -> int:
             cache_root=args.cache_root,
             locator=args.locator,
             low_text_threshold=args.low_text_threshold,
+            maximum_pages=args.maximum_pages,
         )
     except ExtractionCacheOperationError as error:
         parser.error(f"extraction cache failure: {error}")
@@ -142,30 +194,6 @@ def main(arguments: list[str] | None = None) -> int:
         parser.error(str(error))
     print(args.output)
     return 0
-
-
-def _raw_page_artifacts(
-    directory: Path | None,
-    result: ExtractionResult,
-) -> list[Artifact]:
-    if directory is None:
-        return []
-    artifacts: list[Artifact] = []
-    for page in result.document.pages:
-        label = page.printed_page_label or "unknown"
-        blocks = tuple(
-            block.text
-            for block in page.blocks
-            if block.kind == "text" and block.text is not None
-        )
-        text = (
-            f"<!-- pdf-page: {page.page_index + 1}; "
-            f"printed-page: {label} -->\n\n" + "\n\n".join(blocks) + "\n"
-        )
-        artifacts.append(
-            (directory / f"page-{page.page_index + 1:04d}.txt", text)
-        )
-    return artifacts
 
 
 def _publish_artifacts(artifacts: Sequence[Artifact]) -> None:

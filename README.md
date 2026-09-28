@@ -10,6 +10,7 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [Contract catalog](docs/contracts/README.md)
 - [Legacy aggregate of implemented data contracts](docs/contracts.md)
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
+- [Bounded PDF byte extraction and artifacts](docs/pdf-byte-extraction.md)
 - [Document-processing task status](docs/tasks/document-processing-backlog.md)
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
 - [Redistributable OCR image fixture](tests/fixtures/ocr/README.md)
@@ -96,6 +97,12 @@ closed with `ExtractionCacheSafetyError` before touching the cache root when
 those capabilities are unavailable; uncached extraction remains portable. The
 cache does not provide eviction, migration, distributed locking, automatic
 corruption repair, or cache-root symlink support.
+
+The non-writing `extract_pdf_bytes_artifacts` API accepts exact staged immutable
+bytes plus required hash, size, and page-count bounds and returns owner-built
+relative artifact payloads. See
+[bounded PDF byte extraction](docs/pdf-byte-extraction.md). The path-based CLI
+composes this API and remains available for local operation.
 
 PDF parsing runs in the CLI process and reads the complete source into memory.
 PyMuPDF is a complex native parser, not a security sandbox. Applications that
