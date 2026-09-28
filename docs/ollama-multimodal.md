@@ -106,7 +106,11 @@ paths are rejected, the connected peer is rechecked as loopback, environment
 proxies are not consulted, and redirects are returned rather than followed.
 Connect/read timeouts and request, metadata-response, chat-response, image,
 pixel, prompt, output, warning, and selection counts all have configured and
-implementation hard bounds.
+implementation hard bounds. Every metadata and chat JSON response also has
+hard nesting, item-count, integer, and string bounds. Parsing rejects duplicate
+keys, non-RFC constants, non-finite values, invalid Unicode, and forbidden
+control characters; malformed untrusted data becomes complete non-cacheable
+failure coverage rather than escaping the adapter boundary.
 
 Before chat, the processor performs bounded requests in this order:
 

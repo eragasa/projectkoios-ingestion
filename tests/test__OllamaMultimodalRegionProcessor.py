@@ -21,6 +21,7 @@ from projectkoios.ingestion import (
     OllamaMultimodalLimits,
     OllamaMultimodalRegionProcessor,
     OllamaMultimodalRequest,
+    OllamaMultimodalResult,
     OllamaMultimodalResultStatus,
     OllamaMultimodalSelection,
     OllamaMultimodalSelectionStatus,
@@ -158,6 +159,7 @@ class FakeTransport:
         postflight_digest: str | None = None,
         model_present: bool = True,
         version: str = _VERSION,
+        version_response: OllamaHttpResponse | None = None,
         capabilities: tuple[str, ...] = ("completion", "vision"),
         chat_response: OllamaHttpResponse | None = None,
         fail_path: str | None = None,
@@ -170,6 +172,7 @@ class FakeTransport:
         self.postflight_digest = postflight_digest
         self.model_present = model_present
         self.version = version
+        self.version_response = version_response
         self.capabilities = capabilities
         self.tags_calls = 0
         self.chat_response = chat_response
@@ -202,7 +205,9 @@ class FakeTransport:
         if path == self.fail_path:
             raise OllamaTransportError(self.fail_kind, "injected failure")
         if path == "/api/version":
-            response = _json_response({"version": self.version})
+            response = self.version_response or _json_response(
+                {"version": self.version}
+            )
         elif path == "/api/tags":
             self.tags_calls += 1
             digest = (
@@ -242,6 +247,21 @@ class FakeTransport:
         if len(response.body) > max_response_bytes:
             return response
         return response
+
+
+def _assert_failed_complete_coverage(
+    result: OllamaMultimodalResult,
+    request: OllamaMultimodalRequest,
+) -> None:
+    assert result.status is OllamaMultimodalResultStatus.FAILED
+    assert result.cacheable is False
+    assert len(result.selection_results) == len(request.selections)
+    assert all(
+        item.status is OllamaMultimodalSelectionStatus.FAILED
+        and item.failure is not None
+        and item.proposal is None
+        for item in result.selection_results
+    )
 
 
 def _processor(
@@ -393,6 +413,26 @@ def test__missing_model_fails_before_show_or_chat() -> None:
     assert result.selection_results[0].failure is not None
     assert result.selection_results[0].failure.kind is (
         OllamaMultimodalFailureKind.MODEL_MISSING
+    )
+
+
+def test__metadata_json_strictness_fails_before_model_or_chat() -> None:
+    request = _request(2)
+    duplicate = OllamaHttpResponse(
+        200,
+        "application/json",
+        b'{"version":"0.12.3","version":"0.12.3"}',
+    )
+    transport = FakeTransport(request, version_response=duplicate)
+    processor, _ = _processor(request, transport=transport)
+
+    result = processor.process(request)
+
+    assert [call["path"] for call in transport.calls] == ["/api/version"]
+    _assert_failed_complete_coverage(result, request)
+    assert result.selection_results[0].failure is not None
+    assert result.selection_results[0].failure.kind is (
+        OllamaMultimodalFailureKind.MALFORMED_RESPONSE
     )
 
 
@@ -563,6 +603,33 @@ def test__partial_output_fails_every_selection_without_partial_proposals() -> (
     } == {OllamaMultimodalFailureKind.INCOMPLETE_COVERAGE}
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("schema_version", True), ("index", False)],
+)
+def test__json_booleans_do_not_satisfy_integer_schema_fields(
+    field: str, value: bool
+) -> None:
+    request = _request()
+    output = json.loads(_structured_output(request))
+    if field == "schema_version":
+        output[field] = value
+    else:
+        output["items"][0][field] = value
+    chat = _chat_response(json.dumps(output, separators=(",", ":")))
+    processor, _ = _processor(
+        request, transport=FakeTransport(request, chat_response=chat)
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+    assert result.selection_results[0].failure is not None
+    assert result.selection_results[0].failure.kind is (
+        OllamaMultimodalFailureKind.MALFORMED_RESPONSE
+    )
+
+
 def test__extra_structured_output_field_is_rejected() -> None:
     request = _request()
     chat = _chat_response(_structured_output(request, extra_item_field=True))
@@ -576,6 +643,110 @@ def test__extra_structured_output_field_is_rejected() -> None:
     assert result.selection_results[0].failure.kind is (
         OllamaMultimodalFailureKind.MALFORMED_RESPONSE
     )
+
+
+def test__deep_json_is_a_failed_result_not_an_uncaught_recursion() -> None:
+    request = _request(2)
+    payload = ('{"nested":' + "[" * 40 + "0" + "]" * 40 + "}").encode()
+    chat = OllamaHttpResponse(200, "application/json", payload)
+    processor, _ = _processor(
+        request, transport=FakeTransport(request, chat_response=chat)
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test__non_rfc_json_constants_are_rejected(constant: str) -> None:
+    request = _request()
+    selection_id = json.dumps(request.selections[0].selection_id)
+    content = (
+        '{"schema_version":1,"task":"page_region_transcription",'
+        f'"items":[{{"index":0,"selection_id":{selection_id},'
+        f'"text":{constant},"warnings":[]}}]}}'
+    )
+    processor, _ = _processor(
+        request,
+        transport=FakeTransport(request, chat_response=_chat_response(content)),
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+
+
+@pytest.mark.parametrize("mutation", ["nul_warning", "surrogate_text"])
+def test__invalid_untrusted_unicode_or_controls_fail_closed(
+    mutation: str,
+) -> None:
+    request = _request(2)
+    output = json.loads(_structured_output(request))
+    if mutation == "nul_warning":
+        output["items"][0]["warnings"] = ["bad\x00warning"]
+    else:
+        output["items"][0]["text"] = "bad\ud800text"
+    content = json.dumps(output, separators=(",", ":"))
+    processor, _ = _processor(
+        request,
+        transport=FakeTransport(request, chat_response=_chat_response(content)),
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+
+
+def test__duplicate_json_fields_are_rejected() -> None:
+    request = _request()
+    selection_id = json.dumps(request.selections[0].selection_id)
+    content = (
+        '{"schema_version":1,"schema_version":1,'
+        '"task":"page_region_transcription","items":['
+        f'{{"index":0,"selection_id":{selection_id},'
+        '"text":"text","warnings":[]}]}'
+    )
+    processor, _ = _processor(
+        request,
+        transport=FakeTransport(request, chat_response=_chat_response(content)),
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+
+
+def test__json_string_bytes_have_an_independent_hard_bound() -> None:
+    request = _request(2)
+    content = (
+        '{"schema_version":1,"task":"page_region_transcription",'
+        '"items":[],"extra":"' + "x" * 4_000_001 + '"}'
+    )
+    processor, _ = _processor(
+        request,
+        transport=FakeTransport(request, chat_response=_chat_response(content)),
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
+
+
+def test__json_item_count_is_bounded_before_schema_validation() -> None:
+    request = _request()
+    content = (
+        '{"schema_version":1,"task":"page_region_transcription",'
+        '"items":[],"extra":[' + ",".join("0" for _ in range(100_001)) + "]}"
+    )
+    processor, _ = _processor(
+        request,
+        transport=FakeTransport(request, chat_response=_chat_response(content)),
+    )
+
+    result = processor.process(request)
+
+    _assert_failed_complete_coverage(result, request)
 
 
 def test__configured_input_bound_fails_before_metadata() -> None:
@@ -734,6 +905,11 @@ def test__direct_construction_tampering_is_rejected() -> None:
         replace(
             result,
             selection_results=tuple(reversed(result.selection_results)),
+        )
+    with pytest.raises(ValueError, match="request identity"):
+        replace(
+            result,
+            request_id="ollama-multimodal-request:sha256:" + "0" * 64,
         )
     with pytest.raises(ValueError, match="SHA-256"):
         replace(result.raw_response, http_body_sha256="bad")
