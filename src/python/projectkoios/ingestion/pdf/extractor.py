@@ -97,10 +97,14 @@ class PyMuPdfExtractor:
             low_text_character_threshold=low_text_character_threshold,
             maximum_pages=maximum_pages,
         )
-        self.low_text_character_threshold = (
-            self.configuration.low_text_character_threshold
-        )
-        self.maximum_pages = self.configuration.maximum_pages
+
+    @property
+    def low_text_character_threshold(self) -> int:
+        return self.configuration.low_text_character_threshold
+
+    @property
+    def maximum_pages(self) -> int:
+        return self.configuration.maximum_pages
 
     @property
     def configuration_digest(self) -> str:

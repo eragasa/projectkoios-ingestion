@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import FrozenInstanceError, replace
+from io import BytesIO
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from projectkoios.ingestion import (
     PdfPageLimitError,
     PdfSourceIntegrityError,
     PyMuPdfExtractor,
+    SourceDocument,
     build_pdf_extraction_artifacts,
     extract_pdf_bytes_artifacts,
     serialize_contract,
@@ -178,6 +180,47 @@ def test__byte_api_rejects_source_identity_mismatch_before_extraction(
             expected_source_byte_size=size,
             maximum_pages=1,
         )
+
+
+def test__extractor_behavior_is_read_only_and_aligned_with_identity() -> None:
+    one_page = _pdf(1)
+    source = SourceDocument.from_bytes(
+        one_page,
+        source_id="article:read-only-configuration",
+        media_type="application/pdf",
+        locator="memory://read-only.pdf",
+    )
+    extractor = PyMuPdfExtractor(
+        low_text_character_threshold=0,
+        maximum_pages=1,
+    )
+
+    with pytest.raises(AttributeError):
+        extractor.maximum_pages = 2  # type: ignore[misc]
+    with pytest.raises(AttributeError):
+        extractor.low_text_character_threshold = 100  # type: ignore[misc]
+
+    result = extractor.extract(source, BytesIO(one_page))
+
+    assert extractor.maximum_pages == extractor.configuration.maximum_pages
+    assert extractor.low_text_character_threshold == (
+        extractor.configuration.low_text_character_threshold
+    )
+    assert result.manifest.configuration_digest == (
+        extractor.configuration.configuration_digest
+    )
+    assert result.manifest.cache_key == extractor.cache_key(source)
+    assert result.warnings == ()
+
+    two_pages = _pdf(2)
+    two_page_source = SourceDocument.from_bytes(
+        two_pages,
+        source_id="article:read-only-limit",
+        media_type="application/pdf",
+        locator="memory://read-only-limit.pdf",
+    )
+    with pytest.raises(PdfPageLimitError):
+        extractor.extract(two_page_source, BytesIO(two_pages))
 
 
 def test__maximum_pages_changes_extractor_and_manifest_identity() -> None:
