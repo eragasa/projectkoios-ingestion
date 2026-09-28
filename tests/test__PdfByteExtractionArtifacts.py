@@ -110,6 +110,30 @@ def test__page_limit_fails_typed_before_artifact_creation_or_writes(
     assert list(tmp_path.iterdir()) == []
 
 
+def test__incoherent_page_and_artifact_bounds_fail_before_page_loading(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = _pdf(1)
+
+    def unexpected_page_load(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise AssertionError("page loading must not run")
+
+    monkeypatch.setattr(pymupdf.Document, "load_page", unexpected_page_load)
+
+    with pytest.raises(PdfExtractionArtifactLimitError, match="incoherent"):
+        extract_pdf_bytes_artifacts(
+            content,
+            source_id="article:incoherent-bounds",
+            locator="staged/incoherent.pdf",
+            low_text_character_threshold=0,
+            expected_source_sha256=hashlib.sha256(content).hexdigest(),
+            expected_source_byte_size=len(content),
+            maximum_pages=2,
+            artifact_limits=PdfExtractionArtifactLimits(max_artifacts=1),
+        )
+
+
 def test__cli_page_limit_leaves_no_output_artifacts(tmp_path: Path) -> None:
     content = _pdf(2)
     source = tmp_path / "fixture.pdf"

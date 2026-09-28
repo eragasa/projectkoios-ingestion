@@ -275,6 +275,10 @@ def extract_pdf_bytes_artifacts(
     )
     if not isinstance(actual_limits, PdfExtractionArtifactLimits):
         raise TypeError("artifact_limits must be PdfExtractionArtifactLimits")
+    if configuration.maximum_pages + 1 > actual_limits.max_artifacts:
+        raise PdfExtractionArtifactLimitError(
+            "maximum_pages and max_artifacts are incoherent"
+        )
     result = _extract_prepared_pdf(content, source, configuration)
     return PdfExtractionArtifactBundle.create(
         configuration=configuration,

@@ -38,7 +38,9 @@ The call performs no filesystem writes. It returns an immutable
 - one `raw-pages/page-NNNN.txt` UTF-8 payload per physical page.
 
 Each `PdfExtractionArtifactPayload` has a canonical confined POSIX relative
-path, media type, immutable bytes, byte length, and SHA-256. Payload count,
+path, media type, immutable bytes, byte length, and SHA-256. The API rejects an
+incoherent `maximum_pages + 1 > max_artifacts` before opening or loading PDF
+pages. Payload count,
 raw-extraction bytes, per-page text bytes, total bytes, path length, and maximum
 pages have configured or implementation hard bounds. Bundle construction
 recomputes the canonical payloads from the exact result and rejects direct
