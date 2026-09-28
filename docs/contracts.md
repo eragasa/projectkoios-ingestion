@@ -1193,6 +1193,21 @@ process-global sequence number.
 5. Confidence and warnings remain attached through derivation.
 6. A consumer may serialize provenance without importing a PDF library.
 
+## Ollama multimodal region proposals
+
+Contract version 1.0 provides an immutable bounded request/result contract and
+`OllamaMultimodalRegionProcessor` for exact ordered `RenderedRegion` PNGs.
+Selections and ordered results retain complete source/blob/page/region and PNG
+provenance. The fixed prompt/schema and configured local endpoint, Ollama
+runtime version, model name, expected manifest digest, options, limits, and
+metadata/chat response identities are bound into records and stable IDs.
+Successful results remain `automated_unreviewed` and `nondeterministic`.
+Failures cover every selection and are never cacheable. Application selection,
+acceptance, review, publication, and `--apply` policy remain external. See
+[`ollama-multimodal.md`](ollama-multimodal.md) for transport constraints,
+prompt-injection handling, the non-atomic model-tag verification limitation,
+and exact public composition API.
+
 ## Serialization and Versioning
 
 Persisted contracts include a schema or contract version. Readers reject

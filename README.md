@@ -14,6 +14,7 @@ search storage, bibliography management, Markdown projection, or vault writes.
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)
 - [Redistributable OCR image fixture](tests/fixtures/ocr/README.md)
 - [Tesseract installation and adapter setup](docs/tesseract.md)
+- [Local Ollama multimodal region processing](docs/ollama-multimodal.md)
 - [Pix2tex equation-recognition setup](docs/pix2tex.md)
 
 The optional deterministic PDF adapter is installed with `.[pdf]` and exposed
