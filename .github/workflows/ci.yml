@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python 3.14 verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out ingestion candidate
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Install locked Python toolchain
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          version: "0.11.25"
+          python-version: "3.14"
+          enable-cache: false
+
+      - name: Synchronize locked environment
+        run: uv sync --locked --all-extras
+
+      - name: Check owned Python formatting
+        run: >-
+          .venv/bin/python -m ruff format --check
+          src/python/projectkoios/ingestion/reference_evidence.py
+          src/python/projectkoios/ingestion/reference_locator.py
+          src/python/projectkoios/ingestion/reference_claim_candidate.py
+          tests/test__ReferenceEvidence.py
+          tests/test__ReferencePageLocator.py
+          tests/test__ReferenceClaimCandidate.py
+
+      - name: Lint all Python
+        run: .venv/bin/python -m ruff check src/python tests
+
+      - name: Type-check all production source
+        run: .venv/bin/python -m mypy src/python
+
+      - name: Run full test suite
+        run: .venv/bin/python -m pytest -q
+
+      - name: Build source and wheel distributions
+        run: uv build --out-dir dist
+
+      - name: Verify clean wheel installation
+        run: |
+          uv venv /tmp/projectkoios-ingestion-wheel --python 3.14 --clear
+          uv pip install --python /tmp/projectkoios-ingestion-wheel/bin/python \
+            "projectkoios @ git+https://github.com/eragasa/projectkoios.git@88c37990fd37650b3091b2cb2f605a589ab624f4" \
+            dist/*.whl
+          /tmp/projectkoios-ingestion-wheel/bin/python - <<'PY'
+          from projectkoios.ingestion import (
+              ReferenceClaimCandidate,
+              ReferencePageLocatorChecker,
+          )
+          assert ReferenceClaimCandidate is not None
+          assert ReferencePageLocatorChecker is not None
+          PY
+
+      - name: Check patch whitespace
+        run: git diff --check HEAD

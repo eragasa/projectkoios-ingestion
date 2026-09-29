@@ -2,11 +2,13 @@
 
 Source ingestion and document processing pipeline for Project Koios.
 
+Hosted software verification is documented in [`docs/ci.md`](docs/ci.md).
+
 This package coordinates source loaders, document processors, chunk producers,
 and index writers through destination-independent interfaces. It does not own
 search storage, bibliography management, Markdown projection, or vault writes.
 
-- [Architecture](docs/architecture/ingestion/v0/index.md)
+- [Architecture](docs/architecture/index.md)
 - [Contract catalog](docs/contracts/README.md)
 - [Legacy aggregate of implemented data contracts](docs/contracts.md)
 - [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
@@ -463,6 +465,25 @@ noncanonical bytes, incomplete lineage, and source mismatch. This Proposed
 projection does not claim independent revalidation, proofreading, extraction
 accuracy, scientific validity, or publication suitability; references-side
 consumption and cross-repository conformance remain pending.
+
+`ReferencePageLocatorChecker` provides the separate bounded navigation step. It
+requires that complete reference evidence and the supplied clean transcript
+form one exact source/document/transcript lineage, then searches one explicit
+page for complete Unicode-normalized token phrases. Token boundaries prevent
+`mass` from matching `biomass`; punctuation differences such as
+`effective-mass` versus `effective mass` remain searchable. Results retain only
+page and lineage identities, page-text identity, hashed topic-anchor identities,
+the match partition, processor identity, and explicit limitations. They do not
+embed the phrase-bearing locator, retain text, or make a claim-support,
+proofreading, scientific-validation, acceptance, or publication assertion.
+
+`ReferenceClaimCandidate.create` binds an externally owned
+`research-claim:sha256` identity to one positive locator result and its exact
+reusable reference-evidence lineage. The candidate retains only identities,
+digests, lengths, matched anchor identities, and explicit limitations. It
+contains no claim text, quotation, page text, path, authority, decision, or
+publication state. Its only status is `manual_review_required`; a positive
+candidate is not claim support or citation acceptance.
 
 ```bash
 koios-compose-pdf-transcripts-batch batch.json \

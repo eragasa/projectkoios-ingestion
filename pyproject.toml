@@ -20,7 +20,7 @@ koios-plan-pdf-transcripts-v2-batch = "projectkoios.ingestion.transcript_v2_plan
 koios-compose-pdf-transcripts-v2-batch = "projectkoios.ingestion.transcript_v2_batch_cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0.0"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -31,6 +31,9 @@ namespaces = true
 pdf = ["PyMuPDF>=1.24"]
 mathml = ["latex2mathml>=3.81"]
 dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>=3.81"]
+
+[tool.uv.sources]
+projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "88c37990fd37650b3091b2cb2f605a589ab624f4" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
