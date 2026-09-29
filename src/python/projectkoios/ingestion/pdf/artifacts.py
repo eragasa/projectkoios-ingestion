@@ -5,8 +5,15 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import PurePosixPath
 
+from projectkoios.ingestion.cache import deserialize_extraction_result
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.models import ExtractionResult, SourceDocument
+from projectkoios.ingestion.models import (
+    ExtractedPage,
+    ExtractionResult,
+    IngestionStatus,
+    Metadata,
+    SourceDocument,
+)
 from projectkoios.ingestion.pdf.extractor import (
     PdfExtractionConfiguration,
     PyMuPdfExtractor,
@@ -38,6 +45,16 @@ class PdfExtractionArtifactLimitError(ValueError):
 
 class PdfExtractionArtifactValidationError(ValueError):
     """Raised when an artifact bundle is noncanonical or inconsistent."""
+
+
+class PdfExtractionArtifactIncompleteError(
+    PdfExtractionArtifactValidationError
+):
+    """Raised when a replay artifact tuple has missing or extra members."""
+
+
+class PdfExtractionArtifactMalformedError(PdfExtractionArtifactValidationError):
+    """Raised when replay evidence is malformed or inconsistent."""
 
 
 @dataclass(frozen=True)
@@ -125,6 +142,33 @@ class PdfExtractionArtifactPayload:
             raise PdfExtractionArtifactValidationError(
                 "artifact content hash does not match content"
             )
+
+
+@dataclass(frozen=True)
+class PdfExtractionTranscriptPage:
+    """Exact native extracted text for one physical source page."""
+
+    page_id: str
+    page_index: int
+    printed_page_label: str | None
+    text: str
+
+
+@dataclass(frozen=True)
+class PdfExtractionTranscript:
+    """Owner-validated semantic replay of one extraction artifact bundle."""
+
+    bundle_id: str
+    source_id: str
+    source_blob_id: str
+    source_sha256: str
+    source_byte_size: int
+    media_type: str
+    metadata: Metadata
+    manifest_id: str
+    status: IngestionStatus
+    review_status: str
+    pages: tuple[PdfExtractionTranscriptPage, ...]
 
 
 @dataclass(frozen=True)
@@ -358,6 +402,181 @@ def build_pdf_extraction_artifacts(
     )
 
 
+def read_pdf_extraction_transcript(
+    artifacts: tuple[PdfExtractionArtifactPayload, ...],
+    *,
+    expected_bundle_id: str,
+    expected_source_sha256: str,
+    expected_source_byte_size: int,
+    configuration: PdfExtractionConfiguration,
+    artifact_limits: PdfExtractionArtifactLimits,
+) -> PdfExtractionTranscript:
+    """Strictly replay one complete bounded extraction artifact tuple."""
+    if not isinstance(configuration, PdfExtractionConfiguration):
+        raise TypeError("configuration must be PdfExtractionConfiguration")
+    if not isinstance(artifact_limits, PdfExtractionArtifactLimits):
+        raise TypeError("artifact_limits must be PdfExtractionArtifactLimits")
+    if not isinstance(artifacts, tuple) or not artifacts:
+        raise PdfExtractionArtifactIncompleteError(
+            "artifacts must be a nonempty immutable payload tuple"
+        )
+    if len(artifacts) > artifact_limits.max_artifacts:
+        raise PdfExtractionArtifactLimitError(
+            "artifact tuple exceeds max_artifacts"
+        )
+
+    total_bytes = 0
+    paths: list[str] = []
+    for artifact in artifacts:
+        if not isinstance(artifact, PdfExtractionArtifactPayload):
+            raise PdfExtractionArtifactMalformedError(
+                "artifacts must contain only PdfExtractionArtifactPayload"
+            )
+        try:
+            PdfExtractionArtifactPayload(
+                relative_path=artifact.relative_path,
+                media_type=artifact.media_type,
+                byte_length=artifact.byte_length,
+                content_sha256=artifact.content_sha256,
+                content=artifact.content,
+            )
+        except PdfExtractionArtifactLimitError:
+            raise
+        except (TypeError, ValueError) as error:
+            raise PdfExtractionArtifactMalformedError(
+                f"invalid artifact payload: {error}"
+            ) from error
+        paths.append(artifact.relative_path)
+        total_bytes += artifact.byte_length
+        if artifact.relative_path == RAW_EXTRACTION_RELATIVE_PATH:
+            if artifact.byte_length > artifact_limits.max_raw_extraction_bytes:
+                raise PdfExtractionArtifactLimitError(
+                    "raw extraction JSON exceeds max_raw_extraction_bytes"
+                )
+        elif artifact.byte_length > artifact_limits.max_page_text_bytes:
+            raise PdfExtractionArtifactLimitError(
+                "raw page text exceeds max_page_text_bytes"
+            )
+        if total_bytes > artifact_limits.max_total_artifact_bytes:
+            raise PdfExtractionArtifactLimitError(
+                "PDF extraction artifacts exceed max_total_artifact_bytes"
+            )
+
+    if len(paths) != len(set(paths)):
+        raise PdfExtractionArtifactIncompleteError(
+            "artifact tuple contains duplicate relative paths"
+        )
+    if paths[0] != RAW_EXTRACTION_RELATIVE_PATH:
+        raise PdfExtractionArtifactIncompleteError(
+            "artifact tuple does not begin with raw-extraction.json"
+        )
+    raw_artifact = artifacts[0]
+    if raw_artifact.media_type != RAW_EXTRACTION_MEDIA_TYPE:
+        raise PdfExtractionArtifactMalformedError(
+            "raw extraction artifact media type is invalid"
+        )
+    try:
+        raw_text = raw_artifact.content.decode("utf-8", errors="strict")
+        result = deserialize_extraction_result(raw_text)
+        canonical_content = (serialize_contract(result) + "\n").encode(
+            "utf-8", errors="strict"
+        )
+    except (TypeError, UnicodeError, ValueError) as error:
+        raise PdfExtractionArtifactMalformedError(
+            f"raw extraction artifact is malformed: {error}"
+        ) from error
+    if raw_artifact.content != canonical_content:
+        raise PdfExtractionArtifactMalformedError(
+            "raw extraction artifact is not canonical JSON"
+        )
+
+    source = result.document.source
+    if source.media_type != "application/pdf":
+        raise PdfExtractionArtifactMalformedError(
+            "extraction source media type is not application/pdf"
+        )
+    try:
+        expected_digest = _validated_sha256(expected_source_sha256)
+    except (TypeError, ValueError) as error:
+        raise PdfExtractionArtifactMalformedError(str(error)) from error
+    if (
+        isinstance(expected_source_byte_size, bool)
+        or not isinstance(expected_source_byte_size, int)
+        or expected_source_byte_size < 0
+    ):
+        raise PdfExtractionArtifactMalformedError(
+            "expected_source_byte_size must be a non-negative integer"
+        )
+    if (
+        source.content_hash != expected_digest
+        or source.byte_length != expected_source_byte_size
+    ):
+        raise PdfExtractionArtifactMalformedError(
+            "extraction source does not match expected SHA-256 and byte size"
+        )
+    if result.manifest.status is not IngestionStatus.COMPLETED:
+        raise PdfExtractionArtifactMalformedError(
+            "extraction manifest status is not completed"
+        )
+
+    try:
+        canonical_artifacts = _artifact_payloads(result, artifact_limits)
+    except PdfExtractionArtifactLimitError:
+        raise
+    except (TypeError, ValueError) as error:
+        raise PdfExtractionArtifactMalformedError(
+            f"extraction artifacts are inconsistent: {error}"
+        ) from error
+    expected_paths = tuple(item.relative_path for item in canonical_artifacts)
+    if tuple(paths) != expected_paths:
+        raise PdfExtractionArtifactIncompleteError(
+            "artifact tuple membership or order is incomplete"
+        )
+    try:
+        PdfExtractionArtifactBundle(
+            bundle_id=expected_bundle_id,
+            contract_version=PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION,
+            configuration=configuration,
+            artifact_limits=artifact_limits,
+            result=result,
+            artifacts=artifacts,
+        )
+    except PdfExtractionArtifactLimitError:
+        raise
+    except (TypeError, ValueError) as error:
+        raise PdfExtractionArtifactMalformedError(
+            f"artifact bundle evidence is inconsistent: {error}"
+        ) from error
+
+    pages = tuple(
+        PdfExtractionTranscriptPage(
+            page_id=stable_id(
+                "pdf-extraction-transcript-page",
+                source.source_id,
+                source.blob_id,
+                page.page_index,
+            ),
+            page_index=page.page_index,
+            printed_page_label=page.printed_page_label,
+            text=_raw_page_text(page),
+        )
+        for page in result.document.pages
+    )
+    return PdfExtractionTranscript(
+        bundle_id=expected_bundle_id,
+        source_id=source.source_id,
+        source_blob_id=source.blob_id,
+        source_sha256=source.content_hash,
+        source_byte_size=source.byte_length,
+        media_type=source.media_type,
+        metadata=result.document.metadata,
+        manifest_id=result.manifest.manifest_id,
+        status=result.manifest.status,
+        review_status="automated_unreviewed",
+        pages=pages,
+    )
+
+
 def _extract_prepared_pdf(
     content: bytes,
     source: SourceDocument,
@@ -412,13 +631,8 @@ def _artifact_payloads(
             f"<!-- pdf-page: {page.page_index + 1}; printed-page: "
             f"{page.printed_page_label or 'unknown'} -->\n\n"
         )
-        blocks = tuple(
-            block.text
-            for block in page.blocks
-            if block.kind == "text" and block.text is not None
-        )
         try:
-            page_content = (header + "\n\n".join(blocks) + "\n").encode(
+            page_content = (header + _raw_page_text(page) + "\n").encode(
                 "utf-8", errors="strict"
             )
         except UnicodeError as error:
@@ -448,6 +662,14 @@ def _artifact_payloads(
             "PDF extraction artifacts exceed max_total_artifact_bytes"
         )
     return tuple(artifacts)
+
+
+def _raw_page_text(page: ExtractedPage) -> str:
+    return "\n\n".join(
+        block.text
+        for block in page.blocks
+        if block.kind == "text" and block.text is not None
+    )
 
 
 def _bundle_id(

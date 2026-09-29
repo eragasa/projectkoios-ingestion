@@ -76,3 +76,40 @@ extraction, and artifact builder, then uses the existing exclusive publication
 and rollback behavior. `--maximum-pages` defaults to
 `DEFAULT_MAXIMUM_PDF_PAGES` (10,000). Applications with staged bytes should not
 use this path API.
+
+## Strict semantic replay
+
+A consumer that persisted one complete artifact tuple can request exact ordered
+page text without interpreting ingestion JSON:
+
+```python
+from projectkoios.ingestion import read_pdf_extraction_transcript
+
+transcript = read_pdf_extraction_transcript(
+    artifacts,
+    expected_bundle_id=recorded_bundle_id,
+    expected_source_sha256=recorded_source_sha256,
+    expected_source_byte_size=recorded_source_size,
+    configuration=recorded_configuration,
+    artifact_limits=recorded_artifact_limits,
+)
+```
+
+The caller must reconstruct and supply the exact recorded
+`PdfExtractionConfiguration` and `PdfExtractionArtifactLimits`; replay has no
+defaults and does not infer either value. They are required because both values
+participate in the bundle identity. The pure, path-free reader performs bounded
+strict JSON deserialization, validates the complete intrinsic extraction graph,
+and requires canonical raw JSON, a completed manifest, exact PDF source
+identity, exact bundle identity, and the canonical artifact membership and
+order. Every page is contiguous from zero and its publication payload must
+match the native text-block order and `"\n\n"` join rule exactly.
+
+The frozen `PdfExtractionTranscript` exposes source and manifest identity,
+metadata, `review_status="automated_unreviewed"`, and frozen
+`PdfExtractionTranscriptPage` values. Page `text` excludes the raw-page comment
+header and publication newline; it is the exact native extracted block text
+without cleanup or semantic correction. `PdfExtractionArtifactIncompleteError`
+reports missing, extra, duplicate, or out-of-order members;
+`PdfExtractionArtifactMalformedError` reports malformed or inconsistent
+evidence; and `PdfExtractionArtifactLimitError` reports exceeded bounds.
