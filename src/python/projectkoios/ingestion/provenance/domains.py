@@ -1,521 +1,67 @@
+"""Domain-specific transitive provenance audit walkers."""
+
 from __future__ import annotations
 
 import hashlib
-import math
 import unicodedata
 from collections import Counter
-from dataclasses import dataclass, fields, is_dataclass
-from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from projectkoios.ingestion.equations import EquationDetectionResult
-from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
     ExtractedBlock,
     ExtractedDocument,
+    ExtractedPage,
     ExtractionResult,
     Metadata,
     SourceDocument,
-    SourceSpan,
 )
-from projectkoios.ingestion.ocr import OCRResult
-from projectkoios.ingestion.pdf.models import RenderedRegion
-from projectkoios.ingestion.processing import ProcessingResult
-from projectkoios.ingestion.reconciliation import OCRReconciliationResult
-from projectkoios.ingestion.structure import StructureAnalysis
-from projectkoios.ingestion.table_structure import TableStructureResult
-from projectkoios.ingestion.tables import TableDetectionResult
-from projectkoios.ingestion.transcript_projection import CleanTranscriptArtifact
+from projectkoios.ingestion.provenance import (
+    DerivationAuditFindingCode,
+    DerivationAuditInput,
+    _Registry,
+)
 from projectkoios.ingestion.transcript_v2 import (
     ClassificationDisposition,
-    CleanTranscriptV2Artifact,
     CleanTranscriptV2ExclusionReason,
     PageNumberOutcome,
 )
-from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionResult,
-    TranscriptionSourceObjectKind,
-)
-
-DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"
-DERIVATION_AUDIT_PROCESSOR_VERSION = "2"
-DERIVATION_AUDIT_V2_PROCESSOR_VERSION = "3"
-_MAX_ARTIFACTS_PER_LAYER = 4_096
-_MAX_FINDINGS = 8_192
-_MAX_VISITED_OBJECTS = 250_000
-_BOX_TOLERANCE = 1e-6
+from projectkoios.ingestion.transcription import TranscriptionSourceObjectKind
 
 
-class DerivationAuditLimitError(ValueError):
-    """Raised before a derivation audit exceeds a deterministic bound."""
+class _DomainAuditWalker:
+    if TYPE_CHECKING:
+        audit_input: DerivationAuditInput
+        extraction: ExtractionResult
+        document: ExtractedDocument
+        source: SourceDocument
+        pages: dict[int, ExtractedPage]
+        blocks: dict[str, ExtractedBlock]
+        block_pages: dict[str, ExtractedPage]
+        registry: _Registry
 
+        def _add(
+            self,
+            code: DerivationAuditFindingCode,
+            path: str,
+            message: str,
+            object_id: str | None = None,
+            evidence: Metadata = (),
+        ) -> None: ...
 
-class DerivationAuditError(ValueError):
-    """Raised when a caller requires a valid derivation audit."""
+        def _orphan(self, path: str, object_id: str) -> None: ...
 
-    def __init__(self, report: DerivationAuditReport) -> None:
-        self.report = report
-        super().__init__(
-            f"derivation audit failed with {len(report.findings)} finding(s)"
-        )
+        def _require_root_document(
+            self, document: ExtractedDocument, path: str
+        ) -> None: ...
 
-
-class DerivationAuditStatus(StrEnum):
-    PASSED = "passed"
-    FAILED = "failed"
-
-
-class DerivationAuditFindingCode(StrEnum):
-    SOURCE_CONTENT_MISMATCH = "source_content_mismatch"
-    SOURCE_DOCUMENT_MISMATCH = "source_document_mismatch"
-    SOURCE_ID_MISMATCH = "source_id_mismatch"
-    SOURCE_BLOB_MISMATCH = "source_blob_mismatch"
-    SOURCE_HASH_MISMATCH = "source_hash_mismatch"
-    PAGE_OUT_OF_RANGE = "page_out_of_range"
-    REGION_OUT_OF_RANGE = "region_out_of_range"
-    CONTENT_IDENTITY_MISMATCH = "content_identity_mismatch"
-    PROCESSOR_IDENTITY_MISSING = "processor_identity_missing"
-    CONTRACT_VERSION_MISSING = "contract_version_missing"
-    INTRINSIC_CONTRACT_VIOLATION = "intrinsic_contract_violation"
-    ORPHAN_OBJECT_REFERENCE = "orphan_object_reference"
-    UPSTREAM_ARTIFACT_MISSING = "upstream_artifact_missing"
-    UPSTREAM_ARTIFACT_MISMATCH = "upstream_artifact_mismatch"
-    DUPLICATE_OBJECT_ID = "duplicate_object_id"
-
-
-@dataclass(frozen=True)
-class DerivationAuditFinding:
-    finding_id: str
-    code: DerivationAuditFindingCode
-    path: str
-    message: str
-    object_id: str | None = None
-    evidence: Metadata = ()
-    contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
-
-    @classmethod
-    def create(
-        cls,
-        *,
-        code: DerivationAuditFindingCode,
-        path: str,
-        message: str,
-        object_id: str | None = None,
-        evidence: Metadata = (),
-    ) -> DerivationAuditFinding:
-        normalized_evidence = tuple(sorted(evidence))
-        finding_id = stable_id(
-            "derivation-audit-finding",
-            code,
-            path,
-            object_id,
-            normalized_evidence,
-        )
-        return cls(
-            finding_id=finding_id,
-            code=code,
-            path=path,
-            message=message,
-            object_id=object_id,
-            evidence=normalized_evidence,
-        )
-
-    def __post_init__(self) -> None:
-        if self.contract_version != DERIVATION_AUDIT_CONTRACT_VERSION:
-            raise ValueError("unsupported derivation-audit finding contract")
-        if not self.path or not self.message:
-            raise ValueError("audit finding path and message must be non-empty")
-        if self.evidence != tuple(sorted(self.evidence)):
-            raise ValueError("audit finding evidence must be sorted")
-        expected = stable_id(
-            "derivation-audit-finding",
-            self.code,
-            self.path,
-            self.object_id,
-            self.evidence,
-        )
-        if self.finding_id != expected:
-            raise ValueError("audit finding ID is inconsistent")
-
-
-@dataclass(frozen=True)
-class DerivationAuditInput:
-    source_content: bytes
-    extraction_result: ExtractionResult
-    ocr_results: tuple[OCRResult, ...] = ()
-    reconciliation_results: tuple[OCRReconciliationResult, ...] = ()
-    layout_results: tuple[PageLayoutResult, ...] = ()
-    structure_analyses: tuple[StructureAnalysis, ...] = ()
-    equation_results: tuple[EquationDetectionResult, ...] = ()
-    table_detection_results: tuple[TableDetectionResult, ...] = ()
-    table_structure_results: tuple[TableStructureResult, ...] = ()
-    figure_results: tuple[FigureDetectionResult, ...] = ()
-    processing_results: tuple[ProcessingResult, ...] = ()
-    transcription_results: tuple[StructuredTranscriptionResult, ...] = ()
-    clean_transcript_artifacts: tuple[CleanTranscriptArtifact, ...] = ()
-    contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
-    clean_transcript_v2_artifacts: tuple[CleanTranscriptV2Artifact, ...] = ()
-
-    def __post_init__(self) -> None:
-        if self.contract_version != DERIVATION_AUDIT_CONTRACT_VERSION:
-            raise ValueError("unsupported derivation-audit input contract")
-        if not isinstance(self.source_content, bytes):
-            raise TypeError("source_content must be exact bytes")
-        if not isinstance(self.extraction_result, ExtractionResult):
-            raise TypeError("extraction_result must be ExtractionResult")
-        for name in _LAYER_FIELDS:
-            value = getattr(self, name)
-            if not isinstance(value, tuple):
-                raise TypeError(f"{name} must be a tuple")
-            if len(value) > _MAX_ARTIFACTS_PER_LAYER:
-                raise DerivationAuditLimitError(
-                    f"{name} exceeds {_MAX_ARTIFACTS_PER_LAYER} artifacts"
-                )
-            expected_type = _LAYER_TYPES[name]
-            if any(not isinstance(item, expected_type) for item in value):
-                raise TypeError(
-                    f"{name} must contain only {expected_type.__name__}"
-                )
-
-
-@dataclass(frozen=True)
-class DerivationAuditReport:
-    report_id: str
-    source_id: str
-    source_blob_id: str
-    source_content_hash: str
-    document_id: str
-    audited_artifact_ids: tuple[str, ...]
-    audited_layer_counts: Metadata
-    findings: tuple[DerivationAuditFinding, ...]
-    status: DerivationAuditStatus
-    processor_name: str
-    processor_version: str
-    contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
-
-    @classmethod
-    def create(
-        cls,
-        *,
-        source: SourceDocument,
-        document_id: str,
-        audited_artifact_ids: tuple[str, ...],
-        audited_layer_counts: Metadata,
-        findings: tuple[DerivationAuditFinding, ...],
-        processor_name: str,
-        processor_version: str,
-    ) -> DerivationAuditReport:
-        status = (
-            DerivationAuditStatus.PASSED
-            if not findings
-            else DerivationAuditStatus.FAILED
-        )
-        report_id = stable_id(
-            "derivation-audit-report",
-            source.source_id,
-            source.blob_id,
-            source.content_hash,
-            document_id,
-            audited_artifact_ids,
-            audited_layer_counts,
-            tuple(item.finding_id for item in findings),
-            status,
-            processor_name,
-            processor_version,
-        )
-        return cls(
-            report_id=report_id,
-            source_id=source.source_id,
-            source_blob_id=source.blob_id,
-            source_content_hash=source.content_hash,
-            document_id=document_id,
-            audited_artifact_ids=audited_artifact_ids,
-            audited_layer_counts=audited_layer_counts,
-            findings=findings,
-            status=status,
-            processor_name=processor_name,
-            processor_version=processor_version,
-        )
-
-    @property
-    def valid(self) -> bool:
-        return self.status is DerivationAuditStatus.PASSED
-
-    def require_valid(self) -> None:
-        if not self.valid:
-            raise DerivationAuditError(self)
-
-    def __post_init__(self) -> None:
-        if self.contract_version != DERIVATION_AUDIT_CONTRACT_VERSION:
-            raise ValueError("unsupported derivation-audit report contract")
-        if not all(
-            (
-                self.source_id,
-                self.source_blob_id,
-                self.source_content_hash,
-                self.document_id,
-                self.processor_name,
-                self.processor_version,
-            )
-        ):
-            raise ValueError("derivation-audit report identity is incomplete")
-        if self.audited_layer_counts != tuple(
-            sorted(self.audited_layer_counts)
-        ):
-            raise ValueError("audited layer counts must be sorted")
-        expected_status = (
-            DerivationAuditStatus.PASSED
-            if not self.findings
-            else DerivationAuditStatus.FAILED
-        )
-        if self.status is not expected_status:
-            raise ValueError("audit status does not match findings")
-        expected = stable_id(
-            "derivation-audit-report",
-            self.source_id,
-            self.source_blob_id,
-            self.source_content_hash,
-            self.document_id,
-            self.audited_artifact_ids,
-            self.audited_layer_counts,
-            tuple(item.finding_id for item in self.findings),
-            self.status,
-            self.processor_name,
-            self.processor_version,
-        )
-        if self.report_id != expected:
-            raise ValueError("derivation-audit report ID is inconsistent")
-
-
-_LAYER_TYPES: dict[str, type[object]] = {
-    "ocr_results": OCRResult,
-    "reconciliation_results": OCRReconciliationResult,
-    "layout_results": PageLayoutResult,
-    "structure_analyses": StructureAnalysis,
-    "equation_results": EquationDetectionResult,
-    "table_detection_results": TableDetectionResult,
-    "table_structure_results": TableStructureResult,
-    "figure_results": FigureDetectionResult,
-    "processing_results": ProcessingResult,
-    "transcription_results": StructuredTranscriptionResult,
-    "clean_transcript_artifacts": CleanTranscriptArtifact,
-    "clean_transcript_v2_artifacts": CleanTranscriptV2Artifact,
-}
-_LAYER_FIELDS = (
-    "ocr_results",
-    "reconciliation_results",
-    "layout_results",
-    "structure_analyses",
-    "equation_results",
-    "table_detection_results",
-    "table_structure_results",
-    "figure_results",
-    "processing_results",
-    "transcription_results",
-    "clean_transcript_artifacts",
-    "clean_transcript_v2_artifacts",
-)
-
-
-@dataclass
-class _Registry:
-    layouts: dict[str, PageLayoutResult]
-    structures: dict[str, StructureAnalysis]
-    ocr_results: dict[str, OCRResult]
-    equations: dict[str, EquationDetectionResult]
-    table_detections: dict[str, TableDetectionResult]
-    table_structures: dict[str, TableStructureResult]
-    figures: dict[str, FigureDetectionResult]
-    processing: dict[str, ProcessingResult]
-    transcriptions: dict[str, StructuredTranscriptionResult]
-    clean_transcripts: dict[str, CleanTranscriptArtifact]
-    clean_transcripts_v2: dict[str, CleanTranscriptV2Artifact]
-
-
-class DerivationAuditValidator:
-    """Validate exact transitive provenance without changing any artifact."""
-
-    name = "deterministic-derivation-audit-validator"
-    version = DERIVATION_AUDIT_PROCESSOR_VERSION
-
-    def audit(self, audit_input: DerivationAuditInput) -> DerivationAuditReport:
-        processor_version = (
-            DERIVATION_AUDIT_V2_PROCESSOR_VERSION
-            if audit_input.clean_transcript_v2_artifacts
-            else self.version
-        )
-        state = _AuditState(audit_input, self.name, processor_version)
-        state.run()
-        return state.report()
-
-    def validate(self, audit_input: DerivationAuditInput) -> None:
-        self.audit(audit_input).require_valid()
-
-
-class _AuditState:
-    def __init__(
-        self,
-        audit_input: DerivationAuditInput,
-        processor_name: str,
-        processor_version: str,
-    ) -> None:
-        self.audit_input = audit_input
-        self.extraction = audit_input.extraction_result
-        self.document = self.extraction.document
-        self.source = self.document.source
-        self.processor_name = processor_name
-        self.processor_version = processor_version
-        self.pages = {page.page_index: page for page in self.document.pages}
-        self.blocks = {
-            block.block_id: block
-            for page in self.document.pages
-            for block in page.blocks
-        }
-        self.block_pages = {
-            block.block_id: page
-            for page in self.document.pages
-            for block in page.blocks
-        }
-        self.findings: list[DerivationAuditFinding] = []
-        self._finding_keys: set[tuple[object, ...]] = set()
-        self._seen_objects: set[int] = set()
-        self._visited_count = 0
-        self.registry = _Registry(
-            layouts=self._index(
-                audit_input.layout_results, "result_id", "layout_results"
-            ),
-            structures=self._index(
-                audit_input.structure_analyses,
-                "analysis_id",
-                "structure_analyses",
-            ),
-            ocr_results=self._index(
-                audit_input.ocr_results, "result_id", "ocr_results"
-            ),
-            equations=self._index(
-                audit_input.equation_results,
-                "result_id",
-                "equation_results",
-            ),
-            table_detections=self._index(
-                audit_input.table_detection_results,
-                "result_id",
-                "table_detection_results",
-            ),
-            table_structures=self._index(
-                audit_input.table_structure_results,
-                "result_id",
-                "table_structure_results",
-            ),
-            figures=self._index(
-                audit_input.figure_results, "result_id", "figure_results"
-            ),
-            processing=self._index(
-                audit_input.processing_results,
-                "result_id",
-                "processing_results",
-            ),
-            transcriptions=self._index(
-                audit_input.transcription_results,
-                "result_id",
-                "transcription_results",
-            ),
-            clean_transcripts=self._index(
-                audit_input.clean_transcript_artifacts,
-                "artifact_id",
-                "clean_transcript_artifacts",
-            ),
-            clean_transcripts_v2=self._index(
-                audit_input.clean_transcript_v2_artifacts,
-                "artifact_id",
-                "clean_transcript_v2_artifacts",
-            ),
-        )
-
-    def run(self) -> None:
-        self._audit_source_content()
-        self._audit_extraction()
-        self._audit_layout_references()
-        self._audit_registered_upstreams()
-        self._audit_structure_references()
-        self._audit_ocr_references()
-        self._audit_reconciliation_references()
-        self._audit_equation_references()
-        self._audit_table_references()
-        self._audit_figure_references()
-        self._audit_processing_references()
-        self._audit_transcription_references()
-        self._audit_clean_transcript_references()
-        self._audit_clean_transcript_v2_references()
-        self._walk(self.extraction, "extraction_result")
-        for layer_name in _LAYER_FIELDS:
-            for index, artifact in enumerate(
-                getattr(self.audit_input, layer_name)
-            ):
-                self._walk(artifact, f"{layer_name}[{index}]")
-
-    def report(self) -> DerivationAuditReport:
-        artifact_ids = [
-            self.extraction.manifest.manifest_id,
-            self.document.document_id,
-        ]
-        for name in _LAYER_FIELDS:
-            artifact_ids.extend(
-                _artifact_id(item) for item in getattr(self.audit_input, name)
-            )
-        layer_counts = tuple(
-            sorted(
-                (
-                    ("extraction_result", "1"),
-                    *(
-                        (name, str(len(getattr(self.audit_input, name))))
-                        for name in _LAYER_FIELDS
-                        if name != "clean_transcript_v2_artifacts"
-                        or self.audit_input.clean_transcript_v2_artifacts
-                    ),
-                )
-            )
-        )
-        return DerivationAuditReport.create(
-            source=self.source,
-            document_id=self.document.document_id,
-            audited_artifact_ids=tuple(artifact_ids),
-            audited_layer_counts=layer_counts,
-            findings=tuple(self.findings),
-            processor_name=self.processor_name,
-            processor_version=self.processor_version,
-        )
-
-    def _index(
-        self, values: tuple[Any, ...], field_name: str, path: str
-    ) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for index, value in enumerate(values):
-            identity = getattr(value, field_name)
-            if (
-                identity is None
-                or not isinstance(identity, str)
-                or not identity
-            ):
-                self._add(
-                    DerivationAuditFindingCode.INTRINSIC_CONTRACT_VIOLATION,
-                    f"{path}[{index}].{field_name}",
-                    "artifact identity is missing",
-                    _object_id(value),
-                )
-                continue
-            if identity in result:
-                self._add(
-                    DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                    f"{path}[{index}].{field_name}",
-                    "artifact identity is duplicated in the audit input",
-                    identity,
-                )
-                continue
-            result[identity] = value
-        return result
+        def _require_registered(
+            self,
+            artifact: object,
+            registry: dict[str, Any],
+            identity: str,
+            path: str,
+        ) -> None: ...
 
     def _audit_source_content(self) -> None:
         content = self.audit_input.source_content
@@ -776,7 +322,8 @@ class _AuditState:
                 selection = selections.get(selection_result.selection_id)
                 if selection is None:
                     self._orphan(
-                        f"{path}.selection_id", selection_result.selection_id
+                        f"{path}.selection_id",
+                        selection_result.selection_id,
                     )
                     continue
                 if selection_result.image_id != selection.image.image_id:
@@ -840,7 +387,10 @@ class _AuditState:
                     f"equation_results[{result_index}].candidates"
                     f"[{candidate_index}]"
                 )
-                for context_name in ("preceding_context", "following_context"):
+                for context_name in (
+                    "preceding_context",
+                    "following_context",
+                ):
                     context = getattr(candidate, context_name)
                     if (
                         context is not None
@@ -1046,7 +596,8 @@ class _AuditState:
                 path = f"{prefix}.selection_results[{selection_result_index}]"
                 if selection_result.selection_id not in selection_by_id:
                     self._orphan(
-                        f"{path}.selection_id", selection_result.selection_id
+                        f"{path}.selection_id",
+                        selection_result.selection_id,
                     )
                 registered_work_item = work_item_by_id.get(
                     selection_result.work_item.work_item_id
@@ -1280,8 +831,14 @@ class _AuditState:
                         "the clean transcript partition",
                         block_id,
                         (
-                            ("excluded_count", str(excluded_counts[block_id])),
-                            ("included_count", str(included_counts[block_id])),
+                            (
+                                "excluded_count",
+                                str(excluded_counts[block_id]),
+                            ),
+                            (
+                                "included_count",
+                                str(included_counts[block_id]),
+                            ),
                         ),
                     )
 
@@ -1890,467 +1447,3 @@ class _AuditState:
                         f"{prefix}.blocks.publisher_classification_id",
                         record.publisher_classification_id,
                     )
-
-    def _walk(self, value: object, path: str) -> None:
-        if isinstance(
-            value, (str, bytes, int, float, bool, type(None), StrEnum)
-        ):
-            return
-        if isinstance(value, tuple):
-            for index, item in enumerate(value):
-                self._walk(item, f"{path}[{index}]")
-            return
-        if not is_dataclass(value):
-            return
-        identity = id(value)
-        if identity in self._seen_objects:
-            return
-        self._seen_objects.add(identity)
-        self._visited_count += 1
-        if self._visited_count > _MAX_VISITED_OBJECTS:
-            raise DerivationAuditLimitError(
-                f"audit exceeds {_MAX_VISITED_OBJECTS} retained objects"
-            )
-        self._audit_intrinsic(value, path)
-        self._audit_common(value, path)
-        for field_info in fields(value):
-            self._walk(
-                getattr(value, field_info.name), f"{path}.{field_info.name}"
-            )
-
-    def _audit_intrinsic(self, value: object, path: str) -> None:
-        post_init = getattr(value, "__post_init__", None)
-        if post_init is None:
-            return
-        try:
-            post_init()
-        except (AssertionError, TypeError, ValueError) as error:
-            self._add(
-                DerivationAuditFindingCode.INTRINSIC_CONTRACT_VIOLATION,
-                path,
-                f"{type(value).__name__} violates its intrinsic "
-                f"contract: {error}",
-                _object_id(value),
-            )
-
-    def _audit_common(self, value: object, path: str) -> None:
-        object_id = _object_id(value)
-        if isinstance(value, SourceDocument) and value != self.source:
-            self._add(
-                DerivationAuditFindingCode.SOURCE_DOCUMENT_MISMATCH,
-                path,
-                "embedded source document differs from the audit root source",
-                value.source_id,
-            )
-        source_id = getattr(value, "source_id", None)
-        if source_id is not None and source_id != self.source.source_id:
-            self._add(
-                DerivationAuditFindingCode.SOURCE_ID_MISMATCH,
-                f"{path}.source_id",
-                "derived object refers to a different source ID",
-                object_id,
-            )
-        source_blob_id = getattr(value, "source_blob_id", None)
-        if source_blob_id is not None and source_blob_id != self.source.blob_id:
-            self._add(
-                DerivationAuditFindingCode.SOURCE_BLOB_MISMATCH,
-                f"{path}.source_blob_id",
-                "derived object refers to a different source blob",
-                object_id,
-            )
-        source_hash = getattr(value, "source_content_hash", None)
-        if source_hash is not None and source_hash != self.source.content_hash:
-            self._add(
-                DerivationAuditFindingCode.SOURCE_HASH_MISMATCH,
-                f"{path}.source_content_hash",
-                "derived object refers to a different source hash",
-                object_id,
-            )
-        if isinstance(value, SourceSpan):
-            self._audit_span(value, path)
-        page_index = getattr(value, "page_index", None)
-        if isinstance(page_index, int) and not isinstance(page_index, bool):
-            if page_index not in self.pages:
-                self._add(
-                    DerivationAuditFindingCode.PAGE_OUT_OF_RANGE,
-                    f"{path}.page_index",
-                    "derived object refers to a page outside the root document",
-                    object_id,
-                    (("page_index", str(page_index)),),
-                )
-            else:
-                self._audit_source_boxes(value, path, page_index)
-        self._audit_processor_identity(value, path)
-        self._audit_content_identity(value, path)
-        self._audit_block_references(value, path)
-
-    def _audit_span(self, span: SourceSpan, path: str) -> None:
-        page = self.pages.get(span.page_index)
-        if page is None:
-            return
-        if (
-            span.printed_page_label is not None
-            and span.printed_page_label != page.printed_page_label
-        ):
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                f"{path}.printed_page_label",
-                "source span printed label differs from its root page",
-                span.source_object_id,
-            )
-        if span.bounding_box is not None:
-            self._check_box(
-                span.bounding_box,
-                page.width,
-                page.height,
-                path,
-                span.source_object_id,
-            )
-        if (
-            span.source_object_id in self.blocks
-            and span.start_offset is not None
-            and self.blocks[span.source_object_id].text is not None
-            and span.end_offset is not None
-            and span.end_offset
-            > len(self.blocks[span.source_object_id].text or "")
-        ):
-            self._add(
-                DerivationAuditFindingCode.REGION_OUT_OF_RANGE,
-                path,
-                "source span text offsets exceed the referenced block",
-                span.source_object_id,
-            )
-
-    def _audit_source_boxes(
-        self, value: object, path: str, page_index: int
-    ) -> None:
-        page = self.pages[page_index]
-        page_width = getattr(value, "page_width", None)
-        page_height = getattr(value, "page_height", None)
-        if page_width is not None and page_width != page.width:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                f"{path}.page_width",
-                "derived page width differs from the root page",
-                _object_id(value),
-            )
-        if page_height is not None and page_height != page.height:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                f"{path}.page_height",
-                "derived page height differs from the root page",
-                _object_id(value),
-            )
-        coordinate_system = getattr(value, "coordinate_system", None)
-        if (
-            coordinate_system is not None
-            and coordinate_system != page.coordinate_system
-        ):
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                f"{path}.coordinate_system",
-                "derived coordinate system differs from the root page",
-                _object_id(value),
-            )
-        rotation = getattr(value, "rotation_degrees", None)
-        if rotation is not None and rotation != page.rotation_degrees:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                f"{path}.rotation_degrees",
-                "derived page rotation differs from the root page",
-                _object_id(value),
-            )
-        for name in (
-            "bounding_box",
-            "source_bounding_box",
-            "effective_source_bounding_box",
-        ):
-            box = getattr(value, name, None)
-            if box is not None:
-                self._check_box(
-                    box,
-                    page.width,
-                    page.height,
-                    f"{path}.{name}",
-                    _object_id(value),
-                )
-        start = getattr(value, "start", None)
-        end = getattr(value, "end", None)
-        if (
-            isinstance(start, tuple)
-            and len(start) == 2
-            and isinstance(end, tuple)
-            and len(end) == 2
-        ):
-            for point_name, point in (("start", start), ("end", end)):
-                if (
-                    any(
-                        isinstance(item, bool)
-                        or not isinstance(item, (int, float))
-                        or not math.isfinite(item)
-                        for item in point
-                    )
-                    or point[0] < -_BOX_TOLERANCE
-                    or point[1] < -_BOX_TOLERANCE
-                    or point[0] > page.width + _BOX_TOLERANCE
-                    or point[1] > page.height + _BOX_TOLERANCE
-                ):
-                    self._add(
-                        DerivationAuditFindingCode.REGION_OUT_OF_RANGE,
-                        f"{path}.{point_name}",
-                        "source point lies outside the root page extent",
-                        _object_id(value),
-                    )
-        if isinstance(value, RenderedRegion):
-            if value.page_rotation_degrees != page.rotation_degrees:
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{path}.page_rotation_degrees",
-                    "rendered region rotation differs from its root page",
-                    value.region_id,
-                )
-
-    def _check_box(
-        self,
-        box: object,
-        width: float,
-        height: float,
-        path: str,
-        object_id: str | None,
-    ) -> None:
-        if (
-            not isinstance(box, tuple)
-            or len(box) != 4
-            or any(
-                isinstance(item, bool)
-                or not isinstance(item, (int, float))
-                or not math.isfinite(item)
-                for item in box
-            )
-        ):
-            self._add(
-                DerivationAuditFindingCode.REGION_OUT_OF_RANGE,
-                path,
-                "source bounding box is not a finite four-coordinate tuple",
-                object_id,
-            )
-            return
-        x0, y0, x1, y1 = box
-        if (
-            x0 < -_BOX_TOLERANCE
-            or y0 < -_BOX_TOLERANCE
-            or x1 > width + _BOX_TOLERANCE
-            or y1 > height + _BOX_TOLERANCE
-            or x1 < x0
-            or y1 < y0
-        ):
-            self._add(
-                DerivationAuditFindingCode.REGION_OUT_OF_RANGE,
-                path,
-                "source bounding box lies outside the root page extent",
-                object_id,
-                (
-                    ("box", repr(box)),
-                    ("page_extent", repr((0.0, 0.0, width, height))),
-                ),
-            )
-
-    def _audit_processor_identity(self, value: object, path: str) -> None:
-        for prefix in ("processor", "backend", "extractor"):
-            name_field = f"{prefix}_name"
-            version_field = f"{prefix}_version"
-            has_name = hasattr(value, name_field)
-            has_version = hasattr(value, version_field)
-            if not (has_name or has_version):
-                continue
-            name = getattr(value, name_field, None)
-            version = getattr(value, version_field, None)
-            if (
-                not isinstance(name, str)
-                or not name
-                or not isinstance(version, str)
-                or not version
-            ):
-                self._add(
-                    DerivationAuditFindingCode.PROCESSOR_IDENTITY_MISSING,
-                    path,
-                    f"{prefix} name and version must both be non-empty",
-                    _object_id(value),
-                )
-        if hasattr(value, "configuration_digest"):
-            digest = value.configuration_digest
-            if not isinstance(digest, str) or not digest:
-                self._add(
-                    DerivationAuditFindingCode.PROCESSOR_IDENTITY_MISSING,
-                    f"{path}.configuration_digest",
-                    "processor configuration digest is missing",
-                    _object_id(value),
-                )
-        if hasattr(value, "contract_version"):
-            contract_version = value.contract_version
-            if not isinstance(contract_version, str) or not contract_version:
-                self._add(
-                    DerivationAuditFindingCode.CONTRACT_VERSION_MISSING,
-                    f"{path}.contract_version",
-                    "artifact contract version is missing",
-                    _object_id(value),
-                )
-
-    def _audit_content_identity(self, value: object, path: str) -> None:
-        if not all(
-            hasattr(value, name)
-            for name in ("content", "content_sha256", "byte_length")
-        ):
-            return
-        content_value: Any = value
-        content = content_value.content
-        digest = content_value.content_sha256
-        byte_length = content_value.byte_length
-        if isinstance(content, bytes) and (
-            hashlib.sha256(content).hexdigest() != digest
-            or len(content) != byte_length
-        ):
-            self._add(
-                DerivationAuditFindingCode.CONTENT_IDENTITY_MISMATCH,
-                path,
-                "retained content bytes do not match their hash or byte length",
-                _object_id(value),
-            )
-
-    def _audit_block_references(self, value: object, path: str) -> None:
-        if isinstance(value, ExtractedBlock):
-            return
-        for field_name in ("block_id", "source_block_id"):
-            block_id = getattr(value, field_name, None)
-            if isinstance(block_id, str) and block_id not in self.blocks:
-                self._orphan(f"{path}.{field_name}", block_id)
-        for field_name in (
-            "block_ids",
-            "source_block_ids",
-            "input_block_ids",
-            "raw_block_ids",
-            "non_text_block_ids",
-            "merged_cell_signal_block_ids",
-        ):
-            block_ids = getattr(value, field_name, None)
-            if isinstance(block_ids, tuple):
-                for block_id in block_ids:
-                    if (
-                        isinstance(block_id, str)
-                        and block_id not in self.blocks
-                    ):
-                        self._orphan(f"{path}.{field_name}", block_id)
-
-    def _require_root_document(
-        self, document: ExtractedDocument, path: str
-    ) -> None:
-        if document != self.document:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                path,
-                "embedded extraction document differs from the audit "
-                "root document",
-                document.document_id,
-            )
-
-    def _require_registered(
-        self,
-        artifact: object,
-        registry: dict[str, Any],
-        identity: str,
-        path: str,
-    ) -> None:
-        registered = registry.get(identity)
-        if registered is None:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                path,
-                "required upstream artifact is absent from the audit input",
-                identity,
-            )
-        elif registered != artifact:
-            self._add(
-                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                path,
-                "embedded upstream artifact differs from its "
-                "registered artifact",
-                identity,
-            )
-
-    def _orphan(self, path: str, object_id: str) -> None:
-        self._add(
-            DerivationAuditFindingCode.ORPHAN_OBJECT_REFERENCE,
-            path,
-            "derived object refers to an unknown upstream object",
-            object_id,
-        )
-
-    def _add(
-        self,
-        code: DerivationAuditFindingCode,
-        path: str,
-        message: str,
-        object_id: str | None = None,
-        evidence: Metadata = (),
-    ) -> None:
-        normalized_evidence = tuple(sorted(evidence))
-        key = (code, path, object_id, normalized_evidence)
-        if key in self._finding_keys:
-            return
-        if len(self.findings) >= _MAX_FINDINGS:
-            raise DerivationAuditLimitError(
-                f"audit exceeds {_MAX_FINDINGS} findings"
-            )
-        self._finding_keys.add(key)
-        self.findings.append(
-            DerivationAuditFinding.create(
-                code=code,
-                path=path,
-                message=message,
-                object_id=object_id,
-                evidence=normalized_evidence,
-            )
-        )
-
-
-def _artifact_id(value: object) -> str:
-    for name in (
-        "result_id",
-        "analysis_id",
-        "manifest_id",
-        "artifact_id",
-        "document_id",
-    ):
-        identity = getattr(value, name, None)
-        if isinstance(identity, str) and identity:
-            return identity
-    return stable_id(
-        "derivation-audit-anonymous-artifact", type(value).__name__
-    )
-
-
-def _object_id(value: object) -> str | None:
-    for name in (
-        "result_id",
-        "analysis_id",
-        "artifact_id",
-        "document_id",
-        "manifest_id",
-        "candidate_id",
-        "structure_id",
-        "item_id",
-        "region_id",
-        "block_id",
-        "node_id",
-        "selection_result_id",
-        "selection_id",
-        "work_item_id",
-        "request_id",
-        "input_id",
-        "page_id",
-        "source_id",
-    ):
-        identity = getattr(value, name, None)
-        if isinstance(identity, str) and identity:
-            return identity
-    return None
