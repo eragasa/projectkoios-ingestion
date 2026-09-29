@@ -3,7 +3,7 @@
 ## Status
 
 **Implemented.** The public implementation is
-[`DeterministicLayoutProcessor`](../../../../../../src/python/projectkoios/ingestion/layout.py),
+[`DeterministicLayoutProcessor`](../../../../../../src/python/projectkoios/ingestion/layout/__init__.py),
 with layout contract version `1.0`, processor name
 `deterministic-page-layout`, and processor version `2`.
 
@@ -54,8 +54,10 @@ from page text.
 
 ## Key Classes
 
-All processor-owned classes are defined in
-[`src/python/projectkoios/ingestion/layout.py`](../../../../../../src/python/projectkoios/ingestion/layout.py).
+The stable public contracts and processor facade are defined in
+[`src/python/projectkoios/ingestion/layout/__init__.py`](../../../../../../src/python/projectkoios/ingestion/layout/__init__.py).
+The private phased implementation lives in
+[`src/python/projectkoios/ingestion/layout/analysis.py`](../../../../../../src/python/projectkoios/ingestion/layout/analysis.py): bounded preflight and input preparation precede ambiguity checks, one-column/two-column analysis, and result construction. This split does not change public imports, processor identity, or contract values.
 
 - **`DeterministicLayoutProcessor`** — validates bounded page evidence and
   provides `analyze(document)` and `analyze_page(source, page)` entry points.

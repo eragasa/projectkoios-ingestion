@@ -4,7 +4,7 @@
 
 | Component | Source | Focused validation |
 |---|---|---|
-| `DeterministicLayoutProcessor` | [`layout.py`](../../../../../src/python/projectkoios/ingestion/layout.py) | [`test__DeterministicLayoutProcessor.py`](../../../../../tests/test__DeterministicLayoutProcessor.py) |
+| `DeterministicLayoutProcessor` | [`layout/`](../../../../../src/python/projectkoios/ingestion/layout/) | [`test__DeterministicLayoutProcessor.py`](../../../../../tests/test__DeterministicLayoutProcessor.py) |
 | `DeterministicOCRReconciler` | [`reconciliation.py`](../../../../../src/python/projectkoios/ingestion/reconciliation.py) | [`test__OCRReconciliation.py`](../../../../../tests/test__OCRReconciliation.py) |
 | `DeterministicArticleStructureAnalyzer` | [`article_structure.py`](../../../../../src/python/projectkoios/ingestion/article_structure.py) | [`test__ArticleStructureAnalyzer.py`](../../../../../tests/test__ArticleStructureAnalyzer.py) |
 | `DeterministicEquationCandidateDetector` | [`equations.py`](../../../../../src/python/projectkoios/ingestion/equations.py) | [`test__EquationCandidateDetector.py`](../../../../../tests/test__EquationCandidateDetector.py) |

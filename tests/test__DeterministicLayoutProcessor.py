@@ -86,6 +86,25 @@ def _block(
     )
 
 
+@pytest.mark.parametrize(
+    "public_type",
+    (
+        DeterministicLayoutProcessor,
+        LayoutAnalysisLimitError,
+        LayoutBlockReference,
+        LayoutConfiguration,
+        LayoutGroupHypothesis,
+        LayoutGroupKind,
+        LayoutPageKind,
+        PageLayoutResult,
+    ),
+)
+def test__layout__package_refactor_preserves_public_module_paths(
+    public_type: type[object],
+) -> None:
+    assert public_type.__module__ == "projectkoios.ingestion.layout"
+
+
 def test__layout__one_column_is_deterministic_and_preserves_raw_blocks() -> (
     None
 ):
