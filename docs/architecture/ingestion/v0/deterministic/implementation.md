@@ -11,11 +11,17 @@
 | `DeterministicEquationAssembler` | [`equation_enrichment.py`](../../../../../src/python/projectkoios/ingestion/equation_enrichment.py) | [`test__EquationEnrichment.py`](../../../../../tests/test__EquationEnrichment.py) |
 | `DeterministicTableCandidateDetector` | [`tables.py`](../../../../../src/python/projectkoios/ingestion/tables.py) | [`test__TableCandidateDetector.py`](../../../../../tests/test__TableCandidateDetector.py) |
 | `DeterministicTableStructureReconstructor` | [`table_structure.py`](../../../../../src/python/projectkoios/ingestion/table_structure.py) | [`test__TableStructureReconstructor.py`](../../../../../tests/test__TableStructureReconstructor.py) |
-| `DeterministicFigureCandidateDetector` | [`figures.py`](../../../../../src/python/projectkoios/ingestion/figures.py) | [`test__FigureCandidateDetector.py`](../../../../../tests/test__FigureCandidateDetector.py) |
+| `DeterministicFigureCandidateDetector` | [`figures/`](../../../../../src/python/projectkoios/ingestion/figures/) | [`test__FigureCandidateDetector.py`](../../../../../tests/test__FigureCandidateDetector.py) |
 | `DeterministicStructuredTranscriptionComposer` | [`transcription.py`](../../../../../src/python/projectkoios/ingestion/transcription.py) | [`test__StructuredTranscriptionComposer.py`](../../../../../tests/test__StructuredTranscriptionComposer.py) |
 | `DeterministicCleanTranscriptProjector` | [`transcript_projection.py`](../../../../../src/python/projectkoios/ingestion/transcript_projection.py) | [`test__CleanTranscriptProjection.py`](../../../../../tests/test__CleanTranscriptProjection.py) |
 | `DeterministicCleanTranscriptV2Projector` | [`transcript_v2.py`](../../../../../src/python/projectkoios/ingestion/transcript_v2.py) | [`test__CleanTranscriptV2.py`](../../../../../tests/test__CleanTranscriptV2.py) |
 | `DerivationAuditValidator` | [`provenance.py`](../../../../../src/python/projectkoios/ingestion/provenance.py) | [`test__DerivationAuditValidator.py`](../../../../../tests/test__DerivationAuditValidator.py) |
+
+The figure package keeps stable public contracts and facades in `__init__.py`,
+while `inspection.py`, `detection.py`, and `validation.py` isolate native PDF
+inspection, deterministic candidate materialization, and cross-linked result
+validation respectively. Public imports, processor identities, and contract
+values are unchanged.
 
 ## Public Surface
 
