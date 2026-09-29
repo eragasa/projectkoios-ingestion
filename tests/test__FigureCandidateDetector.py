@@ -9,17 +9,52 @@ import pytest
 from projectkoios.ingestion import (
     DeterministicFigureCandidateDetector,
     DeterministicLayoutProcessor,
+    EmbeddedFigureArtifact,
     FigureArtifactKind,
     FigureAssociationRole,
+    FigureCandidate,
     FigureCandidateDetector,
+    FigureComponent,
     FigureDetectionConfiguration,
+    FigureDetectionInput,
     FigureDetectionLimitError,
+    FigureDetectionResult,
+    FigureDrawingEvidence,
     FigureEvidenceStatus,
+    FigurePageEvidence,
+    FigureTextAssociation,
     PyMuPdfExtractor,
+    PyMuPdfFigureInspector,
     SourceDocument,
 )
 
 pymupdf = pytest.importorskip("pymupdf")
+
+
+@pytest.mark.parametrize(
+    "public_type",
+    (
+        DeterministicFigureCandidateDetector,
+        EmbeddedFigureArtifact,
+        FigureArtifactKind,
+        FigureAssociationRole,
+        FigureCandidate,
+        FigureComponent,
+        FigureDetectionConfiguration,
+        FigureDetectionInput,
+        FigureDetectionLimitError,
+        FigureDetectionResult,
+        FigureDrawingEvidence,
+        FigureEvidenceStatus,
+        FigurePageEvidence,
+        FigureTextAssociation,
+        PyMuPdfFigureInspector,
+    ),
+)
+def test__figure_package_refactor_preserves_public_module_paths(
+    public_type: type[object],
+) -> None:
+    assert public_type.__module__ == "projectkoios.ingestion.figures"
 
 
 def _source(payload: bytes, suffix: str) -> SourceDocument:

@@ -798,6 +798,25 @@ performs no OCR, semantic section recognition, table reconstruction, equation
 or figure interpretation, document-wide ordering, model call, publication, or
 derived-result caching.
 
+## Bounded PDF byte extraction artifacts
+
+The pure `extract_pdf_bytes_artifacts` boundary accepts exact immutable PDF
+bytes with required expected SHA-256, byte size, source identity, locator,
+low-text threshold, and maximum page count. PyMuPDF page count is checked before
+any page is loaded. Maximum pages and threshold are bound into
+`PdfExtractionConfiguration.configuration_digest`, the extraction manifest,
+and cache identity. Typed integrity, page, and artifact-limit failures occur
+before any publication.
+
+`PdfExtractionArtifactBundle` returns the `ExtractionResult` and an immutable,
+bounded tuple containing canonical `raw-extraction.json` bytes and one
+`raw-pages/page-NNNN.txt` payload per physical page. Each payload records a
+confined canonical POSIX relative path, media type, byte length, SHA-256, and
+immutable content. The API never writes files; application publication remains
+external. `build_pdf_extraction_artifacts` provides the same owner-built
+payloads for a compatible cached result. See
+[`pdf-byte-extraction.md`](pdf-byte-extraction.md).
+
 ## `PageRegionSelection` and `RenderedRegion`
 
 `PageRegionSelection` requests exactly one zero-based physical PDF page. It
@@ -1192,6 +1211,21 @@ process-global sequence number.
 4. A processing result resolves to both its inputs and original source spans.
 5. Confidence and warnings remain attached through derivation.
 6. A consumer may serialize provenance without importing a PDF library.
+
+## Ollama multimodal region proposals
+
+Contract version 1.0 provides an immutable bounded request/result contract and
+`OllamaMultimodalRegionProcessor` for exact ordered `RenderedRegion` PNGs.
+Selections and ordered results retain complete source/blob/page/region and PNG
+provenance. The fixed prompt/schema and configured local endpoint, Ollama
+runtime version, model name, expected manifest digest, options, limits, and
+metadata/chat response identities are bound into records and stable IDs.
+Successful results remain `automated_unreviewed` and `nondeterministic`.
+Failures cover every selection and are never cacheable. Application selection,
+acceptance, review, publication, and `--apply` policy remain external. See
+[`ollama-multimodal.md`](ollama-multimodal.md) for transport constraints,
+prompt-injection handling, the non-atomic model-tag verification limitation,
+and exact public composition API.
 
 ## Serialization and Versioning
 
