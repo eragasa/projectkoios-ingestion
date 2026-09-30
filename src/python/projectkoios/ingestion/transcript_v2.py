@@ -12,6 +12,9 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
 from projectkoios.ingestion.structure import StructureKind
+from projectkoios.ingestion.transcript_projection import (
+    CleanTranscriptLimitError,
+)
 from projectkoios.ingestion.transcription import (
     StructuredTranscriptionResult,
     TranscriptionItemKind,
@@ -41,7 +44,7 @@ _WHITESPACE = re.compile(r"\s+")
 _WORD_CHARACTER = re.compile(r"[A-Za-z]")
 
 
-class CleanTranscriptV2LimitError(ValueError):
+class CleanTranscriptV2LimitError(CleanTranscriptLimitError):
     """Raised before a transcript-v2 projection exceeds a hard bound."""
 
 
@@ -135,10 +138,10 @@ class CleanTranscriptV2Configuration:
                 or not minimum <= value <= _MAX_PAGES
             ):
                 raise ValueError(f"{name} must be in [{minimum}, {_MAX_PAGES}]")
-        joined = _normalized_forms(
+        joined = CleanTranscriptV2Contract._normalized_forms(
             "accepted_joined_forms", self.accepted_joined_forms, hyphen=False
         )
-        hyphenated = _normalized_forms(
+        hyphenated = CleanTranscriptV2Contract._normalized_forms(
             "accepted_hyphenated_forms",
             self.accepted_hyphenated_forms,
             hyphen=True,
@@ -228,7 +231,7 @@ class DehyphenationDecision:
             outcome,
             rule_id,
             normalized_evidence,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
         )
         return cls(
             decision_id=decision_id,
@@ -286,7 +289,7 @@ class DehyphenationDecision:
             self.outcome,
             self.rule_id,
             self.evidence,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
         )
         if self.decision_id != expected:
             raise ValueError("dehyphenation decision ID is inconsistent")
@@ -337,7 +340,7 @@ class PageNumberClassification:
             method,
             rule_version,
             normalized_evidence,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
         )
         return cls(
             classification_id=classification_id,
@@ -384,7 +387,7 @@ class PageNumberClassification:
             self.method,
             self.rule_version,
             self.evidence,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
         )
         if self.classification_id != expected:
             raise ValueError("page-number classification ID is inconsistent")
@@ -423,7 +426,7 @@ class PublisherFrontMatterClassification:
             disposition,
             method,
             normalized_evidence,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
         )
         return cls(
             classification_id=classification_id,
@@ -453,7 +456,7 @@ class PublisherFrontMatterClassification:
             self.disposition,
             self.method,
             self.evidence,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
         )
         if self.classification_id != expected:
             raise ValueError("publisher classification ID is inconsistent")
@@ -491,7 +494,7 @@ class PrivateUseGlyphFinding:
             character_offset,
             code_point,
             raw_character,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
         )
         return cls(
             finding_id=finding_id,
@@ -524,7 +527,7 @@ class PrivateUseGlyphFinding:
             self.character_offset,
             self.code_point,
             self.raw_character,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
         )
         if self.finding_id != expected:
             raise ValueError("private-use glyph finding ID is inconsistent")
@@ -572,7 +575,7 @@ class CleanTranscriptV2Block:
             order_index,
             raw_text,
             clean_text,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
             normalized,
             dehyphenation_decision_ids,
             page_number_classification_id,
@@ -616,7 +619,7 @@ class CleanTranscriptV2Block:
             self.order_index,
             self.raw_text,
             self.clean_text,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
             self.transformations,
             self.dehyphenation_decision_ids,
             self.page_number_classification_id,
@@ -657,7 +660,7 @@ class CleanTranscriptV2Exclusion:
             printed_page_label,
             reason,
             raw_text,
-            _span_parts(source_spans),
+            CleanTranscriptV2Contract._span_parts(source_spans),
             decision_id,
         )
         return cls(
@@ -697,7 +700,7 @@ class CleanTranscriptV2Exclusion:
             self.printed_page_label,
             self.reason,
             self.raw_text,
-            _span_parts(self.source_spans),
+            CleanTranscriptV2Contract._span_parts(self.source_spans),
             self.decision_id,
         )
         if self.exclusion_id != expected:
@@ -903,10 +906,10 @@ class CleanTranscriptV2Artifact:
         expected_text = "\n\n".join(page.text for page in self.pages) + "\n"
         if self.text != expected_text:
             raise ValueError("transcript-v2 text differs from page projections")
-        _require_unique(
+        CleanTranscriptV2Contract._require_unique(
             "block record IDs", tuple(item.record_id for item in self.blocks)
         )
-        _require_unique(
+        CleanTranscriptV2Contract._require_unique(
             "exclusion IDs",
             tuple(item.exclusion_id for item in self.exclusions),
         )
@@ -914,7 +917,7 @@ class CleanTranscriptV2Artifact:
             *(item.block_id for item in self.blocks),
             *(item.block_id for item in self.exclusions),
         )
-        _require_unique("covered block IDs", covered)
+        CleanTranscriptV2Contract._require_unique("covered block IDs", covered)
         decision_by_id = {
             item.decision_id: item for item in self.dehyphenation_decisions
         }
@@ -1076,7 +1079,7 @@ class DeterministicCleanTranscriptV2Projector:
         transcription_result: StructuredTranscriptionResult,
         layouts: tuple[PageLayoutResult, ...],
     ) -> CleanTranscriptV2Artifact:
-        document, layout_by_page = _validate_inputs(
+        document, layout_by_page = CleanTranscriptV2Contract._validate_inputs(
             transcription_result, layouts
         )
         configuration = self.configuration
@@ -1097,19 +1100,23 @@ class DeterministicCleanTranscriptV2Projector:
             }
             for block_id in item.source_block_ids
         }
-        numeric_candidates = _numeric_candidates(document)
-        sequence_ids = _recurring_sequence_ids(
+        numeric_candidates = CleanTranscriptV2Contract._numeric_candidates(
+            document
+        )
+        sequence_ids = CleanTranscriptV2Contract._recurring_sequence_ids(
             numeric_candidates, configuration
         )
         printed_label_match_counts = Counter(
             (candidate.page_index, candidate.normalized_value)
             for candidate in numeric_candidates
             if candidate.printed_page_label is not None
-            and _basic_clean(candidate.printed_page_label).casefold()
+            and CleanTranscriptV2Contract._basic_clean(
+                candidate.printed_page_label
+            ).casefold()
             == candidate.normalized_value
         )
         page_classifications = tuple(
-            _classify_page_number(
+            CleanTranscriptV2Contract._classify_page_number(
                 candidate,
                 protected_ids=protected_ids,
                 recurring_sequence_ids=sequence_ids,
@@ -1123,13 +1130,15 @@ class DeterministicCleanTranscriptV2Projector:
         page_classification_by_block = {
             item.block_id: item for item in page_classifications
         }
-        publisher_classifications = _publisher_classifications(
-            transcription_result, configuration
+        publisher_classifications = (
+            CleanTranscriptV2Contract._publisher_classifications(
+                transcription_result, configuration
+            )
         )
         publisher_by_block = {
             item.block_id: item for item in publisher_classifications
         }
-        repeated_margin_keys = _repeated_margin_keys(
+        repeated_margin_keys = CleanTranscriptV2Contract._repeated_margin_keys(
             transcription_result, layouts, configuration
         )
         records: list[CleanTranscriptV2Block] = []
@@ -1146,7 +1155,9 @@ class DeterministicCleanTranscriptV2Projector:
         for page in document.pages:
             layout = layout_by_page[page.page_index]
             block_by_id = {block.block_id: block for block in page.blocks}
-            root_order = _text_block_order(page.blocks, layout.proposed_order)
+            root_order = CleanTranscriptV2Contract._text_block_order(
+                page.blocks, layout.proposed_order
+            )
             ordered_count = sum(
                 1
                 for block_id in layout.proposed_order
@@ -1160,7 +1171,7 @@ class DeterministicCleanTranscriptV2Projector:
                 assert block.text is not None
                 page_classification = page_classification_by_block.get(block_id)
                 publisher_classification = publisher_by_block.get(block_id)
-                findings = _private_use_findings(
+                findings = CleanTranscriptV2Contract._private_use_findings(
                     block_id=block_id,
                     page_index=page.page_index,
                     printed_page_label=page.printed_page_label,
@@ -1206,14 +1217,17 @@ class DeterministicCleanTranscriptV2Projector:
                         )
                     )
                     continue
-                clean_for_margin = _basic_clean(block.text)
+                clean_for_margin = CleanTranscriptV2Contract._basic_clean(
+                    block.text
+                )
                 if (
-                    _is_margin(
+                    CleanTranscriptV2Contract._is_margin(
                         block.source_spans,
                         page.height,
                         configuration,
                     )
-                    and _margin_key(clean_for_margin) in repeated_margin_keys
+                    and CleanTranscriptV2Contract._margin_key(clean_for_margin)
+                    in repeated_margin_keys
                 ):
                     exclusions.append(
                         CleanTranscriptV2Exclusion.create(
@@ -1228,14 +1242,16 @@ class DeterministicCleanTranscriptV2Projector:
                         )
                     )
                     continue
-                clean_text, transformations, decisions = _clean_text(
-                    block_id=block_id,
-                    page_index=page.page_index,
-                    printed_page_label=page.printed_page_label,
-                    text=block.text,
-                    source_spans=block.source_spans,
-                    all_text=all_text,
-                    configuration=configuration,
+                clean_text, transformations, decisions = (
+                    CleanTranscriptV2Contract._clean_text(
+                        block_id=block_id,
+                        page_index=page.page_index,
+                        printed_page_label=page.printed_page_label,
+                        text=block.text,
+                        source_spans=block.source_spans,
+                        all_text=all_text,
+                        configuration=configuration,
+                    )
                 )
                 dehyphenation.extend(decisions)
                 if any(
@@ -1244,11 +1260,13 @@ class DeterministicCleanTranscriptV2Projector:
                     for decision in decisions
                 ):
                     warnings.add("ambiguous_dehyphenation_retained")
-                if _metadata_count(
+                if CleanTranscriptV2Contract._metadata_count(
                     transformations, "control_character_offsets"
                 ):
                     warnings.add("control_characters_replaced")
-                if _metadata_count(transformations, "soft_hyphen_offsets"):
+                if CleanTranscriptV2Contract._metadata_count(
+                    transformations, "soft_hyphen_offsets"
+                ):
                     warnings.add("soft_hyphens_removed")
                 if (
                     page_classification is not None
@@ -1305,8 +1323,12 @@ class DeterministicCleanTranscriptV2Projector:
                 records.append(record)
                 page_records.append(record)
                 global_order += 1
-            pages.append(_page_projection(page, tuple(page_records)))
-        _bounded_result(
+            pages.append(
+                CleanTranscriptV2Contract._page_projection(
+                    page, tuple(page_records)
+                )
+            )
+        CleanTranscriptV2Contract._bounded_result(
             records,
             exclusions,
             dehyphenation,
@@ -1333,549 +1355,603 @@ class DeterministicCleanTranscriptV2Projector:
         )
 
 
-def _validate_inputs(
-    transcription_result: StructuredTranscriptionResult,
-    layouts: tuple[PageLayoutResult, ...],
-):
-    if not isinstance(transcription_result, StructuredTranscriptionResult):
-        raise TypeError(
-            "transcription_result must be StructuredTranscriptionResult"
+class CleanTranscriptV2Contract:
+    """Own transcript-v2 projection and contract behavior."""
+
+    @staticmethod
+    def _validate_inputs(
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+    ):
+        if not isinstance(transcription_result, StructuredTranscriptionResult):
+            raise TypeError(
+                "transcription_result must be StructuredTranscriptionResult"
+            )
+        if not isinstance(layouts, tuple):
+            raise TypeError("layouts must be a tuple")
+        document = transcription_result.transcription_input.document
+        if len(document.pages) > _MAX_PAGES:
+            raise CleanTranscriptV2LimitError("document pages exceed limit")
+        if len(layouts) != len(document.pages):
+            raise ValueError("one layout is required per document page")
+        layout_by_page = {layout.page_index: layout for layout in layouts}
+        if len(layout_by_page) != len(layouts):
+            raise ValueError("layout page indices must be unique")
+        for page in document.pages:
+            layout = layout_by_page.get(page.page_index)
+            if layout is None or (
+                layout.source_id != document.source.source_id
+                or layout.source_blob_id != document.source.blob_id
+                or layout.source_content_hash != document.source.content_hash
+                or layout.raw_block_ids
+                != tuple(block.block_id for block in page.blocks)
+            ):
+                raise ValueError("layout does not match transcript document")
+        return document, layout_by_page
+
+    @staticmethod
+    def _clean_text(
+        *,
+        block_id: str,
+        page_index: int,
+        printed_page_label: str | None,
+        text: str,
+        source_spans: tuple[SourceSpan, ...],
+        all_text: tuple[str, ...],
+        configuration: CleanTranscriptV2Configuration,
+    ) -> tuple[str, Metadata, tuple[DehyphenationDecision, ...]]:
+        decisions: list[DehyphenationDecision] = []
+
+        def replace(match: re.Match[str]) -> str:
+            left = match.group("left")
+            right = match.group("right")
+            joined = (left + right).casefold()
+            hyphenated = f"{left}-{right}".casefold()
+            joined_evidence = (
+                joined in configuration.accepted_joined_forms
+                or any(
+                    CleanTranscriptV2Contract._contains_form(value, joined)
+                    for value in all_text
+                )
+            )
+            hyphenated_evidence = (
+                hyphenated in configuration.accepted_hyphenated_forms
+                or any(
+                    CleanTranscriptV2Contract._contains_form(value, hyphenated)
+                    for value in all_text
+                )
+            )
+            evidence: list[tuple[str, str]] = []
+            if joined in configuration.accepted_joined_forms:
+                evidence.append(("accepted_lexical_form", joined))
+            if hyphenated in configuration.accepted_hyphenated_forms:
+                evidence.append(("accepted_hyphenated_form", hyphenated))
+            if any(
+                CleanTranscriptV2Contract._contains_form(value, joined)
+                for value in all_text
+            ):
+                evidence.append(("same_document_joined_form", joined))
+            if any(
+                CleanTranscriptV2Contract._contains_form(value, hyphenated)
+                for value in all_text
+            ):
+                evidence.append(("same_document_hyphenated_form", hyphenated))
+            if joined_evidence and not hyphenated_evidence:
+                outcome = DehyphenationOutcome.JOIN
+                replacement = left + right
+            elif hyphenated_evidence and not joined_evidence:
+                outcome = DehyphenationOutcome.PRESERVE_HYPHEN
+                replacement = f"{left}-{right}"
+            else:
+                outcome = DehyphenationOutcome.PRESERVE_BREAK_CONSERVATIVELY
+                replacement = f"{left}- {right}"
+                evidence.append(
+                    ("insufficient_or_conflicting_evidence", "true")
+                )
+            decisions.append(
+                DehyphenationDecision.create(
+                    block_id=block_id,
+                    page_index=page_index,
+                    printed_page_label=printed_page_label,
+                    raw_fragment=match.group(0),
+                    start_offset=match.start(),
+                    end_offset=match.end(),
+                    left_fragment=left,
+                    right_fragment=right,
+                    outcome=outcome,
+                    evidence=tuple(evidence),
+                    source_spans=source_spans,
+                )
+            )
+            return replacement
+
+        control_offsets = tuple(
+            str(match.start()) for match in _CONTROL_CHARACTER.finditer(text)
         )
-    if not isinstance(layouts, tuple):
-        raise TypeError("layouts must be a tuple")
-    document = transcription_result.transcription_input.document
-    if len(document.pages) > _MAX_PAGES:
-        raise CleanTranscriptV2LimitError("document pages exceed limit")
-    if len(layouts) != len(document.pages):
-        raise ValueError("one layout is required per document page")
-    layout_by_page = {layout.page_index: layout for layout in layouts}
-    if len(layout_by_page) != len(layouts):
-        raise ValueError("layout page indices must be unique")
-    for page in document.pages:
-        layout = layout_by_page.get(page.page_index)
-        if layout is None or (
-            layout.source_id != document.source.source_id
-            or layout.source_blob_id != document.source.blob_id
-            or layout.source_content_hash != document.source.content_hash
-            or layout.raw_block_ids
-            != tuple(block.block_id for block in page.blocks)
+        soft_hyphen_offsets = tuple(
+            str(index)
+            for index, character in enumerate(text)
+            if character == "\u00ad"
+        )
+        value = _LINE_BREAK_HYPHENATION.sub(replace, text)
+        value = _CONTROL_CHARACTER.sub(" ", value).replace("\u00ad", "")
+        normalized = _WHITESPACE.sub(" ", value).strip()
+        transformations: Metadata = tuple(
+            sorted(
+                (
+                    ("control_character_offsets", ",".join(control_offsets)),
+                    (
+                        "dehyphenation_decision_count",
+                        str(len(decisions)),
+                    ),
+                    ("soft_hyphen_offsets", ",".join(soft_hyphen_offsets)),
+                    ("unicode_normalization", "none"),
+                    ("whitespace_normalization", "collapse_unicode_whitespace"),
+                )
+            )
+        )
+        return normalized, transformations, tuple(decisions)
+
+    @staticmethod
+    def _numeric_candidates(document) -> tuple[_NumericCandidate, ...]:
+        result: list[_NumericCandidate] = []
+        for page in document.pages:
+            for block in page.blocks:
+                if block.kind != "text" or block.text is None:
+                    continue
+                value = CleanTranscriptV2Contract._basic_clean(
+                    block.text
+                ).casefold()
+                if not _PAGE_NUMBER.fullmatch(value):
+                    continue
+                result.append(
+                    _NumericCandidate(
+                        block_id=block.block_id,
+                        page_index=page.page_index,
+                        printed_page_label=page.printed_page_label,
+                        raw_text=block.text,
+                        normalized_value=value,
+                        bounding_box=CleanTranscriptV2Contract._union_box(
+                            block.source_spans
+                        ),
+                        source_spans=block.source_spans,
+                        page_width=page.width,
+                        page_height=page.height,
+                    )
+                )
+        return tuple(result)
+
+    @staticmethod
+    def _classify_page_number(
+        candidate: _NumericCandidate,
+        *,
+        protected_ids: set[str],
+        recurring_sequence_ids: frozenset[str],
+        printed_label_match_count: int,
+        configuration: CleanTranscriptV2Configuration,
+    ) -> PageNumberClassification:
+        if candidate.block_id in protected_ids:
+            outcome = PageNumberOutcome.NOT_PAGE_NUMBER
+            method = PageNumberMethod.TYPED_CONTENT
+            evidence = (("typed_structured_content", "true"),)
+        elif not CleanTranscriptV2Contract._candidate_is_margin(
+            candidate, configuration
         ):
-            raise ValueError("layout does not match transcript document")
-    return document, layout_by_page
-
-
-def _clean_text(
-    *,
-    block_id: str,
-    page_index: int,
-    printed_page_label: str | None,
-    text: str,
-    source_spans: tuple[SourceSpan, ...],
-    all_text: tuple[str, ...],
-    configuration: CleanTranscriptV2Configuration,
-) -> tuple[str, Metadata, tuple[DehyphenationDecision, ...]]:
-    decisions: list[DehyphenationDecision] = []
-
-    def replace(match: re.Match[str]) -> str:
-        left = match.group("left")
-        right = match.group("right")
-        joined = (left + right).casefold()
-        hyphenated = f"{left}-{right}".casefold()
-        joined_evidence = joined in configuration.accepted_joined_forms or any(
-            _contains_form(value, joined) for value in all_text
-        )
-        hyphenated_evidence = (
-            hyphenated in configuration.accepted_hyphenated_forms
-            or any(_contains_form(value, hyphenated) for value in all_text)
-        )
-        evidence: list[tuple[str, str]] = []
-        if joined in configuration.accepted_joined_forms:
-            evidence.append(("accepted_lexical_form", joined))
-        if hyphenated in configuration.accepted_hyphenated_forms:
-            evidence.append(("accepted_hyphenated_form", hyphenated))
-        if any(_contains_form(value, joined) for value in all_text):
-            evidence.append(("same_document_joined_form", joined))
-        if any(_contains_form(value, hyphenated) for value in all_text):
-            evidence.append(("same_document_hyphenated_form", hyphenated))
-        if joined_evidence and not hyphenated_evidence:
-            outcome = DehyphenationOutcome.JOIN
-            replacement = left + right
-        elif hyphenated_evidence and not joined_evidence:
-            outcome = DehyphenationOutcome.PRESERVE_HYPHEN
-            replacement = f"{left}-{right}"
+            outcome = PageNumberOutcome.NOT_PAGE_NUMBER
+            method = PageNumberMethod.OUTSIDE_MARGIN
+            evidence = (("margin_candidate", "false"),)
+        elif (
+            candidate.printed_page_label is not None
+            and CleanTranscriptV2Contract._basic_clean(
+                candidate.printed_page_label
+            ).casefold()
+            == candidate.normalized_value
+            and printed_label_match_count == 1
+        ):
+            outcome = PageNumberOutcome.PAGE_NUMBER
+            method = PageNumberMethod.PRINTED_PAGE_LABEL
+            evidence = (("printed_page_label", candidate.printed_page_label),)
+        elif candidate.block_id in recurring_sequence_ids:
+            outcome = PageNumberOutcome.PAGE_NUMBER
+            method = PageNumberMethod.RECURRING_GEOMETRY_SEQUENCE
+            evidence = (("recurring_geometry_sequence", "true"),)
         else:
-            outcome = DehyphenationOutcome.PRESERVE_BREAK_CONSERVATIVELY
-            replacement = f"{left}- {right}"
-            evidence.append(("insufficient_or_conflicting_evidence", "true"))
-        decisions.append(
-            DehyphenationDecision.create(
+            outcome = PageNumberOutcome.UNRESOLVED
+            method = PageNumberMethod.INSUFFICIENT_EVIDENCE
+            evidence = (("insufficient_page_number_evidence", "true"),)
+        return PageNumberClassification.create(
+            block_id=candidate.block_id,
+            page_index=candidate.page_index,
+            printed_page_label=candidate.printed_page_label,
+            raw_text=candidate.raw_text,
+            normalized_value=candidate.normalized_value,
+            bounding_box=candidate.bounding_box,
+            outcome=outcome,
+            method=method,
+            evidence=evidence,
+            source_spans=candidate.source_spans,
+        )
+
+    @staticmethod
+    def _recurring_sequence_ids(
+        candidates: tuple[_NumericCandidate, ...],
+        configuration: CleanTranscriptV2Configuration,
+    ) -> frozenset[str]:
+        groups: dict[tuple[str, int], list[tuple[_NumericCandidate, int]]] = (
+            defaultdict(list)
+        )
+        tolerance = configuration.page_number_horizontal_tolerance_fraction
+        for candidate in candidates:
+            if not CleanTranscriptV2Contract._candidate_is_margin(
+                candidate, configuration
+            ):
+                continue
+            number = CleanTranscriptV2Contract._page_ordinal(
+                candidate.normalized_value
+            )
+            box = candidate.bounding_box
+            if number is None or box is None:
+                continue
+            side = "top" if box[3] <= candidate.page_height / 2.0 else "bottom"
+            center_fraction = ((box[0] + box[2]) / 2.0) / candidate.page_width
+            bucket = round(center_fraction / tolerance) if tolerance else 0
+            groups[(side, bucket)].append((candidate, number))
+        accepted: set[str] = set()
+        for values in groups.values():
+            ordered = sorted(values, key=lambda item: item[0].page_index)
+            run: list[tuple[_NumericCandidate, int]] = []
+            for item in ordered:
+                if not run or (
+                    item[0].page_index == run[-1][0].page_index + 1
+                    and item[1] == run[-1][1] + 1
+                ):
+                    run.append(item)
+                else:
+                    if len(run) >= configuration.minimum_page_sequence_length:
+                        accepted.update(
+                            candidate.block_id for candidate, _ in run
+                        )
+                    run = [item]
+            if len(run) >= configuration.minimum_page_sequence_length:
+                accepted.update(candidate.block_id for candidate, _ in run)
+        return frozenset(accepted)
+
+    @staticmethod
+    def _publisher_classifications(
+        transcription_result: StructuredTranscriptionResult,
+        configuration: CleanTranscriptV2Configuration,
+    ) -> tuple[PublisherFrontMatterClassification, ...]:
+        document = transcription_result.transcription_input.document
+        structure = transcription_result.transcription_input.structure_analysis
+        front_ids = {
+            block_id
+            for node in structure.nodes
+            if node.kind is StructureKind.FRONT_MATTER
+            for block_id in node.source_block_ids
+        }
+        result: list[PublisherFrontMatterClassification] = []
+        for page in document.pages:
+            for block in page.blocks:
+                if block.kind != "text" or block.text is None:
+                    continue
+                structure_front_matter = block.block_id in front_ids
+                kind, signal = CleanTranscriptV2Contract._publisher_kind(
+                    block.text,
+                    structure_front_matter=structure_front_matter,
+                    first_page=page.page_index == 0,
+                )
+                if kind is None:
+                    continue
+                disposition = (
+                    ClassificationDisposition.EXCLUDED
+                    if kind in configuration.excluded_publisher_front_matter
+                    else ClassificationDisposition.INCLUDED
+                )
+                result.append(
+                    PublisherFrontMatterClassification.create(
+                        block_id=block.block_id,
+                        page_index=page.page_index,
+                        kind=kind,
+                        disposition=disposition,
+                        evidence=(("lexical_signal", signal),),
+                        source_spans=block.source_spans,
+                    )
+                )
+        return tuple(result)
+
+    @staticmethod
+    def _publisher_kind(
+        text: str,
+        *,
+        structure_front_matter: bool,
+        first_page: bool,
+    ) -> tuple[PublisherFrontMatterKind | None, str]:
+        value = CleanTranscriptV2Contract._basic_clean(text).casefold()
+        strong_signals = (
+            (
+                PublisherFrontMatterKind.LICENSING,
+                (
+                    "copyright",
+                    "all rights reserved",
+                    "creative commons",
+                    "licence",
+                    "license",
+                ),
+            ),
+            (
+                PublisherFrontMatterKind.CITATION,
+                ("cite this article", "recommended citation", "doi:"),
+            ),
+            (
+                PublisherFrontMatterKind.NOTICE,
+                ("publisher's note", "published by", "terms of use"),
+            ),
+        )
+        for kind, candidates in strong_signals:
+            for signal in candidates:
+                if signal in value:
+                    return kind, signal
+        if first_page or structure_front_matter:
+            if "issn" in value or ("volume" in value and "issue" in value):
+                return PublisherFrontMatterKind.MASTHEAD, "masthead-identifiers"
+            for signal in ("cover image", "front cover"):
+                if signal in value:
+                    return PublisherFrontMatterKind.COVER, signal
+        if structure_front_matter and "publisher" in value:
+            return PublisherFrontMatterKind.UNRECOGNIZED, "publisher"
+        return None, ""
+
+    @staticmethod
+    def _private_use_findings(
+        *,
+        block_id: str,
+        page_index: int,
+        printed_page_label: str | None,
+        text: str,
+        source_spans: tuple[SourceSpan, ...],
+    ) -> tuple[PrivateUseGlyphFinding, ...]:
+        return tuple(
+            PrivateUseGlyphFinding.create(
                 block_id=block_id,
                 page_index=page_index,
                 printed_page_label=printed_page_label,
-                raw_fragment=match.group(0),
-                start_offset=match.start(),
-                end_offset=match.end(),
-                left_fragment=left,
-                right_fragment=right,
-                outcome=outcome,
-                evidence=tuple(evidence),
+                character_offset=index,
+                raw_character=character,
                 source_spans=source_spans,
             )
+            for index, character in enumerate(text)
+            if unicodedata.category(character) == "Co"
         )
-        return replacement
 
-    control_offsets = tuple(
-        str(match.start()) for match in _CONTROL_CHARACTER.finditer(text)
-    )
-    soft_hyphen_offsets = tuple(
-        str(index)
-        for index, character in enumerate(text)
-        if character == "\u00ad"
-    )
-    value = _LINE_BREAK_HYPHENATION.sub(replace, text)
-    value = _CONTROL_CHARACTER.sub(" ", value).replace("\u00ad", "")
-    normalized = _WHITESPACE.sub(" ", value).strip()
-    transformations: Metadata = tuple(
-        sorted(
-            (
-                ("control_character_offsets", ",".join(control_offsets)),
-                (
-                    "dehyphenation_decision_count",
-                    str(len(decisions)),
-                ),
-                ("soft_hyphen_offsets", ",".join(soft_hyphen_offsets)),
-                ("unicode_normalization", "none"),
-                ("whitespace_normalization", "collapse_unicode_whitespace"),
-            )
-        )
-    )
-    return normalized, transformations, tuple(decisions)
-
-
-def _numeric_candidates(document) -> tuple[_NumericCandidate, ...]:
-    result: list[_NumericCandidate] = []
-    for page in document.pages:
-        for block in page.blocks:
-            if block.kind != "text" or block.text is None:
-                continue
-            value = _basic_clean(block.text).casefold()
-            if not _PAGE_NUMBER.fullmatch(value):
-                continue
-            result.append(
-                _NumericCandidate(
-                    block_id=block.block_id,
-                    page_index=page.page_index,
-                    printed_page_label=page.printed_page_label,
-                    raw_text=block.text,
-                    normalized_value=value,
-                    bounding_box=_union_box(block.source_spans),
-                    source_spans=block.source_spans,
-                    page_width=page.width,
-                    page_height=page.height,
-                )
-            )
-    return tuple(result)
-
-
-def _classify_page_number(
-    candidate: _NumericCandidate,
-    *,
-    protected_ids: set[str],
-    recurring_sequence_ids: frozenset[str],
-    printed_label_match_count: int,
-    configuration: CleanTranscriptV2Configuration,
-) -> PageNumberClassification:
-    if candidate.block_id in protected_ids:
-        outcome = PageNumberOutcome.NOT_PAGE_NUMBER
-        method = PageNumberMethod.TYPED_CONTENT
-        evidence = (("typed_structured_content", "true"),)
-    elif not _candidate_is_margin(candidate, configuration):
-        outcome = PageNumberOutcome.NOT_PAGE_NUMBER
-        method = PageNumberMethod.OUTSIDE_MARGIN
-        evidence = (("margin_candidate", "false"),)
-    elif (
-        candidate.printed_page_label is not None
-        and _basic_clean(candidate.printed_page_label).casefold()
-        == candidate.normalized_value
-        and printed_label_match_count == 1
-    ):
-        outcome = PageNumberOutcome.PAGE_NUMBER
-        method = PageNumberMethod.PRINTED_PAGE_LABEL
-        evidence = (("printed_page_label", candidate.printed_page_label),)
-    elif candidate.block_id in recurring_sequence_ids:
-        outcome = PageNumberOutcome.PAGE_NUMBER
-        method = PageNumberMethod.RECURRING_GEOMETRY_SEQUENCE
-        evidence = (("recurring_geometry_sequence", "true"),)
-    else:
-        outcome = PageNumberOutcome.UNRESOLVED
-        method = PageNumberMethod.INSUFFICIENT_EVIDENCE
-        evidence = (("insufficient_page_number_evidence", "true"),)
-    return PageNumberClassification.create(
-        block_id=candidate.block_id,
-        page_index=candidate.page_index,
-        printed_page_label=candidate.printed_page_label,
-        raw_text=candidate.raw_text,
-        normalized_value=candidate.normalized_value,
-        bounding_box=candidate.bounding_box,
-        outcome=outcome,
-        method=method,
-        evidence=evidence,
-        source_spans=candidate.source_spans,
-    )
-
-
-def _recurring_sequence_ids(
-    candidates: tuple[_NumericCandidate, ...],
-    configuration: CleanTranscriptV2Configuration,
-) -> frozenset[str]:
-    groups: dict[tuple[str, int], list[tuple[_NumericCandidate, int]]] = (
-        defaultdict(list)
-    )
-    tolerance = configuration.page_number_horizontal_tolerance_fraction
-    for candidate in candidates:
-        if not _candidate_is_margin(candidate, configuration):
-            continue
-        number = _page_ordinal(candidate.normalized_value)
-        box = candidate.bounding_box
-        if number is None or box is None:
-            continue
-        side = "top" if box[3] <= candidate.page_height / 2.0 else "bottom"
-        center_fraction = ((box[0] + box[2]) / 2.0) / candidate.page_width
-        bucket = round(center_fraction / tolerance) if tolerance else 0
-        groups[(side, bucket)].append((candidate, number))
-    accepted: set[str] = set()
-    for values in groups.values():
-        ordered = sorted(values, key=lambda item: item[0].page_index)
-        run: list[tuple[_NumericCandidate, int]] = []
-        for item in ordered:
-            if not run or (
-                item[0].page_index == run[-1][0].page_index + 1
-                and item[1] == run[-1][1] + 1
-            ):
-                run.append(item)
-            else:
-                if len(run) >= configuration.minimum_page_sequence_length:
-                    accepted.update(candidate.block_id for candidate, _ in run)
-                run = [item]
-        if len(run) >= configuration.minimum_page_sequence_length:
-            accepted.update(candidate.block_id for candidate, _ in run)
-    return frozenset(accepted)
-
-
-def _publisher_classifications(
-    transcription_result: StructuredTranscriptionResult,
-    configuration: CleanTranscriptV2Configuration,
-) -> tuple[PublisherFrontMatterClassification, ...]:
-    document = transcription_result.transcription_input.document
-    structure = transcription_result.transcription_input.structure_analysis
-    front_ids = {
-        block_id
-        for node in structure.nodes
-        if node.kind is StructureKind.FRONT_MATTER
-        for block_id in node.source_block_ids
-    }
-    result: list[PublisherFrontMatterClassification] = []
-    for page in document.pages:
-        for block in page.blocks:
-            if block.kind != "text" or block.text is None:
-                continue
-            structure_front_matter = block.block_id in front_ids
-            kind, signal = _publisher_kind(
-                block.text,
-                structure_front_matter=structure_front_matter,
-                first_page=page.page_index == 0,
-            )
-            if kind is None:
-                continue
-            disposition = (
-                ClassificationDisposition.EXCLUDED
-                if kind in configuration.excluded_publisher_front_matter
-                else ClassificationDisposition.INCLUDED
-            )
-            result.append(
-                PublisherFrontMatterClassification.create(
-                    block_id=block.block_id,
-                    page_index=page.page_index,
-                    kind=kind,
-                    disposition=disposition,
-                    evidence=(("lexical_signal", signal),),
-                    source_spans=block.source_spans,
-                )
-            )
-    return tuple(result)
-
-
-def _publisher_kind(
-    text: str,
-    *,
-    structure_front_matter: bool,
-    first_page: bool,
-) -> tuple[PublisherFrontMatterKind | None, str]:
-    value = _basic_clean(text).casefold()
-    strong_signals = (
-        (
-            PublisherFrontMatterKind.LICENSING,
-            (
-                "copyright",
-                "all rights reserved",
-                "creative commons",
-                "licence",
-                "license",
+    @staticmethod
+    def _repeated_margin_keys(
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptV2Configuration,
+    ) -> frozenset[str]:
+        document = transcription_result.transcription_input.document
+        layout_by_page = {layout.page_index: layout for layout in layouts}
+        pages_by_key: dict[str, set[int]] = defaultdict(set)
+        for page in document.pages:
+            block_by_id = {block.block_id: block for block in page.blocks}
+            for block_id in layout_by_page[page.page_index].raw_block_ids:
+                block = block_by_id[block_id]
+                if block.kind != "text" or block.text is None:
+                    continue
+                if not CleanTranscriptV2Contract._is_margin(
+                    block.source_spans, page.height, configuration
+                ):
+                    continue
+                clean = CleanTranscriptV2Contract._basic_clean(block.text)
+                if clean and not _PAGE_NUMBER.fullmatch(clean.casefold()):
+                    pages_by_key[
+                        CleanTranscriptV2Contract._margin_key(clean)
+                    ].add(page.page_index)
+        threshold = max(
+            configuration.minimum_repeated_margin_pages,
+            math.ceil(
+                len(document.pages)
+                * configuration.repeated_margin_page_fraction
             ),
-        ),
-        (
-            PublisherFrontMatterKind.CITATION,
-            ("cite this article", "recommended citation", "doi:"),
-        ),
-        (
-            PublisherFrontMatterKind.NOTICE,
-            ("publisher's note", "published by", "terms of use"),
-        ),
-    )
-    for kind, candidates in strong_signals:
-        for signal in candidates:
-            if signal in value:
-                return kind, signal
-    if first_page or structure_front_matter:
-        if "issn" in value or ("volume" in value and "issue" in value):
-            return PublisherFrontMatterKind.MASTHEAD, "masthead-identifiers"
-        for signal in ("cover image", "front cover"):
-            if signal in value:
-                return PublisherFrontMatterKind.COVER, signal
-    if structure_front_matter and "publisher" in value:
-        return PublisherFrontMatterKind.UNRECOGNIZED, "publisher"
-    return None, ""
-
-
-def _private_use_findings(
-    *,
-    block_id: str,
-    page_index: int,
-    printed_page_label: str | None,
-    text: str,
-    source_spans: tuple[SourceSpan, ...],
-) -> tuple[PrivateUseGlyphFinding, ...]:
-    return tuple(
-        PrivateUseGlyphFinding.create(
-            block_id=block_id,
-            page_index=page_index,
-            printed_page_label=printed_page_label,
-            character_offset=index,
-            raw_character=character,
-            source_spans=source_spans,
         )
-        for index, character in enumerate(text)
-        if unicodedata.category(character) == "Co"
-    )
-
-
-def _repeated_margin_keys(
-    transcription_result: StructuredTranscriptionResult,
-    layouts: tuple[PageLayoutResult, ...],
-    configuration: CleanTranscriptV2Configuration,
-) -> frozenset[str]:
-    document = transcription_result.transcription_input.document
-    layout_by_page = {layout.page_index: layout for layout in layouts}
-    pages_by_key: dict[str, set[int]] = defaultdict(set)
-    for page in document.pages:
-        block_by_id = {block.block_id: block for block in page.blocks}
-        for block_id in layout_by_page[page.page_index].raw_block_ids:
-            block = block_by_id[block_id]
-            if block.kind != "text" or block.text is None:
-                continue
-            if not _is_margin(block.source_spans, page.height, configuration):
-                continue
-            clean = _basic_clean(block.text)
-            if clean and not _PAGE_NUMBER.fullmatch(clean.casefold()):
-                pages_by_key[_margin_key(clean)].add(page.page_index)
-    threshold = max(
-        configuration.minimum_repeated_margin_pages,
-        math.ceil(
-            len(document.pages) * configuration.repeated_margin_page_fraction
-        ),
-    )
-    return frozenset(
-        key
-        for key, page_indices in pages_by_key.items()
-        if len(page_indices) >= threshold
-    )
-
-
-def _page_projection(page, records) -> CleanTranscriptV2Page:
-    label = (
-        "none"
-        if page.printed_page_label is None
-        else page.printed_page_label.replace('"', "'")
-    )
-    marker = f'[[PAGE physical={page.page_index + 1} printed="{label}"]]'
-    body = "\n\n".join(item.clean_text for item in records)
-    text = marker if not body else f"{marker}\n\n{body}"
-    return CleanTranscriptV2Page.create(
-        page_index=page.page_index,
-        printed_page_label=page.printed_page_label,
-        block_record_ids=tuple(item.record_id for item in records),
-        text=text,
-    )
-
-
-def _text_block_order(
-    blocks, proposed_order: tuple[str, ...]
-) -> tuple[str, ...]:
-    block_by_id = {block.block_id: block for block in blocks}
-    text_ids = tuple(
-        block.block_id
-        for block in blocks
-        if block.kind == "text" and block.text is not None
-    )
-    ordered = tuple(
-        block_id
-        for block_id in proposed_order
-        if block_id in block_by_id
-        and block_by_id[block_id].kind == "text"
-        and block_by_id[block_id].text is not None
-    )
-    return (
-        *ordered,
-        *(block_id for block_id in text_ids if block_id not in ordered),
-    )
-
-
-def _basic_clean(text: str) -> str:
-    return _WHITESPACE.sub(
-        " ", _CONTROL_CHARACTER.sub(" ", text).replace("\u00ad", "")
-    ).strip()
-
-
-def _contains_form(text: str, form: str) -> bool:
-    value = _basic_clean(text).casefold()
-    start = 0
-    while True:
-        index = value.find(form, start)
-        if index < 0:
-            return False
-        left_ok = index == 0 or not _WORD_CHARACTER.fullmatch(value[index - 1])
-        end = index + len(form)
-        right_ok = end == len(value) or not _WORD_CHARACTER.fullmatch(
-            value[end]
+        return frozenset(
+            key
+            for key, page_indices in pages_by_key.items()
+            if len(page_indices) >= threshold
         )
-        if left_ok and right_ok:
-            return True
-        start = index + 1
 
+    @staticmethod
+    def _page_projection(page, records) -> CleanTranscriptV2Page:
+        label = (
+            "none"
+            if page.printed_page_label is None
+            else page.printed_page_label.replace('"', "'")
+        )
+        marker = f'[[PAGE physical={page.page_index + 1} printed="{label}"]]'
+        body = "\n\n".join(item.clean_text for item in records)
+        text = marker if not body else f"{marker}\n\n{body}"
+        return CleanTranscriptV2Page.create(
+            page_index=page.page_index,
+            printed_page_label=page.printed_page_label,
+            block_record_ids=tuple(item.record_id for item in records),
+            text=text,
+        )
 
-def _candidate_is_margin(
-    candidate: _NumericCandidate,
-    configuration: CleanTranscriptV2Configuration,
-) -> bool:
-    box = candidate.bounding_box
-    if box is None:
-        return False
-    return box[
-        3
-    ] <= candidate.page_height * configuration.top_margin_fraction or box[
-        1
-    ] >= candidate.page_height * (1.0 - configuration.bottom_margin_fraction)
+    @staticmethod
+    def _text_block_order(
+        blocks, proposed_order: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        block_by_id = {block.block_id: block for block in blocks}
+        text_ids = tuple(
+            block.block_id
+            for block in blocks
+            if block.kind == "text" and block.text is not None
+        )
+        ordered = tuple(
+            block_id
+            for block_id in proposed_order
+            if block_id in block_by_id
+            and block_by_id[block_id].kind == "text"
+            and block_by_id[block_id].text is not None
+        )
+        return (
+            *ordered,
+            *(block_id for block_id in text_ids if block_id not in ordered),
+        )
 
+    @staticmethod
+    def _basic_clean(text: str) -> str:
+        return _WHITESPACE.sub(
+            " ", _CONTROL_CHARACTER.sub(" ", text).replace("\u00ad", "")
+        ).strip()
 
-def _is_margin(
-    spans: tuple[SourceSpan, ...],
-    page_height: float,
-    configuration: CleanTranscriptV2Configuration,
-) -> bool:
-    box = _union_box(spans)
-    if box is None:
-        return False
-    return box[3] <= page_height * configuration.top_margin_fraction or box[
-        1
-    ] >= page_height * (1.0 - configuration.bottom_margin_fraction)
-
-
-def _union_box(spans: tuple[SourceSpan, ...]) -> BoundingBox | None:
-    boxes = tuple(
-        span.bounding_box for span in spans if span.bounding_box is not None
-    )
-    if not boxes:
-        return None
-    return (
-        min(box[0] for box in boxes),
-        min(box[1] for box in boxes),
-        max(box[2] for box in boxes),
-        max(box[3] for box in boxes),
-    )
-
-
-def _page_ordinal(value: str) -> int | None:
-    if value.isdecimal():
-        return int(value)
-    roman = {"i": 1, "v": 5, "x": 10, "l": 50, "c": 100, "d": 500, "m": 1000}
-    total = 0
-    previous = 0
-    for character in reversed(value.casefold()):
-        current = roman.get(character)
-        if current is None:
-            return None
-        if current < previous:
-            total -= current
-        else:
-            total += current
-            previous = current
-    return total or None
-
-
-def _margin_key(value: str) -> str:
-    normalized = unicodedata.normalize("NFC", value).casefold()
-    return _DIGITS.sub("#", normalized)
-
-
-def _span_parts(spans: tuple[SourceSpan, ...]) -> tuple[object, ...]:
-    return tuple(
-        (*span.identity_parts(), span.printed_page_label) for span in spans
-    )
-
-
-def _normalized_forms(
-    name: str, values: tuple[str, ...], *, hyphen: bool
-) -> tuple[str, ...]:
-    if not isinstance(values, tuple):
-        raise TypeError(f"{name} must be a tuple")
-    result = tuple(sorted({value.strip().casefold() for value in values}))
-    if any(
-        not value
-        or _WHITESPACE.search(value)
-        or (hyphen and value.count("-") != 1)
-        or (not hyphen and "-" in value)
-        for value in result
-    ):
-        raise ValueError(f"{name} contains an invalid lexical form")
-    return result
-
-
-def _metadata_count(metadata: Metadata, key: str) -> bool:
-    return any(item_key == key and bool(value) for item_key, value in metadata)
-
-
-def _require_unique(name: str, values: tuple[str, ...]) -> None:
-    if len(values) != len(set(values)):
-        raise ValueError(f"{name} must be unique")
-
-
-def _bounded_result(
-    records: list[CleanTranscriptV2Block],
-    exclusions: list[CleanTranscriptV2Exclusion],
-    dehyphenation: list[DehyphenationDecision],
-    page_classifications: tuple[PageNumberClassification, ...],
-    publisher_classifications: tuple[PublisherFrontMatterClassification, ...],
-    glyph_findings: list[PrivateUseGlyphFinding],
-) -> None:
-    for values, limit in (
-        (records, _MAX_BLOCKS),
-        (exclusions, _MAX_EXCLUSIONS),
-        (dehyphenation, _MAX_DECISIONS),
-        (page_classifications, _MAX_DECISIONS),
-        (publisher_classifications, _MAX_DECISIONS),
-        (glyph_findings, _MAX_FINDINGS),
-    ):
-        if len(values) > limit:
-            raise CleanTranscriptV2LimitError(
-                "transcript-v2 projection exceeds an object limit"
+    @staticmethod
+    def _contains_form(text: str, form: str) -> bool:
+        value = CleanTranscriptV2Contract._basic_clean(text).casefold()
+        start = 0
+        while True:
+            index = value.find(form, start)
+            if index < 0:
+                return False
+            left_ok = index == 0 or not _WORD_CHARACTER.fullmatch(
+                value[index - 1]
             )
+            end = index + len(form)
+            right_ok = end == len(value) or not _WORD_CHARACTER.fullmatch(
+                value[end]
+            )
+            if left_ok and right_ok:
+                return True
+            start = index + 1
+
+    @staticmethod
+    def _candidate_is_margin(
+        candidate: _NumericCandidate,
+        configuration: CleanTranscriptV2Configuration,
+    ) -> bool:
+        box = candidate.bounding_box
+        if box is None:
+            return False
+        return box[
+            3
+        ] <= candidate.page_height * configuration.top_margin_fraction or box[
+            1
+        ] >= candidate.page_height * (
+            1.0 - configuration.bottom_margin_fraction
+        )
+
+    @staticmethod
+    def _is_margin(
+        spans: tuple[SourceSpan, ...],
+        page_height: float,
+        configuration: CleanTranscriptV2Configuration,
+    ) -> bool:
+        box = CleanTranscriptV2Contract._union_box(spans)
+        if box is None:
+            return False
+        return box[3] <= page_height * configuration.top_margin_fraction or box[
+            1
+        ] >= page_height * (1.0 - configuration.bottom_margin_fraction)
+
+    @staticmethod
+    def _union_box(spans: tuple[SourceSpan, ...]) -> BoundingBox | None:
+        boxes = tuple(
+            span.bounding_box for span in spans if span.bounding_box is not None
+        )
+        if not boxes:
+            return None
+        return (
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        )
+
+    @staticmethod
+    def _page_ordinal(value: str) -> int | None:
+        if value.isdecimal():
+            return int(value)
+        roman = {
+            "i": 1,
+            "v": 5,
+            "x": 10,
+            "l": 50,
+            "c": 100,
+            "d": 500,
+            "m": 1000,
+        }
+        total = 0
+        previous = 0
+        for character in reversed(value.casefold()):
+            current = roman.get(character)
+            if current is None:
+                return None
+            if current < previous:
+                total -= current
+            else:
+                total += current
+                previous = current
+        return total or None
+
+    @staticmethod
+    def _margin_key(value: str) -> str:
+        normalized = unicodedata.normalize("NFC", value).casefold()
+        return _DIGITS.sub("#", normalized)
+
+    @staticmethod
+    def _span_parts(spans: tuple[SourceSpan, ...]) -> tuple[object, ...]:
+        return tuple(
+            (*span.identity_parts(), span.printed_page_label) for span in spans
+        )
+
+    @staticmethod
+    def _normalized_forms(
+        name: str, values: tuple[str, ...], *, hyphen: bool
+    ) -> tuple[str, ...]:
+        if not isinstance(values, tuple):
+            raise TypeError(f"{name} must be a tuple")
+        result = tuple(sorted({value.strip().casefold() for value in values}))
+        if any(
+            not value
+            or _WHITESPACE.search(value)
+            or (hyphen and value.count("-") != 1)
+            or (not hyphen and "-" in value)
+            for value in result
+        ):
+            raise ValueError(f"{name} contains an invalid lexical form")
+        return result
+
+    @staticmethod
+    def _metadata_count(metadata: Metadata, key: str) -> bool:
+        return any(
+            item_key == key and bool(value) for item_key, value in metadata
+        )
+
+    @staticmethod
+    def _require_unique(name: str, values: tuple[str, ...]) -> None:
+        if len(values) != len(set(values)):
+            raise ValueError(f"{name} must be unique")
+
+    @staticmethod
+    def _bounded_result(
+        records: list[CleanTranscriptV2Block],
+        exclusions: list[CleanTranscriptV2Exclusion],
+        dehyphenation: list[DehyphenationDecision],
+        page_classifications: tuple[PageNumberClassification, ...],
+        publisher_classifications: tuple[
+            PublisherFrontMatterClassification, ...
+        ],
+        glyph_findings: list[PrivateUseGlyphFinding],
+    ) -> None:
+        for values, limit in (
+            (records, _MAX_BLOCKS),
+            (exclusions, _MAX_EXCLUSIONS),
+            (dehyphenation, _MAX_DECISIONS),
+            (page_classifications, _MAX_DECISIONS),
+            (publisher_classifications, _MAX_DECISIONS),
+            (glyph_findings, _MAX_FINDINGS),
+        ):
+            if len(values) > limit:
+                raise CleanTranscriptV2LimitError(
+                    "transcript-v2 projection exceeds an object limit"
+                )

@@ -9,8 +9,10 @@ from projectkoios.ingestion import (
     CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
     CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
     ClassificationDisposition,
+    CleanTranscriptLimitError,
     CleanTranscriptV2Configuration,
     CleanTranscriptV2ExclusionReason,
+    CleanTranscriptV2LimitError,
     CleanTranscriptV2Status,
     DehyphenationOutcome,
     DerivationAuditInput,
@@ -124,6 +126,10 @@ def _pipeline(*, replacement_split: str | None = None):
         )
     )
     return payload, extraction, layouts, transcription, private_block_id
+
+
+def test__clean_transcript_v2_limit_is_a_clean_transcript_limit() -> None:
+    assert issubclass(CleanTranscriptV2LimitError, CleanTranscriptLimitError)
 
 
 def test__clean_transcript_v2__is_additive_deterministic_contract() -> None:
