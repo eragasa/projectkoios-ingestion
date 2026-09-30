@@ -52,7 +52,6 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.reconciliation import (
-    OCRReconciliationActionizer,
     OCRReconciliationRequest,
     OCRReconciliationResult,
 )
@@ -286,7 +285,7 @@ def test__reconciliation__uses_action_family_base_objects() -> None:
         native_page=page,
         layout_result=layout,
     )
-    actionizer = OCRReconciliationActionizer()
+    actionizer = DeterministicOCRReconciler()
 
     result = actionizer.action(request=request)
 

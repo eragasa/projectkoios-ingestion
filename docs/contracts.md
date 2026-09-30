@@ -961,7 +961,7 @@ Markdown format, destination, publication, or native/OCR reconciliation policy.
 
 ## Native-text/OCR reconciliation
 
-`OCRReconciliationRequest` → `OCRReconciliationActionizer` →
+`OCRReconciliationRequest` → `DeterministicOCRReconciler` →
 `OCRReconciliationResult` directly implements the Project Koios action-family
 ABCs. Reconciliation contract version 1.0 consumes one exact
 `OCRSelectionResult` and, when its selection names native blocks, requires the
