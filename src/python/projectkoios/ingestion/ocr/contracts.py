@@ -16,6 +16,7 @@ from projectkoios.ingestion.models import (
     Metadata,
     WarningSeverity,
 )
+from projectkoios.ingestion.ocr.base import OCRTextOutput
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,
     RenderedRegion,
@@ -705,7 +706,7 @@ class OCRFailure:
 
 
 @dataclass(frozen=True)
-class OCRToken:
+class OCRToken(OCRTextOutput):
     """One ordered OCR token with image-pixel and mapped source geometry."""
 
     token_id: str
@@ -802,8 +803,12 @@ class OCRToken:
             backend_version=backend_version,
         )
 
+    @property
+    def output_id(self) -> str:
+        return self.token_id
+
     def __post_init__(self) -> None:
-        OCRContract._validate_output_common(self)
+        self._validate_common_contract()
         OCRContract._optional_nonnegative_integer("line_order", self.line_order)
         expected = OCRContract._ocr_token_id(
             self.selection_id,
@@ -826,7 +831,7 @@ class OCRToken:
 
 
 @dataclass(frozen=True)
-class OCRLine:
+class OCRLine(OCRTextOutput):
     """One ordered OCR line, optionally retaining ordered token membership."""
 
     line_id: str
@@ -923,8 +928,12 @@ class OCRLine:
             backend_version=backend_version,
         )
 
+    @property
+    def output_id(self) -> str:
+        return self.line_id
+
     def __post_init__(self) -> None:
-        OCRContract._validate_output_common(self)
+        self._validate_common_contract()
         OCRContract._require_unique_strings("token_ids", self.token_ids)
         expected = OCRContract._ocr_line_id(
             self.selection_id,
@@ -1444,7 +1453,7 @@ class OCRContract:
         for warning in result.warnings:
             if warning.selection_id != result.selection_id:
                 raise ValueError("OCR warning refers to the wrong selection")
-        outputs: tuple[OCRToken | OCRLine, ...] = (
+        outputs: tuple[OCRTextOutput, ...] = (
             *result.tokens,
             *result.lines,
         )
@@ -1714,7 +1723,7 @@ class OCRContract:
 
     @staticmethod
     def _validate_output_against_selection(
-        output: OCRToken | OCRLine,
+        output: OCRTextOutput,
         result: OCRSelectionResult,
         selection: OCRSelection,
         configuration: OCRConfiguration,
@@ -1765,45 +1774,6 @@ class OCRContract:
         )
         if output.source_bounding_box != expected_source:
             raise ValueError("OCR source box does not match pixel mapping")
-
-    @staticmethod
-    def _validate_output_common(output: OCRToken | OCRLine) -> None:
-        OCRContract._require_identity_fields(
-            output.selection_id,
-            output.image_id,
-            output.configuration_digest,
-            output.processor_name,
-            output.processor_version,
-            output.backend_name,
-            output.backend_version,
-        )
-        if output.pixel_coordinate_system != PIXEL_COORDINATE_SYSTEM:
-            raise ValueError("OCR pixel coordinate system is unsupported")
-        if output.source_coordinate_system != PYMUPDF_COORDINATE_SYSTEM:
-            raise ValueError("OCR source coordinate system is unsupported")
-        OCRContract._hard_bounded_string(
-            "OCR output text",
-            output.text,
-            nonempty=True,
-            limit=_MAX_TEXT_CHARACTERS_PER_ITEM,
-        )
-        object.__setattr__(
-            output,
-            "pixel_bounding_box",
-            OCRContract._finite_box(
-                output.pixel_bounding_box, "pixel_bounding_box"
-            ),
-        )
-        object.__setattr__(
-            output,
-            "source_bounding_box",
-            OCRContract._finite_box(
-                output.source_bounding_box, "source_bounding_box"
-            ),
-        )
-        OCRContract._validate_confidence(output.confidence)
-        OCRContract._nonnegative_integer("order", output.order)
-        OCRContract._require_unique_strings("warning_ids", output.warning_ids)
 
     @staticmethod
     def _image_identity_parts(region: RenderedRegion) -> tuple[object, ...]:

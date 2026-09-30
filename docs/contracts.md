@@ -934,6 +934,13 @@ accounted incrementally before stable-ID canonicalization; retained request
 metadata is counted, while input PNG payload bytes are excluded because their
 per-image and aggregate byte limits are enforced separately.
 
+The OCR domain is an explicit package: `ocr/base.py` owns the nominal
+`OCRTextOutput` ABC, while `ocr/contracts.py` owns concrete evidence and action
+contracts. `OCRToken` and `OCRLine` inherit that ABC, implement its stable
+`output_id` contract, and reuse its common source-linked output invariants.
+The package initializer preserves established `projectkoios.ingestion.ocr`
+imports without duplicating implementation.
+
 `OCRToken` and `OCRLine` retain text, contiguous order, warning links, strict
 positive-area pixel boxes, and mapped source boxes. Confidence is optional. If
 present, `OCRConfidence` includes the adapter-reported finite value in `[0, 1]`

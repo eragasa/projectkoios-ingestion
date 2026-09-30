@@ -40,6 +40,7 @@ from projectkoios.ingestion import (
     WarningSeverity,
     build_ocr_cache_key,
 )
+from projectkoios.ingestion.ocr import OCRTextOutput
 
 PROCESSOR = "synthetic-ocr-processor"
 PROCESSOR_VERSION = "1"
@@ -356,6 +357,21 @@ def _failed(
 def test__ocr_contracts__use_action_request_and_result_bases() -> None:
     assert issubclass(OCRRequest, DataObjectActionRequest)
     assert issubclass(OCRResult, DataObjectActionResult)
+
+
+def test__ocr_text_outputs_share_a_hardened_nominal_contract() -> None:
+    request = _request(native_ids=(("native:1",),))
+    result = _completed(request, 0)
+    token = result.tokens[0]
+    line = result.lines[0]
+
+    assert isinstance(token, OCRTextOutput)
+    assert isinstance(line, OCRTextOutput)
+    assert OCRTextOutput.__module__ == "projectkoios.ingestion.ocr.base"
+    assert token.output_id == token.token_id
+    assert line.output_id == line.line_id
+    with pytest.raises(TypeError, match="abstract"):
+        OCRTextOutput()
 
 
 def test__ocr_contracts__represent_token_line_and_combined_output() -> None:
