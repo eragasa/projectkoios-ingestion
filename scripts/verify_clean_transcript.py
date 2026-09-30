@@ -57,12 +57,11 @@ def _parser() -> argparse.ArgumentParser:
 def _git(
     root: Path,
     *arguments: str,
-    capture: bool = False,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ("git", "-C", str(root), *arguments),
         check=False,
-        capture_output=capture,
+        capture_output=True,
         text=True,
         timeout=30,
     )
@@ -220,9 +219,7 @@ def main(arguments: list[str] | None = None) -> int:
     root = args.repository_root.expanduser().resolve()
     if (
         not (root / ".git").exists()
-        and not _git(
-            root, "rev-parse", "--git-dir", capture=True
-        ).stdout.strip()
+        and not _git(root, "rev-parse", "--git-dir").stdout.strip()
     ):
         raise SystemExit("repository root is not a Git worktree")
     fixture = _require_fixture(root, args.fixture)
