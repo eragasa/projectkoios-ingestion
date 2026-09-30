@@ -955,10 +955,14 @@ Markdown format, destination, publication, or native/OCR reconciliation policy.
 
 ## Native-text/OCR reconciliation
 
-`DeterministicOCRReconciler` implements the injected `OCRReconciler` boundary.
-Reconciliation contract version 1.0 consumes one exact `OCRSelectionResult` and,
-when its selection names native blocks, requires the exact `ExtractedPage` and
-`PageLayoutResult` from which those references came. It rejects stale source,
+`OCRReconciliationRequest` → `OCRReconciliationActionizer` →
+`OCRReconciliationResult` directly implements the Project Koios action-family
+ABCs. Reconciliation contract version 1.0 consumes one exact
+`OCRSelectionResult` and, when its selection names native blocks, requires the
+exact `ExtractedPage` and `PageLayoutResult` from which those references came.
+`OCRReconciliationInput`, `DeterministicOCRReconciler`, and `reconcile()` remain
+compatibility surfaces over those same objects and semantics. Reconciliation
+rejects stale source,
 blob, page, rotation, coordinate, dimension, raw-block, kind, or source-span
 evidence rather than guessing how to align it.
 
@@ -994,12 +998,12 @@ conservative proposal, not a semantic reading-order claim. Completed blank OCR,
 native-only, OCR-only, partial, failed, rotated, and
 ambiguous inputs remain explicitly representable. Original OCR status,
 failures, warnings, tokens, image bytes, and processor identity remain
-transitively available through the retained input.
+transitively available through the retained request.
 
 Configuration records geometry, similarity, and ambiguity thresholds plus hard
 bounds for native blocks/segments, OCR lines, candidate pairs, text-comparison
 work, per-comparison text, retained text, warnings, and retained result size.
-Those settings enter input and result identity. Limits are checked before
+Those settings enter request and result identity. Limits are checked before
 quadratic matching; token-only
 nonblank OCR output is rejected because it cannot provide the required line
 stream. Result validation checks exact evidence retention, contiguous orders,

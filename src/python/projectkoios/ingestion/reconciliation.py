@@ -7,6 +7,11 @@ from dataclasses import dataclass, fields, is_dataclass
 from difflib import SequenceMatcher
 from enum import Enum, StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import (
@@ -555,7 +560,7 @@ class OCRReconciledItem:
 
 
 @dataclass(frozen=True)
-class OCRReconciliationInput:
+class OCRReconciliationRequest(DataObjectActionRequest):
     input_id: str
     ocr_result: OCRResult
     selection_index: int
@@ -573,7 +578,7 @@ class OCRReconciliationInput:
         native_page: ExtractedPage | None = None,
         layout_result: PageLayoutResult | None = None,
         configuration: OCRReconciliationConfiguration | None = None,
-    ) -> OCRReconciliationInput:
+    ) -> OCRReconciliationRequest:
         config = configuration or OCRReconciliationConfiguration()
         _validate_input_parts(
             ocr_result,
@@ -620,6 +625,11 @@ class OCRReconciliationInput:
             raise ValueError("OCR reconciliation input ID is inconsistent")
 
     @property
+    def request_id(self) -> str:
+        """Return the established input identity as the request identity."""
+        return self.input_id
+
+    @property
     def selection(self) -> OCRSelection:
         return self.ocr_result.request.selections[self.selection_index]
 
@@ -628,10 +638,13 @@ class OCRReconciliationInput:
         return self.ocr_result.selection_results[self.selection_index]
 
 
+OCRReconciliationInput = OCRReconciliationRequest
+
+
 @dataclass(frozen=True)
-class OCRReconciliationResult:
+class OCRReconciliationResult(DataObjectActionResult):
     result_id: str
-    reconciliation_input: OCRReconciliationInput
+    reconciliation_input: OCRReconciliationRequest
     native_stream: tuple[OCRNativeBlockEvidence, ...]
     native_segments: tuple[OCRNativeLineSegment, ...]
     ocr_stream: tuple[OCRLine, ...]
@@ -647,7 +660,7 @@ class OCRReconciliationResult:
     def create(
         cls,
         *,
-        reconciliation_input: OCRReconciliationInput,
+        reconciliation_input: OCRReconciliationRequest,
         native_stream: tuple[OCRNativeBlockEvidence, ...],
         native_segments: tuple[OCRNativeLineSegment, ...],
         ocr_stream: tuple[OCRLine, ...],
@@ -657,7 +670,7 @@ class OCRReconciliationResult:
         processor_name: str,
         processor_version: str,
     ) -> OCRReconciliationResult:
-        if not isinstance(reconciliation_input, OCRReconciliationInput):
+        if not isinstance(reconciliation_input, OCRReconciliationRequest):
             raise TypeError("reconciliation_input has the wrong type")
         configuration_digest = (
             reconciliation_input.configuration.configuration_digest
@@ -700,7 +713,7 @@ class OCRReconciliationResult:
     def __post_init__(self) -> None:
         if self.contract_version != OCR_RECONCILIATION_CONTRACT_VERSION:
             raise ValueError("unsupported OCR reconciliation result version")
-        if not isinstance(self.reconciliation_input, OCRReconciliationInput):
+        if not isinstance(self.reconciliation_input, OCRReconciliationRequest):
             raise TypeError("reconciliation_input has the wrong type")
         for name in (
             "native_stream",
@@ -726,6 +739,23 @@ class OCRReconciliationResult:
         )
         if self.result_id != expected:
             raise ValueError("OCR reconciliation result ID is inconsistent")
+
+    @property
+    def request(self) -> OCRReconciliationRequest:
+        """Return the exact request retained by this result."""
+        return self.reconciliation_input
+
+    @property
+    def request_id(self) -> str:
+        return self.reconciliation_input.request_id
+
+    @property
+    def actionizer_name(self) -> str:
+        return self.processor_name
+
+    @property
+    def actionizer_version(self) -> str:
+        return self.processor_version
 
     def stream(
         self, choice: OCRReconciliationStreamChoice
@@ -755,19 +785,33 @@ class _Candidate:
     ocr_order: int
 
 
-class DeterministicOCRReconciler:
+class OCRReconciliationActionizer(
+    DataObjectActionizer[OCRReconciliationRequest, OCRReconciliationResult]
+):
     """Conservatively propose a merged stream without replacing evidence."""
+
+    __slots__ = ()
 
     name = "deterministic-ocr-reconciler"
     version = "1"
 
-    def reconcile(
-        self, reconciliation_input: OCRReconciliationInput
+    def action(
+        self, *, request: OCRReconciliationRequest
     ) -> OCRReconciliationResult:
-        if not isinstance(reconciliation_input, OCRReconciliationInput):
-            raise TypeError(
-                "reconciliation_input must be OCRReconciliationInput"
-            )
+        """Return the reconciliation result for one complete request."""
+        if not isinstance(request, OCRReconciliationRequest):
+            raise TypeError("request must be OCRReconciliationRequest")
+        return self._reconcile(request)
+
+    def reconcile(
+        self, reconciliation_input: OCRReconciliationRequest
+    ) -> OCRReconciliationResult:
+        """Preserve the established reconciler API."""
+        return self.action(request=reconciliation_input)
+
+    def _reconcile(
+        self, reconciliation_input: OCRReconciliationRequest
+    ) -> OCRReconciliationResult:
         native_stream = _native_stream(reconciliation_input)
         native_segments = _native_segments(
             native_stream, reconciliation_input.configuration
@@ -841,6 +885,12 @@ class DeterministicOCRReconciler:
             processor_name=self.name,
             processor_version=self.version,
         )
+
+
+class DeterministicOCRReconciler(OCRReconciliationActionizer):
+    """Compatibility name for the established reconciliation API."""
+
+    __slots__ = ()
 
 
 def _validate_input_parts(
@@ -969,7 +1019,7 @@ def _input_id(
 
 
 def _native_stream(
-    reconciliation_input: OCRReconciliationInput,
+    reconciliation_input: OCRReconciliationRequest,
 ) -> tuple[OCRNativeBlockEvidence, ...]:
     if (
         reconciliation_input.native_page is None
@@ -1069,7 +1119,7 @@ def _iter_text_lines(value: str) -> Iterator[tuple[int, str]]:
 
 
 def _input_warnings(
-    reconciliation_input: OCRReconciliationInput,
+    reconciliation_input: OCRReconciliationRequest,
 ) -> list[OCRReconciliationWarning]:
     warnings: list[OCRReconciliationWarning] = []
     selection_result = reconciliation_input.selection_result
@@ -1387,7 +1437,7 @@ def _warnings_for_object(
 
 
 def _preflight_result_collections(
-    reconciliation_input: OCRReconciliationInput,
+    reconciliation_input: OCRReconciliationRequest,
     native_stream: tuple[OCRNativeBlockEvidence, ...],
     native_segments: tuple[OCRNativeLineSegment, ...],
     ocr_stream: tuple[OCRLine, ...],

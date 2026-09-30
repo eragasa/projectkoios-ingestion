@@ -4,6 +4,11 @@ import zlib
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     DeterministicOCRReconciler,
     OCRReconciledItemKind,
@@ -45,6 +50,11 @@ from projectkoios.ingestion.ocr import (
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
+)
+from projectkoios.ingestion.reconciliation import (
+    OCRReconciliationActionizer,
+    OCRReconciliationRequest,
+    OCRReconciliationResult,
 )
 
 PROCESSOR_NAME = "synthetic-ocr-processor"
@@ -265,6 +275,33 @@ def _reconcile(
     return DeterministicOCRReconciler().reconcile(reconciliation_input)
 
 
+def test__reconciliation__uses_action_family_base_objects() -> None:
+    ocr_result, page, layout = _fixture(
+        native=(("Alpha beta", (5.0, 2.0, 80.0, 25.0)),),
+        ocr=(("Alpha beta", (5.0, 2.0, 80.0, 25.0)),),
+    )
+    request = OCRReconciliationRequest.create(
+        ocr_result=ocr_result,
+        selection_index=0,
+        native_page=page,
+        layout_result=layout,
+    )
+    actionizer = OCRReconciliationActionizer()
+
+    result = actionizer.action(request=request)
+
+    assert OCRReconciliationInput is OCRReconciliationRequest
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(actionizer, DataObjectActionizer)
+    assert isinstance(result, DataObjectActionResult)
+    assert isinstance(result, OCRReconciliationResult)
+    assert result.request is request
+    assert result.request_id == request.request_id == request.input_id
+    assert result.actionizer_name == actionizer.name
+    assert result.actionizer_version == actionizer.version
+    assert DeterministicOCRReconciler().reconcile(request) == result
+
+
 def test__reconciliation__preserves_duplicate_evidence_streams() -> None:
     result = _reconcile(
         native=(("Alpha beta", (5.0, 2.0, 80.0, 25.0)),),
@@ -283,9 +320,10 @@ def test__reconciliation__preserves_duplicate_evidence_streams() -> None:
         result.native_stream
     )
     assert result.stream(OCRReconciliationStreamChoice.OCR) is result.ocr_stream
-    assert result.stream(
-        OCRReconciliationStreamChoice.PROPOSED_MERGED
-    ) is result.proposed_merged_stream
+    assert (
+        result.stream(OCRReconciliationStreamChoice.PROPOSED_MERGED)
+        is result.proposed_merged_stream
+    )
 
 
 def test__reconciliation__rejects_conflicting_geometry() -> None:
