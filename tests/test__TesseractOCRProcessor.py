@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 import pytest
+from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion import (
     TESSERACT_ADAPTER_VERSION,
     ExtractedBlock,
@@ -233,6 +234,17 @@ def _processor(
     )
 
 
+def test__tesseract_processor__implements_actionizer_role() -> None:
+    assert issubclass(TesseractOCRProcessor, DataObjectActionizer)
+
+
+def test__tesseract_process_forwards_to_action(tmp_path: Path) -> None:
+    processor = _processor(tmp_path)
+    request = _request()
+
+    assert processor.process(request) == processor.action(request=request)
+
+
 def test__tesseract_configuration__is_bounded_and_immutable(
     tmp_path: Path,
 ) -> None:
@@ -380,7 +392,7 @@ def test__tesseract_processor__deduplicates_shared_backend_resources(
     )
     request = _request(languages=("en-US", "en-GB"))
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.status is OCRResultStatus.COMPLETED
     assert [
@@ -399,7 +411,7 @@ def test__tesseract_processor__maps_tsv_to_requested_evidence(
     mode: OCROutputMode,
 ) -> None:
     request = _request(output_mode=mode)
-    result = _processor(tmp_path).process(request)
+    result = _processor(tmp_path).action(request=request)
     selection_result = result.selection_results[0]
 
     assert result.status is OCRResultStatus.COMPLETED
@@ -453,7 +465,7 @@ def test__tesseract_processor__retains_native_text_as_separate_evidence(
     request = _request(native_text=True)
     original_native_ids = request.selections[0].native_text_block_ids
 
-    result = _processor(tmp_path).process(request)
+    result = _processor(tmp_path).action(request=request)
 
     assert original_native_ids == ("native:0",)
     assert (
@@ -470,7 +482,7 @@ def test__tesseract_processor__preserves_order_and_blank_success(
     tmp_path: Path,
 ) -> None:
     request = _request(pages=2)
-    result = _processor(tmp_path).process(request)
+    result = _processor(tmp_path).action(request=request)
 
     assert result.status is OCRResultStatus.COMPLETED
     assert [item.selection_id for item in result.selection_results] == [
@@ -492,7 +504,7 @@ def test__tesseract_processor__missing_executable_is_typed_failure(
     )
 
     identity = processor.identity_for(request)
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert identity.backend_version == "unavailable"
     assert result.status is OCRResultStatus.FAILED
@@ -516,7 +528,7 @@ def test__tesseract_processor__failure_respects_tight_warning_bounds(
         executable=tmp_path / "does-not-exist",
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     selection_result = result.selection_results[0]
     assert selection_result.failure is not None
@@ -529,7 +541,7 @@ def test__tesseract_processor__unmapped_language_is_typed_failure(
     tmp_path: Path,
 ) -> None:
     request = _request(languages=("fr",))
-    result = _processor(tmp_path).process(request)
+    result = _processor(tmp_path).action(request=request)
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -546,7 +558,7 @@ def test__tesseract_processor__missing_resource_is_typed_failure(
 ) -> None:
     request = _request()
     missing = tmp_path / "missing.traineddata"
-    result = _processor(tmp_path, resource=missing).process(request)
+    result = _processor(tmp_path, resource=missing).action(request=request)
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -567,7 +579,7 @@ def test__tesseract_processor__resource_limit_is_typed_failure(
             max_total_resource_bytes=4,
         ),
     )
-    result = processor.process(_request())
+    result = processor.action(request=_request())
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -579,7 +591,9 @@ def test__tesseract_processor__resource_limit_is_typed_failure(
 def test__tesseract_processor__invalid_output_is_typed_failure(
     tmp_path: Path,
 ) -> None:
-    result = _processor(tmp_path, behavior="malformed").process(_request())
+    result = _processor(tmp_path, behavior="malformed").action(
+        request=_request()
+    )
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -592,7 +606,7 @@ def test__tesseract_processor__invalid_output_is_typed_failure(
 def test__tesseract_processor__nonzero_with_output_is_partial(
     tmp_path: Path,
 ) -> None:
-    result = _processor(tmp_path, behavior="partial").process(_request())
+    result = _processor(tmp_path, behavior="partial").action(request=_request())
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.PARTIAL
@@ -613,7 +627,9 @@ def test__tesseract_processor__nonzero_with_output_is_partial(
 def test__tesseract_processor__preserves_mixed_selection_outcomes(
     tmp_path: Path,
 ) -> None:
-    result = _processor(tmp_path, behavior="mixed").process(_request(pages=2))
+    result = _processor(tmp_path, behavior="mixed").action(
+        request=_request(pages=2)
+    )
 
     assert result.status is OCRResultStatus.PARTIAL
     assert [item.status for item in result.selection_results] == [
@@ -630,8 +646,8 @@ def test__tesseract_processor__failure_identity_excludes_temporary_paths(
     request = _request()
     processor = _processor(tmp_path, behavior="partial")
 
-    first = processor.process(request)
-    second = processor.process(request)
+    first = processor.action(request=request)
+    second = processor.action(request=request)
 
     assert first.result_id == second.result_id
     assert first.selection_results[0].selection_result_id == (
@@ -653,7 +669,7 @@ def test__tesseract_processor__timeout_is_bounded_typed_failure(
         configuration=TesseractAdapterConfiguration(timeout_milliseconds=50),
     )
     started = time.monotonic()
-    result = processor.process(_request())
+    result = processor.action(request=_request())
     elapsed = time.monotonic() - started
 
     selection_result = result.selection_results[0]
@@ -668,7 +684,7 @@ def test__tesseract_processor__timeout_is_bounded_typed_failure(
 def test__tesseract_processor__aggregate_limit_is_typed_failure(
     tmp_path: Path,
 ) -> None:
-    result = _processor(tmp_path).process(_request(max_total_tokens=1))
+    result = _processor(tmp_path).action(request=_request(max_total_tokens=1))
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -687,7 +703,7 @@ def test__tesseract_processor__capture_limit_is_typed_failure(
         behavior="huge",
         configuration=TesseractAdapterConfiguration(max_stdout_bytes=1_024),
     )
-    result = processor.process(_request())
+    result = processor.action(request=_request())
 
     selection_result = result.selection_results[0]
     assert result.status is OCRResultStatus.FAILED
@@ -712,7 +728,7 @@ def test__tesseract_processor__optional_real_engine_smoke() -> None:
         ),
     )
 
-    result = processor.process(_request())
+    result = processor.action(request=_request())
 
     assert result.status is OCRResultStatus.COMPLETED
     assert result.processor_identity.backend_version != "unavailable"

@@ -102,7 +102,7 @@ processor = TesseractOCRProcessor(
 
 # Given an OCRRequest named request:
 identity = processor.identity_for(request)
-result = processor.process(request)
+result = processor.action(request=request)
 ```
 
 `request` must use the same ordered semantic languages as the configured

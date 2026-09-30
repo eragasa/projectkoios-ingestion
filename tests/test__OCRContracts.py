@@ -7,6 +7,7 @@ from dataclasses import FrozenInstanceError, replace
 from typing import Protocol
 
 import pytest
+from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
 from projectkoios.ingestion import (
     OCR_CONTRACT_VERSION,
     PIXEL_COORDINATE_SYSTEM,
@@ -352,6 +353,11 @@ def _failed(
     )
 
 
+def test__ocr_contracts__use_action_request_and_result_bases() -> None:
+    assert issubclass(OCRRequest, DataObjectActionRequest)
+    assert issubclass(OCRResult, DataObjectActionResult)
+
+
 def test__ocr_contracts__represent_token_line_and_combined_output() -> None:
     for mode in (
         OCROutputMode.TOKENS,
@@ -536,9 +542,7 @@ def test__ocr_request__preserves_order_and_bounds_infinite_iterables() -> None:
 def test__ocr_cache_identity__is_stable_and_covers_every_dimension() -> None:
     base = _request(native_ids=(("native:1",),))
     identity = _processor_identity(base.configuration.languages)
-    base_key = build_ocr_cache_key(
-        request=base, processor_identity=identity
-    )
+    base_key = build_ocr_cache_key(request=base, processor_identity=identity)
     assert (
         build_ocr_cache_key(request=base, processor_identity=identity)
         == base_key
@@ -560,18 +564,22 @@ def test__ocr_cache_identity__is_stable_and_covers_every_dimension() -> None:
         _request(native_ids=(("native:1",),), max_total_tokens=99_999),
     )
     for changed in changed_requests:
-        changed_identity = _processor_identity(
-            changed.configuration.languages
+        changed_identity = _processor_identity(changed.configuration.languages)
+        assert (
+            build_ocr_cache_key(
+                request=changed, processor_identity=changed_identity
+            )
+            != base_key
         )
-        assert build_ocr_cache_key(
-            request=changed, processor_identity=changed_identity
-        ) != base_key
 
     french = _request(native_ids=(("native:1",),), languages=("fr",))
-    assert build_ocr_cache_key(
-        request=french,
-        processor_identity=_processor_identity(("fr",)),
-    ) != base_key
+    assert (
+        build_ocr_cache_key(
+            request=french,
+            processor_identity=_processor_identity(("fr",)),
+        )
+        != base_key
+    )
 
     ordered = _request(
         images=(_image(page_index=0), _image(page_index=1)),
@@ -595,18 +603,27 @@ def test__ocr_cache_identity__is_stable_and_covers_every_dimension() -> None:
         "backend_version",
     ):
         changed_identity = _processor_identity(**{field: "other"})
-        assert build_ocr_cache_key(
-            request=base, processor_identity=changed_identity
-        ) != base_key
-    assert build_ocr_cache_key(
-        request=base,
-        processor_identity=_processor_identity(resource_suffix="v2"),
-    ) != base_key
-    assert build_ocr_cache_key(
-        request=base,
-        processor_identity=identity,
-        contract_version="future",
-    ) != base_key
+        assert (
+            build_ocr_cache_key(
+                request=base, processor_identity=changed_identity
+            )
+            != base_key
+        )
+    assert (
+        build_ocr_cache_key(
+            request=base,
+            processor_identity=_processor_identity(resource_suffix="v2"),
+        )
+        != base_key
+    )
+    assert (
+        build_ocr_cache_key(
+            request=base,
+            processor_identity=identity,
+            contract_version="future",
+        )
+        != base_key
+    )
 
 
 def test__ocr_contracts__reject_tampering_cross_links_and_mutation() -> None:
@@ -796,9 +813,7 @@ def test__ocr_contracts__allow_blank_success_and_optional_confidence() -> None:
 
 
 def test__ocr_languages_and_resource_bindings_are_engine_neutral() -> None:
-    configuration = OCRConfiguration(
-        languages=("EN-us", "zh-hant-tw", "und")
-    )
+    configuration = OCRConfiguration(languages=("EN-us", "zh-hant-tw", "und"))
     assert configuration.languages == ("en-US", "zh-Hant-TW", "und")
     with pytest.raises(ValueError, match="unique"):
         OCRConfiguration(languages=("en-US", "EN-us"))

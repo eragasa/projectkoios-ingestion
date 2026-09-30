@@ -1025,8 +1025,11 @@ no `ExtractionCache` entry, and performs no OCR or model call.
 
 ## Tesseract OCR adapter
 
-`TesseractOCRProcessor` implements `OCRProcessor` as a lazy external-process
-adapter; importing the package does not import, bundle, or install Tesseract.
+`OCRRequest` → `TesseractOCRProcessor` → `OCRResult` directly implements the
+action-family bases. Canonical `action(request=...)` owns OCR execution;
+supported `process()` forwards to that single logic path. The processor remains
+a lazy external-process adapter; importing the package does not import, bundle,
+or install Tesseract.
 Installation and explicit resource discovery are documented in
 [`tesseract.md`](tesseract.md). Construction requires immutable
 `TesseractLanguageBinding` values that map each
