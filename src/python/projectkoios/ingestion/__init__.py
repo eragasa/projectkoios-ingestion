@@ -472,6 +472,16 @@ from projectkoios.ingestion.transcript_batch import (
     load_durable_plan,
     publish_durable_plan,
 )
+from projectkoios.ingestion.transcript_evidence_selection import (
+    SelectedTranscriptBlockEvidence,
+    SelectedTranscriptPageEvidence,
+    TranscriptEvidenceMappingBasis,
+    TranscriptEvidenceSelectionLimitError,
+    TranscriptEvidenceSelectionOutcome,
+    TranscriptEvidenceSelectionRequest,
+    TranscriptEvidenceSelectionResult,
+    TranscriptEvidenceSelector,
+)
 from projectkoios.ingestion.transcription import (
     TRANSCRIPTION_COMPOSER_VERSION,
     TRANSCRIPTION_CONFIGURATION_VERSION,
@@ -858,6 +868,8 @@ __all__ = [
     "TableRuleOrientation",
     "TableRuleSegment",
     "TableTextAssociation",
+    "SelectedTranscriptBlockEvidence",
+    "SelectedTranscriptPageEvidence",
     "TableCell",
     "TableCellRole",
     "TableColumn",
@@ -887,6 +899,12 @@ __all__ = [
     "TranscriptBatchItem",
     "TranscriptBatchPlan",
     "TranscriptBatchPublicationError",
+    "TranscriptEvidenceMappingBasis",
+    "TranscriptEvidenceSelectionLimitError",
+    "TranscriptEvidenceSelectionOutcome",
+    "TranscriptEvidenceSelectionRequest",
+    "TranscriptEvidenceSelectionResult",
+    "TranscriptEvidenceSelector",
     "TranscriptionConfiguration",
     "TranscriptionEvidenceStatus",
     "TranscriptionInput",
