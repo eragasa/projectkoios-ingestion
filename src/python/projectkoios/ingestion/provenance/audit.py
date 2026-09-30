@@ -515,7 +515,10 @@ class DerivationAuditActionizer:
         return state.report()
 
 
-DerivationAuditValidator = DerivationAuditActionizer
+class DerivationAuditValidator(DerivationAuditActionizer):
+    """Compatibility name for the established audit API."""
+
+    __slots__ = ()
 
 
 class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
@@ -751,6 +754,21 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
                 evidence=normalized_evidence,
             )
         )
+
+
+_COMPATIBILITY_TYPES = (
+    DerivationAuditError,
+    DerivationAuditFinding,
+    DerivationAuditFindingCode,
+    DerivationAuditInput,
+    DerivationAuditLimitError,
+    DerivationAuditReport,
+    DerivationAuditStatus,
+    DerivationAuditValidator,
+)
+for _compatibility_type in _COMPATIBILITY_TYPES:
+    _compatibility_type.__module__ = "projectkoios.ingestion.provenance"
+del _compatibility_type
 
 
 __all__ = [

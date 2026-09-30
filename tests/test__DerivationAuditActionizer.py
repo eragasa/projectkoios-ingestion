@@ -133,12 +133,15 @@ def test__request_identity_changes_with_exact_source_bytes() -> None:
 def test__legacy_api_and_import_paths_remain_exact_compatibility_aliases() -> (
     None
 ):
-    assert DerivationAuditValidator is DerivationAuditActionizer
-    assert RootDerivationAuditValidator is DerivationAuditActionizer
+    assert issubclass(DerivationAuditValidator, DerivationAuditActionizer)
+    assert RootDerivationAuditValidator is DerivationAuditValidator
     assert RootDerivationAuditInput is DerivationAuditInput
     assert RootDerivationAuditReport is DerivationAuditReport
     assert DerivationAuditActionizer.__module__ == (
         "projectkoios.ingestion.provenance.audit"
+    )
+    assert DerivationAuditValidator.__module__ == (
+        "projectkoios.ingestion.provenance"
     )
     assert DerivationAuditRequest.__module__ == (
         "projectkoios.ingestion.provenance.audit"

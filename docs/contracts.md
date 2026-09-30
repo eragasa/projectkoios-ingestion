@@ -735,9 +735,19 @@ A rough chunk must not split an indivisible typed object such as an equation,
 caption, or problem merely to satisfy a token target. Search-specific vectors,
 scores, and ranking features are not part of this contract.
 
-## `PageLayoutResult`
+## Layout-analysis actionizer and `PageLayoutResult`
 
-`DeterministicLayoutProcessor` returns one immutable `PageLayoutResult` for
+`LayoutAnalysisRequest` binds one exact `ExtractedDocument`, one exact
+`LayoutConfiguration`, and the layout action contract into a stable request
+identity. `LayoutAnalysisActionizer.execute()` returns a deterministic
+`LayoutAnalysisResult` that binds the request, actionizer contract,
+configuration digest, ordered `PageLayoutResult` identities, and retained page
+results. No `DataObjectModel` is introduced because the configuration is not an
+independently meaningful domain model. Replaying an identical request is
+byte-for-byte and identity deterministic.
+
+`DeterministicLayoutProcessor` remains the compatibility processor and returns
+one immutable `PageLayoutResult` for
 each analyzed `ExtractedPage`. Layout contract version 1.0 is separate from raw
 extraction contract 2.2. Processor version 2 contains the repaired identity and
 conservative ambiguity semantics. A result records:
@@ -1169,8 +1179,8 @@ identity, bounded evidence, and stable finding ID. A `DerivationAuditReport`
 binds the root source, ordered audited artifact IDs, sorted layer counts,
 ordered finding IDs, and validator identity. Its status is `passed` exactly when
 findings are empty; `require_valid()` raises `DerivationAuditError` otherwise.
-`DerivationAuditValidator`, `audit()`, and `validate()` remain exact compatibility
-aliases for existing consumers while new code uses the owning provenance
+`DerivationAuditValidator`, `audit()`, and `validate()` remain compatibility
+surfaces for existing consumers while new code uses the owning provenance
 package's request/actionizer/result API. Object traversal, per-layer artifact
 counts, and retained findings are hard-bounded and raise
 `DerivationAuditLimitError` before unbounded work.

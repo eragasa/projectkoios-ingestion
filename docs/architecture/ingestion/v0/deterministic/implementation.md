@@ -4,7 +4,7 @@
 
 | Component | Source | Focused validation |
 |---|---|---|
-| `DeterministicLayoutProcessor` | [`layout/`](../../../../../src/python/projectkoios/ingestion/layout/) | [`test__DeterministicLayoutProcessor.py`](../../../../../tests/test__DeterministicLayoutProcessor.py) |
+| `LayoutAnalysisRequest` → `LayoutAnalysisActionizer` → `LayoutAnalysisResult` | [`layout/actionizer.py`](../../../../../src/python/projectkoios/ingestion/layout/actionizer.py) | [`test__LayoutAnalysisActionizer.py`](../../../../../tests/test__LayoutAnalysisActionizer.py) |
 | `DeterministicOCRReconciler` | [`reconciliation.py`](../../../../../src/python/projectkoios/ingestion/reconciliation.py) | [`test__OCRReconciliation.py`](../../../../../tests/test__OCRReconciliation.py) |
 | `DeterministicArticleStructureAnalyzer` | [`article_structure.py`](../../../../../src/python/projectkoios/ingestion/article_structure.py) | [`test__ArticleStructureAnalyzer.py`](../../../../../tests/test__ArticleStructureAnalyzer.py) |
 | `DeterministicEquationCandidateDetector` | [`equations.py`](../../../../../src/python/projectkoios/ingestion/equations.py) | [`test__EquationCandidateDetector.py`](../../../../../tests/test__EquationCandidateDetector.py) |
@@ -29,9 +29,9 @@ The component protocols are declared in
 [`protocols.py`](../../../../../src/python/projectkoios/ingestion/protocols.py).
 New operation APIs are exported from their owning domain packages rather than
 added to the broad root facade. Existing root imports remain available for
-compatibility during this bounded migration. The provenance initializer is a
-small explicit facade; its implementation lives in
-[`provenance/audit.py`](../../../../../src/python/projectkoios/ingestion/provenance/audit.py).
+compatibility during this bounded migration. The layout and provenance
+initializers are small explicit facades; their implementation lives in named
+`actionizer.py`, `contracts.py`, and `audit.py` modules.
 
 There is no v0 `DeterministicProcessor` composition root. Callers compose these
 components directly or use the existing batch entry points. A future

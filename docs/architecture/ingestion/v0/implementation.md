@@ -111,7 +111,7 @@ The pilot is additive. Existing implementation areas remain:
 | Textbook ingestion | [`textbooks/`](../../../../src/python/projectkoios/ingestion/textbooks/) |
 | Bounded processing | [`processing.py`](../../../../src/python/projectkoios/ingestion/processing.py) |
 | Deterministic derivations | [Deterministic implementation map](deterministic/implementation.md) |
-| Provenance audit | [`provenance.py`](../../../../src/python/projectkoios/ingestion/provenance.py) |
+| Provenance audit | [`provenance/`](../../../../src/python/projectkoios/ingestion/provenance/) |
 | Batch entry points | [`batch_cli.py`](../../../../src/python/projectkoios/ingestion/batch_cli.py) and transcript batch modules |
 
 ## Runtime and Dependency Boundaries

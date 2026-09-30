@@ -1,14 +1,15 @@
-# Deterministic Page-Layout Processor
+# Deterministic Page-Layout Actionizer
 
 ## Status
 
-**Implemented.** The public implementation is
-[`DeterministicLayoutProcessor`](../../../../../../src/python/projectkoios/ingestion/layout/__init__.py),
-with layout contract version `1.0`, processor name
-`deterministic-page-layout`, and processor version `2`.
+**Implemented.** The identified operation is
+[`LayoutAnalysisActionizer`](../../../../../../src/python/projectkoios/ingestion/layout/actionizer.py),
+with a stable request and result. The compatibility processor retains layout
+contract version `1.0`, processor name `deterministic-page-layout`, and
+processor version `2`.
 
-Validation is maintained in the focused
-[`DeterministicLayoutProcessor` test suite](../../../../../../tests/test__DeterministicLayoutProcessor.py).
+Validation is maintained in the focused actionizer and compatibility processor
+test suites.
 
 ## Short Description
 
@@ -29,13 +30,13 @@ or filesystem mutation.
 
 ```mermaid
 flowchart LR
-    Document[ExtractedDocument] -->|analyze| Processor
-    Source[SourceDocument] -->|analyze_page| Processor
-    Page[ExtractedPage] -->|analyze_page| Processor
-    Config[LayoutConfiguration] --> Processor
-
-    Processor[DeterministicLayoutProcessor]
-    Processor --> Result[PageLayoutResult]
+    Document[ExtractedDocument] --> Request[LayoutAnalysisRequest]
+    Config[LayoutConfiguration] --> Request
+    Request --> Actionizer[LayoutAnalysisActionizer]
+    Actionizer --> ActionResult[LayoutAnalysisResult]
+    Actionizer --> Processor[DeterministicLayoutProcessor]
+    Processor --> Result[PageLayoutResult tuple]
+    Result --> ActionResult
 
     Result --> Order[Proposed text order]
     Result --> Groups[LayoutGroupHypothesis tuple]
@@ -54,12 +55,22 @@ from page text.
 
 ## Key Classes
 
-The stable public contracts and processor facade are defined in
-[`src/python/projectkoios/ingestion/layout/__init__.py`](../../../../../../src/python/projectkoios/ingestion/layout/__init__.py).
-The private phased implementation lives in
-[`src/python/projectkoios/ingestion/layout/analysis.py`](../../../../../../src/python/projectkoios/ingestion/layout/analysis.py): bounded preflight and input preparation precede ambiguity checks, one-column/two-column analysis, and result construction. This split does not change public imports, processor identity, or contract values.
+The package initializer is a small explicit facade. Contracts and the
+compatibility processor live in
+[`contracts.py`](../../../../../../src/python/projectkoios/ingestion/layout/contracts.py),
+the identified operation lives in
+[`actionizer.py`](../../../../../../src/python/projectkoios/ingestion/layout/actionizer.py),
+and phased analysis lives in
+[`analysis.py`](../../../../../../src/python/projectkoios/ingestion/layout/analysis.py).
+Existing package and root imports, processor identity, and contract values are
+preserved.
 
-- **`DeterministicLayoutProcessor`** — validates bounded page evidence and
+- **`LayoutAnalysisRequest`** — binds the exact document and configuration.
+- **`LayoutAnalysisActionizer`** — executes one exact request.
+- **`LayoutAnalysisResult`** — binds the request, actionizer, configuration,
+  and ordered page results.
+- **`DeterministicLayoutProcessor`** — compatibility processor that validates
+  bounded page evidence and
   provides `analyze(document)` and `analyze_page(source, page)` entry points.
 - **`LayoutConfiguration`** — immutable resource limits and geometry
   thresholds. Its complete value contributes to `configuration_digest`.

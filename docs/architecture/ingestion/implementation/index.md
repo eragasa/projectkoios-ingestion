@@ -606,7 +606,17 @@ The intended package shape is:
 projectkoios/ingestion/
     models.py
     protocols.py
-    provenance.py
+    layout/
+        __init__.py
+        actionizer.py
+        contracts.py
+        analysis.py
+    provenance/
+        __init__.py
+        audit.py
+        common.py
+        domains.py
+        walker.py
     articles/
         base.py
         pdf.py
@@ -620,8 +630,11 @@ projectkoios/ingestion/
         quality.py
 ```
 
-This is a direction, not a claim that all modules are implemented. Public
-exports are added only with tested behavior and documented contracts.
+This remains a direction rather than an exhaustive module inventory. Package
+initializers are small explicit facades; operation and contract implementation
+lives in named modules. Existing supported imports remain explicit compatibility
+exports during bounded migrations. New public exports require tested behavior
+and documented contracts.
 
 ## Testing Strategy
 
