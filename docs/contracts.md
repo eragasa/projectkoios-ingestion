@@ -587,7 +587,8 @@ rendering, or human approval. It writes no files and stores no derived result.
 
 Structured-transcription contract version 1.0, composer version 1, and
 configuration version 1 define deterministic destination-neutral composition.
-`TranscriptionInput` retains one exact `ExtractedDocument`, complete same-source
+`StructuredTranscriptionRequest` retains one exact `ExtractedDocument`, complete
+same-source
 `StructureAnalysis`, `EquationDetectionResult`, `TableStructureResult`, and
 `FigureDetectionResult`, plus every composition limit. Missing stages are not
 silently interpreted as empty; an upstream stage may explicitly supply a valid
@@ -601,8 +602,12 @@ immutable extracted-document value. The input ID binds that evidence ID, every
 upstream result ID, the logical and exact blob identities, and complete
 configuration.
 
-`DeterministicStructuredTranscriptionComposer` emits an ordered tuple of
-immutable `TranscriptionItem` values:
+`StructuredTranscriptionActionizer.action()` emits an ordered tuple of
+immutable `TranscriptionItem` values. `TranscriptionInput` and
+`DeterministicStructuredTranscriptionComposer` are deprecated exact type aliases;
+`compose()` is a warning-emitting forwarding alias with no separate logic.
+
+The result contains:
 
 - one `page_anchor` for every physical page, preserving its printed label;
 - `heading` and `prose` items linked to exact structure nodes or raw fallback
@@ -614,8 +619,8 @@ immutable `TranscriptionItem` values:
 Each item records its source-object kind/ID, physical and printed page, source
 block IDs/spans, evidence status, confidence, order index/status, warnings, and
 bounded evidence. Table and figure items intentionally contain no invented text;
-the complete typed objects remain reachable through `TranscriptionInput`.
-Equation item text is detector-native raw evidence, not a corrected mathematical
+the complete typed objects remain reachable through
+`StructuredTranscriptionRequest`. Equation item text is detector-native raw evidence, not a corrected mathematical
 transcription.
 
 Text items preserve every exact source string. Their only normalization joins

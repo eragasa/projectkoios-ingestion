@@ -45,8 +45,7 @@ from projectkoios.ingestion.reconciliation import (
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionResult,
-    TranscriptionInput,
+    StructuredTranscriptionActionizer,
 )
 
 
@@ -213,15 +212,8 @@ class DerivedProcessingCache(Protocol):
     ) -> None: ...
 
 
-class StructuredTranscriptionComposer(Protocol):
-    """Compose exact derived evidence without choosing a destination."""
-
-    name: str
-    version: str
-
-    def compose(
-        self, transcription_input: TranscriptionInput
-    ) -> StructuredTranscriptionResult: ...
+# Deprecated exact type alias; remove only in an authorized later release.
+StructuredTranscriptionComposer = StructuredTranscriptionActionizer
 
 
 class ExtractionCache(Protocol):

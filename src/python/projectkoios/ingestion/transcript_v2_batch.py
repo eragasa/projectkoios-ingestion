@@ -47,8 +47,8 @@ from projectkoios.ingestion.transcript_v2 import (
     PublisherFrontMatterKind,
 )
 from projectkoios.ingestion.transcription import (
-    DeterministicStructuredTranscriptionComposer,
-    TranscriptionInput,
+    StructuredTranscriptionActionizer,
+    StructuredTranscriptionRequest,
 )
 
 TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID = (
@@ -229,9 +229,7 @@ class TranscriptV2BatchItem:
                 "output_directory must be a portable path"
             )
         _relative_path(self.pdf_path.as_posix(), "pdf_path")
-        _relative_path(
-            self.output_directory.as_posix(), "output_directory"
-        )
+        _relative_path(self.output_directory.as_posix(), "output_directory")
         if self.pdf_path.suffix.lower() != ".pdf":
             raise TranscriptV2BatchError("pdf_path must name a PDF")
         _require_sha256(self.source_sha256, "source_sha256")
@@ -327,8 +325,7 @@ class TranscriptV2BatchPlan:
             self.contract_id != TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID
             or self.contract_version
             != TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_VERSION
-            or self.schema_version
-            != TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION
+            or self.schema_version != TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION
             or self.clean_transcript_contract_id
             != CLEAN_TRANSCRIPT_V2_CONTRACT_ID
             or self.clean_transcript_contract_version
@@ -373,9 +370,7 @@ class TranscriptV2BatchPlan:
             ),
             (
                 "output_directory",
-                tuple(
-                    item.output_directory.as_posix() for item in self.items
-                ),
+                tuple(item.output_directory.as_posix() for item in self.items),
             ),
         ):
             if len(values) != len(set(values)):
@@ -393,9 +388,7 @@ class TranscriptV2BatchPlan:
     def to_json(self) -> str:
         value = {
             "artifact_generation": self.artifact_generation,
-            "clean_transcript_contract_id": (
-                self.clean_transcript_contract_id
-            ),
+            "clean_transcript_contract_id": (self.clean_transcript_contract_id),
             "clean_transcript_contract_version": (
                 self.clean_transcript_contract_version
             ),
@@ -410,12 +403,15 @@ class TranscriptV2BatchPlan:
             "processor_version": self.processor_version,
             "schema_version": self.schema_version,
         }
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
 
     @classmethod
     def from_json(cls, text: str) -> TranscriptV2BatchPlan:
@@ -527,9 +523,7 @@ def build_transcript_v2_batch_plan(
                 source_sha256=source.item.sha256,
                 source_byte_size=source.item.byte_size,
                 locator=source.item.locator,
-                extraction_artifact_sha256=(
-                    source.extraction_artifact_sha256
-                ),
+                extraction_artifact_sha256=(source.extraction_artifact_sha256),
                 extraction_manifest_id=manifest_id,
                 equation_detection_artifact_sha256=hashlib.sha256(
                     detection_bytes
@@ -578,9 +572,14 @@ def resolve_transcript_v2_batch_plan(
                 "raw extraction artifact differs from the durable plan"
             )
         extraction = _read_json_artifact(source.extraction_artifact)
-        if _nested_text(
-            extraction, ("manifest", "manifest_id"), "extraction manifest_id"
-        ) != plan_item.extraction_manifest_id:
+        if (
+            _nested_text(
+                extraction,
+                ("manifest", "manifest_id"),
+                "extraction manifest_id",
+            )
+            != plan_item.extraction_manifest_id
+        ):
             raise TranscriptV2BatchError(
                 "raw extraction identity differs from the durable plan"
             )
@@ -592,9 +591,12 @@ def resolve_transcript_v2_batch_plan(
                 "equation detection artifact differs from the durable plan"
             )
         detection = _strict_json_object(detection_bytes.decode("utf-8"))
-        if _nested_text(
-            detection, ("result_id",), "equation detection result_id"
-        ) != plan_item.equation_detection_result_id:
+        if (
+            _nested_text(
+                detection, ("result_id",), "equation detection result_id"
+            )
+            != plan_item.equation_detection_result_id
+        ):
             raise TranscriptV2BatchError(
                 "equation detection identity differs from the durable plan"
             )
@@ -638,9 +640,7 @@ def execute_transcript_v2_batch_item(
         raise TranscriptV2BatchError(
             "raw extraction artifact changed after preflight"
         )
-    existing_extraction = _strict_json_object(
-        extraction_bytes.decode("utf-8")
-    )
+    existing_extraction = _strict_json_object(extraction_bytes.decode("utf-8"))
     replayed_extraction = contract_dict(extraction)
     if existing_extraction.get("document") != replayed_extraction["document"]:
         raise TranscriptV2BatchError(
@@ -679,8 +679,8 @@ def execute_transcript_v2_batch_item(
         BytesIO(payload),
         layouts,
     )
-    transcription = DeterministicStructuredTranscriptionComposer().compose(
-        TranscriptionInput.create(
+    transcription = StructuredTranscriptionActionizer().action(
+        request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
             equation_detection_result=equations,
@@ -688,9 +688,9 @@ def execute_transcript_v2_batch_item(
             figure_detection_result=figures,
         )
     )
-    clean = DeterministicCleanTranscriptV2Projector(
-        plan.configuration
-    ).project(transcription, layouts)
+    clean = DeterministicCleanTranscriptV2Projector(plan.configuration).project(
+        transcription, layouts
+    )
     audit = DerivationAuditValidator().audit(
         DerivationAuditInput(
             source_content=payload,
@@ -715,12 +715,8 @@ def execute_transcript_v2_batch_item(
         "clean_pages": len(clean.pages),
         "dehyphenation_decisions": len(clean.dehyphenation_decisions),
         "equation_candidates": len(equations.candidates),
-        "page_number_classifications": len(
-            clean.page_number_classifications
-        ),
-        "private_use_glyph_findings": len(
-            clean.private_use_glyph_findings
-        ),
+        "page_number_classifications": len(clean.page_number_classifications),
+        "private_use_glyph_findings": len(clean.private_use_glyph_findings),
         "publisher_front_matter_classifications": len(
             clean.publisher_front_matter
         ),
@@ -769,9 +765,7 @@ def load_durable_plan(path: Path) -> TranscriptV2BatchPlan:
     """Load one bounded, non-symlinked durable execution plan."""
     source = path.expanduser().absolute()
     if source.is_symlink() or not source.is_file():
-        raise TranscriptV2BatchError(
-            "durable plan must be a safe regular file"
-        )
+        raise TranscriptV2BatchError("durable plan must be a safe regular file")
     if source.stat().st_size > _MAX_PLAN_BYTES:
         raise TranscriptV2BatchError("batch plan exceeds the size limit")
     try:
@@ -970,9 +964,7 @@ def _item_from_dict(value: object) -> TranscriptV2BatchItem:
         output_directory=_relative_path(
             value["output_directory"], "output_directory"
         ),
-        source_sha256=_require_sha256(
-            value["source_sha256"], "source_sha256"
-        ),
+        source_sha256=_require_sha256(value["source_sha256"], "source_sha256"),
         source_byte_size=_require_int(
             value["source_byte_size"], "source_byte_size"
         ),
@@ -1015,9 +1007,7 @@ def _strict_json_object(text: str) -> dict[str, Any]:
     return value
 
 
-def _read_artifact(
-    path: Path, *, label: str = "predecessor artifact"
-) -> bytes:
+def _read_artifact(path: Path, *, label: str = "predecessor artifact") -> bytes:
     if path.is_symlink() or not path.is_file():
         raise TranscriptV2BatchError(f"{label} is missing or unsafe")
     content = path.read_bytes()
@@ -1187,9 +1177,7 @@ def _manifest_text(
             "not_semantically_corrected",
         ],
         "manifest_id": manifest_id,
-        "output_relative_path": (
-            TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH.as_posix()
-        ),
+        "output_relative_path": (TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH.as_posix()),
         "plan_id": plan.plan_id,
         "processor_version": CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION,
         "schema_version": TRANSCRIPT_V2_BATCH_MANIFEST_SCHEMA_VERSION,

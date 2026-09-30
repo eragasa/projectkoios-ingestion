@@ -22,11 +22,18 @@ from projectkoios.ingestion import (
     TableStructureResult,
 )
 from projectkoios.ingestion import (
-    DeterministicStructuredTranscriptionComposer as PublicComposer,
+    DeterministicStructuredTranscriptionComposer as DeprecatedRootComposer,
 )
-from projectkoios.ingestion.protocols import StructuredTranscriptionComposer
+from projectkoios.ingestion import (
+    TranscriptionInput as DeprecatedRootInput,
+)
+from projectkoios.ingestion.protocols import (
+    StructuredTranscriptionComposer as DeprecatedComposerProtocol,
+)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
+    StructuredTranscriptionActionizer,
+    StructuredTranscriptionRequest,
     StructuredTranscriptionResult,
     TranscriptionConfiguration,
     TranscriptionEvidenceStatus,
@@ -68,20 +75,20 @@ def _pipeline(fixture_name: str):
     figures = DeterministicFigureCandidateDetector().detect(
         document, BytesIO(payload)
     )
-    transcription_input = TranscriptionInput.create(
+    transcription_input = StructuredTranscriptionRequest.create(
         document=document,
         structure_analysis=structure,
         equation_detection_result=equations,
         table_structure_result=tables,
         figure_detection_result=figures,
     )
-    result = DeterministicStructuredTranscriptionComposer().compose(
-        transcription_input
+    result = StructuredTranscriptionActionizer().action(
+        request=transcription_input
     )
     return payload, transcription_input, result
 
 
-def _uncertain_input() -> TranscriptionInput:
+def _uncertain_input() -> StructuredTranscriptionRequest:
     payload, base, _result = _pipeline("born-digital-text")
     document = base.document
     pages = []
@@ -137,7 +144,7 @@ def _uncertain_input() -> TranscriptionInput:
     figures = DeterministicFigureCandidateDetector().detect(
         altered, BytesIO(payload)
     )
-    return TranscriptionInput.create(
+    return StructuredTranscriptionRequest.create(
         document=altered,
         structure_analysis=structure,
         equation_detection_result=equations,
@@ -235,8 +242,8 @@ def test__structured_transcription__retains_figure_candidate() -> None:
 
 def test__structured_transcription__makes_uncertain_order_explicit() -> None:
     transcription_input = _uncertain_input()
-    result = DeterministicStructuredTranscriptionComposer().compose(
-        transcription_input
+    result = StructuredTranscriptionActionizer().action(
+        request=transcription_input
     )
     fallback = next(
         item
@@ -306,8 +313,8 @@ def test__structured_transcription__cache_identity_covers_all_inputs() -> None:
             first_input.figure_detection_result
         ),
         configuration: TranscriptionConfiguration = first_input.configuration,
-    ) -> TranscriptionInput:
-        return TranscriptionInput.create(
+    ) -> StructuredTranscriptionRequest:
+        return StructuredTranscriptionRequest.create(
             document=first_input.document,
             structure_analysis=structure_analysis,
             equation_detection_result=equation_detection_result,
@@ -344,7 +351,7 @@ def test__structured_transcription__rejects_cross_source_inputs() -> None:
     _other_payload, tables_input, _other_result = _pipeline("tables")
 
     with pytest.raises(ValueError, match="table result must retain"):
-        TranscriptionInput.create(
+        StructuredTranscriptionRequest.create(
             document=equations_input.document,
             structure_analysis=equations_input.structure_analysis,
             equation_detection_result=equations_input.equation_detection_result,
@@ -358,7 +365,7 @@ def test__structured_transcription__enforces_artifact_and_output_limits() -> (
 ):
     _payload, equations_input, _result = _pipeline("equations")
     with pytest.raises(TranscriptionLimitError, match="input artifacts"):
-        TranscriptionInput.create(
+        StructuredTranscriptionRequest.create(
             document=equations_input.document,
             structure_analysis=equations_input.structure_analysis,
             equation_detection_result=equations_input.equation_detection_result,
@@ -370,7 +377,7 @@ def test__structured_transcription__enforces_artifact_and_output_limits() -> (
         )
 
     _payload, born_input, _result = _pipeline("born-digital-text")
-    limited = TranscriptionInput.create(
+    limited = StructuredTranscriptionRequest.create(
         document=born_input.document,
         structure_analysis=born_input.structure_analysis,
         equation_detection_result=born_input.equation_detection_result,
@@ -379,7 +386,7 @@ def test__structured_transcription__enforces_artifact_and_output_limits() -> (
         configuration=TranscriptionConfiguration(max_items=1),
     )
     with pytest.raises(TranscriptionLimitError, match="items exceed"):
-        DeterministicStructuredTranscriptionComposer().compose(limited)
+        StructuredTranscriptionActionizer().action(request=limited)
 
 
 def test__structured_transcription__rejects_false_provenance() -> None:
@@ -431,20 +438,26 @@ def test__structured_transcription__rejects_false_provenance() -> None:
         )
 
 
-def test__structured_transcription__protocol_is_engine_neutral() -> None:
-    assert PublicComposer is DeterministicStructuredTranscriptionComposer
-    composer: StructuredTranscriptionComposer = (
-        DeterministicStructuredTranscriptionComposer()
-    )
-    _payload, transcription_input, expected = _pipeline("born-digital-text")
+def test__structured_transcription__uses_action_family_base_objects() -> None:
+    actionizer = StructuredTranscriptionActionizer()
+    _payload, request, expected = _pipeline("born-digital-text")
 
-    assert composer.compose(transcription_input) == expected
+    assert actionizer.action(request=request) == expected
+    assert expected.request is request
+    assert expected.request_id == request.request_id
+    assert TranscriptionInput is StructuredTranscriptionRequest
+    assert DeprecatedRootInput is StructuredTranscriptionRequest
+    assert DeterministicStructuredTranscriptionComposer is actionizer.__class__
+    assert DeprecatedRootComposer is actionizer.__class__
+    assert DeprecatedComposerProtocol is actionizer.__class__
+    with pytest.warns(DeprecationWarning, match="compose"):
+        assert actionizer.compose(request) == expected
 
 
 def test__structured_transcription__is_deterministic_and_immutable() -> None:
     _payload, transcription_input, result = _pipeline("tables")
-    repeated = DeterministicStructuredTranscriptionComposer().compose(
-        transcription_input
+    repeated = StructuredTranscriptionActionizer().action(
+        request=transcription_input
     )
 
     assert repeated == result

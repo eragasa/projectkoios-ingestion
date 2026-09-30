@@ -10,17 +10,19 @@ from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicLayoutProcessor,
-    DeterministicStructuredTranscriptionComposer,
     DeterministicTableCandidateDetector,
     DeterministicTableStructureReconstructor,
     PyMuPdfExtractor,
     SourceDocument,
-    TranscriptionInput,
 )
 from projectkoios.ingestion.transcript_projection import (
     CleanTranscriptExclusionReason,
     CleanTranscriptStatus,
     DeterministicCleanTranscriptProjector,
+)
+from projectkoios.ingestion.transcription import (
+    StructuredTranscriptionActionizer,
+    StructuredTranscriptionRequest,
 )
 
 pymupdf: Any = pytest.importorskip("pymupdf")
@@ -74,8 +76,8 @@ def _pipeline(payload: bytes):
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(payload), layouts
     )
-    transcription = DeterministicStructuredTranscriptionComposer().compose(
-        TranscriptionInput.create(
+    transcription = StructuredTranscriptionActionizer().action(
+        request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
             equation_detection_result=equations,

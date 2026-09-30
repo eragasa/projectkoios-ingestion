@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import math
 import re
+import warnings
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum, StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.equations import (
     EquationCandidate,
     EquationDetectionResult,
@@ -163,7 +169,7 @@ class TranscriptionConfiguration:
 
 
 @dataclass(frozen=True)
-class TranscriptionInput:
+class StructuredTranscriptionRequest(DataObjectActionRequest):
     input_id: str
     document_evidence_id: str
     document: ExtractedDocument
@@ -184,7 +190,7 @@ class TranscriptionInput:
         table_structure_result: TableStructureResult,
         figure_detection_result: FigureDetectionResult,
         configuration: TranscriptionConfiguration | None = None,
-    ) -> TranscriptionInput:
+    ) -> StructuredTranscriptionRequest:
         actual = configuration or TranscriptionConfiguration()
         _validate_input_parts(
             document,
@@ -242,6 +248,13 @@ class TranscriptionInput:
         )
         if self.input_id != expected:
             raise ValueError("transcription input ID is inconsistent")
+
+    @property
+    def request_id(self) -> str:
+        return self.input_id
+
+
+TranscriptionInput = StructuredTranscriptionRequest
 
 
 @dataclass(frozen=True)
@@ -463,9 +476,9 @@ class TranscriptionOmission:
 
 
 @dataclass(frozen=True)
-class StructuredTranscriptionResult:
+class StructuredTranscriptionResult(DataObjectActionResult):
     result_id: str
-    transcription_input: TranscriptionInput
+    transcription_input: StructuredTranscriptionRequest
     items: tuple[TranscriptionItem, ...]
     omissions: tuple[TranscriptionOmission, ...]
     warnings: tuple[IngestionWarning, ...]
@@ -480,7 +493,7 @@ class StructuredTranscriptionResult:
     def create(
         cls,
         *,
-        transcription_input: TranscriptionInput,
+        transcription_input: StructuredTranscriptionRequest,
         items: tuple[TranscriptionItem, ...],
         omissions: tuple[TranscriptionOmission, ...],
         warnings: tuple[IngestionWarning, ...],
@@ -538,6 +551,22 @@ class StructuredTranscriptionResult:
                 "structured transcription result ID is inconsistent"
             )
 
+    @property
+    def request(self) -> StructuredTranscriptionRequest:
+        return self.transcription_input
+
+    @property
+    def request_id(self) -> str:
+        return self.transcription_input.request_id
+
+    @property
+    def actionizer_name(self) -> str:
+        return self.processor_name
+
+    @property
+    def actionizer_version(self) -> str:
+        return self.processor_version
+
 
 @dataclass(frozen=True)
 class _Draft:
@@ -579,17 +608,24 @@ class _Draft:
         )
 
 
-class DeterministicStructuredTranscriptionComposer:
+class StructuredTranscriptionActionizer(
+    DataObjectActionizer[
+        StructuredTranscriptionRequest, StructuredTranscriptionResult
+    ]
+):
     """Compose exact evidence into a destination-independent proposal."""
+
+    __slots__ = ()
 
     name = "deterministic-structured-transcription-composer"
     version = TRANSCRIPTION_COMPOSER_VERSION
 
-    def compose(
-        self, transcription_input: TranscriptionInput
+    def action(
+        self, *, request: StructuredTranscriptionRequest
     ) -> StructuredTranscriptionResult:
-        if not isinstance(transcription_input, TranscriptionInput):
-            raise TypeError("transcription_input must be TranscriptionInput")
+        transcription_input = request
+        if not isinstance(transcription_input, StructuredTranscriptionRequest):
+            raise TypeError("request must be StructuredTranscriptionRequest")
         document = transcription_input.document
         configuration = transcription_input.configuration
         block_by_id = {
@@ -768,7 +804,7 @@ class DeterministicStructuredTranscriptionComposer:
 
     @staticmethod
     def _equation_drafts(
-        transcription_input: TranscriptionInput,
+        transcription_input: StructuredTranscriptionRequest,
     ) -> list[_Draft]:
         document = transcription_input.document
         page_by_index = {page.page_index: page for page in document.pages}
@@ -801,7 +837,7 @@ class DeterministicStructuredTranscriptionComposer:
 
     @staticmethod
     def _table_drafts(
-        transcription_input: TranscriptionInput,
+        transcription_input: StructuredTranscriptionRequest,
     ) -> list[_Draft]:
         document = transcription_input.document
         page_by_index = {page.page_index: page for page in document.pages}
@@ -838,7 +874,7 @@ class DeterministicStructuredTranscriptionComposer:
 
     @staticmethod
     def _figure_drafts(
-        transcription_input: TranscriptionInput,
+        transcription_input: StructuredTranscriptionRequest,
     ) -> list[_Draft]:
         document = transcription_input.document
         page_by_index = {page.page_index: page for page in document.pages}
@@ -867,15 +903,32 @@ class DeterministicStructuredTranscriptionComposer:
             )
         return result
 
+    def compose(
+        self, transcription_input: StructuredTranscriptionRequest
+    ) -> StructuredTranscriptionResult:
+        """Deprecated forwarding alias for :meth:`action`."""
+        warnings.warn(
+            "compose() is deprecated; use action(request=...)",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.action(request=transcription_input)
+
+
+# Deprecated exact type alias; remove only in an authorized later release.
+DeterministicStructuredTranscriptionComposer = StructuredTranscriptionActionizer
+
 
 def build_transcription_cache_key(
-    transcription_input: TranscriptionInput,
+    transcription_input: StructuredTranscriptionRequest,
     *,
     processor_name: str = "deterministic-structured-transcription-composer",
     processor_version: str = TRANSCRIPTION_COMPOSER_VERSION,
 ) -> str:
-    if not isinstance(transcription_input, TranscriptionInput):
-        raise TypeError("transcription_input must be TranscriptionInput")
+    if not isinstance(transcription_input, StructuredTranscriptionRequest):
+        raise TypeError(
+            "transcription_input must be StructuredTranscriptionRequest"
+        )
     _identity_fields(processor_name, processor_version)
     return stable_id(
         "structured-transcription-cache",
@@ -1464,7 +1517,9 @@ def _result_id(
 
 
 def _validate_result(result: StructuredTranscriptionResult) -> None:
-    if not isinstance(result.transcription_input, TranscriptionInput):
+    if not isinstance(
+        result.transcription_input, StructuredTranscriptionRequest
+    ):
         raise TypeError("transcription result input is unsupported")
     _require_tuple("transcription items", result.items)
     _require_tuple("transcription omissions", result.omissions)

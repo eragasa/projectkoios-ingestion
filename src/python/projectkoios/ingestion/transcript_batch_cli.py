@@ -48,8 +48,8 @@ from projectkoios.ingestion.transcript_projection import (
     DeterministicCleanTranscriptProjector,
 )
 from projectkoios.ingestion.transcription import (
-    DeterministicStructuredTranscriptionComposer,
-    TranscriptionInput,
+    StructuredTranscriptionActionizer,
+    StructuredTranscriptionRequest,
 )
 
 TRANSCRIPT_BATCH_MANIFEST_SCHEMA_VERSION = 2
@@ -258,8 +258,8 @@ def _derive(
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(payload), layouts
     )
-    transcription = DeterministicStructuredTranscriptionComposer().compose(
-        TranscriptionInput.create(
+    transcription = StructuredTranscriptionActionizer().action(
+        request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
             equation_detection_result=equations,

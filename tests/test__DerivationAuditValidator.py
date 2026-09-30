@@ -16,7 +16,6 @@ from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicOCRReconciler,
-    DeterministicStructuredTranscriptionComposer,
     DeterministicTableCandidateDetector,
     DeterministicTableStructureReconstructor,
     OCRConfiguration,
@@ -34,7 +33,6 @@ from projectkoios.ingestion import (
     OCRSelectionStatus,
     OCRToken,
     PyMuPdfExtractor,
-    TranscriptionInput,
 )
 from projectkoios.ingestion import (
     DerivationAuditValidator as PublicDerivationAuditValidator,
@@ -79,6 +77,10 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditValidator,
 )
 from projectkoios.ingestion.structure import StructureAnalysis
+from projectkoios.ingestion.transcription import (
+    StructuredTranscriptionActionizer,
+    StructuredTranscriptionRequest,
+)
 
 pymupdf = pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
@@ -253,8 +255,8 @@ def clean_audit_fixture() -> _CleanAuditFixture:
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(content), layouts
     )
-    transcription = DeterministicStructuredTranscriptionComposer().compose(
-        TranscriptionInput.create(
+    transcription = StructuredTranscriptionActionizer().action(
+        request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
             equation_detection_result=equations,
@@ -594,8 +596,8 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(content), layouts
     )
-    transcription = DeterministicStructuredTranscriptionComposer().compose(
-        TranscriptionInput.create(
+    transcription = StructuredTranscriptionActionizer().action(
+        request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
             equation_detection_result=equations,

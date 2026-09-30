@@ -40,7 +40,7 @@ flowchart TD
     Equations --> EquationAssembly[DeterministicEquationAssembler]
     Tables --> TableStructure[DeterministicTableStructureReconstructor]
 
-    Raw --> Compose[DeterministicStructuredTranscriptionComposer]
+    Raw --> Compose[StructuredTranscriptionActionizer]
     Structure --> Compose
     Equations --> Compose
     TableStructure --> Compose
@@ -64,6 +64,6 @@ page text; deterministic derivations remain explicit caller-selected stages.
 - **`DeterministicEquationCandidateDetector`** and **`DeterministicEquationAssembler`** — detect and assemble equation evidence.
 - **`DeterministicTableCandidateDetector`** and **`DeterministicTableStructureReconstructor`** — detect and reconstruct table evidence.
 - **`DeterministicFigureCandidateDetector`** — retains source-backed figure candidates and associations.
-- **`DeterministicStructuredTranscriptionComposer`** — composes typed evidence into an ordered transcript proposal.
+- **`StructuredTranscriptionActionizer`** — composes typed evidence into an ordered transcript proposal.
 - **`DeterministicCleanTranscriptProjector`** and **`DeterministicCleanTranscriptV2Projector`** — produce conservative clean projections.
 - **`DerivationAuditValidator`** — deterministically validates retained provenance consistency.

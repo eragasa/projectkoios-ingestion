@@ -602,14 +602,14 @@ processor/cache protocol typing.
 
 ### ING-TRANSCRIPT-01 — Structured transcription proposal (implemented)
 
-`TranscriptionInput` retains one exact document and complete exact structure,
+`StructuredTranscriptionRequest` retains one exact document and complete exact structure,
 equation-detection, table-structure, and figure-detection results. Every stage
 must refer to the same logical source and exact blob; missing processing must be
 represented by a valid empty result rather than silently inferred. Input
 identity binds a hash of the complete extracted-document value, all upstream
 result IDs, and complete composition configuration.
 
-`DeterministicStructuredTranscriptionComposer` emits ordered page anchors,
+`StructuredTranscriptionActionizer` emits ordered page anchors,
 headings, prose, equation candidates, table structures, and figure candidates.
 Typed items link complete upstream objects rather than flattening tables or
 figures into prose or claiming corrected equation text. Text normalization only
