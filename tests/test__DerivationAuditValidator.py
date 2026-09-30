@@ -78,7 +78,7 @@ from projectkoios.ingestion.provenance import (
 )
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionActionizer,
+    DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,
 )
 
@@ -255,7 +255,7 @@ def clean_audit_fixture() -> _CleanAuditFixture:
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(content), layouts
     )
-    transcription = StructuredTranscriptionActionizer().action(
+    transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,
@@ -596,7 +596,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(content), layouts
     )
-    transcription = StructuredTranscriptionActionizer().action(
+    transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,

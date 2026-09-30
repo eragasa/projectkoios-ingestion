@@ -602,10 +602,10 @@ immutable extracted-document value. The input ID binds that evidence ID, every
 upstream result ID, the logical and exact blob identities, and complete
 configuration.
 
-`StructuredTranscriptionActionizer.action()` emits an ordered tuple of
-immutable `TranscriptionItem` values. `TranscriptionInput` and
-`DeterministicStructuredTranscriptionComposer` are deprecated exact type aliases;
-`compose()` is a warning-emitting forwarding alias with no separate logic.
+`DeterministicStructuredTranscriptionComposer.action()` emits an ordered tuple
+of immutable `TranscriptionItem` values. `TranscriptionInput` is a deprecated
+exact alias to `StructuredTranscriptionRequest`; supported `compose()` forwards
+to `action()` with no separate logic.
 
 The result contains:
 

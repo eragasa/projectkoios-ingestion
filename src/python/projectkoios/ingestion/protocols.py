@@ -45,7 +45,7 @@ from projectkoios.ingestion.reconciliation import (
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionActionizer,
+    DeterministicStructuredTranscriptionComposer,
 )
 
 
@@ -213,7 +213,7 @@ class DerivedProcessingCache(Protocol):
 
 
 # Deprecated exact type alias; remove only in an authorized later release.
-StructuredTranscriptionComposer = StructuredTranscriptionActionizer
+StructuredTranscriptionComposer = DeterministicStructuredTranscriptionComposer
 
 
 class ExtractionCache(Protocol):

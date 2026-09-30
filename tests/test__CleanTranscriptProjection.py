@@ -21,7 +21,7 @@ from projectkoios.ingestion.transcript_projection import (
     DeterministicCleanTranscriptProjector,
 )
 from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionActionizer,
+    DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,
 )
 
@@ -76,7 +76,7 @@ def _pipeline(payload: bytes):
     figures = DeterministicFigureCandidateDetector().detect_with_layout(
         document, BytesIO(payload), layouts
     )
-    transcription = StructuredTranscriptionActionizer().action(
+    transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,
             structure_analysis=structure,

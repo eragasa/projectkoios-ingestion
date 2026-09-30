@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import re
-import warnings
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum, StrEnum
 
@@ -2060,7 +2059,7 @@ class StructuredTranscriptionContract:
                 )
 
 
-class StructuredTranscriptionActionizer(
+class DeterministicStructuredTranscriptionComposer(
     DataObjectActionizer[
         StructuredTranscriptionRequest, StructuredTranscriptionResult
     ]
@@ -2414,17 +2413,8 @@ class StructuredTranscriptionActionizer(
     def compose(
         self, transcription_input: StructuredTranscriptionRequest
     ) -> StructuredTranscriptionResult:
-        """Deprecated forwarding alias for :meth:`action`."""
-        warnings.warn(
-            "compose() is deprecated; use action(request=...)",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        """Compose one request through the canonical action path."""
         return self.action(request=transcription_input)
-
-
-# Deprecated exact type alias; remove only in an authorized later release.
-DeterministicStructuredTranscriptionComposer = StructuredTranscriptionActionizer
 
 
 def build_transcription_cache_key(

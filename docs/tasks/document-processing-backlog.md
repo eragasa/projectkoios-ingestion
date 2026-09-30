@@ -609,7 +609,7 @@ represented by a valid empty result rather than silently inferred. Input
 identity binds a hash of the complete extracted-document value, all upstream
 result IDs, and complete composition configuration.
 
-`StructuredTranscriptionActionizer` emits ordered page anchors,
+`DeterministicStructuredTranscriptionComposer` emits ordered page anchors,
 headings, prose, equation candidates, table structures, and figure candidates.
 Typed items link complete upstream objects rather than flattening tables or
 figures into prose or claiming corrected equation text. Text normalization only
