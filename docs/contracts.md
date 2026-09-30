@@ -1266,7 +1266,10 @@ process-global sequence number.
 ## Ollama multimodal region proposals
 
 Contract version 1.0 provides an immutable bounded request/result contract and
-`OllamaMultimodalRegionProcessor` for exact ordered `RenderedRegion` PNGs.
+`OllamaMultimodalRequest` → `OllamaMultimodalRegionProcessor` →
+`OllamaMultimodalResult` directly implements the action-family bases for exact
+ordered `RenderedRegion` PNGs. Canonical `action(request=...)` owns processing;
+supported `process()` forwards to that single logic path.
 Selections and ordered results retain complete source/blob/page/region and PNG
 provenance. The fixed prompt/schema and configured local endpoint, Ollama
 runtime version, model name, expected manifest digest, options, limits, and

@@ -73,7 +73,7 @@ processor = OllamaMultimodalRegionProcessor(
         read_timeout_seconds=120.0,
     )
 )
-result = processor.process(request)
+result = processor.action(request=request)
 ```
 
 The application owns the unresolved-selection threshold and must retain it in

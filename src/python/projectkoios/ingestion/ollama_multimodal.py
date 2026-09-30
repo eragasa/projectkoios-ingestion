@@ -11,6 +11,11 @@ from enum import StrEnum
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.pdf.models import RenderedRegion
 
@@ -88,17 +93,21 @@ Ordered evidence manifest:
 """
 
 
-def _sha256_bytes(value: bytes) -> str:
-    return hashlib.sha256(value).hexdigest()
+class OllamaPromptContract:
+    """Own prompt and payload hashing behavior."""
 
+    @staticmethod
+    def _sha256_bytes(value: bytes) -> str:
+        return hashlib.sha256(value).hexdigest()
 
-def _prompt_template_sha256() -> str:
-    return _sha256_bytes(
-        _PROMPT_TEMPLATE.format(
-            prompt_version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
-            manifest="{ordered_evidence_manifest}",
-        ).encode("utf-8")
-    )
+    @staticmethod
+    def _prompt_template_sha256() -> str:
+        return OllamaPromptContract._sha256_bytes(
+            _PROMPT_TEMPLATE.format(
+                prompt_version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
+                manifest="{ordered_evidence_manifest}",
+            ).encode("utf-8")
+        )
 
 
 class OllamaMultimodalTaskKind(StrEnum):
@@ -338,7 +347,7 @@ class OllamaMultimodalConfiguration:
         object.__setattr__(
             self, "endpoint", normalize_ollama_endpoint(self.endpoint)
         )
-        _bounded_nonempty_utf8(
+        OllamaMultimodalContract._bounded_nonempty_utf8(
             "model_name", self.model_name, _HARD_MAX_MODEL_NAME_BYTES
         )
         if any(char.isspace() for char in self.model_name):
@@ -348,9 +357,11 @@ class OllamaMultimodalConfiguration:
         object.__setattr__(
             self,
             "expected_model_digest",
-            _validate_model_digest(self.expected_model_digest),
+            OllamaMultimodalContract._validate_model_digest(
+                self.expected_model_digest
+            ),
         )
-        _validate_version(self.expected_ollama_version)
+        OllamaMultimodalContract._validate_version(self.expected_ollama_version)
         if not isinstance(self.options, OllamaRequestOptions):
             raise TypeError("options must be OllamaRequestOptions")
         if not isinstance(self.limits, OllamaMultimodalLimits):
@@ -485,9 +496,12 @@ class OllamaPromptRecord:
         encoded = self.text.encode("utf-8")
         if self.version != OLLAMA_MULTIMODAL_PROMPT_VERSION:
             raise ValueError("unsupported prompt version")
-        if self.template_sha256 != _prompt_template_sha256():
+        if (
+            self.template_sha256
+            != OllamaPromptContract._prompt_template_sha256()
+        ):
             raise ValueError("prompt template digest mismatch")
-        if self.rendered_sha256 != _sha256_bytes(encoded):
+        if self.rendered_sha256 != OllamaPromptContract._sha256_bytes(encoded):
             raise ValueError("rendered prompt digest mismatch")
         if self.utf8_byte_length != len(encoded):
             raise ValueError("rendered prompt byte length mismatch")
@@ -498,7 +512,7 @@ class OllamaPromptRecord:
 
 
 @dataclass(frozen=True)
-class OllamaMultimodalRequest:
+class OllamaMultimodalRequest(DataObjectActionRequest):
     request_id: str
     task_kind: OllamaMultimodalTaskKind
     selections: tuple[OllamaMultimodalSelection, ...]
@@ -544,12 +558,15 @@ class OllamaMultimodalRequest:
             raise OllamaMultimodalLimitError(
                 "selection PNGs exceed the aggregate pixel limit"
             )
-        prompt = _build_prompt(selections)
+        prompt = OllamaMultimodalContract._build_prompt(selections)
         request_id = stable_id(
             "ollama-multimodal-request",
             OLLAMA_MULTIMODAL_CONTRACT_VERSION,
             task_kind,
-            tuple(_selection_identity(item) for item in selections),
+            tuple(
+                OllamaMultimodalContract._selection_identity(item)
+                for item in selections
+            ),
             prompt,
         )
         return cls(
@@ -593,14 +610,19 @@ class OllamaMultimodalRequest:
             raise OllamaMultimodalLimitError(
                 "selection PNGs exceed the aggregate pixel limit"
             )
-        expected_prompt = _build_prompt(self.selections)
+        expected_prompt = OllamaMultimodalContract._build_prompt(
+            self.selections
+        )
         if self.prompt != expected_prompt:
             raise ValueError("request prompt is not canonical for selections")
         expected_id = stable_id(
             "ollama-multimodal-request",
             OLLAMA_MULTIMODAL_CONTRACT_VERSION,
             self.task_kind,
-            tuple(_selection_identity(item) for item in self.selections),
+            tuple(
+                OllamaMultimodalContract._selection_identity(item)
+                for item in self.selections
+            ),
             self.prompt,
         )
         if self.request_id != expected_id:
@@ -632,18 +654,23 @@ class OllamaMultimodalProcessorIdentity:
             or self.backend_name != OLLAMA_BACKEND_NAME
         ):
             raise ValueError("unsupported processor identity")
-        _validate_version(self.expected_backend_version)
+        OllamaMultimodalContract._validate_version(
+            self.expected_backend_version
+        )
         if self.endpoint != normalize_ollama_endpoint(self.endpoint):
             raise ValueError("processor endpoint is not normalized")
-        _bounded_nonempty_utf8(
+        OllamaMultimodalContract._bounded_nonempty_utf8(
             "model_name", self.model_name, _HARD_MAX_MODEL_NAME_BYTES
         )
-        _validate_model_digest(self.expected_model_digest)
+        OllamaMultimodalContract._validate_model_digest(
+            self.expected_model_digest
+        )
         if self.required_capabilities != OLLAMA_REQUIRED_CAPABILITIES:
             raise ValueError("processor capabilities are unsupported")
         if (
             self.prompt_version != OLLAMA_MULTIMODAL_PROMPT_VERSION
-            or self.prompt_template_sha256 != _prompt_template_sha256()
+            or self.prompt_template_sha256
+            != OllamaPromptContract._prompt_template_sha256()
             or self.response_schema_version != OLLAMA_MULTIMODAL_SCHEMA_VERSION
         ):
             raise ValueError(
@@ -667,7 +694,7 @@ class OllamaMultimodalProcessorIdentity:
             != self.configuration.configuration_digest
         ):
             raise ValueError("processor identity and configuration disagree")
-        _validate_stable_id(
+        OllamaMultimodalContract._validate_stable_id(
             "processor configuration",
             self.configuration_digest,
             "ollama-multimodal-configuration",
@@ -694,8 +721,10 @@ class OllamaMetadataResponseIdentity:
         }[self.stage]
         if self.path != expected_path:
             raise ValueError("metadata stage and path do not agree")
-        _validate_sha256("metadata response", self.http_body_sha256)
-        _nonnegative_integer(
+        OllamaMultimodalContract._validate_sha256(
+            "metadata response", self.http_body_sha256
+        )
+        OllamaMultimodalContract._nonnegative_integer(
             "metadata response byte length", self.http_body_byte_length
         )
 
@@ -712,13 +741,19 @@ class OllamaModelVerification:
     limitation: str
 
     def __post_init__(self) -> None:
-        _validate_version(self.ollama_version)
-        _bounded_nonempty_utf8(
+        OllamaMultimodalContract._validate_version(self.ollama_version)
+        OllamaMultimodalContract._bounded_nonempty_utf8(
             "model_name", self.model_name, _HARD_MAX_MODEL_NAME_BYTES
         )
-        expected = _validate_model_digest(self.expected_model_digest)
-        preflight = _validate_model_digest(self.preflight_observed_digest)
-        postflight = _validate_model_digest(self.postflight_observed_digest)
+        expected = OllamaMultimodalContract._validate_model_digest(
+            self.expected_model_digest
+        )
+        preflight = OllamaMultimodalContract._validate_model_digest(
+            self.preflight_observed_digest
+        )
+        postflight = OllamaMultimodalContract._validate_model_digest(
+            self.postflight_observed_digest
+        )
         if preflight != expected or postflight != expected:
             raise ValueError(
                 "observed model digests must match expected digest"
@@ -749,8 +784,10 @@ class OllamaRawResponseIdentity:
     assistant_content_utf8_byte_length: int | None
 
     def __post_init__(self) -> None:
-        _validate_sha256("raw HTTP response", self.http_body_sha256)
-        _nonnegative_integer(
+        OllamaMultimodalContract._validate_sha256(
+            "raw HTTP response", self.http_body_sha256
+        )
+        OllamaMultimodalContract._nonnegative_integer(
             "raw HTTP response byte length", self.http_body_byte_length
         )
         if (self.assistant_content_sha256 is None) != (
@@ -758,8 +795,10 @@ class OllamaRawResponseIdentity:
         ):
             raise ValueError("assistant content identity must be all-or-none")
         if self.assistant_content_sha256 is not None:
-            _validate_sha256("assistant content", self.assistant_content_sha256)
-            _nonnegative_integer(
+            OllamaMultimodalContract._validate_sha256(
+                "assistant content", self.assistant_content_sha256
+            )
+            OllamaMultimodalContract._nonnegative_integer(
                 "assistant content byte length",
                 self.assistant_content_utf8_byte_length,
             )
@@ -771,8 +810,10 @@ class OllamaMultimodalWarning:
     message: str
 
     def __post_init__(self) -> None:
-        _bounded_record_text("warning code", self.code, 256)
-        _bounded_record_text(
+        OllamaMultimodalContract._bounded_record_text(
+            "warning code", self.code, 256
+        )
+        OllamaMultimodalContract._bounded_record_text(
             "warning message", self.message, _HARD_MAX_WARNING_BYTES
         )
 
@@ -787,8 +828,12 @@ class OllamaMultimodalFailure:
     def __post_init__(self) -> None:
         if not isinstance(self.kind, OllamaMultimodalFailureKind):
             raise TypeError("kind must be OllamaMultimodalFailureKind")
-        _bounded_record_text("failure code", self.code, 256)
-        _bounded_record_text("failure message", self.message, 2_048)
+        OllamaMultimodalContract._bounded_record_text(
+            "failure code", self.code, 256
+        )
+        OllamaMultimodalContract._bounded_record_text(
+            "failure message", self.message, 2_048
+        )
         if not isinstance(self.retryable, bool):
             raise TypeError("retryable must be a boolean")
 
@@ -821,7 +866,7 @@ class OllamaMultimodalProposal:
             )
         ):
             raise ValueError("proposal warnings are invalid or exceed limits")
-        if self.text_sha256 != _sha256_bytes(encoded):
+        if self.text_sha256 != OllamaPromptContract._sha256_bytes(encoded):
             raise ValueError("proposal text digest mismatch")
         if self.text_utf8_byte_length != len(encoded):
             raise ValueError("proposal text byte length mismatch")
@@ -851,7 +896,7 @@ class OllamaMultimodalSelectionResult:
     failure: OllamaMultimodalFailure | None
 
     def __post_init__(self) -> None:
-        _validate_stable_id(
+        OllamaMultimodalContract._validate_stable_id(
             "selection", self.selection_id, "ollama-multimodal-selection"
         )
         expected_selection_id = stable_id(
@@ -869,17 +914,33 @@ class OllamaMultimodalSelectionResult:
         )
         if self.selection_id != expected_selection_id:
             raise ValueError("selection result provenance identity mismatch")
-        _bounded_record_text("source_id", self.source_id, 4_096)
-        _bounded_record_text("source_blob_id", self.source_blob_id, 4_096)
-        _validate_sha256("source content", self.source_content_hash)
+        OllamaMultimodalContract._bounded_record_text(
+            "source_id", self.source_id, 4_096
+        )
+        OllamaMultimodalContract._bounded_record_text(
+            "source_blob_id", self.source_blob_id, 4_096
+        )
+        OllamaMultimodalContract._validate_sha256(
+            "source content", self.source_content_hash
+        )
         if self.source_blob_id != f"blob:sha256:{self.source_content_hash}":
             raise ValueError("selection result blob and source hash disagree")
-        _nonnegative_integer("page_index", self.page_index)
-        _bounded_record_text("region_id", self.region_id, 4_096)
-        _validate_sha256("PNG", self.png_sha256)
-        _nonnegative_integer("PNG byte length", self.png_byte_length)
-        _positive_integer("width_pixels", self.width_pixels)
-        _positive_integer("height_pixels", self.height_pixels)
+        OllamaMultimodalContract._nonnegative_integer(
+            "page_index", self.page_index
+        )
+        OllamaMultimodalContract._bounded_record_text(
+            "region_id", self.region_id, 4_096
+        )
+        OllamaMultimodalContract._validate_sha256("PNG", self.png_sha256)
+        OllamaMultimodalContract._nonnegative_integer(
+            "PNG byte length", self.png_byte_length
+        )
+        OllamaMultimodalContract._positive_integer(
+            "width_pixels", self.width_pixels
+        )
+        OllamaMultimodalContract._positive_integer(
+            "height_pixels", self.height_pixels
+        )
         if not isinstance(self.status, OllamaMultimodalSelectionStatus):
             raise TypeError("status must be OllamaMultimodalSelectionStatus")
         if self.status is OllamaMultimodalSelectionStatus.PROPOSED:
@@ -892,7 +953,7 @@ class OllamaMultimodalSelectionResult:
 
 
 @dataclass(frozen=True)
-class OllamaMultimodalResult:
+class OllamaMultimodalResult(DataObjectActionResult):
     result_id: str
     contract_version: str
     request_id: str
@@ -909,10 +970,10 @@ class OllamaMultimodalResult:
     selection_results: tuple[OllamaMultimodalSelectionResult, ...]
 
     def __post_init__(self) -> None:
-        _validate_stable_id(
+        OllamaMultimodalContract._validate_stable_id(
             "result", self.result_id, "ollama-multimodal-result"
         )
-        _validate_stable_id(
+        OllamaMultimodalContract._validate_stable_id(
             "request", self.request_id, "ollama-multimodal-request"
         )
         if not isinstance(
@@ -973,12 +1034,17 @@ class OllamaMultimodalResult:
             self.selection_results
         ):
             raise ValueError("selection result IDs must be unique")
-        _validate_result_prompt_coverage(self.prompt, self.selection_results)
+        OllamaMultimodalContract._validate_result_prompt_coverage(
+            self.prompt, self.selection_results
+        )
         expected_request_id = stable_id(
             "ollama-multimodal-request",
             OLLAMA_MULTIMODAL_CONTRACT_VERSION,
             self.task_kind,
-            tuple(_selection_identity(item) for item in self.selection_results),
+            tuple(
+                OllamaMultimodalContract._selection_identity(item)
+                for item in self.selection_results
+            ),
             self.prompt,
         )
         if self.request_id != expected_request_id:
@@ -1007,7 +1073,7 @@ class OllamaMultimodalResult:
                 raise ValueError("complete results must be cacheable proposals")
         elif complete or self.cacheable:
             raise ValueError("failed results must be non-cacheable failures")
-        expected_id = _result_id(
+        expected_id = OllamaMultimodalContract._result_id(
             request_id=self.request_id,
             processor_identity=self.processor_identity,
             task_kind=self.task_kind,
@@ -1135,7 +1201,9 @@ class LoopbackOllamaHttpTransport:
             connection.close()
 
 
-class OllamaMultimodalRegionProcessor:
+class OllamaMultimodalRegionProcessor(
+    DataObjectActionizer[OllamaMultimodalRequest, OllamaMultimodalResult]
+):
     """Concrete bounded Ollama adapter over exact rendered PNG evidence."""
 
     name = "ollama-multimodal-region-processor"
@@ -1166,7 +1234,7 @@ class OllamaMultimodalRegionProcessor:
             expected_model_digest=self.configuration.expected_model_digest,
             required_capabilities=OLLAMA_REQUIRED_CAPABILITIES,
             prompt_version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
-            prompt_template_sha256=_prompt_template_sha256(),
+            prompt_template_sha256=OllamaPromptContract._prompt_template_sha256(),
             response_schema_version=OLLAMA_MULTIMODAL_SCHEMA_VERSION,
             request_options=self.configuration.options,
             configuration=self.configuration,
@@ -1174,16 +1242,17 @@ class OllamaMultimodalRegionProcessor:
             determinism=OllamaMultimodalDeterminism.NONDETERMINISTIC,
         )
 
-    def process(
-        self, request: OllamaMultimodalRequest
+    def action(
+        self, *, request: OllamaMultimodalRequest
     ) -> OllamaMultimodalResult:
+        """Process one complete multimodal request."""
         if not isinstance(request, OllamaMultimodalRequest):
             raise TypeError("request must be OllamaMultimodalRequest")
         identity = self.identity()
         empty_metadata: tuple[OllamaMetadataResponseIdentity, ...] = ()
         failure = self._validate_current_evidence_and_limits(request)
         if failure is not None:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request, identity, failure, empty_metadata, None, None
             )
         try:
@@ -1194,16 +1263,18 @@ class OllamaMultimodalRegionProcessor:
                 observed_version,
             ) = self._verify_preflight()
         except OllamaTransportError as error:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
-                _failure_from_transport(error, "metadata"),
+                OllamaMultimodalContract._failure_from_transport(
+                    error, "metadata"
+                ),
                 empty_metadata,
                 None,
                 None,
             )
         if metadata_failure is not None:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 metadata_failure,
@@ -1212,9 +1283,11 @@ class OllamaMultimodalRegionProcessor:
                 None,
             )
 
-        chat_body = _chat_body(request, self.configuration)
+        chat_body = OllamaMultimodalContract._chat_body(
+            request, self.configuration
+        )
         if len(chat_body) > self.configuration.limits.max_request_bytes:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 OllamaMultimodalFailure(
@@ -1235,16 +1308,16 @@ class OllamaMultimodalRegionProcessor:
                 max_response_bytes=self.configuration.limits.max_response_bytes,
             )
         except OllamaTransportError as error:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
-                _failure_from_transport(error, "chat"),
+                OllamaMultimodalContract._failure_from_transport(error, "chat"),
                 metadata_responses,
                 None,
                 None,
             )
         raw_identity = OllamaRawResponseIdentity(
-            http_body_sha256=_sha256_bytes(response.body),
+            http_body_sha256=OllamaPromptContract._sha256_bytes(response.body),
             http_body_byte_length=len(response.body),
             assistant_content_sha256=None,
             assistant_content_utf8_byte_length=None,
@@ -1252,17 +1325,19 @@ class OllamaMultimodalRegionProcessor:
         try:
             post_failure, post_identity = self._verify_postflight_digest()
         except OllamaTransportError as error:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
-                _failure_from_transport(error, "postflight_metadata"),
+                OllamaMultimodalContract._failure_from_transport(
+                    error, "postflight_metadata"
+                ),
                 metadata_responses,
                 None,
                 raw_identity,
             )
         metadata_responses += (post_identity,)
         if post_failure is not None:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 post_failure,
@@ -1286,9 +1361,11 @@ class OllamaMultimodalRegionProcessor:
             ),
             limitation="non_atomic_tag_to_chat_binding",
         )
-        response_failure = _validate_http_response(response, "chat")
+        response_failure = OllamaMultimodalContract._validate_http_response(
+            response, "chat"
+        )
         if response_failure is not None:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 response_failure,
@@ -1297,21 +1374,23 @@ class OllamaMultimodalRegionProcessor:
                 raw_identity,
             )
         try:
-            content = _parse_chat_envelope(
+            content = OllamaMultimodalContract._parse_chat_envelope(
                 response.body, self.configuration.model_name
             )
             content_bytes = content.encode("utf-8")
             raw_identity = OllamaRawResponseIdentity(
                 http_body_sha256=raw_identity.http_body_sha256,
                 http_body_byte_length=raw_identity.http_body_byte_length,
-                assistant_content_sha256=_sha256_bytes(content_bytes),
+                assistant_content_sha256=OllamaPromptContract._sha256_bytes(
+                    content_bytes
+                ),
                 assistant_content_utf8_byte_length=len(content_bytes),
             )
-            selection_results = _parse_proposals(
+            selection_results = OllamaMultimodalContract._parse_proposals(
                 content, request, self.configuration.limits
             )
         except _ResponseIssue as error:
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 OllamaMultimodalFailure(
@@ -1331,7 +1410,7 @@ class OllamaMultimodalRegionProcessor:
             ValueError,
             OverflowError,
         ):
-            return _failed_result(
+            return OllamaMultimodalContract._failed_result(
                 request,
                 identity,
                 OllamaMultimodalFailure(
@@ -1346,7 +1425,7 @@ class OllamaMultimodalRegionProcessor:
                 model_verification,
                 raw_identity,
             )
-        return _complete_result(
+        return OllamaMultimodalContract._complete_result(
             request,
             identity,
             metadata_responses,
@@ -1354,6 +1433,12 @@ class OllamaMultimodalRegionProcessor:
             raw_identity,
             selection_results,
         )
+
+    def process(
+        self, request: OllamaMultimodalRequest
+    ) -> OllamaMultimodalResult:
+        """Process one request through the canonical action path."""
+        return self.action(request=request)
 
     def _verify_preflight(
         self,
@@ -1373,20 +1458,24 @@ class OllamaMultimodalRegionProcessor:
             ),
         )
         responses += (
-            _metadata_identity(
+            OllamaMultimodalContract._metadata_identity(
                 OllamaMetadataStage.PREFLIGHT_VERSION,
                 "/api/version",
                 version_response,
             ),
         )
-        failure = _validate_http_response(version_response, "version")
+        failure = OllamaMultimodalContract._validate_http_response(
+            version_response, "version"
+        )
         if failure is not None:
             return failure, responses, frozenset(), "unknown"
         try:
-            version = _parse_version(version_response.body)
+            version = OllamaMultimodalContract._parse_version(
+                version_response.body
+            )
         except _ResponseIssue as error:
             return (
-                _response_issue_failure(error),
+                OllamaMultimodalContract._response_issue_failure(error),
                 responses,
                 frozenset(),
                 "unknown",
@@ -1406,7 +1495,9 @@ class OllamaMultimodalRegionProcessor:
             )
         except OllamaTransportError as error:
             return (
-                _failure_from_transport(error, "preflight_tags"),
+                OllamaMultimodalContract._failure_from_transport(
+                    error, "preflight_tags"
+                ),
                 responses,
                 frozenset(),
                 version,
@@ -1415,7 +1506,7 @@ class OllamaMultimodalRegionProcessor:
         if tag_failure is not None:
             return tag_failure, responses, frozenset(), version
 
-        show_body = _json_bytes(
+        show_body = OllamaMultimodalContract._json_bytes(
             {"model": self.configuration.model_name, "verbose": False}
         )
         try:
@@ -1429,24 +1520,30 @@ class OllamaMultimodalRegionProcessor:
             )
         except OllamaTransportError as error:
             return (
-                _failure_from_transport(error, "preflight_show"),
+                OllamaMultimodalContract._failure_from_transport(
+                    error, "preflight_show"
+                ),
                 responses,
                 frozenset(),
                 version,
             )
         responses += (
-            _metadata_identity(
+            OllamaMultimodalContract._metadata_identity(
                 OllamaMetadataStage.PREFLIGHT_SHOW, "/api/show", show
             ),
         )
-        failure = _validate_http_response(show, "model details")
+        failure = OllamaMultimodalContract._validate_http_response(
+            show, "model details"
+        )
         if failure is not None:
             return failure, responses, frozenset(), version
         try:
-            capabilities = _parse_capabilities(show.body)
+            capabilities = OllamaMultimodalContract._parse_capabilities(
+                show.body
+            )
         except _ResponseIssue as error:
             return (
-                _response_issue_failure(error),
+                OllamaMultimodalContract._response_issue_failure(error),
                 responses,
                 frozenset(),
                 version,
@@ -1477,14 +1574,20 @@ class OllamaMultimodalRegionProcessor:
                 self.configuration.limits.max_metadata_response_bytes
             ),
         )
-        response_identity = _metadata_identity(stage, "/api/tags", tags)
-        failure = _validate_http_response(tags, "model list")
+        response_identity = OllamaMultimodalContract._metadata_identity(
+            stage, "/api/tags", tags
+        )
+        failure = OllamaMultimodalContract._validate_http_response(
+            tags, "model list"
+        )
         if failure is not None:
             return failure, response_identity
         try:
-            models = _parse_tags(tags.body)
+            models = OllamaMultimodalContract._parse_tags(tags.body)
         except _ResponseIssue as error:
-            return _response_issue_failure(error), response_identity
+            return OllamaMultimodalContract._response_issue_failure(
+                error
+            ), response_identity
         matches = [
             digest
             for name, digest in models
@@ -1561,13 +1664,16 @@ class OllamaMultimodalRegionProcessor:
     ) -> OllamaMultimodalFailure | None:
         limits = self.configuration.limits
         if len(request.selections) > limits.max_selections:
-            return _input_limit_failure("selection_count")
+            return OllamaMultimodalContract._input_limit_failure(
+                "selection_count"
+            )
         total_bytes = 0
         total_pixels = 0
         for selection in request.selections:
             region = selection.rendered_region
             if (
-                _sha256_bytes(region.content) != selection.png_sha256
+                OllamaPromptContract._sha256_bytes(region.content)
+                != selection.png_sha256
                 or len(region.content) != selection.png_byte_length
                 or region.content_sha256 != selection.png_sha256
                 or region.byte_length != selection.png_byte_length
@@ -1587,17 +1693,25 @@ class OllamaMultimodalRegionProcessor:
                 )
             pixels = selection.width_pixels * selection.height_pixels
             if selection.png_byte_length > limits.max_image_bytes:
-                return _input_limit_failure("image_bytes")
+                return OllamaMultimodalContract._input_limit_failure(
+                    "image_bytes"
+                )
             if pixels > limits.max_pixels_per_image:
-                return _input_limit_failure("image_pixels")
+                return OllamaMultimodalContract._input_limit_failure(
+                    "image_pixels"
+                )
             total_bytes += selection.png_byte_length
             total_pixels += pixels
         if total_bytes > limits.max_total_image_bytes:
-            return _input_limit_failure("total_image_bytes")
+            return OllamaMultimodalContract._input_limit_failure(
+                "total_image_bytes"
+            )
         if total_pixels > limits.max_total_pixels:
-            return _input_limit_failure("total_image_pixels")
+            return OllamaMultimodalContract._input_limit_failure(
+                "total_image_pixels"
+            )
         if request.prompt.utf8_byte_length > limits.max_prompt_bytes:
-            return _input_limit_failure("prompt_bytes")
+            return OllamaMultimodalContract._input_limit_failure("prompt_bytes")
         return None
 
 
@@ -1670,11 +1784,894 @@ class _ResponseIssue(ValueError):
         self.message = message
 
 
-def _build_prompt(
-    selections: tuple[OllamaMultimodalSelection, ...],
-) -> OllamaPromptRecord:
-    manifest = canonical_json(
-        [
+class OllamaMultimodalContract:
+    """Own bounded payload, response, and result contract behavior."""
+
+    @staticmethod
+    def _build_prompt(
+        selections: tuple[OllamaMultimodalSelection, ...],
+    ) -> OllamaPromptRecord:
+        manifest = canonical_json(
+            [
+                {
+                    "index": index,
+                    "selection_id": item.selection_id,
+                    "source_id": item.source_id,
+                    "source_blob_id": item.source_blob_id,
+                    "source_content_hash": item.source_content_hash,
+                    "page_index": item.page_index,
+                    "region_id": item.region_id,
+                    "png_sha256": item.png_sha256,
+                    "png_byte_length": item.png_byte_length,
+                    "width_pixels": item.width_pixels,
+                    "height_pixels": item.height_pixels,
+                }
+                for index, item in enumerate(selections)
+            ]
+        )
+        text = _PROMPT_TEMPLATE.format(
+            prompt_version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
+            manifest=manifest,
+        )
+        encoded = text.encode("utf-8")
+        return OllamaPromptRecord(
+            version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
+            template_sha256=OllamaPromptContract._prompt_template_sha256(),
+            rendered_sha256=OllamaPromptContract._sha256_bytes(encoded),
+            utf8_byte_length=len(encoded),
+            text=text,
+        )
+
+    @staticmethod
+    def _selection_identity(
+        selection: (
+            OllamaMultimodalSelection | OllamaMultimodalSelectionResult
+        ),
+    ) -> tuple[object, ...]:
+        return (
+            selection.selection_id,
+            selection.source_id,
+            selection.source_blob_id,
+            selection.source_content_hash,
+            selection.page_index,
+            selection.region_id,
+            selection.png_sha256,
+            selection.png_byte_length,
+            selection.width_pixels,
+            selection.height_pixels,
+        )
+
+    @staticmethod
+    def _json_bytes(value: object) -> bytes:
+        return canonical_json(value).encode("utf-8")
+
+    @staticmethod
+    def _chat_body(
+        request: OllamaMultimodalRequest,
+        configuration: OllamaMultimodalConfiguration,
+    ) -> bytes:
+        return OllamaMultimodalContract._json_bytes(
+            {
+                "model": configuration.model_name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": request.prompt.text,
+                        "images": [
+                            base64.b64encode(
+                                item.rendered_region.content
+                            ).decode("ascii")
+                            for item in request.selections
+                        ],
+                    }
+                ],
+                "format": _RESPONSE_SCHEMA,
+                "options": configuration.options.as_ollama_json(),
+                "stream": False,
+                "think": False,
+                "keep_alive": configuration.options.keep_alive,
+            }
+        )
+
+    @staticmethod
+    def _strict_json_object(
+        payload: bytes | str, context: str
+    ) -> dict[str, Any]:
+        def issue(code: str, message: str) -> _ResponseIssue:
+            return _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                f"ollama.{context}.{code}",
+                f"Ollama {context} {message}",
+            )
+
+        def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in result:
+                    raise issue(
+                        "duplicate_field", "contains a duplicate JSON field"
+                    )
+                result[key] = value
+            return result
+
+        def parse_constant(value: str) -> object:
+            raise issue(
+                "non_rfc_constant",
+                f"contains forbidden JSON constant {value}",
+            )
+
+        def parse_integer(value: str) -> int:
+            if len(value.lstrip("-")) > _HARD_MAX_JSON_INTEGER_DIGITS:
+                raise issue("integer_limit", "contains an oversized integer")
+            return int(value)
+
+        def parse_float(value: str) -> float:
+            if len(value) > _HARD_MAX_JSON_INTEGER_DIGITS:
+                raise issue("number_limit", "contains an oversized number")
+            parsed = float(value)
+            if not math.isfinite(parsed):
+                raise issue("non_finite_number", "contains a non-finite number")
+            return parsed
+
+        try:
+            if isinstance(payload, bytes):
+                text = payload.decode("utf-8", errors="strict")
+            elif isinstance(payload, str):
+                payload.encode("utf-8", errors="strict")
+                text = payload
+            else:
+                raise TypeError("JSON payload must be bytes or text")
+            OllamaMultimodalContract._validate_json_lexical_bounds(
+                text, context
+            )
+            value = json.loads(
+                text,
+                object_pairs_hook=object_pairs,
+                parse_constant=parse_constant,
+                parse_int=parse_integer,
+                parse_float=parse_float,
+            )
+            OllamaMultimodalContract._validate_json_tree(value, context)
+        except _ResponseIssue:
+            raise
+        except (
+            UnicodeError,
+            json.JSONDecodeError,
+            RecursionError,
+            TypeError,
+            ValueError,
+            OverflowError,
+        ) as error:
+            raise issue(
+                "invalid_json", "is not valid bounded UTF-8 JSON"
+            ) from error
+        if not isinstance(value, dict):
+            raise issue("not_object", "must be a JSON object")
+        return value
+
+    @staticmethod
+    def _validate_json_lexical_bounds(text: str, context: str) -> None:
+        depth = 0
+        in_string = False
+        escaped = False
+        for character in text:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif character == "\\":
+                    escaped = True
+                elif character == '"':
+                    in_string = False
+                continue
+            if character == '"':
+                in_string = True
+            elif character in "[{":
+                depth += 1
+                if depth > _HARD_MAX_JSON_DEPTH:
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                        f"ollama.{context}.depth_limit",
+                        f"Ollama {context} exceeds the JSON depth limit",
+                    )
+            elif character in "]}":
+                depth -= 1
+                if depth < 0:
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                        f"ollama.{context}.unbalanced_json",
+                        f"Ollama {context} has unbalanced JSON containers",
+                    )
+        if depth != 0:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                f"ollama.{context}.unbalanced_json",
+                f"Ollama {context} has unbalanced JSON containers",
+            )
+
+    @staticmethod
+    def _validate_json_tree(value: object, context: str) -> None:
+        stack: list[tuple[object, int]] = [(value, 1)]
+        item_count = 0
+        total_string_bytes = 0
+        while stack:
+            item, depth = stack.pop()
+            item_count += 1
+            if item_count > _HARD_MAX_JSON_ITEMS:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    f"ollama.{context}.item_limit",
+                    f"Ollama {context} exceeds the JSON item limit",
+                )
+            if depth > _HARD_MAX_JSON_DEPTH:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    f"ollama.{context}.depth_limit",
+                    f"Ollama {context} exceeds the JSON depth limit",
+                )
+            if isinstance(item, str):
+                total_string_bytes += (
+                    OllamaMultimodalContract._validate_untrusted_text(
+                        context=context,
+                        value=item,
+                        maximum=_HARD_MAX_JSON_STRING_BYTES,
+                        allow_line_controls=True,
+                    )
+                )
+                if total_string_bytes > _HARD_MAX_RESPONSE_BYTES:
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                        f"ollama.{context}.text_limit",
+                        f"Ollama {context} exceeds the JSON text limit",
+                    )
+            elif isinstance(item, dict):
+                for key, child in item.items():
+                    stack.append((key, depth + 1))
+                    stack.append((child, depth + 1))
+            elif isinstance(item, list):
+                stack.extend((child, depth + 1) for child in item)
+            elif item is None or type(item) in (bool, int, float):
+                if isinstance(item, float) and not math.isfinite(item):
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                        f"ollama.{context}.non_finite_number",
+                        f"Ollama {context} contains a non-finite number",
+                    )
+            else:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    f"ollama.{context}.unsupported_value",
+                    f"Ollama {context} contains an unsupported JSON value",
+                )
+
+    @staticmethod
+    def _validate_untrusted_text(
+        *,
+        context: str,
+        value: str,
+        maximum: int,
+        allow_line_controls: bool,
+    ) -> int:
+        try:
+            encoded = value.encode("utf-8", errors="strict")
+        except UnicodeError as error:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                f"ollama.{context}.invalid_unicode",
+                f"Ollama {context} contains invalid Unicode",
+            ) from error
+        if len(encoded) > maximum:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                f"ollama.{context}.text_bytes",
+                f"Ollama {context} text exceeds its byte limit",
+            )
+        allowed = {"\t", "\n", "\r"} if allow_line_controls else set()
+        if any(
+            (
+                (ord(character) < 32 and character not in allowed)
+                or 127 <= ord(character) <= 159
+            )
+            for character in value
+        ):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                f"ollama.{context}.control_character",
+                f"Ollama {context} contains a forbidden control character",
+            )
+        return len(encoded)
+
+    @staticmethod
+    def _validate_http_response(
+        response: OllamaHttpResponse, context: str
+    ) -> OllamaMultimodalFailure | None:
+        if response.status_code != 200:
+            return OllamaMultimodalFailure(
+                kind=OllamaMultimodalFailureKind.HTTP_ERROR,
+                code=f"ollama.{context.replace(' ', '_')}.http_error",
+                message=f"Ollama {context} request did not return HTTP 200",
+                retryable=response.status_code >= 500,
+            )
+        media_type = response.content_type.partition(";")[0].strip().lower()
+        if media_type != "application/json":
+            return OllamaMultimodalFailure(
+                kind=OllamaMultimodalFailureKind.PROTOCOL_ERROR,
+                code=f"ollama.{context.replace(' ', '_')}.content_type",
+                message=f"Ollama {context} response is not application/json",
+                retryable=False,
+            )
+        return None
+
+    @staticmethod
+    def _parse_version(payload: bytes) -> str:
+        root = OllamaMultimodalContract._strict_json_object(payload, "version")
+        if set(root) != {"version"} or not isinstance(root["version"], str):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.version.shape",
+                "Ollama version response has an unsupported shape",
+            )
+        OllamaMultimodalContract._validate_untrusted_text(
+            context="version",
+            value=root["version"],
+            maximum=128,
+            allow_line_controls=False,
+        )
+        try:
+            OllamaMultimodalContract._validate_version(root["version"])
+        except OllamaMultimodalConfigurationError as error:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.version.value",
+                "Ollama version response has an invalid version value",
+            ) from error
+        return root["version"]
+
+    @staticmethod
+    def _parse_tags(payload: bytes) -> tuple[tuple[str, str], ...]:
+        root = OllamaMultimodalContract._strict_json_object(
+            payload, "model_list"
+        )
+        if set(root) != {"models"} or not isinstance(root["models"], list):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.model_list.shape",
+                "Ollama model list has an unsupported shape",
+            )
+        result: list[tuple[str, str]] = []
+        for item in root["models"]:
+            if not isinstance(item, dict):
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.model_list.item",
+                    "Ollama model list contains a non-object item",
+                )
+            name = item.get("name")
+            model = item.get("model")
+            digest = item.get("digest")
+            if (
+                not isinstance(name, str)
+                or not isinstance(model, str)
+                or name != model
+                or not isinstance(digest, str)
+            ):
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.model_list.identity",
+                    "Ollama model metadata lacks an exact name and digest",
+                )
+            OllamaMultimodalContract._validate_untrusted_text(
+                context="model_list_name",
+                value=name,
+                maximum=_HARD_MAX_MODEL_NAME_BYTES,
+                allow_line_controls=False,
+            )
+            OllamaMultimodalContract._validate_untrusted_text(
+                context="model_list_digest",
+                value=digest,
+                maximum=71,
+                allow_line_controls=False,
+            )
+            try:
+                validated_digest = (
+                    OllamaMultimodalContract._validate_model_digest(digest)
+                )
+            except OllamaMultimodalConfigurationError as error:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.model_list.digest",
+                    "Ollama model metadata contains an invalid digest",
+                ) from error
+            result.append((name, validated_digest))
+        return tuple(result)
+
+    @staticmethod
+    def _parse_capabilities(payload: bytes) -> frozenset[str]:
+        root = OllamaMultimodalContract._strict_json_object(
+            payload, "model_details"
+        )
+        capabilities = root.get("capabilities")
+        if not isinstance(capabilities, list) or any(
+            not isinstance(item, str) or not item for item in capabilities
+        ):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.model_details.capabilities",
+                "Ollama model details lack a valid capabilities list",
+            )
+        for capability in capabilities:
+            OllamaMultimodalContract._validate_untrusted_text(
+                context="model_capability",
+                value=capability,
+                maximum=256,
+                allow_line_controls=False,
+            )
+        if len(set(capabilities)) != len(capabilities):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.model_details.duplicate_capability",
+                "Ollama model capabilities contain duplicates",
+            )
+        return frozenset(capabilities)
+
+    @staticmethod
+    def _parse_chat_envelope(payload: bytes, expected_model: str) -> str:
+        root = OllamaMultimodalContract._strict_json_object(
+            payload, "chat_response"
+        )
+        required = {"model", "created_at", "message", "done", "done_reason"}
+        allowed = required | {
+            "total_duration",
+            "load_duration",
+            "prompt_eval_count",
+            "prompt_eval_cached_count",
+            "prompt_eval_duration",
+            "eval_count",
+            "eval_duration",
+        }
+        if not required.issubset(root) or not set(root).issubset(allowed):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.chat_response.fields",
+                "Ollama chat response has missing or extra fields",
+            )
+        if root["model"] != expected_model:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.PROTOCOL_ERROR,
+                "ollama.chat_response.model_mismatch",
+                "Ollama chat response names a different model",
+            )
+        if not isinstance(root["created_at"], str) or not root["created_at"]:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.chat_response.created_at",
+                "Ollama chat response has an invalid timestamp",
+            )
+        OllamaMultimodalContract._validate_untrusted_text(
+            context="chat_created_at",
+            value=root["created_at"],
+            maximum=256,
+            allow_line_controls=False,
+        )
+        if root["done"] is not True or root["done_reason"] != "stop":
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.PROTOCOL_ERROR,
+                "ollama.chat_response.incomplete",
+                "Ollama chat response did not finish with stop",
+            )
+        for key in allowed - required:
+            if key in root and (
+                isinstance(root[key], bool)
+                or not isinstance(root[key], int)
+                or root[key] < 0
+            ):
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.chat_response.metric",
+                    "Ollama chat response contains an invalid metric",
+                )
+        message = root["message"]
+        if not isinstance(message, dict) or set(message) != {"role", "content"}:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.chat_response.message",
+                "Ollama chat response message has an unsupported shape",
+            )
+        if message["role"] != "assistant" or not isinstance(
+            message["content"], str
+        ):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.chat_response.message_content",
+                "Ollama chat response lacks assistant text content",
+            )
+        return message["content"]
+
+    @staticmethod
+    def _parse_proposals(
+        content: str,
+        request: OllamaMultimodalRequest,
+        limits: OllamaMultimodalLimits,
+    ) -> tuple[OllamaMultimodalSelectionResult, ...]:
+        content_byte_length = OllamaMultimodalContract._validate_untrusted_text(
+            context="structured_output",
+            value=content,
+            maximum=limits.max_output_bytes,
+            allow_line_controls=True,
+        )
+        if content_byte_length > limits.max_output_bytes:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                "ollama.output.total_bytes",
+                "Ollama structured output exceeds configured byte limit",
+            )
+        root = OllamaMultimodalContract._strict_json_object(
+            content, "structured_output"
+        )
+        if set(root) != {"schema_version", "task", "items"}:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.output.fields",
+                "Ollama structured output has missing or extra fields",
+            )
+        if (
+            type(root["schema_version"]) is not int
+            or root["schema_version"] != OLLAMA_MULTIMODAL_SCHEMA_VERSION
+        ):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.output.schema_version",
+                "Ollama structured output uses an unsupported schema",
+            )
+        if root["task"] != request.task_kind.value:
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                "ollama.output.task",
+                "Ollama structured output names a different task",
+            )
+        items = root["items"]
+        if not isinstance(items, list) or len(items) != len(request.selections):
+            raise _ResponseIssue(
+                OllamaMultimodalFailureKind.INCOMPLETE_COVERAGE,
+                "ollama.output.coverage_count",
+                "Ollama output does not cover every selected image",
+            )
+        results: list[OllamaMultimodalSelectionResult] = []
+        total_text_bytes = 0
+        for index, (item, selection) in enumerate(
+            zip(items, request.selections, strict=True)
+        ):
+            if not isinstance(item, dict) or set(item) != {
+                "index",
+                "selection_id",
+                "text",
+                "warnings",
+            }:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.output.item_fields",
+                    "Ollama output item has missing or extra fields",
+                )
+            if type(item["index"]) is not int:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.output.item_index_type",
+                    "Ollama output item index must be an integer",
+                )
+            if (
+                item["index"] != index
+                or item["selection_id"] != selection.selection_id
+            ):
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.INCOMPLETE_COVERAGE,
+                    "ollama.output.order_or_identity",
+                    "Ollama output order or selection identity is incomplete",
+                )
+            text = item["text"]
+            warnings = item["warnings"]
+            if not isinstance(text, str) or not isinstance(warnings, list):
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                    "ollama.output.item_types",
+                    "Ollama output item has invalid value types",
+                )
+            text_byte_length = (
+                OllamaMultimodalContract._validate_untrusted_text(
+                    context="proposal_text",
+                    value=text,
+                    maximum=limits.max_output_bytes_per_selection,
+                    allow_line_controls=True,
+                )
+            )
+            text_bytes = text.encode("utf-8")
+            total_text_bytes += text_byte_length
+            if len(text_bytes) > limits.max_output_bytes_per_selection:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                    "ollama.output.selection_bytes",
+                    "Ollama selection text exceeds configured byte limit",
+                )
+            if total_text_bytes > limits.max_output_bytes:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                    "ollama.output.text_bytes",
+                    "Ollama proposal text exceeds configured byte limit",
+                )
+            if len(warnings) > limits.max_warnings_per_selection:
+                raise _ResponseIssue(
+                    OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                    "ollama.output.warning_count",
+                    "Ollama output contains too many warnings",
+                )
+            parsed_warnings: list[OllamaMultimodalWarning] = []
+            for warning_index, warning in enumerate(warnings):
+                if not isinstance(warning, str) or not warning:
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
+                        "ollama.output.warning_type",
+                        "Ollama output warning must be a nonempty string",
+                    )
+                warning_byte_length = (
+                    OllamaMultimodalContract._validate_untrusted_text(
+                        context="proposal_warning",
+                        value=warning,
+                        maximum=limits.max_warning_bytes,
+                        allow_line_controls=False,
+                    )
+                )
+                if warning_byte_length > limits.max_warning_bytes:
+                    raise _ResponseIssue(
+                        OllamaMultimodalFailureKind.OUTPUT_LIMIT,
+                        "ollama.output.warning_bytes",
+                        "Ollama output warning exceeds configured byte limit",
+                    )
+                parsed_warnings.append(
+                    OllamaMultimodalWarning(
+                        code=f"ollama.model.warning.{warning_index}",
+                        message=warning,
+                    )
+                )
+            proposal = OllamaMultimodalProposal(
+                text=text,
+                text_sha256=OllamaPromptContract._sha256_bytes(text_bytes),
+                text_utf8_byte_length=len(text_bytes),
+                warnings=tuple(parsed_warnings),
+            )
+            results.append(
+                OllamaMultimodalContract._selection_result(
+                    selection, proposal=proposal, failure=None
+                )
+            )
+        return tuple(results)
+
+    @staticmethod
+    def _metadata_identity(
+        stage: OllamaMetadataStage,
+        path: str,
+        response: OllamaHttpResponse,
+    ) -> OllamaMetadataResponseIdentity:
+        return OllamaMetadataResponseIdentity(
+            stage=stage,
+            path=path,
+            http_body_sha256=OllamaPromptContract._sha256_bytes(response.body),
+            http_body_byte_length=len(response.body),
+        )
+
+    @staticmethod
+    def _response_issue_failure(
+        error: _ResponseIssue,
+    ) -> OllamaMultimodalFailure:
+        return OllamaMultimodalFailure(
+            kind=error.kind,
+            code=error.code,
+            message=error.message,
+            retryable=False,
+        )
+
+    @staticmethod
+    def _selection_result(
+        selection: OllamaMultimodalSelection,
+        *,
+        proposal: OllamaMultimodalProposal | None,
+        failure: OllamaMultimodalFailure | None,
+    ) -> OllamaMultimodalSelectionResult:
+        return OllamaMultimodalSelectionResult(
+            selection_id=selection.selection_id,
+            source_id=selection.source_id,
+            source_blob_id=selection.source_blob_id,
+            source_content_hash=selection.source_content_hash,
+            page_index=selection.page_index,
+            region_id=selection.region_id,
+            png_sha256=selection.png_sha256,
+            png_byte_length=selection.png_byte_length,
+            width_pixels=selection.width_pixels,
+            height_pixels=selection.height_pixels,
+            status=(
+                OllamaMultimodalSelectionStatus.PROPOSED
+                if proposal is not None
+                else OllamaMultimodalSelectionStatus.FAILED
+            ),
+            proposal=proposal,
+            failure=failure,
+        )
+
+    @staticmethod
+    def _failed_result(
+        request: OllamaMultimodalRequest,
+        identity: OllamaMultimodalProcessorIdentity,
+        failure: OllamaMultimodalFailure,
+        metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
+        model_verification: OllamaModelVerification | None,
+        raw_response: OllamaRawResponseIdentity | None,
+    ) -> OllamaMultimodalResult:
+        selection_results = tuple(
+            OllamaMultimodalContract._selection_result(
+                item, proposal=None, failure=failure
+            )
+            for item in request.selections
+        )
+        evidence_status = OllamaMultimodalEvidenceStatus.AUTOMATED_UNREVIEWED
+        determinism = OllamaMultimodalDeterminism.NONDETERMINISTIC
+        status = OllamaMultimodalResultStatus.FAILED
+        result_id = OllamaMultimodalContract._result_id(
+            request_id=request.request_id,
+            processor_identity=identity,
+            task_kind=request.task_kind,
+            prompt=request.prompt,
+            status=status,
+            evidence_status=evidence_status,
+            determinism=determinism,
+            cacheable=False,
+            metadata_responses=metadata_responses,
+            model_verification=model_verification,
+            raw_response=raw_response,
+            selection_results=selection_results,
+        )
+        return OllamaMultimodalResult(
+            result_id=result_id,
+            contract_version=OLLAMA_MULTIMODAL_CONTRACT_VERSION,
+            request_id=request.request_id,
+            processor_identity=identity,
+            task_kind=request.task_kind,
+            prompt=request.prompt,
+            status=status,
+            evidence_status=evidence_status,
+            determinism=determinism,
+            cacheable=False,
+            metadata_responses=metadata_responses,
+            model_verification=model_verification,
+            raw_response=raw_response,
+            selection_results=selection_results,
+        )
+
+    @staticmethod
+    def _complete_result(
+        request: OllamaMultimodalRequest,
+        identity: OllamaMultimodalProcessorIdentity,
+        metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
+        model_verification: OllamaModelVerification,
+        raw_response: OllamaRawResponseIdentity,
+        selection_results: tuple[OllamaMultimodalSelectionResult, ...],
+    ) -> OllamaMultimodalResult:
+        evidence_status = OllamaMultimodalEvidenceStatus.AUTOMATED_UNREVIEWED
+        determinism = OllamaMultimodalDeterminism.NONDETERMINISTIC
+        status = OllamaMultimodalResultStatus.COMPLETE
+        result_id = OllamaMultimodalContract._result_id(
+            request_id=request.request_id,
+            processor_identity=identity,
+            task_kind=request.task_kind,
+            prompt=request.prompt,
+            status=status,
+            evidence_status=evidence_status,
+            determinism=determinism,
+            cacheable=True,
+            metadata_responses=metadata_responses,
+            model_verification=model_verification,
+            raw_response=raw_response,
+            selection_results=selection_results,
+        )
+        return OllamaMultimodalResult(
+            result_id=result_id,
+            contract_version=OLLAMA_MULTIMODAL_CONTRACT_VERSION,
+            request_id=request.request_id,
+            processor_identity=identity,
+            task_kind=request.task_kind,
+            prompt=request.prompt,
+            status=status,
+            evidence_status=evidence_status,
+            determinism=determinism,
+            cacheable=True,
+            metadata_responses=metadata_responses,
+            model_verification=model_verification,
+            raw_response=raw_response,
+            selection_results=selection_results,
+        )
+
+    @staticmethod
+    def _result_id(
+        *,
+        request_id: str,
+        processor_identity: OllamaMultimodalProcessorIdentity,
+        task_kind: OllamaMultimodalTaskKind,
+        prompt: OllamaPromptRecord,
+        status: OllamaMultimodalResultStatus,
+        evidence_status: OllamaMultimodalEvidenceStatus,
+        determinism: OllamaMultimodalDeterminism,
+        cacheable: bool,
+        metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
+        model_verification: OllamaModelVerification | None,
+        raw_response: OllamaRawResponseIdentity | None,
+        selection_results: tuple[OllamaMultimodalSelectionResult, ...],
+    ) -> str:
+        return stable_id(
+            "ollama-multimodal-result",
+            OLLAMA_MULTIMODAL_CONTRACT_VERSION,
+            request_id,
+            processor_identity,
+            task_kind,
+            prompt,
+            status,
+            evidence_status,
+            determinism,
+            cacheable,
+            metadata_responses,
+            model_verification,
+            raw_response,
+            selection_results,
+        )
+
+    @staticmethod
+    def _failure_from_transport(
+        error: OllamaTransportError, stage: str
+    ) -> OllamaMultimodalFailure:
+        mapping = {
+            OllamaTransportFailureKind.TIMEOUT: (
+                OllamaMultimodalFailureKind.TIMEOUT,
+                True,
+            ),
+            OllamaTransportFailureKind.RESPONSE_LIMIT: (
+                OllamaMultimodalFailureKind.RESPONSE_LIMIT,
+                False,
+            ),
+            OllamaTransportFailureKind.NETWORK: (
+                OllamaMultimodalFailureKind.TRANSPORT_ERROR,
+                True,
+            ),
+            OllamaTransportFailureKind.PROTOCOL: (
+                OllamaMultimodalFailureKind.PROTOCOL_ERROR,
+                False,
+            ),
+        }
+        kind, retryable = mapping[error.kind]
+        return OllamaMultimodalFailure(
+            kind=kind,
+            code=f"ollama.{stage}.{error.kind.value}",
+            message=str(error),
+            retryable=retryable,
+        )
+
+    @staticmethod
+    def _input_limit_failure(limit_name: str) -> OllamaMultimodalFailure:
+        return OllamaMultimodalFailure(
+            kind=OllamaMultimodalFailureKind.INPUT_LIMIT,
+            code=f"ollama.input.{limit_name}",
+            message="Ollama multimodal input exceeds configured bounds",
+            retryable=False,
+        )
+
+    @staticmethod
+    def _validate_result_prompt_coverage(
+        prompt: OllamaPromptRecord,
+        results: tuple[OllamaMultimodalSelectionResult, ...],
+    ) -> None:
+        marker = "Ordered evidence manifest:\n"
+        if prompt.text.count(marker) != 1 or not prompt.text.endswith("\n"):
+            raise ValueError("prompt does not contain one canonical manifest")
+        manifest_text = prompt.text.split(marker, 1)[1][:-1]
+        try:
+            manifest = json.loads(manifest_text)
+        except json.JSONDecodeError as error:
+            raise ValueError("prompt evidence manifest is invalid") from error
+        expected = [
             {
                 "index": index,
                 "selection_id": item.selection_id,
@@ -1688,790 +2685,116 @@ def _build_prompt(
                 "width_pixels": item.width_pixels,
                 "height_pixels": item.height_pixels,
             }
-            for index, item in enumerate(selections)
+            for index, item in enumerate(results)
         ]
-    )
-    text = _PROMPT_TEMPLATE.format(
-        prompt_version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
-        manifest=manifest,
-    )
-    encoded = text.encode("utf-8")
-    return OllamaPromptRecord(
-        version=OLLAMA_MULTIMODAL_PROMPT_VERSION,
-        template_sha256=_prompt_template_sha256(),
-        rendered_sha256=_sha256_bytes(encoded),
-        utf8_byte_length=len(encoded),
-        text=text,
-    )
-
-
-def _selection_identity(
-    selection: (OllamaMultimodalSelection | OllamaMultimodalSelectionResult),
-) -> tuple[object, ...]:
-    return (
-        selection.selection_id,
-        selection.source_id,
-        selection.source_blob_id,
-        selection.source_content_hash,
-        selection.page_index,
-        selection.region_id,
-        selection.png_sha256,
-        selection.png_byte_length,
-        selection.width_pixels,
-        selection.height_pixels,
-    )
-
-
-def _json_bytes(value: object) -> bytes:
-    return canonical_json(value).encode("utf-8")
-
-
-def _chat_body(
-    request: OllamaMultimodalRequest,
-    configuration: OllamaMultimodalConfiguration,
-) -> bytes:
-    return _json_bytes(
-        {
-            "model": configuration.model_name,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": request.prompt.text,
-                    "images": [
-                        base64.b64encode(item.rendered_region.content).decode(
-                            "ascii"
-                        )
-                        for item in request.selections
-                    ],
-                }
-            ],
-            "format": _RESPONSE_SCHEMA,
-            "options": configuration.options.as_ollama_json(),
-            "stream": False,
-            "think": False,
-            "keep_alive": configuration.options.keep_alive,
-        }
-    )
-
-
-def _strict_json_object(payload: bytes | str, context: str) -> dict[str, Any]:
-    def issue(code: str, message: str) -> _ResponseIssue:
-        return _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            f"ollama.{context}.{code}",
-            f"Ollama {context} {message}",
-        )
-
-    def object_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        result: dict[str, Any] = {}
-        for key, value in pairs:
-            if key in result:
-                raise issue(
-                    "duplicate_field", "contains a duplicate JSON field"
-                )
-            result[key] = value
-        return result
-
-    def parse_constant(value: str) -> object:
-        raise issue(
-            "non_rfc_constant",
-            f"contains forbidden JSON constant {value}",
-        )
-
-    def parse_integer(value: str) -> int:
-        if len(value.lstrip("-")) > _HARD_MAX_JSON_INTEGER_DIGITS:
-            raise issue("integer_limit", "contains an oversized integer")
-        return int(value)
-
-    def parse_float(value: str) -> float:
-        if len(value) > _HARD_MAX_JSON_INTEGER_DIGITS:
-            raise issue("number_limit", "contains an oversized number")
-        parsed = float(value)
-        if not math.isfinite(parsed):
-            raise issue("non_finite_number", "contains a non-finite number")
-        return parsed
-
-    try:
-        if isinstance(payload, bytes):
-            text = payload.decode("utf-8", errors="strict")
-        elif isinstance(payload, str):
-            payload.encode("utf-8", errors="strict")
-            text = payload
-        else:
-            raise TypeError("JSON payload must be bytes or text")
-        _validate_json_lexical_bounds(text, context)
-        value = json.loads(
-            text,
-            object_pairs_hook=object_pairs,
-            parse_constant=parse_constant,
-            parse_int=parse_integer,
-            parse_float=parse_float,
-        )
-        _validate_json_tree(value, context)
-    except _ResponseIssue:
-        raise
-    except (
-        UnicodeError,
-        json.JSONDecodeError,
-        RecursionError,
-        TypeError,
-        ValueError,
-        OverflowError,
-    ) as error:
-        raise issue(
-            "invalid_json", "is not valid bounded UTF-8 JSON"
-        ) from error
-    if not isinstance(value, dict):
-        raise issue("not_object", "must be a JSON object")
-    return value
-
-
-def _validate_json_lexical_bounds(text: str, context: str) -> None:
-    depth = 0
-    in_string = False
-    escaped = False
-    for character in text:
-        if in_string:
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == '"':
-                in_string = False
-            continue
-        if character == '"':
-            in_string = True
-        elif character in "[{":
-            depth += 1
-            if depth > _HARD_MAX_JSON_DEPTH:
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                    f"ollama.{context}.depth_limit",
-                    f"Ollama {context} exceeds the JSON depth limit",
-                )
-        elif character in "]}":
-            depth -= 1
-            if depth < 0:
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                    f"ollama.{context}.unbalanced_json",
-                    f"Ollama {context} has unbalanced JSON containers",
-                )
-    if depth != 0:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            f"ollama.{context}.unbalanced_json",
-            f"Ollama {context} has unbalanced JSON containers",
-        )
-
-
-def _validate_json_tree(value: object, context: str) -> None:
-    stack: list[tuple[object, int]] = [(value, 1)]
-    item_count = 0
-    total_string_bytes = 0
-    while stack:
-        item, depth = stack.pop()
-        item_count += 1
-        if item_count > _HARD_MAX_JSON_ITEMS:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                f"ollama.{context}.item_limit",
-                f"Ollama {context} exceeds the JSON item limit",
-            )
-        if depth > _HARD_MAX_JSON_DEPTH:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                f"ollama.{context}.depth_limit",
-                f"Ollama {context} exceeds the JSON depth limit",
-            )
-        if isinstance(item, str):
-            total_string_bytes += _validate_untrusted_text(
-                context=context,
-                value=item,
-                maximum=_HARD_MAX_JSON_STRING_BYTES,
-                allow_line_controls=True,
-            )
-            if total_string_bytes > _HARD_MAX_RESPONSE_BYTES:
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                    f"ollama.{context}.text_limit",
-                    f"Ollama {context} exceeds the JSON text limit",
-                )
-        elif isinstance(item, dict):
-            for key, child in item.items():
-                stack.append((key, depth + 1))
-                stack.append((child, depth + 1))
-        elif isinstance(item, list):
-            stack.extend((child, depth + 1) for child in item)
-        elif item is None or type(item) in (bool, int, float):
-            if isinstance(item, float) and not math.isfinite(item):
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                    f"ollama.{context}.non_finite_number",
-                    f"Ollama {context} contains a non-finite number",
-                )
-        else:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                f"ollama.{context}.unsupported_value",
-                f"Ollama {context} contains an unsupported JSON value",
+        if manifest != expected or manifest_text != canonical_json(expected):
+            raise ValueError(
+                "result coverage does not match prompt evidence manifest"
             )
 
-
-def _validate_untrusted_text(
-    *,
-    context: str,
-    value: str,
-    maximum: int,
-    allow_line_controls: bool,
-) -> int:
-    try:
-        encoded = value.encode("utf-8", errors="strict")
-    except UnicodeError as error:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            f"ollama.{context}.invalid_unicode",
-            f"Ollama {context} contains invalid Unicode",
-        ) from error
-    if len(encoded) > maximum:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-            f"ollama.{context}.text_bytes",
-            f"Ollama {context} text exceeds its byte limit",
-        )
-    allowed = {"\t", "\n", "\r"} if allow_line_controls else set()
-    if any(
-        (
-            (ord(character) < 32 and character not in allowed)
-            or 127 <= ord(character) <= 159
-        )
-        for character in value
-    ):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            f"ollama.{context}.control_character",
-            f"Ollama {context} contains a forbidden control character",
-        )
-    return len(encoded)
-
-
-def _validate_http_response(
-    response: OllamaHttpResponse, context: str
-) -> OllamaMultimodalFailure | None:
-    if response.status_code != 200:
-        return OllamaMultimodalFailure(
-            kind=OllamaMultimodalFailureKind.HTTP_ERROR,
-            code=f"ollama.{context.replace(' ', '_')}.http_error",
-            message=f"Ollama {context} request did not return HTTP 200",
-            retryable=response.status_code >= 500,
-        )
-    media_type = response.content_type.partition(";")[0].strip().lower()
-    if media_type != "application/json":
-        return OllamaMultimodalFailure(
-            kind=OllamaMultimodalFailureKind.PROTOCOL_ERROR,
-            code=f"ollama.{context.replace(' ', '_')}.content_type",
-            message=f"Ollama {context} response is not application/json",
-            retryable=False,
-        )
-    return None
-
-
-def _parse_version(payload: bytes) -> str:
-    root = _strict_json_object(payload, "version")
-    if set(root) != {"version"} or not isinstance(root["version"], str):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.version.shape",
-            "Ollama version response has an unsupported shape",
-        )
-    _validate_untrusted_text(
-        context="version",
-        value=root["version"],
-        maximum=128,
-        allow_line_controls=False,
-    )
-    try:
-        _validate_version(root["version"])
-    except OllamaMultimodalConfigurationError as error:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.version.value",
-            "Ollama version response has an invalid version value",
-        ) from error
-    return root["version"]
-
-
-def _parse_tags(payload: bytes) -> tuple[tuple[str, str], ...]:
-    root = _strict_json_object(payload, "model_list")
-    if set(root) != {"models"} or not isinstance(root["models"], list):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.model_list.shape",
-            "Ollama model list has an unsupported shape",
-        )
-    result: list[tuple[str, str]] = []
-    for item in root["models"]:
-        if not isinstance(item, dict):
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.model_list.item",
-                "Ollama model list contains a non-object item",
+    @staticmethod
+    def _validate_model_digest(value: str) -> str:
+        if not isinstance(value, str):
+            raise TypeError("expected_model_digest must be a string")
+        digest = value.removeprefix("sha256:")
+        if len(digest) != 64:
+            raise OllamaMultimodalConfigurationError(
+                "expected_model_digest must be a SHA-256 digest"
             )
-        name = item.get("name")
-        model = item.get("model")
-        digest = item.get("digest")
-        if (
-            not isinstance(name, str)
-            or not isinstance(model, str)
-            or name != model
-            or not isinstance(digest, str)
-        ):
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.model_list.identity",
-                "Ollama model metadata lacks an exact name and digest",
-            )
-        _validate_untrusted_text(
-            context="model_list_name",
-            value=name,
-            maximum=_HARD_MAX_MODEL_NAME_BYTES,
-            allow_line_controls=False,
-        )
-        _validate_untrusted_text(
-            context="model_list_digest",
-            value=digest,
-            maximum=71,
-            allow_line_controls=False,
-        )
         try:
-            validated_digest = _validate_model_digest(digest)
-        except OllamaMultimodalConfigurationError as error:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.model_list.digest",
-                "Ollama model metadata contains an invalid digest",
+            int(digest, 16)
+        except ValueError as error:
+            raise OllamaMultimodalConfigurationError(
+                "expected_model_digest must be a SHA-256 digest"
             ) from error
-        result.append((name, validated_digest))
-    return tuple(result)
-
-
-def _parse_capabilities(payload: bytes) -> frozenset[str]:
-    root = _strict_json_object(payload, "model_details")
-    capabilities = root.get("capabilities")
-    if not isinstance(capabilities, list) or any(
-        not isinstance(item, str) or not item for item in capabilities
-    ):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.model_details.capabilities",
-            "Ollama model details lack a valid capabilities list",
-        )
-    for capability in capabilities:
-        _validate_untrusted_text(
-            context="model_capability",
-            value=capability,
-            maximum=256,
-            allow_line_controls=False,
-        )
-    if len(set(capabilities)) != len(capabilities):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.model_details.duplicate_capability",
-            "Ollama model capabilities contain duplicates",
-        )
-    return frozenset(capabilities)
-
-
-def _parse_chat_envelope(payload: bytes, expected_model: str) -> str:
-    root = _strict_json_object(payload, "chat_response")
-    required = {"model", "created_at", "message", "done", "done_reason"}
-    allowed = required | {
-        "total_duration",
-        "load_duration",
-        "prompt_eval_count",
-        "prompt_eval_cached_count",
-        "prompt_eval_duration",
-        "eval_count",
-        "eval_duration",
-    }
-    if not required.issubset(root) or not set(root).issubset(allowed):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.chat_response.fields",
-            "Ollama chat response has missing or extra fields",
-        )
-    if root["model"] != expected_model:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.PROTOCOL_ERROR,
-            "ollama.chat_response.model_mismatch",
-            "Ollama chat response names a different model",
-        )
-    if not isinstance(root["created_at"], str) or not root["created_at"]:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.chat_response.created_at",
-            "Ollama chat response has an invalid timestamp",
-        )
-    _validate_untrusted_text(
-        context="chat_created_at",
-        value=root["created_at"],
-        maximum=256,
-        allow_line_controls=False,
-    )
-    if root["done"] is not True or root["done_reason"] != "stop":
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.PROTOCOL_ERROR,
-            "ollama.chat_response.incomplete",
-            "Ollama chat response did not finish with stop",
-        )
-    for key in allowed - required:
-        if key in root and (
-            isinstance(root[key], bool)
-            or not isinstance(root[key], int)
-            or root[key] < 0
-        ):
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.chat_response.metric",
-                "Ollama chat response contains an invalid metric",
+        if digest != digest.lower():
+            raise OllamaMultimodalConfigurationError(
+                "expected_model_digest must use lowercase hexadecimal"
             )
-    message = root["message"]
-    if not isinstance(message, dict) or set(message) != {"role", "content"}:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.chat_response.message",
-            "Ollama chat response message has an unsupported shape",
-        )
-    if message["role"] != "assistant" or not isinstance(
-        message["content"], str
-    ):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.chat_response.message_content",
-            "Ollama chat response lacks assistant text content",
-        )
-    return message["content"]
+        return digest
 
+    @staticmethod
+    def _validate_version(value: str) -> None:
+        OllamaMultimodalContract._bounded_nonempty_utf8(
+            "expected_ollama_version", value, 128
+        )
+        if any(char.isspace() for char in value):
+            raise OllamaMultimodalConfigurationError(
+                "expected_ollama_version cannot contain whitespace"
+            )
 
-def _parse_proposals(
-    content: str,
-    request: OllamaMultimodalRequest,
-    limits: OllamaMultimodalLimits,
-) -> tuple[OllamaMultimodalSelectionResult, ...]:
-    content_byte_length = _validate_untrusted_text(
-        context="structured_output",
-        value=content,
-        maximum=limits.max_output_bytes,
-        allow_line_controls=True,
-    )
-    if content_byte_length > limits.max_output_bytes:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-            "ollama.output.total_bytes",
-            "Ollama structured output exceeds configured byte limit",
-        )
-    root = _strict_json_object(content, "structured_output")
-    if set(root) != {"schema_version", "task", "items"}:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.output.fields",
-            "Ollama structured output has missing or extra fields",
-        )
-    if (
-        type(root["schema_version"]) is not int
-        or root["schema_version"] != OLLAMA_MULTIMODAL_SCHEMA_VERSION
-    ):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.output.schema_version",
-            "Ollama structured output uses an unsupported schema",
-        )
-    if root["task"] != request.task_kind.value:
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-            "ollama.output.task",
-            "Ollama structured output names a different task",
-        )
-    items = root["items"]
-    if not isinstance(items, list) or len(items) != len(request.selections):
-        raise _ResponseIssue(
-            OllamaMultimodalFailureKind.INCOMPLETE_COVERAGE,
-            "ollama.output.coverage_count",
-            "Ollama output does not cover every selected image",
-        )
-    results: list[OllamaMultimodalSelectionResult] = []
-    total_text_bytes = 0
-    for index, (item, selection) in enumerate(
-        zip(items, request.selections, strict=True)
-    ):
-        if not isinstance(item, dict) or set(item) != {
-            "index",
-            "selection_id",
-            "text",
-            "warnings",
-        }:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.output.item_fields",
-                "Ollama output item has missing or extra fields",
-            )
-        if type(item["index"]) is not int:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.output.item_index_type",
-                "Ollama output item index must be an integer",
-            )
+    @staticmethod
+    def _validate_sha256(name: str, value: str) -> None:
+        if not isinstance(value, str) or len(value) != 64:
+            raise ValueError(f"{name} identity must be a SHA-256 digest")
+        try:
+            int(value, 16)
+        except ValueError as error:
+            raise ValueError(
+                f"{name} identity must be a SHA-256 digest"
+            ) from error
+        if value != value.lower():
+            raise ValueError(f"{name} identity must use lowercase hexadecimal")
+
+    @staticmethod
+    def _validate_stable_id(name: str, value: str, namespace: str) -> None:
+        prefix = f"{namespace}:sha256:"
+        if not isinstance(value, str) or not value.startswith(prefix):
+            raise ValueError(f"{name} identity has an invalid namespace")
+        OllamaMultimodalContract._validate_sha256(name, value[len(prefix) :])
+
+    @staticmethod
+    def _nonnegative_integer(name: str, value: int | None) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+
+    @staticmethod
+    def _positive_integer(name: str, value: int) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+
+    @staticmethod
+    def _bounded_record_text(name: str, value: str, maximum: int) -> None:
+        if not isinstance(value, str):
+            raise TypeError(f"{name} must be a string")
+        try:
+            length = len(value.encode("utf-8", errors="strict"))
+        except UnicodeError as error:
+            raise ValueError(f"{name} contains invalid Unicode") from error
         if (
-            item["index"] != index
-            or item["selection_id"] != selection.selection_id
+            not value
+            or length > maximum
+            or any(
+                ord(character) < 32 or 127 <= ord(character) <= 159
+                for character in value
+            )
         ):
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.INCOMPLETE_COVERAGE,
-                "ollama.output.order_or_identity",
-                "Ollama output order or selection identity is incomplete",
+            raise ValueError(
+                f"{name} is empty, contains controls, or exceeds its bound"
             )
-        text = item["text"]
-        warnings = item["warnings"]
-        if not isinstance(text, str) or not isinstance(warnings, list):
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                "ollama.output.item_types",
-                "Ollama output item has invalid value types",
+
+    @staticmethod
+    def _bounded_nonempty_utf8(name: str, value: str, maximum: int) -> None:
+        if not isinstance(value, str):
+            raise TypeError(f"{name} must be a string")
+        try:
+            length = len(value.encode("utf-8", errors="strict"))
+        except UnicodeError as error:
+            raise OllamaMultimodalConfigurationError(
+                f"{name} contains invalid Unicode"
+            ) from error
+        if (
+            not value
+            or length > maximum
+            or any(
+                ord(character) < 32 or 127 <= ord(character) <= 159
+                for character in value
             )
-        text_byte_length = _validate_untrusted_text(
-            context="proposal_text",
-            value=text,
-            maximum=limits.max_output_bytes_per_selection,
-            allow_line_controls=True,
-        )
-        text_bytes = text.encode("utf-8")
-        total_text_bytes += text_byte_length
-        if len(text_bytes) > limits.max_output_bytes_per_selection:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-                "ollama.output.selection_bytes",
-                "Ollama selection text exceeds configured byte limit",
+        ):
+            raise OllamaMultimodalConfigurationError(
+                f"{name} must be nonempty, control-free, and no greater than "
+                f"{maximum} UTF-8 bytes"
             )
-        if total_text_bytes > limits.max_output_bytes:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-                "ollama.output.text_bytes",
-                "Ollama proposal text exceeds configured byte limit",
-            )
-        if len(warnings) > limits.max_warnings_per_selection:
-            raise _ResponseIssue(
-                OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-                "ollama.output.warning_count",
-                "Ollama output contains too many warnings",
-            )
-        parsed_warnings: list[OllamaMultimodalWarning] = []
-        for warning_index, warning in enumerate(warnings):
-            if not isinstance(warning, str) or not warning:
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.MALFORMED_RESPONSE,
-                    "ollama.output.warning_type",
-                    "Ollama output warning must be a nonempty string",
-                )
-            warning_byte_length = _validate_untrusted_text(
-                context="proposal_warning",
-                value=warning,
-                maximum=limits.max_warning_bytes,
-                allow_line_controls=False,
-            )
-            if warning_byte_length > limits.max_warning_bytes:
-                raise _ResponseIssue(
-                    OllamaMultimodalFailureKind.OUTPUT_LIMIT,
-                    "ollama.output.warning_bytes",
-                    "Ollama output warning exceeds configured byte limit",
-                )
-            parsed_warnings.append(
-                OllamaMultimodalWarning(
-                    code=f"ollama.model.warning.{warning_index}",
-                    message=warning,
-                )
-            )
-        proposal = OllamaMultimodalProposal(
-            text=text,
-            text_sha256=_sha256_bytes(text_bytes),
-            text_utf8_byte_length=len(text_bytes),
-            warnings=tuple(parsed_warnings),
-        )
-        results.append(
-            _selection_result(selection, proposal=proposal, failure=None)
-        )
-    return tuple(results)
-
-
-def _metadata_identity(
-    stage: OllamaMetadataStage,
-    path: str,
-    response: OllamaHttpResponse,
-) -> OllamaMetadataResponseIdentity:
-    return OllamaMetadataResponseIdentity(
-        stage=stage,
-        path=path,
-        http_body_sha256=_sha256_bytes(response.body),
-        http_body_byte_length=len(response.body),
-    )
-
-
-def _response_issue_failure(error: _ResponseIssue) -> OllamaMultimodalFailure:
-    return OllamaMultimodalFailure(
-        kind=error.kind,
-        code=error.code,
-        message=error.message,
-        retryable=False,
-    )
-
-
-def _selection_result(
-    selection: OllamaMultimodalSelection,
-    *,
-    proposal: OllamaMultimodalProposal | None,
-    failure: OllamaMultimodalFailure | None,
-) -> OllamaMultimodalSelectionResult:
-    return OllamaMultimodalSelectionResult(
-        selection_id=selection.selection_id,
-        source_id=selection.source_id,
-        source_blob_id=selection.source_blob_id,
-        source_content_hash=selection.source_content_hash,
-        page_index=selection.page_index,
-        region_id=selection.region_id,
-        png_sha256=selection.png_sha256,
-        png_byte_length=selection.png_byte_length,
-        width_pixels=selection.width_pixels,
-        height_pixels=selection.height_pixels,
-        status=(
-            OllamaMultimodalSelectionStatus.PROPOSED
-            if proposal is not None
-            else OllamaMultimodalSelectionStatus.FAILED
-        ),
-        proposal=proposal,
-        failure=failure,
-    )
-
-
-def _failed_result(
-    request: OllamaMultimodalRequest,
-    identity: OllamaMultimodalProcessorIdentity,
-    failure: OllamaMultimodalFailure,
-    metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
-    model_verification: OllamaModelVerification | None,
-    raw_response: OllamaRawResponseIdentity | None,
-) -> OllamaMultimodalResult:
-    selection_results = tuple(
-        _selection_result(item, proposal=None, failure=failure)
-        for item in request.selections
-    )
-    evidence_status = OllamaMultimodalEvidenceStatus.AUTOMATED_UNREVIEWED
-    determinism = OllamaMultimodalDeterminism.NONDETERMINISTIC
-    status = OllamaMultimodalResultStatus.FAILED
-    result_id = _result_id(
-        request_id=request.request_id,
-        processor_identity=identity,
-        task_kind=request.task_kind,
-        prompt=request.prompt,
-        status=status,
-        evidence_status=evidence_status,
-        determinism=determinism,
-        cacheable=False,
-        metadata_responses=metadata_responses,
-        model_verification=model_verification,
-        raw_response=raw_response,
-        selection_results=selection_results,
-    )
-    return OllamaMultimodalResult(
-        result_id=result_id,
-        contract_version=OLLAMA_MULTIMODAL_CONTRACT_VERSION,
-        request_id=request.request_id,
-        processor_identity=identity,
-        task_kind=request.task_kind,
-        prompt=request.prompt,
-        status=status,
-        evidence_status=evidence_status,
-        determinism=determinism,
-        cacheable=False,
-        metadata_responses=metadata_responses,
-        model_verification=model_verification,
-        raw_response=raw_response,
-        selection_results=selection_results,
-    )
-
-
-def _complete_result(
-    request: OllamaMultimodalRequest,
-    identity: OllamaMultimodalProcessorIdentity,
-    metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
-    model_verification: OllamaModelVerification,
-    raw_response: OllamaRawResponseIdentity,
-    selection_results: tuple[OllamaMultimodalSelectionResult, ...],
-) -> OllamaMultimodalResult:
-    evidence_status = OllamaMultimodalEvidenceStatus.AUTOMATED_UNREVIEWED
-    determinism = OllamaMultimodalDeterminism.NONDETERMINISTIC
-    status = OllamaMultimodalResultStatus.COMPLETE
-    result_id = _result_id(
-        request_id=request.request_id,
-        processor_identity=identity,
-        task_kind=request.task_kind,
-        prompt=request.prompt,
-        status=status,
-        evidence_status=evidence_status,
-        determinism=determinism,
-        cacheable=True,
-        metadata_responses=metadata_responses,
-        model_verification=model_verification,
-        raw_response=raw_response,
-        selection_results=selection_results,
-    )
-    return OllamaMultimodalResult(
-        result_id=result_id,
-        contract_version=OLLAMA_MULTIMODAL_CONTRACT_VERSION,
-        request_id=request.request_id,
-        processor_identity=identity,
-        task_kind=request.task_kind,
-        prompt=request.prompt,
-        status=status,
-        evidence_status=evidence_status,
-        determinism=determinism,
-        cacheable=True,
-        metadata_responses=metadata_responses,
-        model_verification=model_verification,
-        raw_response=raw_response,
-        selection_results=selection_results,
-    )
-
-
-def _result_id(
-    *,
-    request_id: str,
-    processor_identity: OllamaMultimodalProcessorIdentity,
-    task_kind: OllamaMultimodalTaskKind,
-    prompt: OllamaPromptRecord,
-    status: OllamaMultimodalResultStatus,
-    evidence_status: OllamaMultimodalEvidenceStatus,
-    determinism: OllamaMultimodalDeterminism,
-    cacheable: bool,
-    metadata_responses: tuple[OllamaMetadataResponseIdentity, ...],
-    model_verification: OllamaModelVerification | None,
-    raw_response: OllamaRawResponseIdentity | None,
-    selection_results: tuple[OllamaMultimodalSelectionResult, ...],
-) -> str:
-    return stable_id(
-        "ollama-multimodal-result",
-        OLLAMA_MULTIMODAL_CONTRACT_VERSION,
-        request_id,
-        processor_identity,
-        task_kind,
-        prompt,
-        status,
-        evidence_status,
-        determinism,
-        cacheable,
-        metadata_responses,
-        model_verification,
-        raw_response,
-        selection_results,
-    )
 
 
 def build_ollama_multimodal_cache_key(
@@ -2491,176 +2814,3 @@ def build_ollama_multimodal_cache_key(
         request.request_id,
         processor_identity,
     )
-
-
-def _failure_from_transport(
-    error: OllamaTransportError, stage: str
-) -> OllamaMultimodalFailure:
-    mapping = {
-        OllamaTransportFailureKind.TIMEOUT: (
-            OllamaMultimodalFailureKind.TIMEOUT,
-            True,
-        ),
-        OllamaTransportFailureKind.RESPONSE_LIMIT: (
-            OllamaMultimodalFailureKind.RESPONSE_LIMIT,
-            False,
-        ),
-        OllamaTransportFailureKind.NETWORK: (
-            OllamaMultimodalFailureKind.TRANSPORT_ERROR,
-            True,
-        ),
-        OllamaTransportFailureKind.PROTOCOL: (
-            OllamaMultimodalFailureKind.PROTOCOL_ERROR,
-            False,
-        ),
-    }
-    kind, retryable = mapping[error.kind]
-    return OllamaMultimodalFailure(
-        kind=kind,
-        code=f"ollama.{stage}.{error.kind.value}",
-        message=str(error),
-        retryable=retryable,
-    )
-
-
-def _input_limit_failure(limit_name: str) -> OllamaMultimodalFailure:
-    return OllamaMultimodalFailure(
-        kind=OllamaMultimodalFailureKind.INPUT_LIMIT,
-        code=f"ollama.input.{limit_name}",
-        message="Ollama multimodal input exceeds configured bounds",
-        retryable=False,
-    )
-
-
-def _validate_result_prompt_coverage(
-    prompt: OllamaPromptRecord,
-    results: tuple[OllamaMultimodalSelectionResult, ...],
-) -> None:
-    marker = "Ordered evidence manifest:\n"
-    if prompt.text.count(marker) != 1 or not prompt.text.endswith("\n"):
-        raise ValueError("prompt does not contain one canonical manifest")
-    manifest_text = prompt.text.split(marker, 1)[1][:-1]
-    try:
-        manifest = json.loads(manifest_text)
-    except json.JSONDecodeError as error:
-        raise ValueError("prompt evidence manifest is invalid") from error
-    expected = [
-        {
-            "index": index,
-            "selection_id": item.selection_id,
-            "source_id": item.source_id,
-            "source_blob_id": item.source_blob_id,
-            "source_content_hash": item.source_content_hash,
-            "page_index": item.page_index,
-            "region_id": item.region_id,
-            "png_sha256": item.png_sha256,
-            "png_byte_length": item.png_byte_length,
-            "width_pixels": item.width_pixels,
-            "height_pixels": item.height_pixels,
-        }
-        for index, item in enumerate(results)
-    ]
-    if manifest != expected or manifest_text != canonical_json(expected):
-        raise ValueError(
-            "result coverage does not match prompt evidence manifest"
-        )
-
-
-def _validate_model_digest(value: str) -> str:
-    if not isinstance(value, str):
-        raise TypeError("expected_model_digest must be a string")
-    digest = value.removeprefix("sha256:")
-    if len(digest) != 64:
-        raise OllamaMultimodalConfigurationError(
-            "expected_model_digest must be a SHA-256 digest"
-        )
-    try:
-        int(digest, 16)
-    except ValueError as error:
-        raise OllamaMultimodalConfigurationError(
-            "expected_model_digest must be a SHA-256 digest"
-        ) from error
-    if digest != digest.lower():
-        raise OllamaMultimodalConfigurationError(
-            "expected_model_digest must use lowercase hexadecimal"
-        )
-    return digest
-
-
-def _validate_version(value: str) -> None:
-    _bounded_nonempty_utf8("expected_ollama_version", value, 128)
-    if any(char.isspace() for char in value):
-        raise OllamaMultimodalConfigurationError(
-            "expected_ollama_version cannot contain whitespace"
-        )
-
-
-def _validate_sha256(name: str, value: str) -> None:
-    if not isinstance(value, str) or len(value) != 64:
-        raise ValueError(f"{name} identity must be a SHA-256 digest")
-    try:
-        int(value, 16)
-    except ValueError as error:
-        raise ValueError(f"{name} identity must be a SHA-256 digest") from error
-    if value != value.lower():
-        raise ValueError(f"{name} identity must use lowercase hexadecimal")
-
-
-def _validate_stable_id(name: str, value: str, namespace: str) -> None:
-    prefix = f"{namespace}:sha256:"
-    if not isinstance(value, str) or not value.startswith(prefix):
-        raise ValueError(f"{name} identity has an invalid namespace")
-    _validate_sha256(name, value[len(prefix) :])
-
-
-def _nonnegative_integer(name: str, value: int | None) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ValueError(f"{name} must be a non-negative integer")
-
-
-def _positive_integer(name: str, value: int) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise ValueError(f"{name} must be a positive integer")
-
-
-def _bounded_record_text(name: str, value: str, maximum: int) -> None:
-    if not isinstance(value, str):
-        raise TypeError(f"{name} must be a string")
-    try:
-        length = len(value.encode("utf-8", errors="strict"))
-    except UnicodeError as error:
-        raise ValueError(f"{name} contains invalid Unicode") from error
-    if (
-        not value
-        or length > maximum
-        or any(
-            ord(character) < 32 or 127 <= ord(character) <= 159
-            for character in value
-        )
-    ):
-        raise ValueError(
-            f"{name} is empty, contains controls, or exceeds its bound"
-        )
-
-
-def _bounded_nonempty_utf8(name: str, value: str, maximum: int) -> None:
-    if not isinstance(value, str):
-        raise TypeError(f"{name} must be a string")
-    try:
-        length = len(value.encode("utf-8", errors="strict"))
-    except UnicodeError as error:
-        raise OllamaMultimodalConfigurationError(
-            f"{name} contains invalid Unicode"
-        ) from error
-    if (
-        not value
-        or length > maximum
-        or any(
-            ord(character) < 32 or 127 <= ord(character) <= 159
-            for character in value
-        )
-    ):
-        raise OllamaMultimodalConfigurationError(
-            f"{name} must be nonempty, control-free, and no greater than "
-            f"{maximum} UTF-8 bytes"
-        )

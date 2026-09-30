@@ -10,6 +10,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     LoopbackOllamaHttpTransport,
     OllamaHttpResponse,
@@ -86,6 +91,12 @@ def _region(page_index: int = 0, fill: int = 1) -> RenderedRegion:
         backend_name="fixture-pdf",
         backend_version="1",
     )
+
+
+def test__ollama_multimodal_uses_action_family_base_objects() -> None:
+    assert issubclass(OllamaMultimodalRequest, DataObjectActionRequest)
+    assert issubclass(OllamaMultimodalResult, DataObjectActionResult)
+    assert issubclass(OllamaMultimodalRegionProcessor, DataObjectActionizer)
 
 
 def _request(count: int = 1) -> OllamaMultimodalRequest:
@@ -293,7 +304,7 @@ def test__successful_complete_proposals_preserve_order_and_provenance() -> None:
     request = _request(2)
     processor, transport = _processor(request)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.status is OllamaMultimodalResultStatus.COMPLETE
     assert result.evidence_status is (
@@ -345,7 +356,7 @@ def test__chat_binds_exact_images_prompt_schema_and_options() -> None:
     )
     processor, transport = _processor(request, options=options)
 
-    processor.process(request)
+    processor.action(request=request)
 
     chat_call = next(
         call for call in transport.calls if call["path"] == "/api/chat"
@@ -390,7 +401,7 @@ def test__model_mismatch_fails_before_chat(
     transport = FakeTransport(request, digest=digest, capabilities=capabilities)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.status is OllamaMultimodalResultStatus.FAILED
     assert result.cacheable is False
@@ -404,7 +415,7 @@ def test__missing_model_fails_before_show_or_chat() -> None:
     transport = FakeTransport(request, model_present=False)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert [call["path"] for call in transport.calls] == [
         "/api/version",
@@ -426,7 +437,7 @@ def test__metadata_json_strictness_fails_before_model_or_chat() -> None:
     transport = FakeTransport(request, version_response=duplicate)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert [call["path"] for call in transport.calls] == ["/api/version"]
     _assert_failed_complete_coverage(result, request)
@@ -441,7 +452,7 @@ def test__runtime_version_mismatch_fails_before_model_or_chat() -> None:
     transport = FakeTransport(request, version="0.12.4")
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert [call["path"] for call in transport.calls] == ["/api/version"]
     assert result.selection_results[0].failure is not None
@@ -456,7 +467,7 @@ def test__postflight_digest_change_discards_valid_chat_output() -> None:
     transport = FakeTransport(request, postflight_digest="b" * 64)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert [call["path"] for call in transport.calls][-2:] == [
         "/api/chat",
@@ -528,7 +539,7 @@ def test__transport_failures_produce_complete_noncacheable_coverage(
     transport = FakeTransport(request, fail_path=path, fail_kind=kind)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.cacheable is False
     assert len(result.selection_results) == 2
@@ -577,7 +588,7 @@ def test__malformed_or_extra_chat_response_fields_fail_closed(
     transport = FakeTransport(request, chat_response=chat_response)
     processor, _ = _processor(request, transport=transport)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.status is OllamaMultimodalResultStatus.FAILED
     assert result.cacheable is False
@@ -594,7 +605,7 @@ def test__partial_output_fails_every_selection_without_partial_proposals() -> (
         request, transport=FakeTransport(request, chat_response=chat)
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.status is OllamaMultimodalResultStatus.FAILED
     assert all(item.proposal is None for item in result.selection_results)
@@ -621,7 +632,7 @@ def test__json_booleans_do_not_satisfy_integer_schema_fields(
         request, transport=FakeTransport(request, chat_response=chat)
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
     assert result.selection_results[0].failure is not None
@@ -637,7 +648,7 @@ def test__extra_structured_output_field_is_rejected() -> None:
         request, transport=FakeTransport(request, chat_response=chat)
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.selection_results[0].failure is not None
     assert result.selection_results[0].failure.kind is (
@@ -653,7 +664,7 @@ def test__deep_json_is_a_failed_result_not_an_uncaught_recursion() -> None:
         request, transport=FakeTransport(request, chat_response=chat)
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -672,7 +683,7 @@ def test__non_rfc_json_constants_are_rejected(constant: str) -> None:
         transport=FakeTransport(request, chat_response=_chat_response(content)),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -693,7 +704,7 @@ def test__invalid_untrusted_unicode_or_controls_fail_closed(
         transport=FakeTransport(request, chat_response=_chat_response(content)),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -712,7 +723,7 @@ def test__duplicate_json_fields_are_rejected() -> None:
         transport=FakeTransport(request, chat_response=_chat_response(content)),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -728,7 +739,7 @@ def test__json_string_bytes_have_an_independent_hard_bound() -> None:
         transport=FakeTransport(request, chat_response=_chat_response(content)),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -744,7 +755,7 @@ def test__json_item_count_is_bounded_before_schema_validation() -> None:
         transport=FakeTransport(request, chat_response=_chat_response(content)),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     _assert_failed_complete_coverage(result, request)
 
@@ -758,7 +769,7 @@ def test__configured_input_bound_fails_before_metadata() -> None:
     )
     processor, transport = _processor(request, limits=limits)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.selection_results[0].failure is not None
     assert result.selection_results[0].failure.kind is (
@@ -771,7 +782,7 @@ def test__configured_request_and_output_bounds_fail_closed() -> None:
     request = _request()
     request_limits = OllamaMultimodalLimits(max_request_bytes=1)
     processor, transport = _processor(request, limits=request_limits)
-    result = processor.process(request)
+    result = processor.action(request=request)
     assert [call["path"] for call in transport.calls] == [
         "/api/version",
         "/api/tags",
@@ -787,7 +798,7 @@ def test__configured_request_and_output_bounds_fail_closed() -> None:
         max_output_bytes_per_selection=10,
     )
     processor, _ = _processor(request, limits=output_limits)
-    result = processor.process(request)
+    result = processor.action(request=request)
     assert result.selection_results[0].failure is not None
     assert result.selection_results[0].failure.kind is (
         OllamaMultimodalFailureKind.OUTPUT_LIMIT
@@ -808,7 +819,7 @@ def test__oversized_transport_response_is_defensively_rejected() -> None:
         transport=FakeTransport(request, chat_response=huge),
     )
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert result.selection_results[0].failure is not None
     assert result.selection_results[0].failure.kind is (
@@ -822,7 +833,7 @@ def test__stale_evidence_fails_before_transport() -> None:
     object.__setattr__(region, "content", region.content + b"stale")
     processor, transport = _processor(request)
 
-    result = processor.process(request)
+    result = processor.action(request=request)
 
     assert transport.calls == []
     assert result.selection_results[0].failure is not None
@@ -886,7 +897,7 @@ class _RedirectHandler(BaseHTTPRequestHandler):
 def test__direct_construction_tampering_is_rejected() -> None:
     request = _request(2)
     processor, _ = _processor(request)
-    result = processor.process(request)
+    result = processor.action(request=request)
     assert result.model_verification is not None
     assert result.raw_response is not None
 
@@ -920,7 +931,9 @@ def test__direct_construction_tampering_is_rejected() -> None:
 
     failed_transport = FakeTransport(request, digest="b" * 64)
     failed_processor, _ = _processor(request, transport=failed_transport)
-    failure = failed_processor.process(request).selection_results[0].failure
+    failure = (
+        failed_processor.action(request=request).selection_results[0].failure
+    )
     assert failure is not None
     with pytest.raises(TypeError, match="boolean"):
         replace(failure, retryable=1)  # type: ignore[arg-type]
