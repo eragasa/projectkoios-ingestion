@@ -406,7 +406,7 @@ stores no derived result in `ExtractionCache`.
 Table-structure contract version 1.0 is a derived proposal contract over one
 complete exact `TableDetectionResult`. `TableStructureRequest` binds that
 result, including candidate and detection warning links, to the complete
-immutable `TableStructureConfiguration`. `TableStructureActionizer.action()`
+immutable `TableStructureConfiguration`. `DeterministicTableStructureReconstructor.action()`
 returns a `TableStructureResult`; all three inherit the Project Koios
 action-family ABCs. `TableStructureInput`,
 `DeterministicTableStructureReconstructor`, and `reconstruct()` remain

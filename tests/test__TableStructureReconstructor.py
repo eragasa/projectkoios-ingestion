@@ -25,7 +25,6 @@ from projectkoios.ingestion import (
     TableStructureReconstructor,
 )
 from projectkoios.ingestion.table_structure import (
-    TableStructureActionizer,
     TableStructureRequest,
     TableStructureResult,
 )
@@ -114,7 +113,7 @@ def test__table_structure__uses_action_family_base_objects() -> None:
     fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
     detection = _detect(fixture.read_bytes(), "action-family")
     request = TableStructureRequest.create(detection_result=detection)
-    actionizer = TableStructureActionizer()
+    actionizer = DeterministicTableStructureReconstructor()
 
     result = actionizer.action(request=request)
 
