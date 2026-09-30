@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from io import BytesIO
 from typing import BinaryIO, Protocol
 
-from projectkoios.ingestion.figures import (
+from projectkoios.ingestion.figures.contracts import (
     _FIGURE_CAPTION,
     _LEGEND,
     _SUBFIGURE_LABEL,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import fields, is_dataclass
 from enum import Enum
 
-from projectkoios.ingestion.figures import (
+from projectkoios.ingestion.figures.contracts import (
     _FIGURE_CAPTION,
     _LEGEND,
     _SUBFIGURE_LABEL,

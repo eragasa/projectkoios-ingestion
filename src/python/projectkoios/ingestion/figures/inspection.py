@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, BinaryIO, Protocol, cast
 
-from projectkoios.ingestion.figures import (
+from projectkoios.ingestion.figures.contracts import (
     FIGURE_INSPECTOR_VERSION,
     EmbeddedFigureArtifact,
     FigureDetectionConfiguration,
