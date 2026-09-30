@@ -5,6 +5,7 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
 from projectkoios.ingestion import (
     DeterministicFigureCandidateDetector,
     FigureRelevanceProcessor,
@@ -34,6 +35,11 @@ from projectkoios.ingestion.figure_relevance import (
 )
 
 pytest.importorskip("pymupdf")
+
+
+def test__figure_relevance_uses_request_and_result_base_objects() -> None:
+    assert issubclass(FigureRelevanceRequest, DataObjectActionRequest)
+    assert issubclass(FigureRelevanceResult, DataObjectActionResult)
 
 
 def _detection(fixture_name: str, suffix: str):

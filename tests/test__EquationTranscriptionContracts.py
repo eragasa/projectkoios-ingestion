@@ -6,6 +6,7 @@ import zlib
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
 from projectkoios.ingestion import (
     EquationCandidate,
     EquationCandidateKind,
@@ -37,6 +38,11 @@ from projectkoios.ingestion import (
     WarningSeverity,
     build_equation_transcription_cache_key,
 )
+
+
+def test__equation_transcription_uses_request_and_result_base_objects() -> None:
+    assert issubclass(EquationTranscriptionRequest, DataObjectActionRequest)
+    assert issubclass(EquationTranscriptionResult, DataObjectActionResult)
 
 
 def _png(suffix: bytes = b"") -> bytes:
