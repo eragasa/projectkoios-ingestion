@@ -6,6 +6,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Any, BinaryIO, cast
 
+import projectkoios.ingestion.tables as tables
 import pytest
 from projectkoios.ingestion import (
     DeterministicLayoutProcessor,
@@ -25,6 +26,34 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.tables import _axis_segments
 
 pymupdf = pytest.importorskip("pymupdf")
+
+
+@pytest.mark.parametrize(
+    "public_type_name",
+    (
+        "DeterministicTableCandidateDetector",
+        "PyMuPdfTableRuleInspector",
+        "TableAssociationRole",
+        "TableBoundaryKind",
+        "TableCandidate",
+        "TableDetectionConfiguration",
+        "TableDetectionInput",
+        "TableDetectionLimitError",
+        "TableDetectionResult",
+        "TableEvidenceStatus",
+        "TablePageRuleEvidence",
+        "TableRegionEvidence",
+        "TableRuleOrientation",
+        "TableRuleSegment",
+        "TableTextAssociation",
+    ),
+)
+def test__table_package_refactor_preserves_public_module_paths(
+    public_type_name: str,
+) -> None:
+    public_type = getattr(tables, public_type_name)
+
+    assert public_type.__module__ == "projectkoios.ingestion.tables"
 
 
 def _source(payload: bytes, suffix: str) -> SourceDocument:

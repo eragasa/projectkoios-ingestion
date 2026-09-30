@@ -20,7 +20,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.tables import (
+from projectkoios.ingestion.tables.contracts import (
     _CAPTION,
     _CONTINUED,
     _NOTE,

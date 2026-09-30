@@ -17,7 +17,7 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
-from projectkoios.ingestion.tables import (
+from projectkoios.ingestion.tables.contracts import (
     _MAX_ASSOCIATIONS_PER_CANDIDATE,
     _MAX_BACKEND_DRAWING_ITEMS_PER_PAGE,
     _MAX_BLOCKS_PER_REGION,

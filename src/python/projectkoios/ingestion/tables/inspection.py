@@ -6,7 +6,7 @@ import hashlib
 from typing import BinaryIO, Protocol
 
 from projectkoios.ingestion.models import ExtractedDocument, SourceDocument
-from projectkoios.ingestion.tables import (
+from projectkoios.ingestion.tables.contracts import (
     TABLE_RULE_INSPECTOR_VERSION,
     TableDetectionConfiguration,
     TableDetectionLimitError,
