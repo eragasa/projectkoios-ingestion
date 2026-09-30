@@ -33,6 +33,21 @@ The repository does not own:
 - user-specific source paths, names, or templates;
 - workflow-engine semantics or model-provider implementations.
 
+## Ownership and packaging
+
+This repository is the canonical implementation owner for
+`projectkoios.ingestion`. The distribution participates in the PEP 420
+`projectkoios` namespace: setuptools discovers namespace packages beneath
+`src/python`, and the repository intentionally has no
+`src/python/projectkoios/__init__.py`.
+
+Shared repository loaders and chunking algorithms remain dependencies owned by
+`projectkoios`; concrete search indices and ranking remain consumer concerns.
+Cross-repository ownership is governed by the
+[Project Koios architecture](https://github.com/eragasa/projectkoios/blob/main/docs/architecture/README.md),
+and repository routing is recorded in the
+[Project Koios repository map](https://github.com/eragasa/projectkoios-bootstrap/blob/master/maps/repositories.md).
+
 ## Current Architecture
 
 The implemented code-repository pipeline is:
@@ -49,8 +64,8 @@ CodeRepository
 `CodeRepositoryIngester` coordinates a loader and chunker.
 `CodeRepositoryIndexer` sends the resulting stream to a consumer-provided
 `ChunkIndexWriter`. Chunking algorithms, repository loading, and concrete
-indices remain dependencies outside this repository as established by
-`adr.20260629.establish-ingestion-repo.md`.
+indices remain dependencies outside this repository under the ownership
+boundary above.
 
 ## Document Processing Model
 
@@ -117,6 +132,28 @@ PdfTextbookIngester.ingest(...) -> ExtractedTextbook
 
 Markdown notes, search records, and other projections are downstream views of
 these objects. They are not PDF-ingestion return types.
+
+The current PDF boundary has these invariants:
+
+- extraction is destination-independent and never mutates source bytes;
+- callers supply logical source identity separately from the exact
+  content-derived source-blob identity;
+- PyMuPDF remains behind a lazy optional adapter boundary;
+- raw extraction preserves native evidence, source coordinates, page labels,
+  exact asset identities, quality observations, and structured warnings;
+- structure, layout, OCR, equations, tables, figures, and clean transcripts are
+  source-backed derivations that retain uncertainty rather than accepted fact;
+- expensive enrichment is bounded, selected explicitly, and performed through
+  injected processors instead of running over a corpus by default;
+- raw extraction and derived processing have separate identities and cache
+  boundaries;
+- derived objects retain transitive logical-source, exact-blob, page, object,
+  and coordinate provenance when available;
+- search chunking, indexing, ranking, embeddings, and destination rendering
+  remain outside ingestion; and
+- persisted contracts are explicit, versioned, and language-independent, while
+  fixtures are generated or redistributable and never copied from private
+  document collections.
 
 ## Cold and Just-in-Time Processing
 
@@ -414,10 +451,10 @@ The projection is `automated_unreviewed` regardless of apparent quality. It is a
 
 ## Rough Chunking Boundary
 
-The accepted repository boundary places chunking algorithms outside this
-repository. Ingestion may coordinate an injected `ChunkProducer`, but it does
-not define search-specific chunk sizes, overlap, embedding behavior, or ranking
-semantics.
+The current repository boundary places search-specific chunking algorithms
+outside this repository. Ingestion may coordinate an injected `ChunkProducer`,
+but it does not define search-specific chunk sizes, overlap, embedding
+behavior, or ranking semantics.
 
 A chunk accepted or emitted at the ingestion boundary must preserve:
 
@@ -429,7 +466,8 @@ A chunk accepted or emitted at the ingestion boundary must preserve:
 - extraction confidence and warnings.
 
 Moving a concrete textbook chunking algorithm into this repository requires an
-ADR that explicitly supersedes the existing boundary.
+explicit cross-repository architecture update by the Project Koios architecture
+owner.
 
 ## Provenance
 

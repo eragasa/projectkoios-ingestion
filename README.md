@@ -8,10 +8,10 @@ This package coordinates source loaders, document processors, chunk producers,
 and index writers through destination-independent interfaces. It does not own
 search storage, bibliography management, Markdown projection, or vault writes.
 
-- [Architecture](docs/architecture/index.md)
+- [Architecture index](docs/architecture/index.md)
+- [Current ingestion and PDF architecture](docs/architecture/ingestion/implementation/index.md)
 - [Contract catalog](docs/contracts/README.md)
 - [Legacy aggregate of implemented data contracts](docs/contracts.md)
-- [PDF document ingestion ADR](docs/adr.pdf-document-ingestion.md)
 - [Bounded PDF byte extraction and artifacts](docs/pdf-byte-extraction.md)
 - [Document-processing task status](docs/tasks/document-processing-backlog.md)
 - [Redistributable PDF fixture matrix](tests/fixtures/pdf/README.md)

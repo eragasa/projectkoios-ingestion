@@ -11,7 +11,7 @@
 | Specification revision | Git commit containing this document |
 | Owner | `projectkoios-ingestion` |
 | Acceptance authority | Project Koios operator after ingestion-owner and materially affected references-consumer review |
-| Architecture record | Accepted `ADR20260918: Reference authority and projection architecture` at `projectkoios@f94fc07ae6db0ff341682571bd974835d48238fb` |
+| Architecture context | [Project Koios current architecture](https://github.com/eragasa/projectkoios/blob/main/docs/architecture/README.md) and [ingestion implementation architecture](../architecture/ingestion/implementation/index.md) |
 | Task | `ING-REFERENCE-EVIDENCE-01`, `projectkoios-ingestion#3` |
 | Predecessor | None registered; the owner-internal canonical transcript materializer publishes this projection |
 | Supersedes | None while proposed |
