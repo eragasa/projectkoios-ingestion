@@ -6,6 +6,11 @@ from collections import Counter
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -121,7 +126,7 @@ class TableStructureConfiguration:
 
 
 @dataclass(frozen=True)
-class TableStructureInput:
+class TableStructureRequest(DataObjectActionRequest):
     input_id: str
     detection_result: TableDetectionResult
     configuration: TableStructureConfiguration
@@ -133,7 +138,7 @@ class TableStructureInput:
         *,
         detection_result: TableDetectionResult,
         configuration: TableStructureConfiguration | None = None,
-    ) -> TableStructureInput:
+    ) -> TableStructureRequest:
         actual = configuration or TableStructureConfiguration()
         _validate_input_parts(detection_result, actual)
         return cls(
@@ -150,6 +155,14 @@ class TableStructureInput:
             self.detection_result, self.configuration
         ):
             raise ValueError("table structure-input ID is inconsistent")
+
+    @property
+    def request_id(self) -> str:
+        """Return the established input identity as the request identity."""
+        return self.input_id
+
+
+TableStructureInput = TableStructureRequest
 
 
 @dataclass(frozen=True)
@@ -836,9 +849,9 @@ class TableStructure:
 
 
 @dataclass(frozen=True)
-class TableStructureResult:
+class TableStructureResult(DataObjectActionResult):
     result_id: str
-    structure_input: TableStructureInput
+    structure_input: TableStructureRequest
     structures: tuple[TableStructure, ...]
     warnings: tuple[IngestionWarning, ...]
     processor_name: str
@@ -850,7 +863,7 @@ class TableStructureResult:
     def create(
         cls,
         *,
-        structure_input: TableStructureInput,
+        structure_input: TableStructureRequest,
         structures: tuple[TableStructure, ...],
         warnings: tuple[IngestionWarning, ...],
         processor_name: str,
@@ -912,6 +925,23 @@ class TableStructureResult:
         ):
             raise ValueError("table structure-result ID is inconsistent")
 
+    @property
+    def request(self) -> TableStructureRequest:
+        """Return the exact request retained by this result."""
+        return self.structure_input
+
+    @property
+    def request_id(self) -> str:
+        return self.structure_input.request_id
+
+    @property
+    def actionizer_name(self) -> str:
+        return self.processor_name
+
+    @property
+    def actionizer_version(self) -> str:
+        return self.processor_version
+
 
 @dataclass(frozen=True)
 class _Record:
@@ -937,31 +967,24 @@ class _WarningSpec:
     evidence: Metadata = ()
 
 
-class DeterministicTableStructureReconstructor:
+class TableStructureActionizer(
+    DataObjectActionizer[TableStructureRequest, TableStructureResult]
+):
     """Propose bounded rows, columns, cells, spans, and continuations."""
+
+    __slots__ = ()
 
     name = "deterministic-table-structure-reconstructor"
     version = TABLE_STRUCTURE_RECONSTRUCTOR_VERSION
 
-    def __init__(
-        self, configuration: TableStructureConfiguration | None = None
-    ) -> None:
-        self.configuration = configuration or TableStructureConfiguration()
-
-    @property
-    def configuration_digest(self) -> str:
-        return self.configuration.configuration_digest
-
-    def reconstruct(
-        self, detection_result: TableDetectionResult
-    ) -> TableStructureResult:
-        structure_input = TableStructureInput.create(
-            detection_result=detection_result,
-            configuration=self.configuration,
-        )
+    def action(self, *, request: TableStructureRequest) -> TableStructureResult:
+        """Return the proposed structure for one complete request."""
+        if not isinstance(request, TableStructureRequest):
+            raise TypeError("request must be TableStructureRequest")
+        structure_input = request
         base_structures: list[TableStructure] = []
         warning_specs: list[list[_WarningSpec]] = []
-        for candidate in detection_result.candidates:
+        for candidate in request.detection_result.candidates:
             structure, specs = _reconstruct_candidate(
                 structure_input,
                 candidate,
@@ -982,8 +1005,30 @@ class DeterministicTableStructureReconstructor:
         )
 
 
+class DeterministicTableStructureReconstructor(TableStructureActionizer):
+    """Compatibility facade for the established reconstruction API."""
+
+    def __init__(
+        self, configuration: TableStructureConfiguration | None = None
+    ) -> None:
+        self.configuration = configuration or TableStructureConfiguration()
+
+    @property
+    def configuration_digest(self) -> str:
+        return self.configuration.configuration_digest
+
+    def reconstruct(
+        self, detection_result: TableDetectionResult
+    ) -> TableStructureResult:
+        request = TableStructureRequest.create(
+            detection_result=detection_result,
+            configuration=self.configuration,
+        )
+        return self.action(request=request)
+
+
 def _reconstruct_candidate(
-    structure_input: TableStructureInput,
+    structure_input: TableStructureRequest,
     candidate: TableCandidate,
     processor_name: str,
     processor_version: str,
@@ -1358,7 +1403,7 @@ def _reconstruct_candidate(
 
 
 def _cell_from_records(
-    structure_input: TableStructureInput,
+    structure_input: TableStructureRequest,
     candidate: TableCandidate,
     region: TableRegionEvidence,
     row: TableRow,
@@ -1425,7 +1470,7 @@ def _cell_from_records(
 
 
 def _continuations(
-    structure_input: TableStructureInput,
+    structure_input: TableStructureRequest,
     candidate: TableCandidate,
     processor_name: str,
     processor_version: str,
@@ -2334,14 +2379,14 @@ def _result_id(
 
 
 def _preflight_result(
-    structure_input: TableStructureInput,
+    structure_input: TableStructureRequest,
     structures: tuple[TableStructure, ...],
     warnings: tuple[IngestionWarning, ...],
     processor_name: str,
     processor_version: str,
 ) -> None:
-    if not isinstance(structure_input, TableStructureInput):
-        raise TypeError("structure_input must be TableStructureInput")
+    if not isinstance(structure_input, TableStructureRequest):
+        raise TypeError("structure_input must be TableStructureRequest")
     if not isinstance(structures, tuple) or not isinstance(warnings, tuple):
         raise TypeError("result collections must be immutable tuples")
     if len(structures) > structure_input.configuration.max_candidates:

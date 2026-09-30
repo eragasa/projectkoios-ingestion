@@ -6,6 +6,11 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     DeterministicTableCandidateDetector,
     DeterministicTableStructureReconstructor,
@@ -15,8 +20,14 @@ from projectkoios.ingestion import (
     TableCellRole,
     TableStructureConfiguration,
     TableStructureEvidenceStatus,
+    TableStructureInput,
     TableStructureLimitError,
     TableStructureReconstructor,
+)
+from projectkoios.ingestion.table_structure import (
+    TableStructureActionizer,
+    TableStructureRequest,
+    TableStructureResult,
 )
 
 pymupdf = pytest.importorskip("pymupdf")
@@ -97,6 +108,29 @@ def _detect(payload: bytes, suffix: str):
     document = PyMuPdfExtractor().extract(source, BytesIO(payload)).document
     detector: TableCandidateDetector = DeterministicTableCandidateDetector()
     return detector.detect(document, BytesIO(payload))
+
+
+def test__table_structure__uses_action_family_base_objects() -> None:
+    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    detection = _detect(fixture.read_bytes(), "action-family")
+    request = TableStructureRequest.create(detection_result=detection)
+    actionizer = TableStructureActionizer()
+
+    result = actionizer.action(request=request)
+
+    assert TableStructureInput is TableStructureRequest
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(actionizer, DataObjectActionizer)
+    assert isinstance(result, DataObjectActionResult)
+    assert isinstance(result, TableStructureResult)
+    assert result.request is request
+    assert result.request_id == request.request_id == request.input_id
+    assert result.actionizer_name == actionizer.name
+    assert result.actionizer_version == actionizer.version
+    assert (
+        DeterministicTableStructureReconstructor().reconstruct(detection)
+        == result
+    )
 
 
 def test__table_structure__reconstructs_maintained_ruled_fixture() -> None:

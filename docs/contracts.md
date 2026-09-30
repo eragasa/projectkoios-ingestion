@@ -404,15 +404,16 @@ stores no derived result in `ExtractionCache`.
 ## Table structure proposals
 
 Table-structure contract version 1.0 is a derived proposal contract over one
-complete exact `TableDetectionResult`. `TableStructureInput` binds that result,
-including candidate and detection warning links, to the complete immutable
-`TableStructureConfiguration`. It rejects candidate, region, association, row,
-column, cell, and predicted-grid counts above configured bounds before
-reconstruction.
-
-`DeterministicTableStructureReconstructor` implements the injected
-`TableStructureReconstructor` boundary. For every candidate it returns exactly
-one `TableStructure` containing:
+complete exact `TableDetectionResult`. `TableStructureRequest` binds that
+result, including candidate and detection warning links, to the complete
+immutable `TableStructureConfiguration`. `TableStructureActionizer.action()`
+returns a `TableStructureResult`; all three inherit the Project Koios
+action-family ABCs. `TableStructureInput`,
+`DeterministicTableStructureReconstructor`, and `reconstruct()` remain
+compatibility surfaces over the same objects and semantics. The operation
+rejects candidate, region, association, row, column, cell, and predicted-grid
+counts above configured bounds before reconstruction. For every candidate it
+returns exactly one `TableStructure` containing:
 
 - contiguous destination-independent `TableColumn` values with normalized
   proposed bounds and all contributing region identities;
@@ -439,7 +440,7 @@ Multi-block text is a newline-joined proposal with exact component strings; it
 is not represented as source-native contiguous text.
 
 Structure and cell status is only `proposed` or `ambiguous`; no accepted,
-validated, corrected, or human-approved status exists. Stable input/result and
+validated, corrected, or human-approved status exists. Stable request/result and
 column/row/cell/continuation/structure identities cover the exact detection
 result, candidate evidence, configuration, processor version, proposed
 geometry, roles, text, spans, rendered-region locators, warnings, and complete
