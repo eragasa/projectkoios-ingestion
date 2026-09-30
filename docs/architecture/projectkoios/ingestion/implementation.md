@@ -2,8 +2,8 @@
 
 `projectkoios.ingestion.__init__` exports the selection request, outcome,
 selected evidence records, result, limit error, mapping basis, and semantic
-selector. The implementation remains in the unversioned
-`transcript_evidence_selection.py` module and depends only on the existing
+selector. The implementation is owned by the unversioned
+`transcript.evidence.selection` package and depends only on the existing
 canonical [`CleanTranscript`](../../../contracts/clean-transcript.md) family.
 
 ```mermaid
@@ -22,6 +22,6 @@ classDiagram
     TranscriptEvidenceSelectionResult *-- SelectedTranscriptBlockEvidence
 ```
 
-The package initializer adds aliases only. Selection policy, bounds,
-completeness checks, warning resolution, ordering, and identities remain owned
-by the module.
+The package initializer intentionally exposes the canonical selection classes.
+Selection policy, bounds, completeness checks, warning resolution, ordering,
+and identities remain owned by the nested package.

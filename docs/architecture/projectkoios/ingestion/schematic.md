@@ -4,7 +4,7 @@
 flowchart LR
     Producer["clean_transcript<br/>canonical projection"]
     Transcript["CleanTranscript"]
-    Selection["transcript_evidence_selection"]
+    Selection["transcript.evidence.selection"]
     Evidence["paired clean/raw selected evidence"]
     Downstream["downstream authoring<br/>outside ingestion"]
 

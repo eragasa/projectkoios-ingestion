@@ -10,7 +10,7 @@ linked rather than duplicated here.
 
 ## Contents
 
-- [`transcript_evidence_selection`](transcript_evidence_selection/index.md) —
-  exact block selection with fail-closed warning handling.
+- [`transcript`](transcript/index.md) — transcript-owned derivations,
+  including exact evidence selection with fail-closed warning handling.
 - [`schematic.md`](schematic.md) — touched package relationships.
 - [`implementation.md`](implementation.md) — package export and boundary rules.

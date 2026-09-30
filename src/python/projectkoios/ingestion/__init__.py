@@ -462,6 +462,16 @@ from projectkoios.ingestion.textbooks import (
     TextbookIngester,
     TextbookStructureAnalyzer,
 )
+from projectkoios.ingestion.transcript.evidence.selection import (
+    SelectedTranscriptBlockEvidence,
+    SelectedTranscriptPageEvidence,
+    TranscriptEvidenceMappingBasis,
+    TranscriptEvidenceSelectionLimitError,
+    TranscriptEvidenceSelectionOutcome,
+    TranscriptEvidenceSelectionRequest,
+    TranscriptEvidenceSelectionResult,
+    TranscriptEvidenceSelector,
+)
 from projectkoios.ingestion.transcript_batch import (
     TRANSCRIPT_OUTPUT_RELATIVE_PATH,
     TranscriptBatchError,
@@ -471,16 +481,6 @@ from projectkoios.ingestion.transcript_batch import (
     build_transcript_batch_plan,
     load_durable_plan,
     publish_durable_plan,
-)
-from projectkoios.ingestion.transcript_evidence_selection import (
-    SelectedTranscriptBlockEvidence,
-    SelectedTranscriptPageEvidence,
-    TranscriptEvidenceMappingBasis,
-    TranscriptEvidenceSelectionLimitError,
-    TranscriptEvidenceSelectionOutcome,
-    TranscriptEvidenceSelectionRequest,
-    TranscriptEvidenceSelectionResult,
-    TranscriptEvidenceSelector,
 )
 from projectkoios.ingestion.transcription import (
     TRANSCRIPTION_COMPOSER_VERSION,

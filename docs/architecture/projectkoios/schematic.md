@@ -5,7 +5,7 @@ flowchart LR
     Base["projectkoios.base<br/>shared action bases"]
     Namespace["projectkoios<br/>PEP 420 namespace"]
     Ingestion["projectkoios.ingestion<br/>repository-owned package"]
-    Selection["transcript_evidence_selection<br/>bounded evidence handoff"]
+    Selection["transcript.evidence.selection<br/>bounded evidence handoff"]
 
     Base --> Ingestion
     Namespace --> Ingestion

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -19,6 +20,7 @@ from projectkoios.ingestion import (
     SelectedTranscriptBlockEvidence,
     SelectedTranscriptPageEvidence,
     TranscriptEvidenceMappingBasis,
+    TranscriptEvidenceSelectionLimitError,
     TranscriptEvidenceSelectionOutcome,
     TranscriptEvidenceSelectionRequest,
     TranscriptEvidenceSelectionResult,
@@ -172,6 +174,56 @@ def _request(
         transcript=transcript,
         selected_block_record_ids=ids,
     )
+
+
+def test__selection_api__canonical_owner_matches_root_facade() -> None:
+    canonical = importlib.import_module(
+        "projectkoios.ingestion.transcript.evidence.selection"
+    )
+    contracts = importlib.import_module(
+        "projectkoios.ingestion.transcript.evidence.selection.contracts"
+    )
+    evidence = importlib.import_module(
+        "projectkoios.ingestion.transcript.evidence.selection.evidence"
+    )
+    selector = importlib.import_module(
+        "projectkoios.ingestion.transcript.evidence.selection.selector"
+    )
+    root_exports = {
+        "SelectedTranscriptBlockEvidence": SelectedTranscriptBlockEvidence,
+        "SelectedTranscriptPageEvidence": SelectedTranscriptPageEvidence,
+        "TranscriptEvidenceMappingBasis": TranscriptEvidenceMappingBasis,
+        "TranscriptEvidenceSelectionLimitError": (
+            TranscriptEvidenceSelectionLimitError
+        ),
+        "TranscriptEvidenceSelectionOutcome": (
+            TranscriptEvidenceSelectionOutcome
+        ),
+        "TranscriptEvidenceSelectionRequest": (
+            TranscriptEvidenceSelectionRequest
+        ),
+        "TranscriptEvidenceSelectionResult": TranscriptEvidenceSelectionResult,
+        "TranscriptEvidenceSelector": TranscriptEvidenceSelector,
+    }
+
+    defining_modules = {
+        "SelectedTranscriptBlockEvidence": evidence,
+        "SelectedTranscriptPageEvidence": evidence,
+        "TranscriptEvidenceMappingBasis": evidence,
+        "TranscriptEvidenceSelectionLimitError": contracts,
+        "TranscriptEvidenceSelectionOutcome": contracts,
+        "TranscriptEvidenceSelectionRequest": contracts,
+        "TranscriptEvidenceSelectionResult": contracts,
+        "TranscriptEvidenceSelector": selector,
+    }
+    for name, root_export in root_exports.items():
+        defined = getattr(defining_modules[name], name)
+        assert getattr(canonical, name) is root_export is defined
+        assert defined.__module__ == defining_modules[name].__name__
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module(
+            "projectkoios.ingestion.transcript_evidence_selection"
+        )
 
 
 def test__selector__returns_canonical_page_and_block_order() -> None:
