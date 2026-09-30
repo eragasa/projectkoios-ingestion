@@ -659,7 +659,19 @@ total text, exact input artifact bytes, and retained result size.
 
 ## Automated clean transcript projections
 
-Clean-transcript contract version 1.0 and projector version 1 define a compact source-linked view over one complete `StructuredTranscriptionResult` and its exact `PageLayoutResult` tuple. `CleanTranscriptArtifact` binds the structured result ID, root document/source/blob/hash, ordered layout result IDs, included records, exclusions, pages, consolidated UTF-8 text/hash/length, processor/configuration identity, warnings, and the fixed `automated_unreviewed` status.
+`CleanTranscriptRequest` → `DeterministicCleanTranscriptProjector` →
+`CleanTranscript` directly implements the action-family bases. Canonical
+`action(request=...)` owns projection; supported `project()` forwards through
+that single path. `CleanTranscriptArtifact` is a deprecated exact alias to
+`CleanTranscript`.
+
+Clean-transcript contract version 1.0 and projector version 1 define a compact
+source-linked view over one complete `StructuredTranscriptionResult` and its
+exact `PageLayoutResult` tuple. `CleanTranscript` binds the structured result
+ID, root document/source/blob/hash, ordered layout result IDs, included records,
+exclusions, pages, consolidated UTF-8 text/hash/length,
+processor/configuration identity, warnings, and the fixed
+`automated_unreviewed` status.
 
 Each `CleanTranscriptBlock` retains one exact root block ID, physical and printed page, global proposed order, exact raw text, cleaned text, exact source spans, and sorted transformation evidence. Each `CleanTranscriptExclusion` retains exact raw text/spans and one typed reason: `repeated_margin`, `page_number`, or `empty_after_sanitization`. `CleanTranscriptPage` binds ordered record IDs, an explicit physical/printed page marker, page text, and text hash. Artifact construction verifies stable identities, hashes, object counts, and deterministic bounds.
 

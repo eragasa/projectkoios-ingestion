@@ -8,6 +8,11 @@ from collections import defaultdict
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import Metadata, SourceSpan
@@ -15,6 +20,7 @@ from projectkoios.ingestion.transcription import StructuredTranscriptionResult
 
 CLEAN_TRANSCRIPT_CONTRACT_VERSION = "1.0"
 CLEAN_TRANSCRIPT_PROCESSOR_VERSION = "1"
+CLEAN_TRANSCRIPT_ACTION_CONTRACT_VERSION = "1.0"
 _MAX_PAGES = 512
 _MAX_BLOCKS = 32_768
 _MAX_EXCLUSIONS = 16_384
@@ -91,6 +97,76 @@ class CleanTranscriptConfiguration:
             self.minimum_repeated_margin_pages,
             self.repeated_margin_page_fraction,
             self.join_line_break_hyphenation,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CleanTranscriptRequest(DataObjectActionRequest):
+    """Complete immutable intent for one clean-transcript projection."""
+
+    request_id: str
+    transcription_result: StructuredTranscriptionResult
+    layouts: tuple[PageLayoutResult, ...]
+    configuration: CleanTranscriptConfiguration
+    contract_version: str = CLEAN_TRANSCRIPT_ACTION_CONTRACT_VERSION
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptConfiguration,
+    ) -> CleanTranscriptRequest:
+        return cls(
+            request_id=cls._request_id(
+                transcription_result=transcription_result,
+                layouts=layouts,
+                configuration=configuration,
+            ),
+            transcription_result=transcription_result,
+            layouts=layouts,
+            configuration=configuration,
+        )
+
+    def __post_init__(self) -> None:
+        if self.contract_version != CLEAN_TRANSCRIPT_ACTION_CONTRACT_VERSION:
+            raise ValueError("unsupported clean-transcript request contract")
+        if not isinstance(
+            self.transcription_result, StructuredTranscriptionResult
+        ):
+            raise TypeError(
+                "transcription_result must be StructuredTranscriptionResult"
+            )
+        if not isinstance(self.layouts, tuple) or any(
+            not isinstance(layout, PageLayoutResult) for layout in self.layouts
+        ):
+            raise TypeError("layouts must contain PageLayoutResult values")
+        if not isinstance(self.configuration, CleanTranscriptConfiguration):
+            raise TypeError(
+                "configuration must be CleanTranscriptConfiguration"
+            )
+        expected = self._request_id(
+            transcription_result=self.transcription_result,
+            layouts=self.layouts,
+            configuration=self.configuration,
+        )
+        if self.request_id != expected:
+            raise ValueError("clean-transcript request ID is inconsistent")
+
+    @staticmethod
+    def _request_id(
+        *,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptConfiguration,
+    ) -> str:
+        return stable_id(
+            "clean-transcript-request",
+            transcription_result.result_id,
+            tuple(layout.result_id for layout in layouts),
+            configuration.configuration_digest,
+            CLEAN_TRANSCRIPT_ACTION_CONTRACT_VERSION,
         )
 
 
@@ -289,7 +365,7 @@ class CleanTranscriptPage:
 
 
 @dataclass(frozen=True)
-class CleanTranscriptArtifact:
+class CleanTranscript(DataObjectActionResult):
     artifact_id: str
     transcription_result_id: str
     document_id: str
@@ -324,7 +400,7 @@ class CleanTranscriptArtifact:
         processor_name: str,
         processor_version: str,
         configuration_digest: str,
-    ) -> CleanTranscriptArtifact:
+    ) -> CleanTranscript:
         document = transcription_result.transcription_input.document
         encoded = text.encode("utf-8")
         digest = hashlib.sha256(encoded).hexdigest()
@@ -427,7 +503,13 @@ class CleanTranscriptArtifact:
             raise ValueError("clean-transcript artifact ID is inconsistent")
 
 
-class DeterministicCleanTranscriptProjector:
+# Deprecated exact alias for the previously published artifact spelling.
+CleanTranscriptArtifact = CleanTranscript
+
+
+class DeterministicCleanTranscriptProjector(
+    DataObjectActionizer[CleanTranscriptRequest, CleanTranscript]
+):
     """Produce readable, source-linked text without claiming proofreading."""
 
     name = "deterministic-clean-transcript-projector"
@@ -438,11 +520,16 @@ class DeterministicCleanTranscriptProjector:
     ) -> None:
         self.configuration = configuration or CleanTranscriptConfiguration()
 
-    def project(
-        self,
-        transcription_result: StructuredTranscriptionResult,
-        layouts: tuple[PageLayoutResult, ...],
-    ) -> CleanTranscriptArtifact:
+    def action(self, *, request: CleanTranscriptRequest) -> CleanTranscript:
+        """Project one complete clean-transcript request."""
+        if not isinstance(request, CleanTranscriptRequest):
+            raise TypeError("request must be CleanTranscriptRequest")
+        if request.configuration != self.configuration:
+            raise ValueError(
+                "request configuration must match projector configuration"
+            )
+        transcription_result = request.transcription_result
+        layouts = request.layouts
         if not isinstance(transcription_result, StructuredTranscriptionResult):
             raise TypeError(
                 "transcription_result must be StructuredTranscriptionResult"
@@ -467,7 +554,7 @@ class DeterministicCleanTranscriptProjector:
                 != tuple(block.block_id for block in page.blocks)
             ):
                 raise ValueError("layout does not match transcript document")
-        repeated_margin_keys = _repeated_margin_keys(
+        repeated_margin_keys = CleanTranscriptContract._repeated_margin_keys(
             transcription_result, layouts, self.configuration
         )
         records: list[CleanTranscriptBlock] = []
@@ -503,7 +590,7 @@ class DeterministicCleanTranscriptProjector:
             for block_id in (*ordered_ids, *fallback_ids):
                 block = block_by_id[block_id]
                 assert block.text is not None
-                reason = _exclusion_reason(
+                reason = CleanTranscriptContract._exclusion_reason(
                     block.text,
                     block.source_spans,
                     page.height,
@@ -522,8 +609,10 @@ class DeterministicCleanTranscriptProjector:
                         )
                     )
                     continue
-                clean_text, transformations = _clean_text(
-                    block.text, self.configuration
+                clean_text, transformations = (
+                    CleanTranscriptContract._clean_text(
+                        block.text, self.configuration
+                    )
                 )
                 if not clean_text:
                     exclusions.append(
@@ -581,7 +670,7 @@ class DeterministicCleanTranscriptProjector:
                 "transcript exclusions exceed limit"
             )
         text = "\n\n".join(page.text for page in pages) + "\n"
-        return CleanTranscriptArtifact.create(
+        return CleanTranscript.create(
             transcription_result=transcription_result,
             layouts=layouts,
             pages=tuple(pages),
@@ -594,104 +683,131 @@ class DeterministicCleanTranscriptProjector:
             configuration_digest=self.configuration.configuration_digest,
         )
 
-
-def _clean_text(
-    text: str, configuration: CleanTranscriptConfiguration
-) -> tuple[str, Metadata]:
-    control_count = len(_CONTROL_CHARACTER.findall(text))
-    soft_hyphen_count = text.count("\u00ad")
-    value = _CONTROL_CHARACTER.sub(" ", text).replace("\u00ad", "")
-    joined = 0
-    if configuration.join_line_break_hyphenation:
-        value, joined = _LINE_BREAK_HYPHENATION.subn(
-            lambda match: match.group("left") + match.group("right"), value
-        )
-    normalized = _WHITESPACE.sub(" ", value).strip()
-    transformations: Metadata = tuple(
-        sorted(
-            (
-                ("control_characters_replaced", str(control_count)),
-                ("line_break_hyphenations_joined", str(joined)),
-                ("soft_hyphens_removed", str(soft_hyphen_count)),
-                (
-                    "unicode_normalization",
-                    "none",
-                ),
-                ("whitespace_normalization", "collapse_unicode_whitespace"),
+    def project(
+        self,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+    ) -> CleanTranscript:
+        """Project through the canonical action path."""
+        return self.action(
+            request=CleanTranscriptRequest.create(
+                transcription_result=transcription_result,
+                layouts=layouts,
+                configuration=self.configuration,
             )
         )
-    )
-    return normalized, transformations
 
 
-def _repeated_margin_keys(
-    transcription_result: StructuredTranscriptionResult,
-    layouts: tuple[PageLayoutResult, ...],
-    configuration: CleanTranscriptConfiguration,
-) -> frozenset[str]:
-    document = transcription_result.transcription_input.document
-    layout_by_page = {layout.page_index: layout for layout in layouts}
-    pages_by_key: dict[str, set[int]] = defaultdict(set)
-    for page in document.pages:
-        layout = layout_by_page[page.page_index]
-        block_by_id = {block.block_id: block for block in page.blocks}
-        for block_id in layout.raw_block_ids:
-            block = block_by_id[block_id]
-            if block.kind != "text" or block.text is None:
-                continue
-            if not _is_margin(block.source_spans, page.height, configuration):
-                continue
-            clean, _ = _clean_text(block.text, configuration)
-            if clean:
-                pages_by_key[_margin_key(clean)].add(page.page_index)
-    threshold = max(
-        configuration.minimum_repeated_margin_pages,
-        math.ceil(
-            len(document.pages) * configuration.repeated_margin_page_fraction
-        ),
-    )
-    return frozenset(
-        key
-        for key, page_indices in pages_by_key.items()
-        if len(page_indices) >= threshold
-    )
+class CleanTranscriptContract:
+    """Own deterministic clean-text projection rules."""
 
+    @staticmethod
+    def _clean_text(
+        text: str, configuration: CleanTranscriptConfiguration
+    ) -> tuple[str, Metadata]:
+        control_count = len(_CONTROL_CHARACTER.findall(text))
+        soft_hyphen_count = text.count("\u00ad")
+        value = _CONTROL_CHARACTER.sub(" ", text).replace("\u00ad", "")
+        joined = 0
+        if configuration.join_line_break_hyphenation:
+            value, joined = _LINE_BREAK_HYPHENATION.subn(
+                lambda match: match.group("left") + match.group("right"), value
+            )
+        normalized = _WHITESPACE.sub(" ", value).strip()
+        transformations: Metadata = tuple(
+            sorted(
+                (
+                    ("control_characters_replaced", str(control_count)),
+                    ("line_break_hyphenations_joined", str(joined)),
+                    ("soft_hyphens_removed", str(soft_hyphen_count)),
+                    (
+                        "unicode_normalization",
+                        "none",
+                    ),
+                    ("whitespace_normalization", "collapse_unicode_whitespace"),
+                )
+            )
+        )
+        return normalized, transformations
 
-def _exclusion_reason(
-    text: str,
-    spans: tuple[SourceSpan, ...],
-    page_height: float,
-    repeated_margin_keys: frozenset[str],
-    configuration: CleanTranscriptConfiguration,
-) -> CleanTranscriptExclusionReason | None:
-    if not _is_margin(spans, page_height, configuration):
+    @staticmethod
+    def _repeated_margin_keys(
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptConfiguration,
+    ) -> frozenset[str]:
+        document = transcription_result.transcription_input.document
+        layout_by_page = {layout.page_index: layout for layout in layouts}
+        pages_by_key: dict[str, set[int]] = defaultdict(set)
+        for page in document.pages:
+            layout = layout_by_page[page.page_index]
+            block_by_id = {block.block_id: block for block in page.blocks}
+            for block_id in layout.raw_block_ids:
+                block = block_by_id[block_id]
+                if block.kind != "text" or block.text is None:
+                    continue
+                if not CleanTranscriptContract._is_margin(
+                    block.source_spans, page.height, configuration
+                ):
+                    continue
+                clean, _ = CleanTranscriptContract._clean_text(
+                    block.text, configuration
+                )
+                if clean:
+                    pages_by_key[
+                        CleanTranscriptContract._margin_key(clean)
+                    ].add(page.page_index)
+        threshold = max(
+            configuration.minimum_repeated_margin_pages,
+            math.ceil(
+                len(document.pages)
+                * configuration.repeated_margin_page_fraction
+            ),
+        )
+        return frozenset(
+            key
+            for key, page_indices in pages_by_key.items()
+            if len(page_indices) >= threshold
+        )
+
+    @staticmethod
+    def _exclusion_reason(
+        text: str,
+        spans: tuple[SourceSpan, ...],
+        page_height: float,
+        repeated_margin_keys: frozenset[str],
+        configuration: CleanTranscriptConfiguration,
+    ) -> CleanTranscriptExclusionReason | None:
+        if not CleanTranscriptContract._is_margin(
+            spans, page_height, configuration
+        ):
+            return None
+        clean, _ = CleanTranscriptContract._clean_text(text, configuration)
+        if _PAGE_NUMBER.fullmatch(clean):
+            return CleanTranscriptExclusionReason.PAGE_NUMBER
+        if CleanTranscriptContract._margin_key(clean) in repeated_margin_keys:
+            return CleanTranscriptExclusionReason.REPEATED_MARGIN
         return None
-    clean, _ = _clean_text(text, configuration)
-    if _PAGE_NUMBER.fullmatch(clean):
-        return CleanTranscriptExclusionReason.PAGE_NUMBER
-    if _margin_key(clean) in repeated_margin_keys:
-        return CleanTranscriptExclusionReason.REPEATED_MARGIN
-    return None
 
+    @staticmethod
+    def _is_margin(
+        spans: tuple[SourceSpan, ...],
+        page_height: float,
+        configuration: CleanTranscriptConfiguration,
+    ) -> bool:
+        boxes = tuple(
+            span.bounding_box for span in spans if span.bounding_box is not None
+        )
+        if not boxes:
+            return False
+        y0 = min(box[1] for box in boxes)
+        y1 = max(box[3] for box in boxes)
+        return (
+            y1 <= page_height * configuration.top_margin_fraction
+            or y0 >= page_height * (1.0 - configuration.bottom_margin_fraction)
+        )
 
-def _is_margin(
-    spans: tuple[SourceSpan, ...],
-    page_height: float,
-    configuration: CleanTranscriptConfiguration,
-) -> bool:
-    boxes = tuple(
-        span.bounding_box for span in spans if span.bounding_box is not None
-    )
-    if not boxes:
-        return False
-    y0 = min(box[1] for box in boxes)
-    y1 = max(box[3] for box in boxes)
-    return (
-        y1 <= page_height * configuration.top_margin_fraction
-        or y0 >= page_height * (1.0 - configuration.bottom_margin_fraction)
-    )
-
-
-def _margin_key(value: str) -> str:
-    normalized = unicodedata.normalize("NFC", value).casefold()
-    return _DIGITS.sub("#", normalized)
+    @staticmethod
+    def _margin_key(value: str) -> str:
+        normalized = unicodedata.normalize("NFC", value).casefold()
+        return _DIGITS.sub("#", normalized)

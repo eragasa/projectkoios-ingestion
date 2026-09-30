@@ -5,6 +5,11 @@ from io import BytesIO
 from typing import Any
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     DeterministicArticleStructureAnalyzer,
     DeterministicEquationCandidateDetector,
@@ -16,7 +21,10 @@ from projectkoios.ingestion import (
     SourceDocument,
 )
 from projectkoios.ingestion.transcript_projection import (
+    CleanTranscript,
+    CleanTranscriptArtifact,
     CleanTranscriptExclusionReason,
+    CleanTranscriptRequest,
     CleanTranscriptStatus,
     DeterministicCleanTranscriptProjector,
 )
@@ -91,9 +99,20 @@ def _pipeline(payload: bytes):
 def test__clean_transcript__is_deterministic_and_source_linked() -> None:
     layouts, transcription = _pipeline(_pdf())
     projector = DeterministicCleanTranscriptProjector()
+    request = CleanTranscriptRequest.create(
+        transcription_result=transcription,
+        layouts=layouts,
+        configuration=projector.configuration,
+    )
 
-    first = projector.project(transcription, layouts)
-    second = projector.project(transcription, layouts)
+    first = projector.action(request=request)
+    second = projector.action(request=request)
+
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(first, DataObjectActionResult)
+    assert isinstance(projector, DataObjectActionizer)
+    assert CleanTranscriptArtifact is CleanTranscript
+    assert projector.project(transcription, layouts) == first
 
     assert first == second
     assert first.status is CleanTranscriptStatus.AUTOMATED_UNREVIEWED
@@ -114,8 +133,13 @@ def test__clean_transcript__is_deterministic_and_source_linked() -> None:
 def test__clean_transcript__retains_excluded_margin_evidence() -> None:
     layouts, transcription = _pipeline(_pdf())
 
-    result = DeterministicCleanTranscriptProjector().project(
-        transcription, layouts
+    projector = DeterministicCleanTranscriptProjector()
+    result = projector.action(
+        request=CleanTranscriptRequest.create(
+            transcription_result=transcription,
+            layouts=layouts,
+            configuration=projector.configuration,
+        )
     )
 
     reasons = {item.reason for item in result.exclusions}

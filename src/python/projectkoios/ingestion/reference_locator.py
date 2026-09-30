@@ -14,7 +14,7 @@ from projectkoios.ingestion.reference_evidence import (
     ReferenceEvidenceVerificationError,
 )
 from projectkoios.ingestion.transcript_projection import (
-    CleanTranscriptArtifact,
+    CleanTranscript,
     CleanTranscriptPage,
 )
 
@@ -123,15 +123,15 @@ def _anchor_inventory(values: object) -> tuple[str, ...]:
 
 def _verified_page(
     record: ReferenceEvidenceRecord,
-    transcript: CleanTranscriptArtifact,
+    transcript: CleanTranscript,
     *,
     page_id: str,
     page_index: int,
 ) -> CleanTranscriptPage:
     if type(record) is not ReferenceEvidenceRecord:
         raise TypeError("record must be ReferenceEvidenceRecord")
-    if type(transcript) is not CleanTranscriptArtifact:
-        raise TypeError("transcript must be CleanTranscriptArtifact")
+    if type(transcript) is not CleanTranscript:
+        raise TypeError("transcript must be CleanTranscript")
     try:
         record.require_reusable()
     except ReferenceEvidenceVerificationError as error:
@@ -185,7 +185,7 @@ class ReferencePageLocator:
         cls,
         *,
         record: ReferenceEvidenceRecord,
-        transcript: CleanTranscriptArtifact,
+        transcript: CleanTranscript,
         page_index: int,
         topic_anchor_alternatives: tuple[str, ...],
     ) -> ReferencePageLocator:
@@ -401,7 +401,7 @@ class ReferencePageLocatorChecker:
         self,
         *,
         record: ReferenceEvidenceRecord,
-        transcript: CleanTranscriptArtifact,
+        transcript: CleanTranscript,
         locator: ReferencePageLocator,
     ) -> ReferencePageLocatorResult:
         """Return payload-free mechanical navigation evidence."""

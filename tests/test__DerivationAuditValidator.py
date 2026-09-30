@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from projectkoios.ingestion import (
-    CleanTranscriptArtifact,
     CleanTranscriptBlock,
     CleanTranscriptExclusion,
     CleanTranscriptExclusionReason,
@@ -77,6 +76,10 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditValidator,
 )
 from projectkoios.ingestion.structure import StructureAnalysis
+from projectkoios.ingestion.transcript_projection import (
+    CleanTranscript,
+    CleanTranscriptRequest,
+)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,
@@ -190,9 +193,9 @@ class _CleanAuditFixture:
     table_structure: object
     figures: object
     transcription: object
-    clean: CleanTranscriptArtifact
+    clean: CleanTranscript
 
-    def audit(self, clean: CleanTranscriptArtifact) -> object:
+    def audit(self, clean: CleanTranscript) -> object:
         return DerivationAuditValidator().audit(
             DerivationAuditInput(
                 source_content=self.content,
@@ -264,8 +267,13 @@ def clean_audit_fixture() -> _CleanAuditFixture:
             figure_detection_result=figures,
         )
     )
-    clean = DeterministicCleanTranscriptProjector().project(
-        transcription, layouts
+    projector = DeterministicCleanTranscriptProjector()
+    clean = projector.action(
+        request=CleanTranscriptRequest.create(
+            transcription_result=transcription,
+            layouts=layouts,
+            configuration=projector.configuration,
+        )
     )
     assert clean.blocks
     assert clean.exclusions
@@ -288,7 +296,7 @@ def _rebuild_clean(
     *,
     blocks: tuple[CleanTranscriptBlock, ...] | None = None,
     exclusions: tuple[CleanTranscriptExclusion, ...] | None = None,
-) -> CleanTranscriptArtifact:
+) -> CleanTranscript:
     original = fixture.clean
     retained_blocks = original.blocks if blocks is None else blocks
     retained_exclusions = (
@@ -327,7 +335,7 @@ def _rebuild_clean(
             )
         )
     text = "\n\n".join(page.text for page in pages) + "\n"
-    return CleanTranscriptArtifact.create(
+    return CleanTranscript.create(
         transcription_result=fixture.transcription,
         layouts=fixture.layouts,
         pages=tuple(pages),

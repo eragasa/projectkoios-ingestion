@@ -45,6 +45,7 @@ from projectkoios.ingestion.table_structure import (
 )
 from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
 from projectkoios.ingestion.transcript_projection import (
+    CleanTranscriptRequest,
     DeterministicCleanTranscriptProjector,
 )
 from projectkoios.ingestion.transcription import (
@@ -267,8 +268,13 @@ def _derive(
             figure_detection_result=figures,
         )
     )
-    clean = DeterministicCleanTranscriptProjector().project(
-        transcription, layouts
+    projector = DeterministicCleanTranscriptProjector()
+    clean = projector.action(
+        request=CleanTranscriptRequest.create(
+            transcription_result=transcription,
+            layouts=layouts,
+            configuration=projector.configuration,
+        )
     )
     audit = DerivationAuditValidator().audit(
         DerivationAuditInput(

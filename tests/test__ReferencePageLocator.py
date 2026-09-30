@@ -8,7 +8,6 @@ from dataclasses import replace
 import pytest
 from projectkoios.ingestion import (
     REFERENCE_LOCATOR_MAX_ANCHORS,
-    CleanTranscriptArtifact,
     CleanTranscriptPage,
     CleanTranscriptStatus,
     DerivationAuditStatus,
@@ -29,13 +28,14 @@ from projectkoios.ingestion import (
     reference_topic_anchor_identity,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.transcript_projection import CleanTranscript
 
 
 def evidence(
     *,
     source_digest: str = "a" * 64,
     page_text: str = "The effective-mass model includes Β-decay.",
-) -> tuple[ReferenceEvidenceRecord, CleanTranscriptArtifact]:
+) -> tuple[ReferenceEvidenceRecord, CleanTranscript]:
     source_blob = f"blob:sha256:{source_digest}"
     document_id = stable_id("document", source_digest)
     layout_id = stable_id("layout", source_digest)
@@ -68,7 +68,7 @@ def evidence(
         "1",
         "fixture-configuration",
     )
-    transcript = CleanTranscriptArtifact(
+    transcript = CleanTranscript(
         artifact_id=transcript_id,
         transcription_result_id=transcription_id,
         document_id=document_id,

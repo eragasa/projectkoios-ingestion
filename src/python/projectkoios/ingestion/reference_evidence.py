@@ -23,7 +23,7 @@ from projectkoios.ingestion.serialization import (
 )
 from projectkoios.ingestion.transcript_projection import (
     CLEAN_TRANSCRIPT_CONTRACT_VERSION,
-    CleanTranscriptArtifact,
+    CleanTranscript,
     CleanTranscriptStatus,
 )
 
@@ -658,7 +658,7 @@ def build_reference_evidence(
     *,
     extraction_result: ExtractionResult,
     extraction_artifact: bytes,
-    clean_transcript: CleanTranscriptArtifact,
+    clean_transcript: CleanTranscript,
     clean_transcript_artifact: bytes,
     derivation_audit: DerivationAuditReport,
     derivation_audit_artifact: bytes,
@@ -672,8 +672,8 @@ def build_reference_evidence(
 
     if not isinstance(extraction_result, ExtractionResult):
         raise TypeError("extraction_result must be ExtractionResult")
-    if not isinstance(clean_transcript, CleanTranscriptArtifact):
-        raise TypeError("clean_transcript must be CleanTranscriptArtifact")
+    if not isinstance(clean_transcript, CleanTranscript):
+        raise TypeError("clean_transcript must be CleanTranscript")
     if not isinstance(derivation_audit, DerivationAuditReport):
         raise TypeError("derivation_audit must be DerivationAuditReport")
     _verify_extraction_artifact(extraction_artifact, extraction_result)

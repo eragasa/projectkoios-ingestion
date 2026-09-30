@@ -30,7 +30,7 @@ from projectkoios.ingestion.reconciliation import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
-from projectkoios.ingestion.transcript_projection import CleanTranscriptArtifact
+from projectkoios.ingestion.transcript_projection import CleanTranscript
 from projectkoios.ingestion.transcript_v2 import CleanTranscriptV2Artifact
 from projectkoios.ingestion.transcription import StructuredTranscriptionResult
 
@@ -152,7 +152,7 @@ class DerivationAuditInput:
     figure_results: tuple[FigureDetectionResult, ...] = ()
     processing_results: tuple[ProcessingResult, ...] = ()
     transcription_results: tuple[StructuredTranscriptionResult, ...] = ()
-    clean_transcript_artifacts: tuple[CleanTranscriptArtifact, ...] = ()
+    clean_transcript_artifacts: tuple[CleanTranscript, ...] = ()
     contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
     clean_transcript_v2_artifacts: tuple[CleanTranscriptV2Artifact, ...] = ()
 
@@ -298,7 +298,7 @@ _LAYER_TYPES: dict[str, type[object]] = {
     "figure_results": FigureDetectionResult,
     "processing_results": ProcessingResult,
     "transcription_results": StructuredTranscriptionResult,
-    "clean_transcript_artifacts": CleanTranscriptArtifact,
+    "clean_transcript_artifacts": CleanTranscript,
     "clean_transcript_v2_artifacts": CleanTranscriptV2Artifact,
 }
 _LAYER_FIELDS = (
@@ -449,7 +449,7 @@ class _Registry:
     figures: dict[str, FigureDetectionResult]
     processing: dict[str, ProcessingResult]
     transcriptions: dict[str, StructuredTranscriptionResult]
-    clean_transcripts: dict[str, CleanTranscriptArtifact]
+    clean_transcripts: dict[str, CleanTranscript]
     clean_transcripts_v2: dict[str, CleanTranscriptV2Artifact]
 
 
