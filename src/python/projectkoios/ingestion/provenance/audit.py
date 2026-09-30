@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.equations import EquationDetectionResult
 from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.identity import stable_id
@@ -333,7 +338,7 @@ def _derivation_audit_request_id(audit_input: DerivationAuditInput) -> str:
 
 
 @dataclass(frozen=True, slots=True)
-class DerivationAuditRequest:
+class DerivationAuditRequest(DataObjectActionRequest):
     """Complete immutable intent for one bounded derivation audit."""
 
     request_id: str
@@ -361,7 +366,7 @@ class DerivationAuditRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class DerivationAuditResult:
+class DerivationAuditResult(DataObjectActionResult):
     """Identified outcome of one exact derivation-audit request."""
 
     result_id: str
@@ -455,7 +460,9 @@ from projectkoios.ingestion.provenance.walker import (  # noqa: E402
 )
 
 
-class DerivationAuditActionizer:
+class DerivationAuditActionizer(
+    DataObjectActionizer[DerivationAuditRequest, DerivationAuditResult]
+):
     """Validate exact transitive provenance without changing any artifact."""
 
     __slots__ = ()
@@ -465,7 +472,7 @@ class DerivationAuditActionizer:
     name = "deterministic-derivation-audit-validator"
     version = DERIVATION_AUDIT_PROCESSOR_VERSION
 
-    def execute(
+    def action(
         self, *, request: DerivationAuditRequest
     ) -> DerivationAuditResult:
         """Return one identified result for an exact audit request."""
@@ -484,6 +491,12 @@ class DerivationAuditActionizer:
             actionizer_name=self.actionizer_name,
             actionizer_version=self.actionizer_version,
         )
+
+    def execute(
+        self, *, request: DerivationAuditRequest
+    ) -> DerivationAuditResult:
+        """Preserve the pre-ABC actionizer spelling for compatibility."""
+        return self.action(request=request)
 
     def audit(self, audit_input: DerivationAuditInput) -> DerivationAuditReport:
         """Preserve the established audit API during taxonomy migration."""

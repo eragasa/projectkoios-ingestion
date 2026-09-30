@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     DeterministicLayoutProcessor as RootDeterministicLayoutProcessor,
 )
@@ -70,17 +75,21 @@ def test__layout_actionizer_binds_request_configuration_and_results() -> None:
         configuration=configuration,
     )
 
-    result = LayoutAnalysisActionizer().execute(request=request)
+    actionizer = LayoutAnalysisActionizer()
+    result = actionizer.action(request=request)
     legacy_results = DeterministicLayoutProcessor(
         configuration=configuration
     ).analyze(document=request.document)
 
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(result, DataObjectActionResult)
+    assert isinstance(actionizer, DataObjectActionizer)
     assert result.request_id == request.request_id
     assert result.page_results == legacy_results
     assert result.configuration_digest == configuration.configuration_digest
     assert result.actionizer_name == "deterministic-layout-analysis-actionizer"
     assert result.actionizer_version == "1"
-    assert LayoutAnalysisActionizer().execute(request=request) == result
+    assert actionizer.execute(request=request) == result
 
     with pytest.raises(ValueError, match="request ID"):
         replace(request, request_id="layout-analysis-request:invalid")

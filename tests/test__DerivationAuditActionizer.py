@@ -3,6 +3,11 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     DerivationAuditInput as RootDerivationAuditInput,
 )
@@ -92,11 +97,13 @@ def test__actionizer_binds_exact_request_result_and_actionizer_identity() -> (
     request = DerivationAuditRequest.create(audit_input=audit_input)
     repeated_request = DerivationAuditRequest.create(audit_input=audit_input)
 
-    result = DerivationAuditActionizer().execute(request=request)
-    repeated_result = DerivationAuditActionizer().execute(
-        request=repeated_request
-    )
+    actionizer = DerivationAuditActionizer()
+    result = actionizer.action(request=request)
+    repeated_result = actionizer.execute(request=repeated_request)
 
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(result, DataObjectActionResult)
+    assert isinstance(actionizer, DataObjectActionizer)
     assert request == repeated_request
     assert result == repeated_result
     assert result.request_id == request.request_id

@@ -33,7 +33,7 @@ mathml = ["latex2mathml>=3.81"]
 dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>=3.81"]
 
 [tool.uv.sources]
-projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "88c37990fd37650b3091b2cb2f605a589ab624f4" }
+projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "233f36900b9b44c943ecc5e27f2968ad4bee97ad" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

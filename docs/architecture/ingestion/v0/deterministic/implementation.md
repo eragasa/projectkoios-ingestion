@@ -1,5 +1,12 @@
 # Deterministic Ingestion v0 Implementation
 
+## Object-model dependency
+
+The action-family ABCs are supplied by `projectkoios` Git commit
+`233f36900b9b44c943ecc5e27f2968ad4bee97ad`, exact tree
+`b7c3ffd23086e7ef184c990267d48a56dd87282b`. The declared package source pins
+that commit; it never depends on a machine-local repository path.
+
 ## Components
 
 | Component | Source | Focused validation |

@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout.contracts import (
     DeterministicLayoutProcessor,
@@ -31,7 +36,7 @@ def _request_id(
 
 
 @dataclass(frozen=True, slots=True)
-class LayoutAnalysisRequest:
+class LayoutAnalysisRequest(DataObjectActionRequest):
     """Complete immutable intent for deterministic document layout analysis."""
 
     request_id: str
@@ -75,7 +80,7 @@ class LayoutAnalysisRequest:
 
 
 @dataclass(frozen=True, slots=True)
-class LayoutAnalysisResult:
+class LayoutAnalysisResult(DataObjectActionResult):
     """Identified deterministic outcome for one exact layout request."""
 
     result_id: str
@@ -158,7 +163,9 @@ class LayoutAnalysisResult:
             raise ValueError("layout-analysis result ID is inconsistent")
 
 
-class LayoutAnalysisActionizer:
+class LayoutAnalysisActionizer(
+    DataObjectActionizer[LayoutAnalysisRequest, LayoutAnalysisResult]
+):
     """Execute deterministic layout analysis for one identified request."""
 
     __slots__ = ()
@@ -166,9 +173,8 @@ class LayoutAnalysisActionizer:
     actionizer_name = LAYOUT_ANALYSIS_ACTIONIZER_NAME
     actionizer_version = LAYOUT_ANALYSIS_ACTIONIZER_VERSION
 
-    def execute(
-        self, *, request: LayoutAnalysisRequest
-    ) -> LayoutAnalysisResult:
+    def action(self, *, request: LayoutAnalysisRequest) -> LayoutAnalysisResult:
+        """Return the result produced from one complete layout request."""
         if not isinstance(request, LayoutAnalysisRequest):
             raise TypeError("request must be LayoutAnalysisRequest")
         processor = DeterministicLayoutProcessor(
@@ -181,6 +187,12 @@ class LayoutAnalysisActionizer:
             actionizer_name=self.actionizer_name,
             actionizer_version=self.actionizer_version,
         )
+
+    def execute(
+        self, *, request: LayoutAnalysisRequest
+    ) -> LayoutAnalysisResult:
+        """Preserve the pre-ABC actionizer spelling for compatibility."""
+        return self.action(request=request)
 
 
 __all__ = [

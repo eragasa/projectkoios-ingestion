@@ -739,12 +739,14 @@ scores, and ranking features are not part of this contract.
 
 `LayoutAnalysisRequest` binds one exact `ExtractedDocument`, one exact
 `LayoutConfiguration`, and the layout action contract into a stable request
-identity. `LayoutAnalysisActionizer.execute()` returns a deterministic
+identity. `LayoutAnalysisActionizer.action()` returns a deterministic
 `LayoutAnalysisResult` that binds the request, actionizer contract,
 configuration digest, ordered `PageLayoutResult` identities, and retained page
-results. No `DataObjectModel` is introduced because the configuration is not an
-independently meaningful domain model. Replaying an identical request is
-byte-for-byte and identity deterministic.
+results. The request, actionizer, and result inherit the thin public Project
+Koios action-family ABCs. No separate configuration `DataObjectModel` is
+introduced because the configuration is not an independently meaningful domain
+model. Replaying an identical request is byte-for-byte and identity
+deterministic. `execute()` remains a compatibility spelling.
 
 `DeterministicLayoutProcessor` remains the compatibility processor and returns
 one immutable `PageLayoutResult` for
@@ -1155,12 +1157,13 @@ Derivation-audit contract version 1.0 and processor version 2 validate one exact
 
 `DerivationAuditRequest` identifies one exact `DerivationAuditInput`, including
 the source-byte digest and length, extraction manifest, ordered layer names, and
-ordered artifact identities. `DerivationAuditActionizer.execute()` processes
+ordered artifact identities. `DerivationAuditActionizer.action()` processes
 that request and returns a distinct `DerivationAuditResult` binding the request,
 actionizer contract identity, and unchanged `DerivationAuditReport` domain
-output. The report retains the established processor version. Replaying
-identical evidence produces identical request and
-result identities.
+output. The request, actionizer, and result inherit the thin public Project
+Koios action-family ABCs. The report retains the established processor version.
+Replaying identical evidence produces identical request and result identities.
+`execute()`, `audit()`, and `validate()` remain compatibility spellings.
 
 The actionizer hashes the source bytes and verifies byte length, raw manifest
 coverage, unique raw block identities, exact logical source/blob/hash lineage,
