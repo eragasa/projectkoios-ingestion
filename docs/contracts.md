@@ -1095,6 +1095,10 @@ selected nodes, and structure-analysis identity. Textbook-specific filenames,
 destination selectors, and implicit whole-document selection are not valid
 selectors.
 
+`ProcessingRequest` → `BoundedProcessingCoordinator` → `ProcessingResult`
+directly implements the action-family bases. Canonical `action(request=...)`
+owns coordination; supported `process()` forwards to that single logic path.
+
 `ProcessingRequest` contains a non-empty ordered tuple of unique selections and
 a complete immutable `ProcessingConfiguration`. It resolves each selection to
 one `ProcessingWorkItem`. A work item exposes only:

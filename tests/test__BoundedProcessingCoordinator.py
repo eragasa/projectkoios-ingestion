@@ -4,6 +4,11 @@ from dataclasses import FrozenInstanceError, replace
 from itertools import repeat
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
     BoundedProcessingCoordinator as PublicBoundedProcessingCoordinator,
 )
@@ -30,6 +35,7 @@ from projectkoios.ingestion.processing import (
     ProcessingRequest,
     ProcessingResourceIdentity,
     ProcessingResourceIdentityKind,
+    ProcessingResult,
     ProcessingSelection,
     ProcessingSelectionResult,
     ProcessingStatus,
@@ -169,6 +175,12 @@ def _artifact(work_item: ProcessingWorkItem, content: bytes = b"derived"):
         source_spans=work_item.source_spans[:1],
         evidence=(("method", "fixture"),),
     )
+
+
+def test__bounded_processing_uses_action_family_base_objects() -> None:
+    assert issubclass(ProcessingRequest, DataObjectActionRequest)
+    assert issubclass(ProcessingResult, DataObjectActionResult)
+    assert issubclass(BoundedProcessingCoordinator, DataObjectActionizer)
 
 
 class RecordingProcessor:
@@ -337,8 +349,8 @@ def test__processing_coordinator__never_passes_unselected_pages() -> None:
     document = _document()
     selection = _page_selection(document, 1)
     processor = RecordingProcessor()
-    result = BoundedProcessingCoordinator(processor).process(
-        ProcessingRequest.create(selections=(selection,))
+    result = BoundedProcessingCoordinator(processor).action(
+        request=ProcessingRequest.create(selections=(selection,))
     )
 
     assert result.status is ProcessingStatus.COMPLETED
@@ -362,8 +374,10 @@ def test__processing_coordinator__preserves_partial_and_failed_selections() -> (
         }
     )
 
-    result = BoundedProcessingCoordinator(processor).process(
-        ProcessingRequest.create(selections=(completed, partial, failed))
+    result = BoundedProcessingCoordinator(processor).action(
+        request=ProcessingRequest.create(
+            selections=(completed, partial, failed)
+        )
     )
 
     assert result.status is ProcessingStatus.PARTIAL
@@ -396,8 +410,8 @@ def test__processing_coordinator__retries_only_retryable_failed_output() -> (
         }
     )
 
-    result = BoundedProcessingCoordinator(processor).process(
-        ProcessingRequest.create(
+    result = BoundedProcessingCoordinator(processor).action(
+        request=ProcessingRequest.create(
             selections=(retry_then_complete, partial, exhausted),
             configuration=ProcessingConfiguration(max_attempts_per_selection=2),
         )
@@ -429,8 +443,8 @@ def test__processing_coordinator__reuses_only_nonfailed_cached_results() -> (
     coordinator = BoundedProcessingCoordinator(processor, cache=cache)
     request = ProcessingRequest.create(selections=(selection,))
 
-    first = coordinator.process(request)
-    second = coordinator.process(request)
+    first = coordinator.action(request=request)
+    second = coordinator.action(request=request)
 
     assert first == second
     assert len(processor.calls) == 1
@@ -445,8 +459,8 @@ def test__processing_coordinator__does_not_cache_failed_results() -> None:
     coordinator = BoundedProcessingCoordinator(processor, cache=cache)
     request = ProcessingRequest.create(selections=(selection,))
 
-    coordinator.process(request)
-    coordinator.process(request)
+    coordinator.action(request=request)
+    coordinator.action(request=request)
 
     assert len(processor.calls) == 2
     assert cache.values == {}
@@ -514,7 +528,7 @@ def test__processing_coordinator__turns_output_limit_into_typed_failure() -> (
         configuration=ProcessingConfiguration(max_artifact_bytes=1),
     )
 
-    result = BoundedProcessingCoordinator(processor).process(request)
+    result = BoundedProcessingCoordinator(processor).action(request=request)
 
     assert result.status is ProcessingStatus.FAILED
     failure = result.selection_results[0].final_invocation.failures[0]
@@ -536,8 +550,8 @@ def test__processing_coordinator__bounds_aggregate_artifact_bytes() -> None:
         ),
     )
 
-    result = BoundedProcessingCoordinator(processor, cache=cache).process(
-        request
+    result = BoundedProcessingCoordinator(processor, cache=cache).action(
+        request=request
     )
 
     assert result.status is ProcessingStatus.PARTIAL
@@ -558,8 +572,8 @@ def test__processing_coordinator__rejects_unselected_output_provenance() -> (
         behavior={selection.selection_id: "invalid_provenance"}
     )
 
-    result = BoundedProcessingCoordinator(processor).process(
-        ProcessingRequest.create(selections=(selection,))
+    result = BoundedProcessingCoordinator(processor).action(
+        request=ProcessingRequest.create(selections=(selection,))
     )
 
     assert result.status is ProcessingStatus.FAILED
@@ -627,7 +641,9 @@ def test__processing_contracts__are_immutable_and_reject_stale_ids() -> None:
     document = _document()
     selection = _page_selection(document, 0)
     request = ProcessingRequest.create(selections=(selection,))
-    result = BoundedProcessingCoordinator(RecordingProcessor()).process(request)
+    result = BoundedProcessingCoordinator(RecordingProcessor()).action(
+        request=request
+    )
 
     with pytest.raises(FrozenInstanceError):
         selection.selection_id = "changed"  # type: ignore[misc]
@@ -648,8 +664,8 @@ def test__processing_protocols_are_engine_neutral() -> None:
         selections=(_region_selection(document),)
     )
 
-    result = BoundedProcessingCoordinator(processor, cache=cache).process(
-        request
+    result = BoundedProcessingCoordinator(processor, cache=cache).action(
+        request=request
     )
 
     assert result.status is ProcessingStatus.COMPLETED

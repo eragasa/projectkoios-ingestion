@@ -7,6 +7,11 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum, StrEnum
 from typing import TYPE_CHECKING
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     ExtractedDocument,
@@ -104,8 +109,12 @@ class ProcessingPhysicalPageRange:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported physical-page-range version")
-        _nonnegative_integer("start_page_index", self.start_page_index)
-        _nonnegative_integer("end_page_index", self.end_page_index)
+        ProcessingContract._nonnegative_integer(
+            "start_page_index", self.start_page_index
+        )
+        ProcessingContract._nonnegative_integer(
+            "end_page_index", self.end_page_index
+        )
         if self.end_page_index < self.start_page_index:
             raise ValueError("physical page range must be ordered")
         expected = stable_id(
@@ -144,12 +153,12 @@ class ProcessingPrintedPageRange:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported printed-page-range version")
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "start printed page label",
             self.start_printed_page_label,
             nonempty=True,
         )
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "end printed page label",
             self.end_printed_page_label,
             nonempty=True,
@@ -214,7 +223,7 @@ class ProcessingConfiguration:
             ("max_result_bytes", _MAX_RESULT_BYTES),
         ):
             value = getattr(self, name)
-            _positive_integer(name, value)
+            ProcessingContract._positive_integer(name, value)
             if value > hard_limit:
                 raise ProcessingLimitError(
                     f"{name} exceeds its implementation maximum ({hard_limit})"
@@ -252,7 +261,7 @@ class ProcessingSelection:
         structure_analysis: StructureAnalysis | None = None,
         structure_node_ids: tuple[str, ...] = (),
     ) -> ProcessingSelection:
-        evidence = _resolve_selection_evidence(
+        evidence = ProcessingContract._resolve_selection_evidence(
             document,
             source_spans,
             physical_page_ranges,
@@ -261,7 +270,7 @@ class ProcessingSelection:
             structure_node_ids,
         )
         return cls(
-            selection_id=_selection_id(
+            selection_id=ProcessingContract._selection_id(
                 document,
                 source_spans,
                 physical_page_ranges,
@@ -281,7 +290,7 @@ class ProcessingSelection:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing selection version")
-        evidence = _resolve_selection_evidence(
+        evidence = ProcessingContract._resolve_selection_evidence(
             self.document,
             self.source_spans,
             self.physical_page_ranges,
@@ -289,7 +298,7 @@ class ProcessingSelection:
             self.structure_analysis,
             self.structure_node_ids,
         )
-        expected = _selection_id(
+        expected = ProcessingContract._selection_id(
             self.document,
             self.source_spans,
             self.physical_page_ranges,
@@ -322,13 +331,17 @@ class ProcessingWorkItem:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing work-item version")
-        _identity_fields(self.selection_id)
+        ProcessingContract._identity_fields(self.selection_id)
         if not isinstance(self.source, SourceDocument):
             raise TypeError("work item source must be SourceDocument")
-        _require_tuple("full pages", self.full_pages)
-        _require_tuple("source spans", self.source_spans)
-        _require_tuple("structure nodes", self.structure_nodes)
-        _unique_strings("input object IDs", self.input_object_ids)
+        ProcessingContract._require_tuple("full pages", self.full_pages)
+        ProcessingContract._require_tuple("source spans", self.source_spans)
+        ProcessingContract._require_tuple(
+            "structure nodes", self.structure_nodes
+        )
+        ProcessingContract._unique_strings(
+            "input object IDs", self.input_object_ids
+        )
         if any(not isinstance(page, ExtractedPage) for page in self.full_pages):
             raise TypeError("full pages contain an unsupported value")
         page_indices = tuple(page.page_index for page in self.full_pages)
@@ -353,7 +366,7 @@ class ProcessingWorkItem:
             for span in node.source_spans
         ):
             raise ValueError("work-item nodes must refer to the exact source")
-        expected = _work_item_id(
+        expected = ProcessingContract._work_item_id(
             self.selection_id,
             self.source,
             self.full_pages,
@@ -376,14 +389,18 @@ class ProcessingResourceIdentity:
     resource_identity: str
 
     def __post_init__(self) -> None:
-        _bounded_string("resource name", self.resource_name, nonempty=True)
+        ProcessingContract._bounded_string(
+            "resource name", self.resource_name, nonempty=True
+        )
         if not isinstance(self.identity_kind, ProcessingResourceIdentityKind):
             raise TypeError("unsupported processing resource identity kind")
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "resource identity", self.resource_identity, nonempty=True
         )
         if self.identity_kind is ProcessingResourceIdentityKind.SHA256:
-            _sha256("resource identity", self.resource_identity)
+            ProcessingContract._sha256(
+                "resource identity", self.resource_identity
+            )
 
     def identity_parts(self) -> tuple[object, ...]:
         return (
@@ -403,14 +420,14 @@ class ProcessingProcessorIdentity:
     resources: tuple[ProcessingResourceIdentity, ...] = ()
 
     def __post_init__(self) -> None:
-        _identity_fields(
+        ProcessingContract._identity_fields(
             self.processor_name,
             self.processor_version,
             self.backend_name,
             self.backend_version,
             self.configuration_digest,
         )
-        _require_tuple("resources", self.resources)
+        ProcessingContract._require_tuple("resources", self.resources)
         if len(self.resources) > _MAX_RESOURCES:
             raise ProcessingLimitError("too many processing resources")
         if any(
@@ -469,7 +486,7 @@ class ProcessingDerivedArtifact:
             raise TypeError(
                 "processing artifact content must be immutable bytes"
             )
-        digest = _bytes_sha256(content)
+        digest = ProcessingContract._bytes_sha256(content)
         artifact_id = stable_id(
             "processing-derived-artifact",
             work_item.work_item_id,
@@ -478,7 +495,9 @@ class ProcessingDerivedArtifact:
             digest,
             len(content),
             input_object_ids,
-            tuple(_span_parts(span) for span in source_spans),
+            tuple(
+                ProcessingContract._span_parts(span) for span in source_spans
+            ),
             evidence,
         )
         return cls(
@@ -497,7 +516,9 @@ class ProcessingDerivedArtifact:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing artifact version")
-        _identity_fields(self.work_item_id, self.artifact_kind, self.media_type)
+        ProcessingContract._identity_fields(
+            self.work_item_id, self.artifact_kind, self.media_type
+        )
         if not isinstance(self.content, bytes):
             raise TypeError(
                 "processing artifact content must be immutable bytes"
@@ -506,15 +527,21 @@ class ProcessingDerivedArtifact:
             raise ProcessingLimitError("processing artifact exceeds hard limit")
         if self.byte_length != len(self.content):
             raise ValueError("processing artifact byte length is inconsistent")
-        if self.content_sha256 != _bytes_sha256(self.content):
+        if self.content_sha256 != ProcessingContract._bytes_sha256(
+            self.content
+        ):
             raise ValueError("processing artifact digest is inconsistent")
-        _unique_strings("artifact input object IDs", self.input_object_ids)
-        _require_tuple("artifact source spans", self.source_spans)
+        ProcessingContract._unique_strings(
+            "artifact input object IDs", self.input_object_ids
+        )
+        ProcessingContract._require_tuple(
+            "artifact source spans", self.source_spans
+        )
         if any(not isinstance(span, SourceSpan) for span in self.source_spans):
             raise TypeError(
                 "artifact source spans contain an unsupported value"
             )
-        _validate_metadata(self.evidence)
+        ProcessingContract._validate_metadata(self.evidence)
         if not self.input_object_ids and not self.source_spans:
             raise ValueError("processing artifact requires source provenance")
         expected = stable_id(
@@ -525,7 +552,10 @@ class ProcessingDerivedArtifact:
             self.content_sha256,
             self.byte_length,
             self.input_object_ids,
-            tuple(_span_parts(span) for span in self.source_spans),
+            tuple(
+                ProcessingContract._span_parts(span)
+                for span in self.source_spans
+            ),
             self.evidence,
         )
         if self.artifact_id != expected:
@@ -565,7 +595,9 @@ class ProcessingWarning:
             severity.value,
             message,
             object_ids,
-            tuple(_span_parts(span) for span in source_spans),
+            tuple(
+                ProcessingContract._span_parts(span) for span in source_spans
+            ),
             evidence,
             suggested_recovery,
         )
@@ -584,20 +616,24 @@ class ProcessingWarning:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing warning version")
-        _identity_fields(self.work_item_id, self.code)
+        ProcessingContract._identity_fields(self.work_item_id, self.code)
         if not isinstance(self.severity, WarningSeverity):
             raise TypeError("processing warning severity is unsupported")
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "processing warning message",
             self.message,
             nonempty=True,
             limit=_MAX_MESSAGE_CHARACTERS,
         )
-        _unique_strings("warning object IDs", self.object_ids)
-        _validate_span_tuple("warning source spans", self.source_spans)
-        _validate_metadata(self.evidence)
+        ProcessingContract._unique_strings(
+            "warning object IDs", self.object_ids
+        )
+        ProcessingContract._validate_span_tuple(
+            "warning source spans", self.source_spans
+        )
+        ProcessingContract._validate_metadata(self.evidence)
         if self.suggested_recovery is not None:
-            _bounded_string(
+            ProcessingContract._bounded_string(
                 "suggested recovery",
                 self.suggested_recovery,
                 nonempty=True,
@@ -610,7 +646,10 @@ class ProcessingWarning:
             self.severity.value,
             self.message,
             self.object_ids,
-            tuple(_span_parts(span) for span in self.source_spans),
+            tuple(
+                ProcessingContract._span_parts(span)
+                for span in self.source_spans
+            ),
             self.evidence,
             self.suggested_recovery,
         )
@@ -649,7 +688,9 @@ class ProcessingFailure:
             message,
             retryable,
             object_ids,
-            tuple(_span_parts(span) for span in source_spans),
+            tuple(
+                ProcessingContract._span_parts(span) for span in source_spans
+            ),
             evidence,
         )
         return cls(
@@ -666,10 +707,10 @@ class ProcessingFailure:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing failure version")
-        _identity_fields(self.work_item_id)
+        ProcessingContract._identity_fields(self.work_item_id)
         if not isinstance(self.kind, ProcessingFailureKind):
             raise TypeError("processing failure kind is unsupported")
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "processing failure message",
             self.message,
             nonempty=True,
@@ -677,9 +718,13 @@ class ProcessingFailure:
         )
         if not isinstance(self.retryable, bool):
             raise TypeError("processing failure retryable must be a boolean")
-        _unique_strings("failure object IDs", self.object_ids)
-        _validate_span_tuple("failure source spans", self.source_spans)
-        _validate_metadata(self.evidence)
+        ProcessingContract._unique_strings(
+            "failure object IDs", self.object_ids
+        )
+        ProcessingContract._validate_span_tuple(
+            "failure source spans", self.source_spans
+        )
+        ProcessingContract._validate_metadata(self.evidence)
         expected = stable_id(
             "processing-failure",
             self.work_item_id,
@@ -687,7 +732,10 @@ class ProcessingFailure:
             self.message,
             self.retryable,
             self.object_ids,
-            tuple(_span_parts(span) for span in self.source_spans),
+            tuple(
+                ProcessingContract._span_parts(span)
+                for span in self.source_spans
+            ),
             self.evidence,
         )
         if self.failure_id != expected:
@@ -707,7 +755,7 @@ class ProcessingProcessorError(RuntimeError):
     ) -> None:
         if not isinstance(kind, ProcessingFailureKind):
             raise TypeError("processor error kind is unsupported")
-        _bounded_string(
+        ProcessingContract._bounded_string(
             "processor error message",
             message,
             nonempty=True,
@@ -715,7 +763,7 @@ class ProcessingProcessorError(RuntimeError):
         )
         if not isinstance(retryable, bool):
             raise TypeError("processor error retryable must be a boolean")
-        _validate_metadata(evidence)
+        ProcessingContract._validate_metadata(evidence)
         super().__init__(message)
         self.kind = kind
         self.message = message
@@ -745,7 +793,7 @@ class ProcessingInvocationResult:
         warnings: tuple[ProcessingWarning, ...] = (),
         failures: tuple[ProcessingFailure, ...] = (),
     ) -> ProcessingInvocationResult:
-        invocation_id = _invocation_id(
+        invocation_id = ProcessingContract._invocation_id(
             work_item.work_item_id,
             processor_identity.identity_digest,
             status,
@@ -766,12 +814,16 @@ class ProcessingInvocationResult:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing invocation version")
-        _identity_fields(self.work_item_id, self.processor_identity_digest)
+        ProcessingContract._identity_fields(
+            self.work_item_id, self.processor_identity_digest
+        )
         if not isinstance(self.status, ProcessingStatus):
             raise TypeError("processing status is unsupported")
-        _require_tuple("processing artifacts", self.artifacts)
-        _require_tuple("processing warnings", self.warnings)
-        _require_tuple("processing failures", self.failures)
+        ProcessingContract._require_tuple(
+            "processing artifacts", self.artifacts
+        )
+        ProcessingContract._require_tuple("processing warnings", self.warnings)
+        ProcessingContract._require_tuple("processing failures", self.failures)
         if (
             any(
                 not isinstance(item, ProcessingDerivedArtifact)
@@ -795,11 +847,15 @@ class ProcessingInvocationResult:
             raise ProcessingLimitError("too many processing warnings")
         if len(self.failures) > _MAX_FAILURES_PER_ATTEMPT:
             raise ProcessingLimitError("too many processing failures")
-        _unique_ids(
+        ProcessingContract._unique_ids(
             "artifact", tuple(item.artifact_id for item in self.artifacts)
         )
-        _unique_ids("warning", tuple(item.warning_id for item in self.warnings))
-        _unique_ids("failure", tuple(item.failure_id for item in self.failures))
+        ProcessingContract._unique_ids(
+            "warning", tuple(item.warning_id for item in self.warnings)
+        )
+        ProcessingContract._unique_ids(
+            "failure", tuple(item.failure_id for item in self.failures)
+        )
         if any(
             item.work_item_id != self.work_item_id for item in self.artifacts
         ):
@@ -824,7 +880,7 @@ class ProcessingInvocationResult:
             raise ValueError(
                 "failed processing requires failures without artifacts"
             )
-        expected = _invocation_id(
+        expected = ProcessingContract._invocation_id(
             self.work_item_id,
             self.processor_identity_digest,
             self.status,
@@ -863,7 +919,9 @@ class ProcessingAttempt:
     def __post_init__(self) -> None:
         if self.contract_version != PROCESSING_CONTRACT_VERSION:
             raise ValueError("unsupported processing attempt version")
-        _positive_integer("attempt_number", self.attempt_number)
+        ProcessingContract._positive_integer(
+            "attempt_number", self.attempt_number
+        )
         if not isinstance(self.invocation, ProcessingInvocationResult):
             raise TypeError("attempt invocation is unsupported")
         expected = stable_id(
@@ -896,7 +954,7 @@ class ProcessingSelectionResult:
         attempts: tuple[ProcessingAttempt, ...],
         retry_exhausted: bool,
     ) -> ProcessingSelectionResult:
-        selection_result_id = _selection_result_id(
+        selection_result_id = ProcessingContract._selection_result_id(
             work_item,
             processor_identity,
             cache_key,
@@ -922,8 +980,8 @@ class ProcessingSelectionResult:
             raise ValueError("selection result identity is inconsistent")
         if not isinstance(self.processor_identity, ProcessingProcessorIdentity):
             raise TypeError("selection processor identity is unsupported")
-        _identity_fields(self.cache_key)
-        _require_tuple("processing attempts", self.attempts)
+        ProcessingContract._identity_fields(self.cache_key)
+        ProcessingContract._require_tuple("processing attempts", self.attempts)
         if not self.attempts:
             raise ValueError("selection result requires an attempt")
         if len(self.attempts) > _MAX_ATTEMPTS:
@@ -969,7 +1027,7 @@ class ProcessingSelectionResult:
             raise ValueError(
                 "retry exhaustion requires a retryable failed final attempt"
             )
-        expected = _selection_result_id(
+        expected = ProcessingContract._selection_result_id(
             self.work_item,
             self.processor_identity,
             self.cache_key,
@@ -993,7 +1051,7 @@ class ProcessingSelectionResult:
 
 
 @dataclass(frozen=True)
-class ProcessingRequest:
+class ProcessingRequest(DataObjectActionRequest):
     request_id: str
     selections: tuple[ProcessingSelection, ...]
     work_items: tuple[ProcessingWorkItem, ...]
@@ -1008,9 +1066,11 @@ class ProcessingRequest:
         configuration: ProcessingConfiguration | None = None,
     ) -> ProcessingRequest:
         actual = configuration or ProcessingConfiguration()
-        work_items = _build_work_items(selections, actual)
+        work_items = ProcessingContract._build_work_items(selections, actual)
         return cls(
-            request_id=_request_id(selections, work_items, actual),
+            request_id=ProcessingContract._request_id(
+                selections, work_items, actual
+            ),
             selections=selections,
             work_items=work_items,
             configuration=actual,
@@ -1024,7 +1084,7 @@ class ProcessingRequest:
         configuration: ProcessingConfiguration | None = None,
     ) -> ProcessingRequest:
         actual = configuration or ProcessingConfiguration()
-        bounded = _bounded_iterable(
+        bounded = ProcessingContract._bounded_iterable(
             selections,
             limit=actual.max_selections,
             name="processing selections",
@@ -1036,12 +1096,12 @@ class ProcessingRequest:
             raise ValueError("unsupported processing request version")
         if not isinstance(self.configuration, ProcessingConfiguration):
             raise TypeError("request configuration is unsupported")
-        expected_work_items = _build_work_items(
+        expected_work_items = ProcessingContract._build_work_items(
             self.selections, self.configuration
         )
         if self.work_items != expected_work_items:
             raise ValueError("request work items are inconsistent")
-        expected = _request_id(
+        expected = ProcessingContract._request_id(
             self.selections, self.work_items, self.configuration
         )
         if self.request_id != expected:
@@ -1049,7 +1109,7 @@ class ProcessingRequest:
 
 
 @dataclass(frozen=True)
-class ProcessingResult:
+class ProcessingResult(DataObjectActionResult):
     result_id: str
     request: ProcessingRequest
     selection_results: tuple[ProcessingSelectionResult, ...]
@@ -1063,9 +1123,9 @@ class ProcessingResult:
         request: ProcessingRequest,
         selection_results: tuple[ProcessingSelectionResult, ...],
     ) -> ProcessingResult:
-        status = _aggregate_status(selection_results)
+        status = ProcessingContract._aggregate_status(selection_results)
         return cls(
-            result_id=_processing_result_id(
+            result_id=ProcessingContract._processing_result_id(
                 request.request_id, selection_results, status
             ),
             request=request,
@@ -1078,7 +1138,9 @@ class ProcessingResult:
             raise ValueError("unsupported processing result version")
         if not isinstance(self.request, ProcessingRequest):
             raise TypeError("processing result request is unsupported")
-        _require_tuple("selection results", self.selection_results)
+        ProcessingContract._require_tuple(
+            "selection results", self.selection_results
+        )
         if any(
             not isinstance(item, ProcessingSelectionResult)
             for item in self.selection_results
@@ -1096,10 +1158,12 @@ class ProcessingResult:
             raise ValueError("selection work-item coverage is inconsistent")
         if not isinstance(self.status, ProcessingStatus):
             raise TypeError("processing result status is unsupported")
-        if self.status is not _aggregate_status(self.selection_results):
+        if self.status is not ProcessingContract._aggregate_status(
+            self.selection_results
+        ):
             raise ValueError("processing aggregate status is inconsistent")
-        _validate_configured_result(self)
-        expected = _processing_result_id(
+        ProcessingContract._validate_configured_result(self)
+        expected = ProcessingContract._processing_result_id(
             self.request.request_id,
             self.selection_results,
             self.status,
@@ -1112,7 +1176,9 @@ class ProcessingResult:
         return tuple(item.cache_key for item in self.selection_results)
 
 
-class BoundedProcessingCoordinator:
+class BoundedProcessingCoordinator(
+    DataObjectActionizer[ProcessingRequest, ProcessingResult]
+):
     """Coordinate one injected processor over exact bounded selections."""
 
     name = "bounded-processing-coordinator"
@@ -1127,7 +1193,8 @@ class BoundedProcessingCoordinator:
         self.processor = processor
         self.cache = cache
 
-    def process(self, request: ProcessingRequest) -> ProcessingResult:
+    def action(self, *, request: ProcessingRequest) -> ProcessingResult:
+        """Coordinate processing for one complete request."""
         if not isinstance(request, ProcessingRequest):
             raise TypeError("request must be ProcessingRequest")
         selection_results: list[ProcessingSelectionResult] = []
@@ -1142,11 +1209,13 @@ class BoundedProcessingCoordinator:
             if retained_artifact_bytes + artifact_bytes > (
                 request.configuration.max_total_artifact_bytes
             ):
-                selection_result = _resource_limit_selection_result(
-                    work_item,
-                    selection_result.processor_identity,
-                    selection_result.cache_key,
-                    request.configuration,
+                selection_result = (
+                    ProcessingContract._resource_limit_selection_result(
+                        work_item,
+                        selection_result.processor_identity,
+                        selection_result.cache_key,
+                        request.configuration,
+                    )
                 )
             else:
                 retained_artifact_bytes += artifact_bytes
@@ -1160,6 +1229,10 @@ class BoundedProcessingCoordinator:
             request=request,
             selection_results=tuple(selection_results),
         )
+
+    def process(self, request: ProcessingRequest) -> ProcessingResult:
+        """Process one request through the canonical action path."""
+        return self.action(request=request)
 
     def _process_work_item(
         self,
@@ -1175,7 +1248,7 @@ class BoundedProcessingCoordinator:
         if self.cache is not None:
             cached = self.cache.get(cache_key)
             if cached is not None:
-                _validate_cached_selection_result(
+                ProcessingContract._validate_cached_selection_result(
                     cached,
                     work_item,
                     identity,
@@ -1192,12 +1265,14 @@ class BoundedProcessingCoordinator:
                     invocation=invocation,
                 )
             )
-            if not _invocation_is_retryable_failure(invocation):
+            if not ProcessingContract._invocation_is_retryable_failure(
+                invocation
+            ):
                 break
         final = attempts[-1].invocation
         retry_exhausted = (
             len(attempts) == configuration.max_attempts_per_selection
-            and _invocation_is_retryable_failure(final)
+            and ProcessingContract._invocation_is_retryable_failure(final)
         )
         result = ProcessingSelectionResult.create(
             work_item=work_item,
@@ -1206,7 +1281,9 @@ class BoundedProcessingCoordinator:
             attempts=tuple(attempts),
             retry_exhausted=retry_exhausted,
         )
-        _validate_configured_selection_result(result, configuration)
+        ProcessingContract._validate_configured_selection_result(
+            result, configuration
+        )
         return result
 
     def _processor_identity(
@@ -1243,7 +1320,7 @@ class BoundedProcessingCoordinator:
         try:
             invocation = self.processor.process(work_item)
         except ProcessingProcessorError as error:
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1253,7 +1330,7 @@ class BoundedProcessingCoordinator:
                 evidence=error.evidence,
             )
         except ProcessingLimitError:
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1262,7 +1339,7 @@ class BoundedProcessingCoordinator:
                 retryable=False,
             )
         except Exception as error:
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1273,7 +1350,7 @@ class BoundedProcessingCoordinator:
                 retryable=False,
             )
         if not isinstance(invocation, ProcessingInvocationResult):
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1284,7 +1361,7 @@ class BoundedProcessingCoordinator:
         if invocation.work_item_id != work_item.work_item_id or (
             invocation.processor_identity_digest != identity.identity_digest
         ):
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1293,9 +1370,11 @@ class BoundedProcessingCoordinator:
                 retryable=False,
             )
         try:
-            _validate_invocation_against_work_item(invocation, work_item)
-        except (TypeError, ValueError):
-            return _failed_invocation(
+            ProcessingContract._validate_invocation_against_work_item(
+                invocation, work_item
+            )
+        except TypeError, ValueError:
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1304,9 +1383,11 @@ class BoundedProcessingCoordinator:
                 retryable=False,
             )
         try:
-            _validate_configured_invocation(invocation, configuration)
+            ProcessingContract._validate_configured_invocation(
+                invocation, configuration
+            )
         except ProcessingLimitError:
-            return _failed_invocation(
+            return ProcessingContract._failed_invocation(
                 work_item,
                 identity,
                 configuration,
@@ -1342,916 +1423,1005 @@ def build_derived_processing_cache_key(
     )
 
 
-def _resolve_selection_evidence(
-    document: ExtractedDocument,
-    source_spans: tuple[SourceSpan, ...],
-    physical_page_ranges: tuple[ProcessingPhysicalPageRange, ...],
-    printed_page_ranges: tuple[ProcessingPrintedPageRange, ...],
-    structure_analysis: StructureAnalysis | None,
-    structure_node_ids: tuple[str, ...],
-) -> _ResolvedSelectionEvidence:
-    if not isinstance(document, ExtractedDocument):
-        raise TypeError("selection document must be ExtractedDocument")
-    if document.document_id != stable_id("document", document.source.source_id):
-        raise ValueError("selection document identity is stale")
-    _validate_span_tuple("selection source spans", source_spans)
-    _require_tuple("physical page ranges", physical_page_ranges)
-    _require_tuple("printed page ranges", printed_page_ranges)
-    _unique_strings("structure node IDs", structure_node_ids)
-    if len(source_spans) > _MAX_SOURCE_SPANS:
-        raise ProcessingLimitError("too many selection source spans")
-    if len(physical_page_ranges) + len(printed_page_ranges) > _MAX_PAGE_RANGES:
-        raise ProcessingLimitError("too many selection page ranges")
-    if len(structure_node_ids) > _MAX_STRUCTURE_NODES:
-        raise ProcessingLimitError("too many selection structure nodes")
-    if any(
-        not isinstance(item, ProcessingPhysicalPageRange)
-        for item in physical_page_ranges
-    ):
-        raise TypeError("physical page ranges contain an unsupported value")
-    if any(
-        not isinstance(item, ProcessingPrintedPageRange)
-        for item in printed_page_ranges
-    ):
-        raise TypeError("printed page ranges contain an unsupported value")
-    if not (
-        source_spans
-        or physical_page_ranges
-        or printed_page_ranges
-        or structure_node_ids
-    ):
-        raise ValueError("processing selection requires source evidence")
-    page_by_index = {page.page_index: page for page in document.pages}
-    for span in source_spans:
-        _validate_span_against_document(span, document, page_by_index)
-    selected_indices: set[int] = set()
-    for page_range in physical_page_ranges:
-        range_length = (
-            page_range.end_page_index - page_range.start_page_index + 1
-        )
-        if range_length > _MAX_SELECTED_PAGES:
-            raise ProcessingLimitError("physical page range is too large")
-        requested = tuple(
-            range(page_range.start_page_index, page_range.end_page_index + 1)
-        )
-        missing = tuple(
-            index for index in requested if index not in page_by_index
-        )
-        if missing:
-            raise ValueError("physical page range refers to a missing page")
-        selected_indices.update(requested)
-        if len(selected_indices) > _MAX_SELECTED_PAGES:
-            raise ProcessingLimitError("too many selected pages")
-    labels: dict[str, list[int]] = {}
-    for page in document.pages:
-        if page.printed_page_label is not None:
-            labels.setdefault(page.printed_page_label, []).append(
-                page.page_index
-            )
-    for printed_range in printed_page_ranges:
-        starts = labels.get(printed_range.start_printed_page_label, [])
-        ends = labels.get(printed_range.end_printed_page_label, [])
-        if len(starts) != 1 or len(ends) != 1:
-            raise ValueError(
-                "printed page range endpoints must resolve uniquely"
-            )
-        start, end = starts[0], ends[0]
-        if end < start:
-            raise ValueError("printed page range must follow source page order")
-        if end - start + 1 > _MAX_SELECTED_PAGES:
-            raise ProcessingLimitError("printed page range is too large")
-        requested = tuple(range(start, end + 1))
-        if any(index not in page_by_index for index in requested):
-            raise ValueError("printed page range crosses a missing page")
-        selected_indices.update(requested)
-        if len(selected_indices) > _MAX_SELECTED_PAGES:
-            raise ProcessingLimitError("too many selected pages")
-    selected_nodes: tuple[StructureNode, ...] = ()
-    if structure_node_ids:
-        if not isinstance(structure_analysis, StructureAnalysis):
-            raise ValueError(
-                "structure node selection requires a structure analysis"
-            )
-        if structure_analysis.source_id != document.source.source_id or (
-            structure_analysis.source_blob_id != document.source.blob_id
+class ProcessingContract:
+    """Own processing identities and cross-object contract validation."""
+
+    @staticmethod
+    def _resolve_selection_evidence(
+        document: ExtractedDocument,
+        source_spans: tuple[SourceSpan, ...],
+        physical_page_ranges: tuple[ProcessingPhysicalPageRange, ...],
+        printed_page_ranges: tuple[ProcessingPrintedPageRange, ...],
+        structure_analysis: StructureAnalysis | None,
+        structure_node_ids: tuple[str, ...],
+    ) -> _ResolvedSelectionEvidence:
+        if not isinstance(document, ExtractedDocument):
+            raise TypeError("selection document must be ExtractedDocument")
+        if document.document_id != stable_id(
+            "document", document.source.source_id
         ):
-            raise ValueError(
-                "structure analysis must refer to the exact document source"
-            )
-        node_by_id = {node.node_id: node for node in structure_analysis.nodes}
-        try:
-            selected_nodes = tuple(
-                node_by_id[node_id] for node_id in structure_node_ids
-            )
-        except KeyError as error:
-            raise ValueError("structure node selection is stale") from error
-        document_block_ids = {
-            block.block_id for page in document.pages for block in page.blocks
-        }
-        for node in selected_nodes:
-            for span in node.source_spans:
-                _validate_span_against_document(span, document, page_by_index)
-            if not set(node.source_block_ids).issubset(document_block_ids):
-                raise ValueError("structure node source blocks are stale")
-    elif structure_analysis is not None:
-        raise ValueError(
-            "structure analysis is only valid with structure node IDs"
+            raise ValueError("selection document identity is stale")
+        ProcessingContract._validate_span_tuple(
+            "selection source spans", source_spans
         )
-    return _ResolvedSelectionEvidence(
-        selected_pages=tuple(
-            page_by_index[index] for index in sorted(selected_indices)
-        ),
-        selected_nodes=selected_nodes,
-    )
-
-
-def _validate_span_against_document(
-    span: SourceSpan,
-    document: ExtractedDocument,
-    page_by_index: dict[int, ExtractedPage],
-) -> None:
-    if span.source_id != document.source.source_id or (
-        span.source_blob_id != document.source.blob_id
-    ):
-        raise ValueError("selection span must refer to the exact source")
-    page = page_by_index.get(span.page_index)
-    if page is None:
-        raise ValueError("selection span refers to a missing page")
-    if span.printed_page_label is not None and (
-        span.printed_page_label != page.printed_page_label
-    ):
-        raise ValueError("selection span printed page label is stale")
-    if span.bounding_box is not None:
-        x0, y0, x1, y1 = span.bounding_box
-        if any(not math.isfinite(value) for value in span.bounding_box):
-            raise ValueError("selection span geometry must be finite")
-        if x0 < 0 or y0 < 0 or x1 > page.width or y1 > page.height:
-            raise ValueError("selection span geometry exceeds its source page")
-    if span.source_object_id is not None:
-        known_object_ids = {block.block_id for block in page.blocks} | {
-            source_span.source_object_id
-            for block in page.blocks
-            for source_span in block.source_spans
-            if source_span.source_object_id is not None
-        }
-        if span.source_object_id not in known_object_ids:
-            raise ValueError("selection span source object is stale")
-    if span.source_object_id is not None and span.start_offset is not None:
-        block = next(
-            (
-                item
-                for item in page.blocks
-                if item.block_id == span.source_object_id
-                or any(
-                    source_span.source_object_id == span.source_object_id
-                    for source_span in item.source_spans
-                )
-            ),
-            None,
+        ProcessingContract._require_tuple(
+            "physical page ranges", physical_page_ranges
         )
-        if block is not None and (
-            block.text is None
-            or span.end_offset is None
-            or span.end_offset > len(block.text)
-        ):
-            raise ValueError("selection span offsets exceed source text")
-
-
-def _selection_id(
-    document: ExtractedDocument,
-    source_spans: tuple[SourceSpan, ...],
-    physical_page_ranges: tuple[ProcessingPhysicalPageRange, ...],
-    printed_page_ranges: tuple[ProcessingPrintedPageRange, ...],
-    selected_pages: tuple[ExtractedPage, ...],
-    structure_analysis: StructureAnalysis | None,
-    selected_nodes: tuple[StructureNode, ...],
-) -> str:
-    return stable_id(
-        "processing-selection",
-        PROCESSING_CONTRACT_VERSION,
-        document.document_id,
-        document.source.source_id,
-        document.source.blob_id,
-        tuple(_span_parts(span) for span in source_spans),
-        tuple(item.range_id for item in physical_page_ranges),
-        tuple(item.range_id for item in printed_page_ranges),
-        selected_pages,
-        structure_analysis.analysis_id
-        if structure_analysis is not None
-        else None,
-        selected_nodes,
-    )
-
-
-def _build_work_items(
-    selections: tuple[ProcessingSelection, ...],
-    configuration: ProcessingConfiguration,
-) -> tuple[ProcessingWorkItem, ...]:
-    _require_tuple("processing selections", selections)
-    if not selections:
-        raise ValueError("processing request requires a selection")
-    if len(selections) > configuration.max_selections:
-        raise ProcessingLimitError("selections exceed max_selections")
-    if any(not isinstance(item, ProcessingSelection) for item in selections):
-        raise TypeError("processing selections contain an unsupported value")
-    selection_ids = tuple(item.selection_id for item in selections)
-    if len(set(selection_ids)) != len(selection_ids):
-        raise ValueError("processing selections must be unique")
-    work_items = tuple(
-        _build_work_item(selection, configuration) for selection in selections
-    )
-    _validate_retained_size(
-        (selections, work_items, configuration), configuration.max_result_bytes
-    )
-    return work_items
-
-
-def _build_work_item(
-    selection: ProcessingSelection,
-    configuration: ProcessingConfiguration,
-) -> ProcessingWorkItem:
-    evidence = _resolve_selection_evidence(
-        selection.document,
-        selection.source_spans,
-        selection.physical_page_ranges,
-        selection.printed_page_ranges,
-        selection.structure_analysis,
-        selection.structure_node_ids,
-    )
-    if (
-        len(selection.physical_page_ranges) + len(selection.printed_page_ranges)
-        > configuration.max_page_ranges_per_selection
-    ):
-        raise ProcessingLimitError(
-            "page ranges exceed max_page_ranges_per_selection"
+        ProcessingContract._require_tuple(
+            "printed page ranges", printed_page_ranges
         )
-    if (
-        len(evidence.selected_pages)
-        > configuration.max_selected_pages_per_selection
-    ):
-        raise ProcessingLimitError(
-            "selected pages exceed max_selected_pages_per_selection"
+        ProcessingContract._unique_strings(
+            "structure node IDs", structure_node_ids
         )
-    if (
-        len(evidence.selected_nodes)
-        > configuration.max_structure_nodes_per_selection
-    ):
-        raise ProcessingLimitError(
-            "structure nodes exceed max_structure_nodes_per_selection"
-        )
-    if (
-        len(selection.source_spans)
-        > configuration.max_source_spans_per_selection
-    ):
-        raise ProcessingLimitError(
-            "source spans exceed max_source_spans_per_selection"
-        )
-    spans = _deduplicate_spans(
-        selection.source_spans
-        + tuple(
-            span
-            for page in evidence.selected_pages
-            for block in page.blocks
-            for span in block.source_spans
-        )
-        + tuple(
-            span
-            for node in evidence.selected_nodes
-            for span in node.source_spans
-        )
-    )
-    object_ids = _deduplicate_strings(
-        tuple(
-            _selected_page_object_id(selection.document.source, page)
-            for page in evidence.selected_pages
-        )
-        + tuple(
-            block.block_id
-            for page in evidence.selected_pages
-            for block in page.blocks
-        )
-        + tuple(
-            span.source_object_id
-            for span in selection.source_spans
-            if span.source_object_id is not None
-        )
-        + tuple(node.node_id for node in evidence.selected_nodes)
-        + tuple(
-            block_id
-            for node in evidence.selected_nodes
-            for block_id in node.source_block_ids
-        )
-    )
-    if len(spans) > configuration.max_source_spans_per_selection:
-        raise ProcessingLimitError(
-            "resolved source spans exceed max_source_spans_per_selection"
-        )
-    if len(object_ids) > configuration.max_input_object_ids_per_selection:
-        raise ProcessingLimitError(
-            "input object IDs exceed max_input_object_ids_per_selection"
-        )
-    work_item_id = _work_item_id(
-        selection.selection_id,
-        selection.document.source,
-        evidence.selected_pages,
-        spans,
-        evidence.selected_nodes,
-        object_ids,
-    )
-    return ProcessingWorkItem(
-        work_item_id=work_item_id,
-        selection_id=selection.selection_id,
-        source=selection.document.source,
-        full_pages=evidence.selected_pages,
-        source_spans=spans,
-        structure_nodes=evidence.selected_nodes,
-        input_object_ids=object_ids,
-    )
-
-
-def _selected_page_object_id(
-    source: SourceDocument, page: ExtractedPage
-) -> str:
-    return stable_id(
-        "processing-selected-page",
-        source.source_id,
-        source.blob_id,
-        page,
-    )
-
-
-def _work_item_id(
-    selection_id: str,
-    source: SourceDocument,
-    full_pages: tuple[ExtractedPage, ...],
-    source_spans: tuple[SourceSpan, ...],
-    structure_nodes: tuple[StructureNode, ...],
-    input_object_ids: tuple[str, ...],
-) -> str:
-    return stable_id(
-        "processing-work-item",
-        selection_id,
-        source.source_id,
-        source.blob_id,
-        full_pages,
-        tuple(_span_parts(span) for span in source_spans),
-        structure_nodes,
-        input_object_ids,
-    )
-
-
-def _request_id(
-    selections: tuple[ProcessingSelection, ...],
-    work_items: tuple[ProcessingWorkItem, ...],
-    configuration: ProcessingConfiguration,
-) -> str:
-    return stable_id(
-        "processing-request",
-        PROCESSING_CONTRACT_VERSION,
-        tuple(item.selection_id for item in selections),
-        tuple(item.work_item_id for item in work_items),
-        configuration.identity_parts(),
-    )
-
-
-def _invocation_id(
-    work_item_id: str,
-    processor_identity_digest: str,
-    status: ProcessingStatus,
-    artifacts: tuple[ProcessingDerivedArtifact, ...],
-    warnings: tuple[ProcessingWarning, ...],
-    failures: tuple[ProcessingFailure, ...],
-) -> str:
-    return stable_id(
-        "processing-invocation",
-        work_item_id,
-        processor_identity_digest,
-        status.value,
-        tuple(item.artifact_id for item in artifacts),
-        tuple(item.warning_id for item in warnings),
-        tuple(item.failure_id for item in failures),
-    )
-
-
-def _selection_result_id(
-    work_item: ProcessingWorkItem,
-    processor_identity: ProcessingProcessorIdentity,
-    cache_key: str,
-    attempts: tuple[ProcessingAttempt, ...],
-    retry_exhausted: bool,
-) -> str:
-    return stable_id(
-        "processing-selection-result",
-        work_item.selection_id,
-        work_item.work_item_id,
-        processor_identity.identity_parts(),
-        cache_key,
-        tuple(item.attempt_id for item in attempts),
-        retry_exhausted,
-    )
-
-
-def _processing_result_id(
-    request_id: str,
-    selection_results: tuple[ProcessingSelectionResult, ...],
-    status: ProcessingStatus,
-) -> str:
-    return stable_id(
-        "processing-result",
-        request_id,
-        tuple(item.selection_result_id for item in selection_results),
-        status.value,
-    )
-
-
-def _aggregate_status(
-    selection_results: tuple[ProcessingSelectionResult, ...],
-) -> ProcessingStatus:
-    if not selection_results:
-        raise ValueError("processing result requires selection results")
-    statuses = tuple(item.status for item in selection_results)
-    if all(status is ProcessingStatus.COMPLETED for status in statuses):
-        return ProcessingStatus.COMPLETED
-    if all(status is ProcessingStatus.FAILED for status in statuses):
-        return ProcessingStatus.FAILED
-    return ProcessingStatus.PARTIAL
-
-
-def _failed_invocation(
-    work_item: ProcessingWorkItem,
-    processor_identity: ProcessingProcessorIdentity,
-    configuration: ProcessingConfiguration,
-    *,
-    kind: ProcessingFailureKind,
-    message: str,
-    retryable: bool,
-    evidence: Metadata = (),
-) -> ProcessingInvocationResult:
-    bounded_message = message[: configuration.max_message_characters]
-    bounded_evidence = evidence
-    if (
-        len(evidence) > configuration.max_metadata_entries
-        or sum(len(key) + len(value) for key, value in evidence)
-        > configuration.max_metadata_characters
-    ):
-        bounded_evidence = ()
-    failure = ProcessingFailure.create(
-        work_item=work_item,
-        kind=kind,
-        message=bounded_message,
-        retryable=retryable,
-        evidence=bounded_evidence,
-    )
-    return ProcessingInvocationResult.create(
-        work_item=work_item,
-        processor_identity=processor_identity,
-        status=ProcessingStatus.FAILED,
-        failures=(failure,),
-    )
-
-
-def _resource_limit_selection_result(
-    work_item: ProcessingWorkItem,
-    processor_identity: ProcessingProcessorIdentity,
-    cache_key: str,
-    configuration: ProcessingConfiguration,
-) -> ProcessingSelectionResult:
-    invocation = _failed_invocation(
-        work_item,
-        processor_identity,
-        configuration,
-        kind=ProcessingFailureKind.RESOURCE_LIMIT,
-        message="aggregate processing artifacts exceed configured limits",
-        retryable=False,
-    )
-    return ProcessingSelectionResult.create(
-        work_item=work_item,
-        processor_identity=processor_identity,
-        cache_key=cache_key,
-        attempts=(
-            ProcessingAttempt.create(
-                attempt_number=1,
-                invocation=invocation,
-            ),
-        ),
-        retry_exhausted=False,
-    )
-
-
-def _invocation_is_retryable_failure(
-    invocation: ProcessingInvocationResult,
-) -> bool:
-    return (
-        invocation.status is ProcessingStatus.FAILED
-        and bool(invocation.failures)
-        and all(failure.retryable for failure in invocation.failures)
-    )
-
-
-def _validate_invocation_against_work_item(
-    invocation: ProcessingInvocationResult,
-    work_item: ProcessingWorkItem,
-) -> None:
-    for artifact in invocation.artifacts:
-        _validate_output_references(
-            artifact.input_object_ids,
-            artifact.source_spans,
-            work_item,
-        )
-    for warning in invocation.warnings:
-        _validate_output_references(
-            warning.object_ids,
-            warning.source_spans,
-            work_item,
-        )
-    for failure in invocation.failures:
-        _validate_output_references(
-            failure.object_ids,
-            failure.source_spans,
-            work_item,
-        )
-
-
-def _validate_output_references(
-    object_ids: tuple[str, ...],
-    source_spans: tuple[SourceSpan, ...],
-    work_item: ProcessingWorkItem,
-) -> None:
-    if not set(object_ids).issubset(work_item.input_object_ids):
-        raise ValueError("processing output references an unselected object")
-    full_page_by_index = {
-        page.page_index: page for page in work_item.full_pages
-    }
-    for span in source_spans:
-        if span.source_id != work_item.source.source_id or (
-            span.source_blob_id != work_item.source.blob_id
-        ):
-            raise ValueError("processing output references another source")
-        if span.bounding_box is not None and any(
-            not math.isfinite(value) for value in span.bounding_box
-        ):
-            raise ValueError("processing output geometry must be finite")
-        full_page = full_page_by_index.get(span.page_index)
-        if full_page is not None:
-            _validate_span_against_page(span, full_page)
-            continue
-        if not any(
-            _span_contains(parent, span) for parent in work_item.source_spans
-        ):
-            raise ValueError("processing output span exceeds its selection")
-
-
-def _validate_span_against_page(span: SourceSpan, page: ExtractedPage) -> None:
-    if span.printed_page_label is not None and (
-        span.printed_page_label != page.printed_page_label
-    ):
-        raise ValueError("processing output printed page label is stale")
-    if span.bounding_box is not None:
-        x0, y0, x1, y1 = span.bounding_box
-        if any(not math.isfinite(value) for value in span.bounding_box):
-            raise ValueError("processing output geometry must be finite")
-        if x0 < 0 or y0 < 0 or x1 > page.width or y1 > page.height:
-            raise ValueError(
-                "processing output geometry exceeds its source page"
-            )
-
-
-def _span_contains(parent: SourceSpan, child: SourceSpan) -> bool:
-    if parent.source_id != child.source_id or (
-        parent.source_blob_id != child.source_blob_id
-        or parent.page_index != child.page_index
-    ):
-        return False
-    if parent.printed_page_label is not None and (
-        child.printed_page_label is not None
-        and child.printed_page_label != parent.printed_page_label
-    ):
-        return False
-    if parent.source_object_id is not None and (
-        child.source_object_id != parent.source_object_id
-    ):
-        return False
-    if parent.bounding_box is not None:
-        if child.bounding_box is None:
-            return False
-        px0, py0, px1, py1 = parent.bounding_box
-        cx0, cy0, cx1, cy1 = child.bounding_box
-        if cx0 < px0 or cy0 < py0 or cx1 > px1 or cy1 > py1:
-            return False
-    if parent.start_offset is not None:
-        if child.start_offset is None or child.end_offset is None:
-            return False
-        assert parent.end_offset is not None
+        if len(source_spans) > _MAX_SOURCE_SPANS:
+            raise ProcessingLimitError("too many selection source spans")
         if (
-            child.start_offset < parent.start_offset
-            or child.end_offset > parent.end_offset
+            len(physical_page_ranges) + len(printed_page_ranges)
+            > _MAX_PAGE_RANGES
+        ):
+            raise ProcessingLimitError("too many selection page ranges")
+        if len(structure_node_ids) > _MAX_STRUCTURE_NODES:
+            raise ProcessingLimitError("too many selection structure nodes")
+        if any(
+            not isinstance(item, ProcessingPhysicalPageRange)
+            for item in physical_page_ranges
+        ):
+            raise TypeError("physical page ranges contain an unsupported value")
+        if any(
+            not isinstance(item, ProcessingPrintedPageRange)
+            for item in printed_page_ranges
+        ):
+            raise TypeError("printed page ranges contain an unsupported value")
+        if not (
+            source_spans
+            or physical_page_ranges
+            or printed_page_ranges
+            or structure_node_ids
+        ):
+            raise ValueError("processing selection requires source evidence")
+        page_by_index = {page.page_index: page for page in document.pages}
+        for span in source_spans:
+            ProcessingContract._validate_span_against_document(
+                span, document, page_by_index
+            )
+        selected_indices: set[int] = set()
+        for page_range in physical_page_ranges:
+            range_length = (
+                page_range.end_page_index - page_range.start_page_index + 1
+            )
+            if range_length > _MAX_SELECTED_PAGES:
+                raise ProcessingLimitError("physical page range is too large")
+            requested = tuple(
+                range(
+                    page_range.start_page_index, page_range.end_page_index + 1
+                )
+            )
+            missing = tuple(
+                index for index in requested if index not in page_by_index
+            )
+            if missing:
+                raise ValueError("physical page range refers to a missing page")
+            selected_indices.update(requested)
+            if len(selected_indices) > _MAX_SELECTED_PAGES:
+                raise ProcessingLimitError("too many selected pages")
+        labels: dict[str, list[int]] = {}
+        for page in document.pages:
+            if page.printed_page_label is not None:
+                labels.setdefault(page.printed_page_label, []).append(
+                    page.page_index
+                )
+        for printed_range in printed_page_ranges:
+            starts = labels.get(printed_range.start_printed_page_label, [])
+            ends = labels.get(printed_range.end_printed_page_label, [])
+            if len(starts) != 1 or len(ends) != 1:
+                raise ValueError(
+                    "printed page range endpoints must resolve uniquely"
+                )
+            start, end = starts[0], ends[0]
+            if end < start:
+                raise ValueError(
+                    "printed page range must follow source page order"
+                )
+            if end - start + 1 > _MAX_SELECTED_PAGES:
+                raise ProcessingLimitError("printed page range is too large")
+            requested = tuple(range(start, end + 1))
+            if any(index not in page_by_index for index in requested):
+                raise ValueError("printed page range crosses a missing page")
+            selected_indices.update(requested)
+            if len(selected_indices) > _MAX_SELECTED_PAGES:
+                raise ProcessingLimitError("too many selected pages")
+        selected_nodes: tuple[StructureNode, ...] = ()
+        if structure_node_ids:
+            if not isinstance(structure_analysis, StructureAnalysis):
+                raise ValueError(
+                    "structure node selection requires a structure analysis"
+                )
+            if structure_analysis.source_id != document.source.source_id or (
+                structure_analysis.source_blob_id != document.source.blob_id
+            ):
+                raise ValueError(
+                    "structure analysis must refer to the exact document source"
+                )
+            node_by_id = {
+                node.node_id: node for node in structure_analysis.nodes
+            }
+            try:
+                selected_nodes = tuple(
+                    node_by_id[node_id] for node_id in structure_node_ids
+                )
+            except KeyError as error:
+                raise ValueError("structure node selection is stale") from error
+            document_block_ids = {
+                block.block_id
+                for page in document.pages
+                for block in page.blocks
+            }
+            for node in selected_nodes:
+                for span in node.source_spans:
+                    ProcessingContract._validate_span_against_document(
+                        span, document, page_by_index
+                    )
+                if not set(node.source_block_ids).issubset(document_block_ids):
+                    raise ValueError("structure node source blocks are stale")
+        elif structure_analysis is not None:
+            raise ValueError(
+                "structure analysis is only valid with structure node IDs"
+            )
+        return _ResolvedSelectionEvidence(
+            selected_pages=tuple(
+                page_by_index[index] for index in sorted(selected_indices)
+            ),
+            selected_nodes=selected_nodes,
+        )
+
+    @staticmethod
+    def _validate_span_against_document(
+        span: SourceSpan,
+        document: ExtractedDocument,
+        page_by_index: dict[int, ExtractedPage],
+    ) -> None:
+        if span.source_id != document.source.source_id or (
+            span.source_blob_id != document.source.blob_id
+        ):
+            raise ValueError("selection span must refer to the exact source")
+        page = page_by_index.get(span.page_index)
+        if page is None:
+            raise ValueError("selection span refers to a missing page")
+        if span.printed_page_label is not None and (
+            span.printed_page_label != page.printed_page_label
+        ):
+            raise ValueError("selection span printed page label is stale")
+        if span.bounding_box is not None:
+            x0, y0, x1, y1 = span.bounding_box
+            if any(not math.isfinite(value) for value in span.bounding_box):
+                raise ValueError("selection span geometry must be finite")
+            if x0 < 0 or y0 < 0 or x1 > page.width or y1 > page.height:
+                raise ValueError(
+                    "selection span geometry exceeds its source page"
+                )
+        if span.source_object_id is not None:
+            known_object_ids = {block.block_id for block in page.blocks} | {
+                source_span.source_object_id
+                for block in page.blocks
+                for source_span in block.source_spans
+                if source_span.source_object_id is not None
+            }
+            if span.source_object_id not in known_object_ids:
+                raise ValueError("selection span source object is stale")
+        if span.source_object_id is not None and span.start_offset is not None:
+            block = next(
+                (
+                    item
+                    for item in page.blocks
+                    if item.block_id == span.source_object_id
+                    or any(
+                        source_span.source_object_id == span.source_object_id
+                        for source_span in item.source_spans
+                    )
+                ),
+                None,
+            )
+            if block is not None and (
+                block.text is None
+                or span.end_offset is None
+                or span.end_offset > len(block.text)
+            ):
+                raise ValueError("selection span offsets exceed source text")
+
+    @staticmethod
+    def _selection_id(
+        document: ExtractedDocument,
+        source_spans: tuple[SourceSpan, ...],
+        physical_page_ranges: tuple[ProcessingPhysicalPageRange, ...],
+        printed_page_ranges: tuple[ProcessingPrintedPageRange, ...],
+        selected_pages: tuple[ExtractedPage, ...],
+        structure_analysis: StructureAnalysis | None,
+        selected_nodes: tuple[StructureNode, ...],
+    ) -> str:
+        return stable_id(
+            "processing-selection",
+            PROCESSING_CONTRACT_VERSION,
+            document.document_id,
+            document.source.source_id,
+            document.source.blob_id,
+            tuple(
+                ProcessingContract._span_parts(span) for span in source_spans
+            ),
+            tuple(item.range_id for item in physical_page_ranges),
+            tuple(item.range_id for item in printed_page_ranges),
+            selected_pages,
+            structure_analysis.analysis_id
+            if structure_analysis is not None
+            else None,
+            selected_nodes,
+        )
+
+    @staticmethod
+    def _build_work_items(
+        selections: tuple[ProcessingSelection, ...],
+        configuration: ProcessingConfiguration,
+    ) -> tuple[ProcessingWorkItem, ...]:
+        ProcessingContract._require_tuple("processing selections", selections)
+        if not selections:
+            raise ValueError("processing request requires a selection")
+        if len(selections) > configuration.max_selections:
+            raise ProcessingLimitError("selections exceed max_selections")
+        if any(
+            not isinstance(item, ProcessingSelection) for item in selections
+        ):
+            raise TypeError(
+                "processing selections contain an unsupported value"
+            )
+        selection_ids = tuple(item.selection_id for item in selections)
+        if len(set(selection_ids)) != len(selection_ids):
+            raise ValueError("processing selections must be unique")
+        work_items = tuple(
+            ProcessingContract._build_work_item(selection, configuration)
+            for selection in selections
+        )
+        ProcessingContract._validate_retained_size(
+            (selections, work_items, configuration),
+            configuration.max_result_bytes,
+        )
+        return work_items
+
+    @staticmethod
+    def _build_work_item(
+        selection: ProcessingSelection,
+        configuration: ProcessingConfiguration,
+    ) -> ProcessingWorkItem:
+        evidence = ProcessingContract._resolve_selection_evidence(
+            selection.document,
+            selection.source_spans,
+            selection.physical_page_ranges,
+            selection.printed_page_ranges,
+            selection.structure_analysis,
+            selection.structure_node_ids,
+        )
+        if (
+            len(selection.physical_page_ranges)
+            + len(selection.printed_page_ranges)
+            > configuration.max_page_ranges_per_selection
+        ):
+            raise ProcessingLimitError(
+                "page ranges exceed max_page_ranges_per_selection"
+            )
+        if (
+            len(evidence.selected_pages)
+            > configuration.max_selected_pages_per_selection
+        ):
+            raise ProcessingLimitError(
+                "selected pages exceed max_selected_pages_per_selection"
+            )
+        if (
+            len(evidence.selected_nodes)
+            > configuration.max_structure_nodes_per_selection
+        ):
+            raise ProcessingLimitError(
+                "structure nodes exceed max_structure_nodes_per_selection"
+            )
+        if (
+            len(selection.source_spans)
+            > configuration.max_source_spans_per_selection
+        ):
+            raise ProcessingLimitError(
+                "source spans exceed max_source_spans_per_selection"
+            )
+        spans = ProcessingContract._deduplicate_spans(
+            selection.source_spans
+            + tuple(
+                span
+                for page in evidence.selected_pages
+                for block in page.blocks
+                for span in block.source_spans
+            )
+            + tuple(
+                span
+                for node in evidence.selected_nodes
+                for span in node.source_spans
+            )
+        )
+        object_ids = ProcessingContract._deduplicate_strings(
+            tuple(
+                ProcessingContract._selected_page_object_id(
+                    selection.document.source, page
+                )
+                for page in evidence.selected_pages
+            )
+            + tuple(
+                block.block_id
+                for page in evidence.selected_pages
+                for block in page.blocks
+            )
+            + tuple(
+                span.source_object_id
+                for span in selection.source_spans
+                if span.source_object_id is not None
+            )
+            + tuple(node.node_id for node in evidence.selected_nodes)
+            + tuple(
+                block_id
+                for node in evidence.selected_nodes
+                for block_id in node.source_block_ids
+            )
+        )
+        if len(spans) > configuration.max_source_spans_per_selection:
+            raise ProcessingLimitError(
+                "resolved source spans exceed max_source_spans_per_selection"
+            )
+        if len(object_ids) > configuration.max_input_object_ids_per_selection:
+            raise ProcessingLimitError(
+                "input object IDs exceed max_input_object_ids_per_selection"
+            )
+        work_item_id = ProcessingContract._work_item_id(
+            selection.selection_id,
+            selection.document.source,
+            evidence.selected_pages,
+            spans,
+            evidence.selected_nodes,
+            object_ids,
+        )
+        return ProcessingWorkItem(
+            work_item_id=work_item_id,
+            selection_id=selection.selection_id,
+            source=selection.document.source,
+            full_pages=evidence.selected_pages,
+            source_spans=spans,
+            structure_nodes=evidence.selected_nodes,
+            input_object_ids=object_ids,
+        )
+
+    @staticmethod
+    def _selected_page_object_id(
+        source: SourceDocument, page: ExtractedPage
+    ) -> str:
+        return stable_id(
+            "processing-selected-page",
+            source.source_id,
+            source.blob_id,
+            page,
+        )
+
+    @staticmethod
+    def _work_item_id(
+        selection_id: str,
+        source: SourceDocument,
+        full_pages: tuple[ExtractedPage, ...],
+        source_spans: tuple[SourceSpan, ...],
+        structure_nodes: tuple[StructureNode, ...],
+        input_object_ids: tuple[str, ...],
+    ) -> str:
+        return stable_id(
+            "processing-work-item",
+            selection_id,
+            source.source_id,
+            source.blob_id,
+            full_pages,
+            tuple(
+                ProcessingContract._span_parts(span) for span in source_spans
+            ),
+            structure_nodes,
+            input_object_ids,
+        )
+
+    @staticmethod
+    def _request_id(
+        selections: tuple[ProcessingSelection, ...],
+        work_items: tuple[ProcessingWorkItem, ...],
+        configuration: ProcessingConfiguration,
+    ) -> str:
+        return stable_id(
+            "processing-request",
+            PROCESSING_CONTRACT_VERSION,
+            tuple(item.selection_id for item in selections),
+            tuple(item.work_item_id for item in work_items),
+            configuration.identity_parts(),
+        )
+
+    @staticmethod
+    def _invocation_id(
+        work_item_id: str,
+        processor_identity_digest: str,
+        status: ProcessingStatus,
+        artifacts: tuple[ProcessingDerivedArtifact, ...],
+        warnings: tuple[ProcessingWarning, ...],
+        failures: tuple[ProcessingFailure, ...],
+    ) -> str:
+        return stable_id(
+            "processing-invocation",
+            work_item_id,
+            processor_identity_digest,
+            status.value,
+            tuple(item.artifact_id for item in artifacts),
+            tuple(item.warning_id for item in warnings),
+            tuple(item.failure_id for item in failures),
+        )
+
+    @staticmethod
+    def _selection_result_id(
+        work_item: ProcessingWorkItem,
+        processor_identity: ProcessingProcessorIdentity,
+        cache_key: str,
+        attempts: tuple[ProcessingAttempt, ...],
+        retry_exhausted: bool,
+    ) -> str:
+        return stable_id(
+            "processing-selection-result",
+            work_item.selection_id,
+            work_item.work_item_id,
+            processor_identity.identity_parts(),
+            cache_key,
+            tuple(item.attempt_id for item in attempts),
+            retry_exhausted,
+        )
+
+    @staticmethod
+    def _processing_result_id(
+        request_id: str,
+        selection_results: tuple[ProcessingSelectionResult, ...],
+        status: ProcessingStatus,
+    ) -> str:
+        return stable_id(
+            "processing-result",
+            request_id,
+            tuple(item.selection_result_id for item in selection_results),
+            status.value,
+        )
+
+    @staticmethod
+    def _aggregate_status(
+        selection_results: tuple[ProcessingSelectionResult, ...],
+    ) -> ProcessingStatus:
+        if not selection_results:
+            raise ValueError("processing result requires selection results")
+        statuses = tuple(item.status for item in selection_results)
+        if all(status is ProcessingStatus.COMPLETED for status in statuses):
+            return ProcessingStatus.COMPLETED
+        if all(status is ProcessingStatus.FAILED for status in statuses):
+            return ProcessingStatus.FAILED
+        return ProcessingStatus.PARTIAL
+
+    @staticmethod
+    def _failed_invocation(
+        work_item: ProcessingWorkItem,
+        processor_identity: ProcessingProcessorIdentity,
+        configuration: ProcessingConfiguration,
+        *,
+        kind: ProcessingFailureKind,
+        message: str,
+        retryable: bool,
+        evidence: Metadata = (),
+    ) -> ProcessingInvocationResult:
+        bounded_message = message[: configuration.max_message_characters]
+        bounded_evidence = evidence
+        if (
+            len(evidence) > configuration.max_metadata_entries
+            or sum(len(key) + len(value) for key, value in evidence)
+            > configuration.max_metadata_characters
+        ):
+            bounded_evidence = ()
+        failure = ProcessingFailure.create(
+            work_item=work_item,
+            kind=kind,
+            message=bounded_message,
+            retryable=retryable,
+            evidence=bounded_evidence,
+        )
+        return ProcessingInvocationResult.create(
+            work_item=work_item,
+            processor_identity=processor_identity,
+            status=ProcessingStatus.FAILED,
+            failures=(failure,),
+        )
+
+    @staticmethod
+    def _resource_limit_selection_result(
+        work_item: ProcessingWorkItem,
+        processor_identity: ProcessingProcessorIdentity,
+        cache_key: str,
+        configuration: ProcessingConfiguration,
+    ) -> ProcessingSelectionResult:
+        invocation = ProcessingContract._failed_invocation(
+            work_item,
+            processor_identity,
+            configuration,
+            kind=ProcessingFailureKind.RESOURCE_LIMIT,
+            message="aggregate processing artifacts exceed configured limits",
+            retryable=False,
+        )
+        return ProcessingSelectionResult.create(
+            work_item=work_item,
+            processor_identity=processor_identity,
+            cache_key=cache_key,
+            attempts=(
+                ProcessingAttempt.create(
+                    attempt_number=1,
+                    invocation=invocation,
+                ),
+            ),
+            retry_exhausted=False,
+        )
+
+    @staticmethod
+    def _invocation_is_retryable_failure(
+        invocation: ProcessingInvocationResult,
+    ) -> bool:
+        return (
+            invocation.status is ProcessingStatus.FAILED
+            and bool(invocation.failures)
+            and all(failure.retryable for failure in invocation.failures)
+        )
+
+    @staticmethod
+    def _validate_invocation_against_work_item(
+        invocation: ProcessingInvocationResult,
+        work_item: ProcessingWorkItem,
+    ) -> None:
+        for artifact in invocation.artifacts:
+            ProcessingContract._validate_output_references(
+                artifact.input_object_ids,
+                artifact.source_spans,
+                work_item,
+            )
+        for warning in invocation.warnings:
+            ProcessingContract._validate_output_references(
+                warning.object_ids,
+                warning.source_spans,
+                work_item,
+            )
+        for failure in invocation.failures:
+            ProcessingContract._validate_output_references(
+                failure.object_ids,
+                failure.source_spans,
+                work_item,
+            )
+
+    @staticmethod
+    def _validate_output_references(
+        object_ids: tuple[str, ...],
+        source_spans: tuple[SourceSpan, ...],
+        work_item: ProcessingWorkItem,
+    ) -> None:
+        if not set(object_ids).issubset(work_item.input_object_ids):
+            raise ValueError(
+                "processing output references an unselected object"
+            )
+        full_page_by_index = {
+            page.page_index: page for page in work_item.full_pages
+        }
+        for span in source_spans:
+            if span.source_id != work_item.source.source_id or (
+                span.source_blob_id != work_item.source.blob_id
+            ):
+                raise ValueError("processing output references another source")
+            if span.bounding_box is not None and any(
+                not math.isfinite(value) for value in span.bounding_box
+            ):
+                raise ValueError("processing output geometry must be finite")
+            full_page = full_page_by_index.get(span.page_index)
+            if full_page is not None:
+                ProcessingContract._validate_span_against_page(span, full_page)
+                continue
+            if not any(
+                ProcessingContract._span_contains(parent, span)
+                for parent in work_item.source_spans
+            ):
+                raise ValueError("processing output span exceeds its selection")
+
+    @staticmethod
+    def _validate_span_against_page(
+        span: SourceSpan, page: ExtractedPage
+    ) -> None:
+        if span.printed_page_label is not None and (
+            span.printed_page_label != page.printed_page_label
+        ):
+            raise ValueError("processing output printed page label is stale")
+        if span.bounding_box is not None:
+            x0, y0, x1, y1 = span.bounding_box
+            if any(not math.isfinite(value) for value in span.bounding_box):
+                raise ValueError("processing output geometry must be finite")
+            if x0 < 0 or y0 < 0 or x1 > page.width or y1 > page.height:
+                raise ValueError(
+                    "processing output geometry exceeds its source page"
+                )
+
+    @staticmethod
+    def _span_contains(parent: SourceSpan, child: SourceSpan) -> bool:
+        if parent.source_id != child.source_id or (
+            parent.source_blob_id != child.source_blob_id
+            or parent.page_index != child.page_index
         ):
             return False
-    return True
+        if parent.printed_page_label is not None and (
+            child.printed_page_label is not None
+            and child.printed_page_label != parent.printed_page_label
+        ):
+            return False
+        if parent.source_object_id is not None and (
+            child.source_object_id != parent.source_object_id
+        ):
+            return False
+        if parent.bounding_box is not None:
+            if child.bounding_box is None:
+                return False
+            px0, py0, px1, py1 = parent.bounding_box
+            cx0, cy0, cx1, cy1 = child.bounding_box
+            if cx0 < px0 or cy0 < py0 or cx1 > px1 or cy1 > py1:
+                return False
+        if parent.start_offset is not None:
+            if child.start_offset is None or child.end_offset is None:
+                return False
+            assert parent.end_offset is not None
+            if (
+                child.start_offset < parent.start_offset
+                or child.end_offset > parent.end_offset
+            ):
+                return False
+        return True
 
-
-def _validate_cached_selection_result(
-    result: ProcessingSelectionResult,
-    work_item: ProcessingWorkItem,
-    identity: ProcessingProcessorIdentity,
-    cache_key: str,
-    configuration: ProcessingConfiguration,
-) -> None:
-    if not isinstance(result, ProcessingSelectionResult):
-        raise ProcessingCoordinatorError(
-            "derived processing cache returned an unsupported value"
+    @staticmethod
+    def _validate_cached_selection_result(
+        result: ProcessingSelectionResult,
+        work_item: ProcessingWorkItem,
+        identity: ProcessingProcessorIdentity,
+        cache_key: str,
+        configuration: ProcessingConfiguration,
+    ) -> None:
+        if not isinstance(result, ProcessingSelectionResult):
+            raise ProcessingCoordinatorError(
+                "derived processing cache returned an unsupported value"
+            )
+        if (
+            result.work_item != work_item
+            or result.processor_identity != identity
+        ):
+            raise ProcessingCoordinatorError(
+                "derived processing cache returned stale input"
+            )
+        if result.cache_key != cache_key:
+            raise ProcessingCoordinatorError(
+                "derived processing cache returned the wrong key"
+            )
+        if result.status is ProcessingStatus.FAILED:
+            raise ProcessingCoordinatorError(
+                "derived processing cache must not retain failed results"
+            )
+        ProcessingContract._validate_configured_selection_result(
+            result, configuration
         )
-    if result.work_item != work_item or result.processor_identity != identity:
-        raise ProcessingCoordinatorError(
-            "derived processing cache returned stale input"
-        )
-    if result.cache_key != cache_key:
-        raise ProcessingCoordinatorError(
-            "derived processing cache returned the wrong key"
-        )
-    if result.status is ProcessingStatus.FAILED:
-        raise ProcessingCoordinatorError(
-            "derived processing cache must not retain failed results"
-        )
-    _validate_configured_selection_result(result, configuration)
 
+    @staticmethod
+    def _validate_configured_selection_result(
+        result: ProcessingSelectionResult,
+        configuration: ProcessingConfiguration,
+    ) -> None:
+        if len(result.attempts) > configuration.max_attempts_per_selection:
+            raise ProcessingLimitError(
+                "attempts exceed max_attempts_per_selection"
+            )
+        total_warnings = 0
+        total_failures = 0
+        for attempt in result.attempts:
+            invocation = attempt.invocation
+            ProcessingContract._validate_invocation_against_work_item(
+                invocation, result.work_item
+            )
+            ProcessingContract._validate_configured_invocation(
+                invocation, configuration
+            )
+            total_warnings += len(invocation.warnings)
+            total_failures += len(invocation.failures)
+        if total_warnings > configuration.max_total_warnings:
+            raise ProcessingLimitError("warnings exceed max_total_warnings")
+        if total_failures > configuration.max_total_failures:
+            raise ProcessingLimitError("failures exceed max_total_failures")
 
-def _validate_configured_selection_result(
-    result: ProcessingSelectionResult,
-    configuration: ProcessingConfiguration,
-) -> None:
-    if len(result.attempts) > configuration.max_attempts_per_selection:
-        raise ProcessingLimitError("attempts exceed max_attempts_per_selection")
-    total_warnings = 0
-    total_failures = 0
-    for attempt in result.attempts:
-        invocation = attempt.invocation
-        _validate_invocation_against_work_item(invocation, result.work_item)
-        _validate_configured_invocation(invocation, configuration)
-        total_warnings += len(invocation.warnings)
-        total_failures += len(invocation.failures)
-    if total_warnings > configuration.max_total_warnings:
-        raise ProcessingLimitError("warnings exceed max_total_warnings")
-    if total_failures > configuration.max_total_failures:
-        raise ProcessingLimitError("failures exceed max_total_failures")
-
-
-def _validate_configured_invocation(
-    invocation: ProcessingInvocationResult,
-    configuration: ProcessingConfiguration,
-) -> None:
-    if len(invocation.warnings) > configuration.max_warnings_per_attempt:
-        raise ProcessingLimitError("warnings exceed max_warnings_per_attempt")
-    if len(invocation.failures) > configuration.max_failures_per_attempt:
-        raise ProcessingLimitError("failures exceed max_failures_per_attempt")
-    for warning in invocation.warnings:
-        _validate_configured_message(
-            warning.message,
-            warning.evidence,
-            configuration,
-        )
-        if warning.suggested_recovery is not None and (
-            len(warning.suggested_recovery)
-            > configuration.max_message_characters
+    @staticmethod
+    def _validate_configured_invocation(
+        invocation: ProcessingInvocationResult,
+        configuration: ProcessingConfiguration,
+    ) -> None:
+        if len(invocation.warnings) > configuration.max_warnings_per_attempt:
+            raise ProcessingLimitError(
+                "warnings exceed max_warnings_per_attempt"
+            )
+        if len(invocation.failures) > configuration.max_failures_per_attempt:
+            raise ProcessingLimitError(
+                "failures exceed max_failures_per_attempt"
+            )
+        for warning in invocation.warnings:
+            ProcessingContract._validate_configured_message(
+                warning.message,
+                warning.evidence,
+                configuration,
+            )
+            if warning.suggested_recovery is not None and (
+                len(warning.suggested_recovery)
+                > configuration.max_message_characters
+            ):
+                raise ProcessingLimitError(
+                    "suggested recovery exceeds configured limit"
+                )
+        for failure in invocation.failures:
+            ProcessingContract._validate_configured_message(
+                failure.message,
+                failure.evidence,
+                configuration,
+            )
+        if (
+            len(invocation.artifacts)
+            > configuration.max_artifacts_per_selection
         ):
             raise ProcessingLimitError(
-                "suggested recovery exceeds configured limit"
+                "artifacts exceed max_artifacts_per_selection"
             )
-    for failure in invocation.failures:
-        _validate_configured_message(
-            failure.message,
-            failure.evidence,
-            configuration,
-        )
-    if len(invocation.artifacts) > configuration.max_artifacts_per_selection:
-        raise ProcessingLimitError(
-            "artifacts exceed max_artifacts_per_selection"
-        )
-    if any(
-        artifact.byte_length > configuration.max_artifact_bytes
-        for artifact in invocation.artifacts
-    ):
-        raise ProcessingLimitError("artifact exceeds max_artifact_bytes")
-    if sum(artifact.byte_length for artifact in invocation.artifacts) > (
-        configuration.max_total_artifact_bytes
-    ):
-        raise ProcessingLimitError("artifacts exceed max_total_artifact_bytes")
-
-
-def _validate_configured_result(result: ProcessingResult) -> None:
-    configuration = result.request.configuration
-    for selection_result in result.selection_results:
-        expected_key = build_derived_processing_cache_key(
-            selection_result.work_item,
-            selection_result.processor_identity,
-            configuration,
-        )
-        if selection_result.cache_key != expected_key:
-            raise ValueError("processing cache key is inconsistent")
-        _validate_configured_selection_result(selection_result, configuration)
-    total_warnings = sum(
-        len(attempt.invocation.warnings)
-        for selection_result in result.selection_results
-        for attempt in selection_result.attempts
-    )
-    total_failures = sum(
-        len(attempt.invocation.failures)
-        for selection_result in result.selection_results
-        for attempt in selection_result.attempts
-    )
-    if total_warnings > configuration.max_total_warnings:
-        raise ProcessingLimitError("result warnings exceed max_total_warnings")
-    if total_failures > configuration.max_total_failures:
-        raise ProcessingLimitError("result failures exceed max_total_failures")
-    total_bytes = sum(
-        artifact.byte_length
-        for selection_result in result.selection_results
-        for artifact in selection_result.artifacts
-    )
-    if total_bytes > configuration.max_total_artifact_bytes:
-        raise ProcessingLimitError(
-            "result artifacts exceed max_total_artifact_bytes"
-        )
-    _validate_retained_size(result, configuration.max_result_bytes)
-
-
-def _validate_configured_message(
-    message: str,
-    evidence: Metadata,
-    configuration: ProcessingConfiguration,
-) -> None:
-    if len(message) > configuration.max_message_characters:
-        raise ProcessingLimitError(
-            "processing message exceeds configured limit"
-        )
-    if len(evidence) > configuration.max_metadata_entries:
-        raise ProcessingLimitError("metadata exceeds max_metadata_entries")
-    if sum(len(key) + len(value) for key, value in evidence) > (
-        configuration.max_metadata_characters
-    ):
-        raise ProcessingLimitError("metadata exceeds max_metadata_characters")
-
-
-def _span_parts(span: SourceSpan) -> tuple[object, ...]:
-    return span.identity_parts() + (span.printed_page_label,)
-
-
-def _deduplicate_spans(spans: tuple[SourceSpan, ...]) -> tuple[SourceSpan, ...]:
-    result: list[SourceSpan] = []
-    seen: set[tuple[object, ...]] = set()
-    for span in spans:
-        identity = _span_parts(span)
-        if identity not in seen:
-            seen.add(identity)
-            result.append(span)
-    return tuple(result)
-
-
-def _deduplicate_strings(values: tuple[str, ...]) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(values))
-
-
-def _bounded_iterable(
-    values: Iterable[ProcessingSelection],
-    *,
-    limit: int,
-    name: str,
-) -> tuple[ProcessingSelection, ...]:
-    iterator = iter(values)
-    result: list[ProcessingSelection] = []
-    for _ in range(limit + 1):
-        try:
-            result.append(next(iterator))
-        except StopIteration:
-            return tuple(result)
-    raise ProcessingLimitError(f"{name} exceed configured limit")
-
-
-def _validate_span_tuple(name: str, spans: tuple[SourceSpan, ...]) -> None:
-    _require_tuple(name, spans)
-    if any(not isinstance(span, SourceSpan) for span in spans):
-        raise TypeError(f"{name} contain an unsupported value")
-    identities = tuple(_span_parts(span) for span in spans)
-    if len(set(identities)) != len(identities):
-        raise ValueError(f"{name} must be unique")
-
-
-def _validate_metadata(value: Metadata) -> None:
-    _require_tuple("metadata", value)
-    if len(value) > _MAX_METADATA_ENTRIES:
-        raise ProcessingLimitError("too many metadata entries")
-    total = 0
-    for entry in value:
-        if not isinstance(entry, tuple) or len(entry) != 2:
-            raise TypeError("metadata must contain immutable pairs")
-        key, item = entry
-        _bounded_string("metadata key", key, nonempty=True)
-        _bounded_string("metadata value", item)
-        total += len(key) + len(item)
-    if total > _MAX_METADATA_CHARACTERS:
-        raise ProcessingLimitError("metadata exceeds its hard limit")
-
-
-def _identity_fields(*values: str) -> None:
-    for value in values:
-        _bounded_string("identity field", value, nonempty=True)
-
-
-def _unique_strings(name: str, values: tuple[str, ...]) -> None:
-    _require_tuple(name, values)
-    for value in values:
-        _bounded_string(name, value, nonempty=True)
-    if len(set(values)) != len(values):
-        raise ValueError(f"{name} must be unique")
-
-
-def _unique_ids(name: str, values: tuple[str, ...]) -> None:
-    if len(set(values)) != len(values):
-        raise ValueError(f"processing {name} IDs must be unique")
-
-
-def _require_tuple(name: str, value: object) -> None:
-    if not isinstance(value, tuple):
-        raise TypeError(f"{name} must be an immutable tuple")
-
-
-def _bounded_string(
-    name: str,
-    value: object,
-    *,
-    nonempty: bool = False,
-    limit: int = _MAX_IDENTITY_CHARACTERS,
-) -> None:
-    if not isinstance(value, str):
-        raise TypeError(f"{name} must be a string")
-    if nonempty and not value:
-        raise ValueError(f"{name} must be non-empty")
-    if len(value) > limit:
-        raise ProcessingLimitError(f"{name} exceeds its hard limit")
-    try:
-        value.encode("utf-8")
-    except UnicodeEncodeError as error:
-        raise ValueError(f"{name} must be valid UTF-8") from error
-
-
-def _positive_integer(name: str, value: object) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-        raise ValueError(f"{name} must be a positive integer")
-
-
-def _nonnegative_integer(name: str, value: object) -> None:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ValueError(f"{name} must be a non-negative integer")
-
-
-def _sha256(name: str, value: str) -> None:
-    if len(value) != 64:
-        raise ValueError(f"{name} must be a SHA-256 digest")
-    try:
-        int(value, 16)
-    except ValueError as error:
-        raise ValueError(f"{name} must be a SHA-256 digest") from error
-
-
-def _bytes_sha256(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
-
-
-def _validate_retained_size(value: object, limit: int) -> None:
-    total = 0
-    stack = [value]
-    seen: set[int] = set()
-    while stack:
-        item = stack.pop()
-        if item is None or isinstance(item, (bool, int, float, Enum)):
-            total += 16
-        elif isinstance(item, str):
-            total += len(item.encode("utf-8")) + 8
-        elif isinstance(item, bytes):
-            total += len(item)
-        elif isinstance(item, tuple):
-            marker = id(item)
-            if marker in seen:
-                continue
-            seen.add(marker)
-            total += 8 * len(item)
-            stack.extend(item)
-        elif is_dataclass(item) and not isinstance(item, type):
-            marker = id(item)
-            if marker in seen:
-                continue
-            seen.add(marker)
-            for field in fields(item):
-                total += len(field.name) + 3
-                if (
-                    item.__class__.__name__ == "ProcessingDerivedArtifact"
-                    and field.name == "content"
-                ):
-                    continue
-                stack.append(getattr(item, field.name))
-        else:
-            raise TypeError("processing result contains unsupported evidence")
-        if total > limit:
+        if any(
+            artifact.byte_length > configuration.max_artifact_bytes
+            for artifact in invocation.artifacts
+        ):
+            raise ProcessingLimitError("artifact exceeds max_artifact_bytes")
+        if sum(artifact.byte_length for artifact in invocation.artifacts) > (
+            configuration.max_total_artifact_bytes
+        ):
             raise ProcessingLimitError(
-                "processing result exceeds max_result_bytes"
+                "artifacts exceed max_total_artifact_bytes"
             )
+
+    @staticmethod
+    def _validate_configured_result(result: ProcessingResult) -> None:
+        configuration = result.request.configuration
+        for selection_result in result.selection_results:
+            expected_key = build_derived_processing_cache_key(
+                selection_result.work_item,
+                selection_result.processor_identity,
+                configuration,
+            )
+            if selection_result.cache_key != expected_key:
+                raise ValueError("processing cache key is inconsistent")
+            ProcessingContract._validate_configured_selection_result(
+                selection_result, configuration
+            )
+        total_warnings = sum(
+            len(attempt.invocation.warnings)
+            for selection_result in result.selection_results
+            for attempt in selection_result.attempts
+        )
+        total_failures = sum(
+            len(attempt.invocation.failures)
+            for selection_result in result.selection_results
+            for attempt in selection_result.attempts
+        )
+        if total_warnings > configuration.max_total_warnings:
+            raise ProcessingLimitError(
+                "result warnings exceed max_total_warnings"
+            )
+        if total_failures > configuration.max_total_failures:
+            raise ProcessingLimitError(
+                "result failures exceed max_total_failures"
+            )
+        total_bytes = sum(
+            artifact.byte_length
+            for selection_result in result.selection_results
+            for artifact in selection_result.artifacts
+        )
+        if total_bytes > configuration.max_total_artifact_bytes:
+            raise ProcessingLimitError(
+                "result artifacts exceed max_total_artifact_bytes"
+            )
+        ProcessingContract._validate_retained_size(
+            result, configuration.max_result_bytes
+        )
+
+    @staticmethod
+    def _validate_configured_message(
+        message: str,
+        evidence: Metadata,
+        configuration: ProcessingConfiguration,
+    ) -> None:
+        if len(message) > configuration.max_message_characters:
+            raise ProcessingLimitError(
+                "processing message exceeds configured limit"
+            )
+        if len(evidence) > configuration.max_metadata_entries:
+            raise ProcessingLimitError("metadata exceeds max_metadata_entries")
+        if sum(len(key) + len(value) for key, value in evidence) > (
+            configuration.max_metadata_characters
+        ):
+            raise ProcessingLimitError(
+                "metadata exceeds max_metadata_characters"
+            )
+
+    @staticmethod
+    def _span_parts(span: SourceSpan) -> tuple[object, ...]:
+        return span.identity_parts() + (span.printed_page_label,)
+
+    @staticmethod
+    def _deduplicate_spans(
+        spans: tuple[SourceSpan, ...],
+    ) -> tuple[SourceSpan, ...]:
+        result: list[SourceSpan] = []
+        seen: set[tuple[object, ...]] = set()
+        for span in spans:
+            identity = ProcessingContract._span_parts(span)
+            if identity not in seen:
+                seen.add(identity)
+                result.append(span)
+        return tuple(result)
+
+    @staticmethod
+    def _deduplicate_strings(values: tuple[str, ...]) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(values))
+
+    @staticmethod
+    def _bounded_iterable(
+        values: Iterable[ProcessingSelection],
+        *,
+        limit: int,
+        name: str,
+    ) -> tuple[ProcessingSelection, ...]:
+        iterator = iter(values)
+        result: list[ProcessingSelection] = []
+        for _ in range(limit + 1):
+            try:
+                result.append(next(iterator))
+            except StopIteration:
+                return tuple(result)
+        raise ProcessingLimitError(f"{name} exceed configured limit")
+
+    @staticmethod
+    def _validate_span_tuple(name: str, spans: tuple[SourceSpan, ...]) -> None:
+        ProcessingContract._require_tuple(name, spans)
+        if any(not isinstance(span, SourceSpan) for span in spans):
+            raise TypeError(f"{name} contain an unsupported value")
+        identities = tuple(
+            ProcessingContract._span_parts(span) for span in spans
+        )
+        if len(set(identities)) != len(identities):
+            raise ValueError(f"{name} must be unique")
+
+    @staticmethod
+    def _validate_metadata(value: Metadata) -> None:
+        ProcessingContract._require_tuple("metadata", value)
+        if len(value) > _MAX_METADATA_ENTRIES:
+            raise ProcessingLimitError("too many metadata entries")
+        total = 0
+        for entry in value:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise TypeError("metadata must contain immutable pairs")
+            key, item = entry
+            ProcessingContract._bounded_string(
+                "metadata key", key, nonempty=True
+            )
+            ProcessingContract._bounded_string("metadata value", item)
+            total += len(key) + len(item)
+        if total > _MAX_METADATA_CHARACTERS:
+            raise ProcessingLimitError("metadata exceeds its hard limit")
+
+    @staticmethod
+    def _identity_fields(*values: str) -> None:
+        for value in values:
+            ProcessingContract._bounded_string(
+                "identity field", value, nonempty=True
+            )
+
+    @staticmethod
+    def _unique_strings(name: str, values: tuple[str, ...]) -> None:
+        ProcessingContract._require_tuple(name, values)
+        for value in values:
+            ProcessingContract._bounded_string(name, value, nonempty=True)
+        if len(set(values)) != len(values):
+            raise ValueError(f"{name} must be unique")
+
+    @staticmethod
+    def _unique_ids(name: str, values: tuple[str, ...]) -> None:
+        if len(set(values)) != len(values):
+            raise ValueError(f"processing {name} IDs must be unique")
+
+    @staticmethod
+    def _require_tuple(name: str, value: object) -> None:
+        if not isinstance(value, tuple):
+            raise TypeError(f"{name} must be an immutable tuple")
+
+    @staticmethod
+    def _bounded_string(
+        name: str,
+        value: object,
+        *,
+        nonempty: bool = False,
+        limit: int = _MAX_IDENTITY_CHARACTERS,
+    ) -> None:
+        if not isinstance(value, str):
+            raise TypeError(f"{name} must be a string")
+        if nonempty and not value:
+            raise ValueError(f"{name} must be non-empty")
+        if len(value) > limit:
+            raise ProcessingLimitError(f"{name} exceeds its hard limit")
+        try:
+            value.encode("utf-8")
+        except UnicodeEncodeError as error:
+            raise ValueError(f"{name} must be valid UTF-8") from error
+
+    @staticmethod
+    def _positive_integer(name: str, value: object) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+
+    @staticmethod
+    def _nonnegative_integer(name: str, value: object) -> None:
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"{name} must be a non-negative integer")
+
+    @staticmethod
+    def _sha256(name: str, value: str) -> None:
+        if len(value) != 64:
+            raise ValueError(f"{name} must be a SHA-256 digest")
+        try:
+            int(value, 16)
+        except ValueError as error:
+            raise ValueError(f"{name} must be a SHA-256 digest") from error
+
+    @staticmethod
+    def _bytes_sha256(content: bytes) -> str:
+        return hashlib.sha256(content).hexdigest()
+
+    @staticmethod
+    def _validate_retained_size(value: object, limit: int) -> None:
+        total = 0
+        stack = [value]
+        seen: set[int] = set()
+        while stack:
+            item = stack.pop()
+            if item is None or isinstance(item, (bool, int, float, Enum)):
+                total += 16
+            elif isinstance(item, str):
+                total += len(item.encode("utf-8")) + 8
+            elif isinstance(item, bytes):
+                total += len(item)
+            elif isinstance(item, tuple):
+                marker = id(item)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                total += 8 * len(item)
+                stack.extend(item)
+            elif is_dataclass(item) and not isinstance(item, type):
+                marker = id(item)
+                if marker in seen:
+                    continue
+                seen.add(marker)
+                for field in fields(item):
+                    total += len(field.name) + 3
+                    if (
+                        item.__class__.__name__ == "ProcessingDerivedArtifact"
+                        and field.name == "content"
+                    ):
+                        continue
+                    stack.append(getattr(item, field.name))
+            else:
+                raise TypeError(
+                    "processing result contains unsupported evidence"
+                )
+            if total > limit:
+                raise ProcessingLimitError(
+                    "processing result exceeds max_result_bytes"
+                )
