@@ -15,7 +15,7 @@
 | `DeterministicStructuredTranscriptionComposer` | [`transcription.py`](../../../../../src/python/projectkoios/ingestion/transcription.py) | [`test__StructuredTranscriptionComposer.py`](../../../../../tests/test__StructuredTranscriptionComposer.py) |
 | `DeterministicCleanTranscriptProjector` | [`transcript_projection.py`](../../../../../src/python/projectkoios/ingestion/transcript_projection.py) | [`test__CleanTranscriptProjection.py`](../../../../../tests/test__CleanTranscriptProjection.py) |
 | `DeterministicCleanTranscriptV2Projector` | [`transcript_v2.py`](../../../../../src/python/projectkoios/ingestion/transcript_v2.py) | [`test__CleanTranscriptV2.py`](../../../../../tests/test__CleanTranscriptV2.py) |
-| `DerivationAuditValidator` | [`provenance.py`](../../../../../src/python/projectkoios/ingestion/provenance.py) | [`test__DerivationAuditValidator.py`](../../../../../tests/test__DerivationAuditValidator.py) |
+| `DerivationAuditRequest` → `DerivationAuditActionizer` → `DerivationAuditResult` | [`provenance/audit.py`](../../../../../src/python/projectkoios/ingestion/provenance/audit.py) | [`test__DerivationAuditActionizer.py`](../../../../../tests/test__DerivationAuditActionizer.py) |
 
 The figure package keeps stable public contracts and facades in `__init__.py`,
 while `inspection.py`, `detection.py`, and `validation.py` isolate native PDF
@@ -27,8 +27,11 @@ values are unchanged.
 
 The component protocols are declared in
 [`protocols.py`](../../../../../src/python/projectkoios/ingestion/protocols.py).
-Public implementations and models are re-exported from
-[`projectkoios.ingestion`](../../../../../src/python/projectkoios/ingestion/__init__.py).
+New operation APIs are exported from their owning domain packages rather than
+added to the broad root facade. Existing root imports remain available for
+compatibility during this bounded migration. The provenance initializer is a
+small explicit facade; its implementation lives in
+[`provenance/audit.py`](../../../../../src/python/projectkoios/ingestion/provenance/audit.py).
 
 There is no v0 `DeterministicProcessor` composition root. Callers compose these
 components directly or use the existing batch entry points. A future

@@ -16,7 +16,7 @@ from projectkoios.ingestion.models import (
     Metadata,
     SourceDocument,
 )
-from projectkoios.ingestion.provenance import (
+from projectkoios.ingestion.provenance.audit import (
     DerivationAuditFindingCode,
     DerivationAuditInput,
     _Registry,

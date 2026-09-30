@@ -1143,9 +1143,37 @@ writes no files.
 
 Derivation-audit contract version 1.0 and processor version 2 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, JIT-processing, structured-transcription, and clean-transcript results. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
 
-`DerivationAuditValidator` hashes the source bytes and verifies byte length, raw manifest coverage, unique raw block identities, exact logical source/blob/hash lineage, page membership, printed-page labels, finite source geometry within the root page, retained byte hashes and lengths, nonempty extractor/processor/backend/configuration/contract identities, and each dataclass's intrinsic stable-ID contract. It resolves block, layout, structure-node, OCR line, equation candidate, table region/structure, figure component/evidence, processing work-item, transcription item/omission, and clean block/exclusion/page references transitively. Clean artifacts must register their exact transcription/layout dependencies, reproduce root raw text/spans, preserve page-local record order, and consolidate exactly to their retained text.
+`DerivationAuditRequest` identifies one exact `DerivationAuditInput`, including
+the source-byte digest and length, extraction manifest, ordered layer names, and
+ordered artifact identities. `DerivationAuditActionizer.execute()` processes
+that request and returns a distinct `DerivationAuditResult` binding the request,
+actionizer contract identity, and unchanged `DerivationAuditReport` domain
+output. The report retains the established processor version. Replaying
+identical evidence produces identical request and
+result identities.
 
-A `DerivationAuditFinding` has a stable code, exact object path, optional object identity, bounded evidence, and stable finding ID. A `DerivationAuditReport` binds the root source, ordered audited artifact IDs, sorted layer counts, ordered finding IDs, and validator identity. Its status is `passed` exactly when findings are empty; `require_valid()` and `DerivationAuditValidator.validate()` raise `DerivationAuditError` otherwise. Object traversal, per-layer artifact counts, and retained findings are hard-bounded and raise `DerivationAuditLimitError` before unbounded work.
+The actionizer hashes the source bytes and verifies byte length, raw manifest
+coverage, unique raw block identities, exact logical source/blob/hash lineage,
+page membership, printed-page labels, finite source geometry within the root
+page, retained byte hashes and lengths, nonempty extractor/processor/backend/
+configuration/contract identities, and each dataclass's intrinsic stable-ID
+contract. It resolves block, layout, structure-node, OCR line, equation
+candidate, table region/structure, figure component/evidence, processing
+work-item, transcription item/omission, and clean block/exclusion/page
+references transitively. Clean artifacts must register their exact
+transcription/layout dependencies, reproduce root raw text/spans, preserve
+page-local record order, and consolidate exactly to their retained text.
+
+A `DerivationAuditFinding` has a stable code, exact object path, optional object
+identity, bounded evidence, and stable finding ID. A `DerivationAuditReport`
+binds the root source, ordered audited artifact IDs, sorted layer counts,
+ordered finding IDs, and validator identity. Its status is `passed` exactly when
+findings are empty; `require_valid()` raises `DerivationAuditError` otherwise.
+`DerivationAuditValidator`, `audit()`, and `validate()` remain exact compatibility
+aliases for existing consumers while new code uses the owning provenance
+package's request/actionizer/result API. Object traversal, per-layer artifact
+counts, and retained findings are hard-bounded and raise
+`DerivationAuditLimitError` before unbounded work.
 
 Audit success establishes internal software provenance consistency only. It is not source proofreading, OCR accuracy validation, mathematical or semantic correction, scientific validation, publication suitability, lifecycle acceptance, or human approval.
 

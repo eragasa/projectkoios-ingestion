@@ -16,7 +16,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
 )
 from projectkoios.ingestion.pdf.models import RenderedRegion
-from projectkoios.ingestion.provenance import (
+from projectkoios.ingestion.provenance.audit import (
     _BOX_TOLERANCE,
     _MAX_VISITED_OBJECTS,
     DerivationAuditFindingCode,
