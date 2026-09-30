@@ -31,7 +31,7 @@ _LOCATOR_RESULT_ID = re.compile(
 _CANDIDATE_ID = re.compile(r"reference-claim-candidate:sha256:[0-9a-f]{64}")
 _CLAIM_ID = re.compile(r"research-claim:sha256:[0-9a-f]{64}")
 _BLOB_ID = re.compile(r"blob:sha256:([0-9a-f]{64})")
-_TRANSCRIPT_ID = re.compile(r"clean-transcript-artifact:sha256:[0-9a-f]{64}")
+_TRANSCRIPT_ID = re.compile(r"clean-transcript-result:sha256:[0-9a-f]{64}")
 _PAGE_ID = re.compile(r"clean-transcript-page:sha256:[0-9a-f]{64}")
 _ANCHOR_ID = re.compile(r"reference-topic-anchor:sha256:[0-9a-f]{64}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -76,7 +76,7 @@ class ReferenceClaimCandidate:
     locator_result_id: str
     source_blob_id: str
     source_content_sha256: str
-    transcript_artifact_id: str
+    transcript_result_id: str
     page_id: str
     page_index: int
     page_text_sha256: str
@@ -115,8 +115,8 @@ class ReferenceClaimCandidate:
             )
         if (
             locator_result.reference_evidence_record_id != record.record_id
-            or locator_result.transcript_artifact_id
-            != record.transcript.artifact_id
+            or locator_result.transcript_result_id
+            != record.transcript.result_id
         ):
             raise ReferenceClaimCandidateVerificationError(
                 "locator result does not match reference-evidence lineage"
@@ -128,7 +128,7 @@ class ReferenceClaimCandidate:
             locator_result.result_id,
             record.source.blob_id,
             record.source.content_sha256,
-            locator_result.transcript_artifact_id,
+            locator_result.transcript_result_id,
             locator_result.page_id,
             locator_result.page_index,
             locator_result.page_text_sha256,
@@ -146,7 +146,7 @@ class ReferenceClaimCandidate:
             locator_result.result_id,
             record.source.blob_id,
             record.source.content_sha256,
-            locator_result.transcript_artifact_id,
+            locator_result.transcript_result_id,
             locator_result.page_id,
             locator_result.page_index,
             locator_result.page_text_sha256,
@@ -180,9 +180,9 @@ class ReferenceClaimCandidate:
         if source_blob_id != f"blob:sha256:{source_digest}":
             raise ValueError("source blob identity must bind source digest")
         _identity(
-            self.transcript_artifact_id,
+            self.transcript_result_id,
             _TRANSCRIPT_ID,
-            "transcript_artifact_id",
+            "transcript_result_id",
         )
         _identity(self.page_id, _PAGE_ID, "page_id")
         if type(self.page_index) is not int or self.page_index < 0:
@@ -237,7 +237,7 @@ class ReferenceClaimCandidate:
             self.locator_result_id,
             self.source_blob_id,
             self.source_content_sha256,
-            self.transcript_artifact_id,
+            self.transcript_result_id,
             self.page_id,
             self.page_index,
             self.page_text_sha256,

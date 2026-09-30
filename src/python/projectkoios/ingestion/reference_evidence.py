@@ -6,6 +6,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from projectkoios.ingestion.clean_transcript import (
+    CleanTranscript,
+    CleanTranscriptStatus,
+)
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.models import (
     CONTRACT_VERSION,
@@ -21,11 +25,6 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
-from projectkoios.ingestion.transcript_projection import (
-    CLEAN_TRANSCRIPT_CONTRACT_VERSION,
-    CleanTranscript,
-    CleanTranscriptStatus,
-)
 
 REFERENCE_EVIDENCE_CONTRACT_ID = "projectkoios.ingestion.reference-evidence"
 REFERENCE_EVIDENCE_CONTRACT_VERSION = "0.1.0"
@@ -40,7 +39,6 @@ REFERENCE_EVIDENCE_MAX_LINEAGE_IDS = 4_096
 REFERENCE_EVIDENCE_MAX_LAYOUT_IDS = 512
 REFERENCE_EVIDENCE_MAX_LAYER_COUNTS = 32
 REFERENCE_EVIDENCE_MAX_LIMITATIONS = 32
-REFERENCE_EVIDENCE_TRANSCRIPT_GENERATION = 1
 _MAX_BOUND_ARTIFACT_BYTES = 128_000_000
 _MAX_JSON_DEPTH = 64
 _MAX_STRING_CHARACTERS = 4_096
@@ -229,9 +227,7 @@ class ReferenceEvidenceExtraction:
 @dataclass(frozen=True)
 class ReferenceEvidenceTranscript:
     artifact: ReferenceEvidenceArtifact
-    artifact_generation: int
-    contract_version: str
-    artifact_id: str
+    result_id: str
     status: CleanTranscriptStatus
     structured_transcription_result_id: str
     layout_result_ids: tuple[str, ...]
@@ -247,15 +243,7 @@ class ReferenceEvidenceTranscript:
             raise TypeError("transcript artifact identity is required")
         if self.artifact.media_type != _CLEAN_TRANSCRIPT_MEDIA_TYPE:
             raise ValueError("unsupported transcript artifact media type")
-        if (
-            isinstance(self.artifact_generation, bool)
-            or self.artifact_generation
-            != REFERENCE_EVIDENCE_TRANSCRIPT_GENERATION
-        ):
-            raise ValueError("unsupported transcript artifact generation")
-        if self.contract_version != CLEAN_TRANSCRIPT_CONTRACT_VERSION:
-            raise ValueError("unsupported clean-transcript contract version")
-        _require_text(self.artifact_id, "transcript artifact_id")
+        _require_text(self.result_id, "transcript result_id")
         if not isinstance(self.status, CleanTranscriptStatus):
             raise TypeError("transcript status is unsupported")
         _require_text(
@@ -535,7 +523,7 @@ class ReferenceEvidenceRecord:
             self.extraction.manifest_id,
             self.extraction.document_id,
             self.transcript.structured_transcription_result_id,
-            self.transcript.artifact_id,
+            self.transcript.result_id,
             *self.transcript.layout_result_ids,
         }
         if not required_ids.issubset(audit.audited_artifact_ids):
@@ -547,7 +535,7 @@ class ReferenceEvidenceRecord:
         required_counts = {
             "extraction_result": 1,
             "transcription_results": 1,
-            "clean_transcript_artifacts": 1,
+            "clean_transcripts": 1,
         }
         if any(
             counts.get(name) != value for name, value in required_counts.items()
@@ -659,7 +647,7 @@ def build_reference_evidence(
     extraction_result: ExtractionResult,
     extraction_artifact: bytes,
     clean_transcript: CleanTranscript,
-    clean_transcript_artifact: bytes,
+    clean_transcript_result_bytes: bytes,
     derivation_audit: DerivationAuditReport,
     derivation_audit_artifact: bytes,
 ) -> ReferenceEvidenceRecord:
@@ -677,9 +665,12 @@ def build_reference_evidence(
     if not isinstance(derivation_audit, DerivationAuditReport):
         raise TypeError("derivation_audit must be DerivationAuditReport")
     _verify_extraction_artifact(extraction_artifact, extraction_result)
-    if clean_transcript_artifact != _canonical_artifact_bytes(clean_transcript):
+    if clean_transcript_result_bytes != _canonical_artifact_bytes(
+        clean_transcript
+    ):
         raise ReferenceEvidenceVerificationError(
-            "clean-transcript artifact does not match its immutable contract"
+            "serialized clean-transcript result does not match its "
+            "immutable contract"
         )
     if derivation_audit_artifact != _canonical_artifact_bytes(derivation_audit):
         raise ReferenceEvidenceVerificationError(
@@ -760,12 +751,10 @@ def build_reference_evidence(
         ),
         transcript=ReferenceEvidenceTranscript(
             artifact=ReferenceEvidenceArtifact.from_bytes(
-                clean_transcript_artifact,
+                clean_transcript_result_bytes,
                 media_type=_CLEAN_TRANSCRIPT_MEDIA_TYPE,
             ),
-            artifact_generation=REFERENCE_EVIDENCE_TRANSCRIPT_GENERATION,
-            contract_version=clean_transcript.contract_version,
-            artifact_id=clean_transcript.artifact_id,
+            result_id=clean_transcript.result_id,
             status=clean_transcript.status,
             structured_transcription_result_id=(
                 clean_transcript.transcription_result_id
@@ -846,7 +835,7 @@ def verify_reference_evidence(
     source_byte_length: int,
     source_media_type: str,
     extraction_artifact: bytes | None = None,
-    clean_transcript_artifact: bytes | None = None,
+    clean_transcript_result_bytes: bytes | None = None,
     derivation_audit_artifact: bytes | None = None,
 ) -> None:
     """Verify consumer-known source identity and optional exact artifacts.
@@ -882,9 +871,9 @@ def verify_reference_evidence(
             extraction_artifact,
         ),
         (
-            "clean-transcript artifact",
+            "serialized clean-transcript result",
             record.transcript.artifact,
-            clean_transcript_artifact,
+            clean_transcript_result_bytes,
         ),
         (
             "derivation-audit artifact",
@@ -950,9 +939,7 @@ def _decode_record(value: object) -> ReferenceEvidenceRecord:
         "transcript",
         {
             "artifact",
-            "artifact_generation",
-            "contract_version",
-            "artifact_id",
+            "result_id",
             "status",
             "structured_transcription_result_id",
             "layout_result_ids",
@@ -1055,16 +1042,8 @@ def _decode_record(value: object) -> ReferenceEvidenceRecord:
             artifact=_decode_artifact(
                 transcript_value["artifact"], "transcript.artifact"
             ),
-            artifact_generation=_integer(
-                transcript_value["artifact_generation"],
-                "transcript.artifact_generation",
-            ),
-            contract_version=_string(
-                transcript_value["contract_version"],
-                "transcript.contract_version",
-            ),
-            artifact_id=_string(
-                transcript_value["artifact_id"], "transcript.artifact_id"
+            result_id=_string(
+                transcript_value["result_id"], "transcript.result_id"
             ),
             status=_enum(
                 CleanTranscriptStatus,

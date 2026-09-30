@@ -14,6 +14,12 @@ from projectkoios.ingestion.article_structure import (
     DeterministicArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
+from projectkoios.ingestion.clean_transcript import (
+    CleanTranscriptConfiguration,
+    CleanTranscriptRequest,
+    DeterministicCleanTranscriptProjector,
+    PublisherFrontMatterKind,
+)
 from projectkoios.ingestion.cli import extract_pdf_evidence
 from projectkoios.ingestion.equation_batch_cli import (
     _resolve_items,
@@ -29,6 +35,10 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,
 )
+from projectkoios.ingestion.reference_evidence import (
+    build_reference_evidence,
+    serialize_reference_evidence,
+)
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
@@ -37,35 +47,24 @@ from projectkoios.ingestion.table_structure import (
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
-from projectkoios.ingestion.transcript_v2 import (
-    CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
-    CLEAN_TRANSCRIPT_V2_CONTRACT_ID,
-    CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
-    CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION,
-    CleanTranscriptV2Configuration,
-    DeterministicCleanTranscriptV2Projector,
-    PublisherFrontMatterKind,
-)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,
 )
 
-TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID = (
-    "projectkoios.ingestion.transcript-batch-plan"
-)
-TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_VERSION = "0.1.0"
-TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION = 1
-TRANSCRIPT_V2_BATCH_MANIFEST_SCHEMA_VERSION = 1
-TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH = PurePosixPath(
-    "derived/transcription/generation-2"
-)
+TRANSCRIPT_OUTPUT_RELATIVE_PATH = PurePosixPath("derived/transcription")
 _MAX_PLAN_BYTES = 4_000_000
 _MAX_ARTIFACT_BYTES = 128_000_000
 _MAX_ITEMS = 256
 _MAX_IDENTITY_LENGTH = 4_096
 _SHA256_LENGTH = 64
-_OUTPUT_NAMES = ("audit.json", "clean.json", "clean.txt", "manifest.json")
+_OUTPUT_NAMES = (
+    "audit.json",
+    "clean.json",
+    "clean.txt",
+    "manifest.json",
+    "reference-evidence.json",
+)
 
 
 def _batch_item_id(
@@ -82,7 +81,7 @@ def _batch_item_id(
     equation_detection_result_id: str,
 ) -> str:
     return stable_id(
-        "transcript-v2-batch-item",
+        "transcript-batch-item",
         source_id,
         pdf_path.as_posix(),
         output_directory.as_posix(),
@@ -93,56 +92,49 @@ def _batch_item_id(
         extraction_manifest_id,
         equation_detection_artifact_sha256,
         equation_detection_result_id,
-        TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH.as_posix(),
+        TRANSCRIPT_OUTPUT_RELATIVE_PATH.as_posix(),
     )
 
 
 def _batch_plan_id(
-    configuration: CleanTranscriptV2Configuration,
+    configuration: CleanTranscriptConfiguration,
     extraction_low_text_threshold: int,
-    items: tuple[TranscriptV2BatchItem, ...],
+    items: tuple[TranscriptBatchItem, ...],
 ) -> str:
     return stable_id(
-        "transcript-v2-batch-plan",
-        TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID,
-        TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_VERSION,
-        TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION,
-        CLEAN_TRANSCRIPT_V2_CONTRACT_ID,
-        CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
-        CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
-        CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION,
+        "transcript-batch-plan",
+        DeterministicCleanTranscriptProjector.name,
+        DeterministicCleanTranscriptProjector.version,
         configuration.configuration_digest,
         extraction_low_text_threshold,
         tuple(item.item_id for item in items),
     )
 
 
-class TranscriptV2BatchError(ValueError):
-    """Base error for transcript-v2 batch planning and execution."""
+class TranscriptBatchError(ValueError):
+    """Base error for transcript batch planning and execution."""
 
 
-class TranscriptV2BatchPublicationError(RuntimeError):
-    """Raised when an immutable transcript-v2 set cannot be published."""
+class TranscriptBatchPublicationError(RuntimeError):
+    """Raised when an immutable transcript set cannot be published."""
 
 
 def _require_text(value: object, name: str) -> str:
     if not isinstance(value, str) or not value:
-        raise TranscriptV2BatchError(f"{name} must be a non-empty string")
+        raise TranscriptBatchError(f"{name} must be a non-empty string")
     if len(value) > _MAX_IDENTITY_LENGTH:
-        raise TranscriptV2BatchError(f"{name} exceeds the string limit")
+        raise TranscriptBatchError(f"{name} exceeds the string limit")
     return value
 
 
 def _require_sha256(value: object, name: str) -> str:
     digest = _require_text(value, name)
     if len(digest) != _SHA256_LENGTH or digest != digest.lower():
-        raise TranscriptV2BatchError(
-            f"{name} must be a lowercase SHA-256 digest"
-        )
+        raise TranscriptBatchError(f"{name} must be a lowercase SHA-256 digest")
     try:
         int(digest, 16)
     except ValueError as error:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             f"{name} must be a lowercase SHA-256 digest"
         ) from error
     return digest
@@ -158,12 +150,12 @@ def _relative_path(value: object, name: str) -> PurePosixPath:
         or any(part in {"", "."} for part in path.parts)
         or path.as_posix() != text
     ):
-        raise TranscriptV2BatchError(f"{name} must be a safe relative path")
+        raise TranscriptBatchError(f"{name} must be a safe relative path")
     return path
 
 
 @dataclass(frozen=True)
-class TranscriptV2BatchItem:
+class TranscriptBatchItem:
     item_id: str
     source_id: str
     pdf_path: PurePosixPath
@@ -190,7 +182,7 @@ class TranscriptV2BatchItem:
         extraction_manifest_id: str,
         equation_detection_artifact_sha256: str,
         equation_detection_result_id: str,
-    ) -> TranscriptV2BatchItem:
+    ) -> TranscriptBatchItem:
         return cls(
             item_id=_batch_item_id(
                 source_id=source_id,
@@ -223,22 +215,22 @@ class TranscriptV2BatchItem:
     def __post_init__(self) -> None:
         _require_text(self.source_id, "source_id")
         if not isinstance(self.pdf_path, PurePosixPath):
-            raise TranscriptV2BatchError("pdf_path must be a portable path")
+            raise TranscriptBatchError("pdf_path must be a portable path")
         if not isinstance(self.output_directory, PurePosixPath):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "output_directory must be a portable path"
             )
         _relative_path(self.pdf_path.as_posix(), "pdf_path")
         _relative_path(self.output_directory.as_posix(), "output_directory")
         if self.pdf_path.suffix.lower() != ".pdf":
-            raise TranscriptV2BatchError("pdf_path must name a PDF")
+            raise TranscriptBatchError("pdf_path must name a PDF")
         _require_sha256(self.source_sha256, "source_sha256")
         if (
             isinstance(self.source_byte_size, bool)
             or not isinstance(self.source_byte_size, int)
             or self.source_byte_size <= 0
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "source_byte_size must be a positive integer"
             )
         if self.locator is not None:
@@ -271,7 +263,7 @@ class TranscriptV2BatchItem:
             equation_detection_result_id=self.equation_detection_result_id,
         )
         if self.item_id != expected:
-            raise TranscriptV2BatchError("batch item identity is inconsistent")
+            raise TranscriptBatchError("batch item identity is inconsistent")
 
     def to_pdf_batch_item(self) -> PdfBatchItem:
         return PdfBatchItem(
@@ -285,29 +277,20 @@ class TranscriptV2BatchItem:
 
 
 @dataclass(frozen=True)
-class TranscriptV2BatchPlan:
+class TranscriptBatchPlan:
     plan_id: str
-    configuration: CleanTranscriptV2Configuration
+    configuration: CleanTranscriptConfiguration
     extraction_low_text_threshold: int
-    items: tuple[TranscriptV2BatchItem, ...]
-    contract_id: str = TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID
-    contract_version: str = TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_VERSION
-    schema_version: int = TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION
-    clean_transcript_contract_id: str = CLEAN_TRANSCRIPT_V2_CONTRACT_ID
-    clean_transcript_contract_version: str = (
-        CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
-    )
-    artifact_generation: int = CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION
-    processor_version: str = CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION
+    items: tuple[TranscriptBatchItem, ...]
 
     @classmethod
     def create(
         cls,
         *,
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
         extraction_low_text_threshold: int,
-        items: tuple[TranscriptV2BatchItem, ...],
-    ) -> TranscriptV2BatchPlan:
+        items: tuple[TranscriptBatchItem, ...],
+    ) -> TranscriptBatchPlan:
         plan_id = _batch_plan_id(
             configuration,
             extraction_low_text_threshold,
@@ -321,24 +304,8 @@ class TranscriptV2BatchPlan:
         )
 
     def __post_init__(self) -> None:
-        if (
-            self.contract_id != TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_ID
-            or self.contract_version
-            != TRANSCRIPT_V2_BATCH_PLAN_CONTRACT_VERSION
-            or self.schema_version != TRANSCRIPT_V2_BATCH_PLAN_SCHEMA_VERSION
-            or self.clean_transcript_contract_id
-            != CLEAN_TRANSCRIPT_V2_CONTRACT_ID
-            or self.clean_transcript_contract_version
-            != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
-            or self.artifact_generation
-            != CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION
-            or self.processor_version != CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION
-        ):
-            raise TranscriptV2BatchError(
-                "unsupported transcript-v2 batch plan contract"
-            )
-        if not isinstance(self.configuration, CleanTranscriptV2Configuration):
-            raise TranscriptV2BatchError(
+        if not isinstance(self.configuration, CleanTranscriptConfiguration):
+            raise TranscriptBatchError(
                 "batch plan configuration is unsupported"
             )
         if (
@@ -346,19 +313,17 @@ class TranscriptV2BatchPlan:
             or not isinstance(self.extraction_low_text_threshold, int)
             or self.extraction_low_text_threshold < 0
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "extraction_low_text_threshold must be non-negative"
             )
         if not isinstance(self.items, tuple) or not self.items:
-            raise TranscriptV2BatchError(
-                "batch plan must contain an item tuple"
-            )
+            raise TranscriptBatchError("batch plan must contain an item tuple")
         if len(self.items) > _MAX_ITEMS:
-            raise TranscriptV2BatchError("batch plan exceeds the item limit")
+            raise TranscriptBatchError("batch plan exceeds the item limit")
         if any(
-            not isinstance(item, TranscriptV2BatchItem) for item in self.items
+            not isinstance(item, TranscriptBatchItem) for item in self.items
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "batch plan contains an unsupported item"
             )
         for name, values in (
@@ -374,7 +339,7 @@ class TranscriptV2BatchPlan:
             ),
         ):
             if len(values) != len(set(values)):
-                raise TranscriptV2BatchError(
+                raise TranscriptBatchError(
                     f"batch plan contains duplicate {name} values"
                 )
         expected = _batch_plan_id(
@@ -383,25 +348,16 @@ class TranscriptV2BatchPlan:
             self.items,
         )
         if self.plan_id != expected:
-            raise TranscriptV2BatchError("batch plan identity is inconsistent")
+            raise TranscriptBatchError("batch plan identity is inconsistent")
 
     def to_json(self) -> str:
         value = {
-            "artifact_generation": self.artifact_generation,
-            "clean_transcript_contract_id": (self.clean_transcript_contract_id),
-            "clean_transcript_contract_version": (
-                self.clean_transcript_contract_version
-            ),
             "configuration": _configuration_dict(self.configuration),
-            "contract_id": self.contract_id,
-            "contract_version": self.contract_version,
             "extraction_low_text_threshold": (
                 self.extraction_low_text_threshold
             ),
             "items": [_item_dict(item) for item in self.items],
             "plan_id": self.plan_id,
-            "processor_version": self.processor_version,
-            "schema_version": self.schema_version,
         }
         return (
             json.dumps(
@@ -414,30 +370,23 @@ class TranscriptV2BatchPlan:
         )
 
     @classmethod
-    def from_json(cls, text: str) -> TranscriptV2BatchPlan:
+    def from_json(cls, text: str) -> TranscriptBatchPlan:
         if len(text.encode("utf-8")) > _MAX_PLAN_BYTES:
-            raise TranscriptV2BatchError("batch plan exceeds the size limit")
+            raise TranscriptBatchError("batch plan exceeds the size limit")
         data = _strict_json_object(text)
         expected = {
-            "artifact_generation",
-            "clean_transcript_contract_id",
-            "clean_transcript_contract_version",
             "configuration",
-            "contract_id",
-            "contract_version",
             "extraction_low_text_threshold",
             "items",
             "plan_id",
-            "processor_version",
-            "schema_version",
         }
         if set(data) != expected:
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "batch plan fields do not match the contract"
             )
         raw_items = data["items"]
         if not isinstance(raw_items, list):
-            raise TranscriptV2BatchError("batch plan items must be an array")
+            raise TranscriptBatchError("batch plan items must be an array")
         configuration = _configuration_from_dict(data["configuration"])
         items = tuple(_item_from_dict(value) for value in raw_items)
         return cls(
@@ -448,46 +397,25 @@ class TranscriptV2BatchPlan:
                 "extraction_low_text_threshold",
             ),
             items=items,
-            contract_id=_require_text(data["contract_id"], "contract_id"),
-            contract_version=_require_text(
-                data["contract_version"], "contract_version"
-            ),
-            schema_version=_require_int(
-                data["schema_version"], "schema_version"
-            ),
-            clean_transcript_contract_id=_require_text(
-                data["clean_transcript_contract_id"],
-                "clean_transcript_contract_id",
-            ),
-            clean_transcript_contract_version=_require_text(
-                data["clean_transcript_contract_version"],
-                "clean_transcript_contract_version",
-            ),
-            artifact_generation=_require_int(
-                data["artifact_generation"], "artifact_generation"
-            ),
-            processor_version=_require_text(
-                data["processor_version"], "processor_version"
-            ),
         )
 
 
 @dataclass(frozen=True)
-class ResolvedTranscriptV2BatchItem:
-    plan_item: TranscriptV2BatchItem
+class ResolvedTranscriptBatchItem:
+    plan_item: TranscriptBatchItem
     source: _ResolvedItem
     target: Path
     existing: bool
 
 
-def build_transcript_v2_batch_plan(
+def build_transcript_batch_plan(
     source_plan: PdfBatchPlan,
     *,
     source_root: Path,
     ingestion_root: Path,
-    configuration: CleanTranscriptV2Configuration | None = None,
+    configuration: CleanTranscriptConfiguration | None = None,
     extraction_low_text_threshold: int = 40,
-) -> TranscriptV2BatchPlan:
+) -> TranscriptBatchPlan:
     """Bind exact predecessor artifact identities into a durable plan."""
     _reject_symlinked_item_paths(
         source_plan,
@@ -500,10 +428,10 @@ def build_transcript_v2_batch_plan(
         ingestion_root=ingestion_root,
     )
     if not all(item.existing for item in resolved):
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "equation detection artifacts must exist before v2 planning"
         )
-    items: list[TranscriptV2BatchItem] = []
+    items: list[TranscriptBatchItem] = []
     for source in resolved:
         extraction = _read_json_artifact(source.extraction_artifact)
         detection_bytes = _read_artifact(source.detection_artifact)
@@ -516,7 +444,7 @@ def build_transcript_v2_batch_plan(
         )
         _verify_detection_source(detection, source.item)
         items.append(
-            TranscriptV2BatchItem.create(
+            TranscriptBatchItem.create(
                 source_id=source.item.source_id,
                 pdf_path=source.item.pdf_path,
                 output_directory=source.item.output_directory,
@@ -531,19 +459,19 @@ def build_transcript_v2_batch_plan(
                 equation_detection_result_id=result_id,
             )
         )
-    return TranscriptV2BatchPlan.create(
-        configuration=configuration or CleanTranscriptV2Configuration(),
+    return TranscriptBatchPlan.create(
+        configuration=configuration or CleanTranscriptConfiguration(),
         extraction_low_text_threshold=extraction_low_text_threshold,
         items=tuple(items),
     )
 
 
-def resolve_transcript_v2_batch_plan(
-    plan: TranscriptV2BatchPlan,
+def resolve_transcript_batch_plan(
+    plan: TranscriptBatchPlan,
     *,
     source_root: Path,
     ingestion_root: Path,
-) -> tuple[ResolvedTranscriptV2BatchItem, ...]:
+) -> tuple[ResolvedTranscriptBatchItem, ...]:
     pdf_plan = PdfBatchPlan(
         schema_version=1,
         items=tuple(item.to_pdf_batch_item() for item in plan.items),
@@ -558,17 +486,17 @@ def resolve_transcript_v2_batch_plan(
         source_root=source_root,
         ingestion_root=ingestion_root,
     )
-    results: list[ResolvedTranscriptV2BatchItem] = []
+    results: list[ResolvedTranscriptBatchItem] = []
     for plan_item, source in zip(plan.items, resolved, strict=True):
         if not source.existing:
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "equation detection artifacts must exist before v2 execution"
             )
         if (
             source.extraction_artifact_sha256
             != plan_item.extraction_artifact_sha256
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "raw extraction artifact differs from the durable plan"
             )
         extraction = _read_json_artifact(source.extraction_artifact)
@@ -580,14 +508,14 @@ def resolve_transcript_v2_batch_plan(
             )
             != plan_item.extraction_manifest_id
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "raw extraction identity differs from the durable plan"
             )
         detection_bytes = _read_artifact(source.detection_artifact)
         if hashlib.sha256(detection_bytes).hexdigest() != (
             plan_item.equation_detection_artifact_sha256
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "equation detection artifact differs from the durable plan"
             )
         detection = _strict_json_object(detection_bytes.decode("utf-8"))
@@ -597,16 +525,16 @@ def resolve_transcript_v2_batch_plan(
             )
             != plan_item.equation_detection_result_id
         ):
-            raise TranscriptV2BatchError(
+            raise TranscriptBatchError(
                 "equation detection identity differs from the durable plan"
             )
         _verify_detection_source(detection, source.item)
         target = source.ingestion_directory / Path(
-            TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH
+            TRANSCRIPT_OUTPUT_RELATIVE_PATH
         )
         existing = _inspect_target(target)
         results.append(
-            ResolvedTranscriptV2BatchItem(
+            ResolvedTranscriptBatchItem(
                 plan_item=plan_item,
                 source=source,
                 target=target,
@@ -616,10 +544,10 @@ def resolve_transcript_v2_batch_plan(
     return tuple(results)
 
 
-def execute_transcript_v2_batch_item(
-    resolved: ResolvedTranscriptV2BatchItem,
+def execute_transcript_batch_item(
+    resolved: ResolvedTranscriptBatchItem,
     *,
-    plan: TranscriptV2BatchPlan,
+    plan: TranscriptBatchPlan,
     cache_root: Path | None,
 ) -> dict[str, object]:
     source = resolved.source
@@ -637,13 +565,13 @@ def execute_transcript_v2_batch_item(
     if hashlib.sha256(extraction_bytes).hexdigest() != (
         resolved.plan_item.extraction_artifact_sha256
     ):
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "raw extraction artifact changed after preflight"
         )
     existing_extraction = _strict_json_object(extraction_bytes.decode("utf-8"))
     replayed_extraction = contract_dict(extraction)
     if existing_extraction.get("document") != replayed_extraction["document"]:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "raw extraction document changed after preflight"
         )
 
@@ -659,12 +587,12 @@ def execute_transcript_v2_batch_item(
     if equation_text.encode("utf-8") != _read_artifact(
         source.detection_artifact
     ):
-        raise TranscriptV2BatchError(
-            "equation detection differs from transcript-v2 replay"
+        raise TranscriptBatchError(
+            "equation detection differs from transcript replay"
         )
     if equations.result_id != resolved.plan_item.equation_detection_result_id:
-        raise TranscriptV2BatchError(
-            "equation detection identity differs from transcript-v2 plan"
+        raise TranscriptBatchError(
+            "equation detection identity differs from transcript plan"
         )
     table_detection = DeterministicTableCandidateDetector().detect_with_layout(
         document,
@@ -688,8 +616,13 @@ def execute_transcript_v2_batch_item(
             figure_detection_result=figures,
         )
     )
-    clean = DeterministicCleanTranscriptV2Projector(plan.configuration).project(
-        transcription, layouts
+    projector = DeterministicCleanTranscriptProjector(plan.configuration)
+    clean = projector.action(
+        request=CleanTranscriptRequest.create(
+            transcription_result=transcription,
+            layouts=layouts,
+            configuration=projector.configuration,
+        )
     )
     audit = DerivationAuditValidator().audit(
         DerivationAuditInput(
@@ -702,13 +635,25 @@ def execute_transcript_v2_batch_item(
             table_structure_results=(tables,),
             figure_results=(figures,),
             transcription_results=(transcription,),
-            clean_transcript_v2_artifacts=(clean,),
+            clean_transcripts=(clean,),
         )
     )
     audit.require_valid()
 
     clean_json = serialize_contract(clean) + "\n"
     audit_json = serialize_contract(audit) + "\n"
+    reference_evidence = build_reference_evidence(
+        extraction_result=extraction,
+        extraction_artifact=extraction_bytes,
+        clean_transcript=clean,
+        clean_transcript_result_bytes=clean_json.encode("utf-8"),
+        derivation_audit=audit,
+        derivation_audit_artifact=audit_json.encode("utf-8"),
+    )
+    reference_evidence_bytes = serialize_reference_evidence(reference_evidence)
+    reference_evidence_json = reference_evidence_bytes.decode("utf-8")
+    if structure.analysis_id is None:
+        raise TranscriptBatchError("article structure has no stable identity")
     counts = {
         "clean_blocks": len(clean.blocks),
         "clean_exclusions": len(clean.exclusions),
@@ -729,12 +674,20 @@ def execute_transcript_v2_batch_item(
         item=resolved.plan_item,
         extraction_manifest_id=extraction.manifest.manifest_id,
         layout_result_ids=tuple(layout.result_id for layout in layouts),
+        structure_analysis_id=structure.analysis_id,
+        table_detection_result_id=table_detection.result_id,
+        table_structure_result_id=tables.result_id,
+        figure_detection_result_id=figures.result_id,
         transcription_result_id=transcription.result_id,
-        clean_artifact_id=clean.artifact_id,
-        clean_artifact_sha256=_sha256_text(clean_json),
+        clean_result_id=clean.result_id,
+        clean_result_sha256=_sha256_text(clean_json),
         clean_text_sha256=clean.text_sha256,
         audit_report_id=audit.report_id,
-        audit_artifact_sha256=_sha256_text(audit_json),
+        audit_sha256=_sha256_text(audit_json),
+        reference_evidence_record_id=reference_evidence.record_id,
+        reference_evidence_sha256=hashlib.sha256(
+            reference_evidence_bytes
+        ).hexdigest(),
         counts=counts,
     )
     files = {
@@ -742,6 +695,7 @@ def execute_transcript_v2_batch_item(
         "clean.json": clean_json,
         "clean.txt": clean.text,
         "manifest.json": manifest_json,
+        "reference-evidence.json": reference_evidence_json,
     }
     action = "unchanged" if resolved.existing else "created"
     if resolved.existing:
@@ -752,37 +706,41 @@ def execute_transcript_v2_batch_item(
         "action": action,
         "audit_report_id": audit.report_id,
         "audit_status": audit.status.value,
-        "clean_transcript_artifact_id": clean.artifact_id,
+        "clean_transcript_result_id": clean.result_id,
         "clean_text_sha256": clean.text_sha256,
         "counts": counts,
         "manifest_id": manifest["manifest_id"],
+        "reference_evidence_record_id": reference_evidence.record_id,
+        "reference_evidence_sha256": hashlib.sha256(
+            reference_evidence_bytes
+        ).hexdigest(),
         "output_directory": resolved.plan_item.output_directory.as_posix(),
         "source_id": resolved.plan_item.source_id,
     }
 
 
-def load_durable_plan(path: Path) -> TranscriptV2BatchPlan:
+def load_durable_plan(path: Path) -> TranscriptBatchPlan:
     """Load one bounded, non-symlinked durable execution plan."""
     source = path.expanduser().absolute()
     if source.is_symlink() or not source.is_file():
-        raise TranscriptV2BatchError("durable plan must be a safe regular file")
+        raise TranscriptBatchError("durable plan must be a safe regular file")
     if source.stat().st_size > _MAX_PLAN_BYTES:
-        raise TranscriptV2BatchError("batch plan exceeds the size limit")
+        raise TranscriptBatchError("batch plan exceeds the size limit")
     try:
         text = source.read_bytes().decode("utf-8", errors="strict")
     except UnicodeDecodeError as error:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "durable plan must be valid UTF-8"
         ) from error
-    return TranscriptV2BatchPlan.from_json(text)
+    return TranscriptBatchPlan.from_json(text)
 
 
-def publish_durable_plan(path: Path, plan: TranscriptV2BatchPlan) -> str:
+def publish_durable_plan(path: Path, plan: TranscriptBatchPlan) -> str:
     """Publish a plan immutably; return created or unchanged."""
     text = plan.to_json()
     content = text.encode("utf-8")
     if len(content) > _MAX_PLAN_BYTES:
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             "durable plan exceeds the size limit"
         )
     target = path.expanduser().absolute()
@@ -791,12 +749,12 @@ def publish_durable_plan(path: Path, plan: TranscriptV2BatchPlan) -> str:
     _require_safe_existing_parents(target.parent)
     if os.path.lexists(target):
         if target.is_symlink() or not target.is_file():
-            raise TranscriptV2BatchPublicationError(
+            raise TranscriptBatchPublicationError(
                 "durable plan destination is not a safe regular file"
             )
         if target.read_bytes() == content:
             return "unchanged"
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             "refusing to overwrite a different durable plan"
         )
     temporary: Path | None = None
@@ -815,11 +773,11 @@ def publish_durable_plan(path: Path, plan: TranscriptV2BatchPlan) -> str:
         os.link(temporary, target, follow_symlinks=False)
         _fsync_directory(target.parent)
     except FileExistsError as error:
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             "durable plan destination appeared during publication"
         ) from error
     except OSError as error:
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             f"could not publish durable plan: {error}"
         ) from error
     finally:
@@ -829,7 +787,7 @@ def publish_durable_plan(path: Path, plan: TranscriptV2BatchPlan) -> str:
 
 
 def _configuration_dict(
-    configuration: CleanTranscriptV2Configuration,
+    configuration: CleanTranscriptConfiguration,
 ) -> dict[str, object]:
     return {
         "accepted_hyphenated_forms": list(
@@ -837,7 +795,6 @@ def _configuration_dict(
         ),
         "accepted_joined_forms": list(configuration.accepted_joined_forms),
         "bottom_margin_fraction": configuration.bottom_margin_fraction,
-        "configuration_version": configuration.configuration_version,
         "excluded_publisher_front_matter": [
             item.value for item in configuration.excluded_publisher_front_matter
         ],
@@ -857,12 +814,12 @@ def _configuration_dict(
     }
 
 
-def _configuration_from_dict(value: object) -> CleanTranscriptV2Configuration:
+def _configuration_from_dict(value: object) -> CleanTranscriptConfiguration:
     if not isinstance(value, dict):
-        raise TranscriptV2BatchError("configuration must be an object")
-    expected = set(_configuration_dict(CleanTranscriptV2Configuration()))
+        raise TranscriptBatchError("configuration must be an object")
+    expected = set(_configuration_dict(CleanTranscriptConfiguration()))
     if set(value) != expected:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "configuration fields do not match the contract"
         )
     joined = _string_tuple(value["accepted_joined_forms"], "joined forms")
@@ -878,10 +835,10 @@ def _configuration_from_dict(value: object) -> CleanTranscriptV2Configuration:
             PublisherFrontMatterKind(item) for item in excluded_values
         )
     except ValueError as error:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "excluded publisher-front-matter kind is unsupported"
         ) from error
-    return CleanTranscriptV2Configuration(
+    return CleanTranscriptConfiguration(
         top_margin_fraction=_require_number(
             value["top_margin_fraction"], "top_margin_fraction"
         ),
@@ -907,13 +864,10 @@ def _configuration_from_dict(value: object) -> CleanTranscriptV2Configuration:
         accepted_joined_forms=joined,
         accepted_hyphenated_forms=hyphenated,
         excluded_publisher_front_matter=excluded,
-        configuration_version=_require_text(
-            value["configuration_version"], "configuration_version"
-        ),
     )
 
 
-def _item_dict(item: TranscriptV2BatchItem) -> dict[str, object]:
+def _item_dict(item: TranscriptBatchItem) -> dict[str, object]:
     return {
         "equation_detection_artifact_sha256": (
             item.equation_detection_artifact_sha256
@@ -931,12 +885,12 @@ def _item_dict(item: TranscriptV2BatchItem) -> dict[str, object]:
     }
 
 
-def _item_from_dict(value: object) -> TranscriptV2BatchItem:
+def _item_from_dict(value: object) -> TranscriptBatchItem:
     if not isinstance(value, dict):
-        raise TranscriptV2BatchError("batch item must be an object")
+        raise TranscriptBatchError("batch item must be an object")
     expected = set(
         _item_dict(
-            TranscriptV2BatchItem.create(
+            TranscriptBatchItem.create(
                 source_id="fixture",
                 pdf_path=PurePosixPath("fixture.pdf"),
                 output_directory=PurePosixPath("fixture"),
@@ -951,13 +905,13 @@ def _item_from_dict(value: object) -> TranscriptV2BatchItem:
         )
     )
     if set(value) != expected:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "batch item fields do not match the contract"
         )
     locator = value["locator"]
     if locator is not None:
         locator = _require_text(locator, "locator")
-    return TranscriptV2BatchItem(
+    return TranscriptBatchItem(
         item_id=_require_text(value["item_id"], "item_id"),
         source_id=_require_text(value["source_id"], "source_id"),
         pdf_path=_relative_path(value["pdf_path"], "pdf_path"),
@@ -992,7 +946,7 @@ def _strict_json_object(text: str) -> dict[str, Any]:
         result: dict[str, Any] = {}
         for key, value in values:
             if key in result:
-                raise TranscriptV2BatchError(
+                raise TranscriptBatchError(
                     f"JSON contains duplicate member: {key}"
                 )
             result[key] = value
@@ -1001,18 +955,18 @@ def _strict_json_object(text: str) -> dict[str, Any]:
     try:
         value = json.loads(text, object_pairs_hook=pairs)
     except (json.JSONDecodeError, RecursionError) as error:
-        raise TranscriptV2BatchError("JSON is malformed") from error
+        raise TranscriptBatchError("JSON is malformed") from error
     if not isinstance(value, dict):
-        raise TranscriptV2BatchError("JSON root must be an object")
+        raise TranscriptBatchError("JSON root must be an object")
     return value
 
 
 def _read_artifact(path: Path, *, label: str = "predecessor artifact") -> bytes:
     if path.is_symlink() or not path.is_file():
-        raise TranscriptV2BatchError(f"{label} is missing or unsafe")
+        raise TranscriptBatchError(f"{label} is missing or unsafe")
     content = path.read_bytes()
     if len(content) > _MAX_ARTIFACT_BYTES:
-        raise TranscriptV2BatchError(f"{label} exceeds size limit")
+        raise TranscriptBatchError(f"{label} exceeds size limit")
     return content
 
 
@@ -1021,7 +975,7 @@ def _read_json_artifact(path: Path) -> dict[str, Any]:
     try:
         text = content.decode("utf-8", errors="strict")
     except UnicodeDecodeError as error:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "predecessor artifact is not valid UTF-8"
         ) from error
     return _strict_json_object(text)
@@ -1033,7 +987,7 @@ def _nested_text(
     current: object = value
     for part in path:
         if not isinstance(current, dict) or part not in current:
-            raise TranscriptV2BatchError(f"{name} is missing")
+            raise TranscriptBatchError(f"{name} is missing")
         current = current[part]
     return _require_text(current, name)
 
@@ -1052,7 +1006,7 @@ def _verify_detection_source(
         "equation detection source hash",
     )
     if source_id != item.source_id or source_hash != item.sha256:
-        raise TranscriptV2BatchError(
+        raise TranscriptBatchError(
             "equation detection source differs from the source plan"
         )
 
@@ -1069,7 +1023,7 @@ def _reject_symlinked_item_paths(
     )
     for root, name in roots:
         if root.is_symlink():
-            raise TranscriptV2BatchError(f"{name} cannot be a symlink")
+            raise TranscriptBatchError(f"{name} cannot be a symlink")
     for item in plan.items:
         for root, relative, name in (
             (source_root, item.pdf_path, "source PDF"),
@@ -1083,7 +1037,7 @@ def _reject_symlinked_item_paths(
             for part in relative.parts:
                 current /= part
                 if current.is_symlink():
-                    raise TranscriptV2BatchError(
+                    raise TranscriptBatchError(
                         f"{name} cannot traverse a symlink: {relative}"
                     )
 
@@ -1093,73 +1047,61 @@ def _inspect_target(target: Path) -> bool:
     if not os.path.lexists(target):
         return False
     if target.is_symlink() or not target.is_dir():
-        raise TranscriptV2BatchError(
-            "transcript-v2 destination is not a safe directory"
+        raise TranscriptBatchError(
+            "transcript destination is not a safe directory"
         )
     names = tuple(sorted(path.name for path in target.iterdir()))
     if names != _OUTPUT_NAMES:
-        raise TranscriptV2BatchError(
-            "transcript-v2 artifact set is incomplete or contains extras"
+        raise TranscriptBatchError(
+            "transcript artifact set is incomplete or contains extras"
         )
     for name in _OUTPUT_NAMES:
         path = target / name
         if path.is_symlink() or not path.is_file():
-            raise TranscriptV2BatchError(
-                "transcript-v2 artifact is not a safe regular file"
+            raise TranscriptBatchError(
+                "transcript artifact is not a safe regular file"
             )
     return True
 
 
-def _require_unchanged_paths(resolved: ResolvedTranscriptV2BatchItem) -> None:
+def _require_unchanged_paths(resolved: ResolvedTranscriptBatchItem) -> None:
     source = resolved.source
     if source.ingestion_directory.resolve() != source.ingestion_directory:
-        raise TranscriptV2BatchError("ingestion path changed after preflight")
+        raise TranscriptBatchError("ingestion path changed after preflight")
     current_existing = _inspect_target(resolved.target)
     if current_existing != resolved.existing:
-        raise TranscriptV2BatchError(
-            "transcript-v2 destination changed after preflight"
+        raise TranscriptBatchError(
+            "transcript destination changed after preflight"
         )
 
 
 def _manifest_text(
     *,
-    plan: TranscriptV2BatchPlan,
-    item: TranscriptV2BatchItem,
+    plan: TranscriptBatchPlan,
+    item: TranscriptBatchItem,
     extraction_manifest_id: str,
     layout_result_ids: tuple[str, ...],
+    structure_analysis_id: str,
+    table_detection_result_id: str,
+    table_structure_result_id: str,
+    figure_detection_result_id: str,
     transcription_result_id: str,
-    clean_artifact_id: str,
-    clean_artifact_sha256: str,
+    clean_result_id: str,
+    clean_result_sha256: str,
     clean_text_sha256: str,
     audit_report_id: str,
-    audit_artifact_sha256: str,
+    audit_sha256: str,
+    reference_evidence_record_id: str,
+    reference_evidence_sha256: str,
     counts: dict[str, int],
 ) -> tuple[str, dict[str, object]]:
-    manifest_id = stable_id(
-        "transcript-v2-batch-manifest",
-        TRANSCRIPT_V2_BATCH_MANIFEST_SCHEMA_VERSION,
-        plan.plan_id,
-        item.item_id,
-        extraction_manifest_id,
-        layout_result_ids,
-        transcription_result_id,
-        clean_artifact_id,
-        clean_artifact_sha256,
-        clean_text_sha256,
-        audit_report_id,
-        audit_artifact_sha256,
-        tuple(sorted(counts.items())),
-    )
     value: dict[str, object] = {
-        "artifact_generation": CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
-        "audit_artifact_sha256": audit_artifact_sha256,
         "audit_report_id": audit_report_id,
-        "clean_artifact_id": clean_artifact_id,
-        "clean_artifact_sha256": clean_artifact_sha256,
+        "audit_sha256": audit_sha256,
+        "clean_result_id": clean_result_id,
+        "clean_result_sha256": clean_result_sha256,
         "clean_text_sha256": clean_text_sha256,
         "configuration_digest": plan.configuration.configuration_digest,
-        "contract_id": CLEAN_TRANSCRIPT_V2_CONTRACT_ID,
-        "contract_version": CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
         "counts": dict(sorted(counts.items())),
         "equation_detection_artifact_sha256": (
             item.equation_detection_artifact_sha256
@@ -1167,6 +1109,7 @@ def _manifest_text(
         "equation_detection_result_id": item.equation_detection_result_id,
         "extraction_artifact_sha256": item.extraction_artifact_sha256,
         "extraction_manifest_id": extraction_manifest_id,
+        "figure_detection_result_id": figure_detection_result_id,
         "item_id": item.item_id,
         "layout_result_ids": list(layout_result_ids),
         "limitations": [
@@ -1176,17 +1119,28 @@ def _manifest_text(
             "not_scientifically_validated",
             "not_semantically_corrected",
         ],
-        "manifest_id": manifest_id,
-        "output_relative_path": (TRANSCRIPT_V2_OUTPUT_RELATIVE_PATH.as_posix()),
+        "output_relative_path": TRANSCRIPT_OUTPUT_RELATIVE_PATH.as_posix(),
         "plan_id": plan.plan_id,
-        "processor_version": CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION,
-        "schema_version": TRANSCRIPT_V2_BATCH_MANIFEST_SCHEMA_VERSION,
+        "processor_name": DeterministicCleanTranscriptProjector.name,
+        "processor_version": DeterministicCleanTranscriptProjector.version,
+        "reference_evidence_record_id": reference_evidence_record_id,
+        "reference_evidence_sha256": reference_evidence_sha256,
         "source_byte_size": item.source_byte_size,
         "source_id": item.source_id,
         "source_sha256": item.source_sha256,
         "status": "automated_unreviewed",
+        "structure_analysis_id": structure_analysis_id,
+        "table_detection_result_id": table_detection_result_id,
+        "table_structure_result_id": table_structure_result_id,
         "transcription_result_id": transcription_result_id,
     }
+    manifest_id = stable_id(
+        "transcript-batch-manifest",
+        json.dumps(
+            value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ),
+    )
+    value["manifest_id"] = manifest_id
     return (
         json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         value,
@@ -1198,19 +1152,19 @@ def _verify_existing_set(target: Path, files: dict[str, str]) -> None:
     for name in _OUTPUT_NAMES:
         actual = _read_artifact(
             target / name,
-            label=f"existing transcript-v2 artifact {name}",
+            label=f"existing transcript artifact {name}",
         )
         if actual != files[name].encode("utf-8"):
-            raise TranscriptV2BatchPublicationError(
-                f"existing transcript-v2 artifact differs: {name}"
+            raise TranscriptBatchPublicationError(
+                f"existing transcript artifact differs: {name}"
             )
 
 
 def _publish_directory(target: Path, files: dict[str, str]) -> None:
     _require_safe_existing_parents(target.parent)
     if os.path.lexists(target):
-        raise TranscriptV2BatchPublicationError(
-            "refusing to overwrite transcript-v2 artifacts"
+        raise TranscriptBatchPublicationError(
+            "refusing to overwrite transcript artifacts"
         )
     _create_private_directories(target.parent)
     _require_safe_existing_parents(target.parent)
@@ -1234,21 +1188,21 @@ def _publish_directory(target: Path, files: dict[str, str]) -> None:
             _write_staged_file(staging / name, files[name])
         _fsync_directory(staging)
         if os.path.lexists(target):
-            raise TranscriptV2BatchPublicationError(
-                "transcript-v2 destination appeared during publication"
+            raise TranscriptBatchPublicationError(
+                "transcript destination appeared during publication"
             )
         os.rename(staging, target)
         staging = None
         _fsync_directory(target.parent)
-    except TranscriptV2BatchPublicationError:
+    except TranscriptBatchPublicationError:
         raise
     except FileExistsError as error:
-        raise TranscriptV2BatchPublicationError(
-            "another transcript-v2 publication is active"
+        raise TranscriptBatchPublicationError(
+            "another transcript publication is active"
         ) from error
     except OSError as error:
-        raise TranscriptV2BatchPublicationError(
-            f"could not publish transcript-v2 artifacts: {error}"
+        raise TranscriptBatchPublicationError(
+            f"could not publish transcript artifacts: {error}"
         ) from error
     finally:
         if lock_descriptor is not None:
@@ -1262,8 +1216,8 @@ def _publish_directory(target: Path, files: dict[str, str]) -> None:
 def _write_staged_file(path: Path, text: str) -> None:
     content = text.encode("utf-8")
     if len(content) > _MAX_ARTIFACT_BYTES:
-        raise TranscriptV2BatchPublicationError(
-            f"transcript-v2 artifact exceeds size limit: {path.name}"
+        raise TranscriptBatchPublicationError(
+            f"transcript artifact exceeds size limit: {path.name}"
         )
     descriptor = os.open(
         path,
@@ -1289,7 +1243,7 @@ def _create_private_directories(path: Path) -> None:
             directory.mkdir(mode=0o700)
         except FileExistsError:
             if directory.is_symlink() or not directory.is_dir():
-                raise TranscriptV2BatchPublicationError(
+                raise TranscriptBatchPublicationError(
                     "artifact parent changed during creation"
                 ) from None
 
@@ -1301,11 +1255,11 @@ def _require_safe_existing_parents(path: Path) -> None:
             break
         current = current.parent
     if current.is_symlink() or not current.is_dir():
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             "artifact parent is not a safe directory"
         )
     if current.resolve() != current:
-        raise TranscriptV2BatchPublicationError(
+        raise TranscriptBatchPublicationError(
             "artifact parent must not traverse a symlink"
         )
 
@@ -1324,17 +1278,17 @@ def _sha256_text(value: str) -> str:
 
 def _require_int(value: object, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise TranscriptV2BatchError(f"{name} must be an integer")
+        raise TranscriptBatchError(f"{name} must be an integer")
     return value
 
 
 def _require_number(value: object, name: str) -> float:
     if isinstance(value, bool) or not isinstance(value, int | float):
-        raise TranscriptV2BatchError(f"{name} must be a number")
+        raise TranscriptBatchError(f"{name} must be a number")
     return float(value)
 
 
 def _string_tuple(value: object, name: str) -> tuple[str, ...]:
     if not isinstance(value, list):
-        raise TranscriptV2BatchError(f"{name} must be an array")
+        raise TranscriptBatchError(f"{name} must be an array")
     return tuple(_require_text(item, name) for item in value)

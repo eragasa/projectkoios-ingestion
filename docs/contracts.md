@@ -657,51 +657,37 @@ result in raw `ExtractionCache`. Configuration hard-bounds raw blocks, structure
 nodes, typed objects, items, omissions, warnings, source spans, per-item and
 total text, exact input artifact bytes, and retained result size.
 
-## Automated clean transcript projections
+## Automated clean transcript projection
 
 `CleanTranscriptRequest` → `DeterministicCleanTranscriptProjector` →
-`CleanTranscript` directly implements the action-family bases. Canonical
-`action(request=...)` owns projection; supported `project()` forwards through
-that single path. `CleanTranscriptArtifact` is a deprecated exact alias to
-`CleanTranscript`.
+`CleanTranscript` directly implements the public action-family bases.
+`action(request=...)` owns projection, and `project()` forwards through that
+single behavior path. No alternate generation, artifact alias, compatibility
+reader, or format-version selector exists.
 
-Clean-transcript contract version 1.0 and projector version 1 define a compact
-source-linked view over one complete `StructuredTranscriptionResult` and its
-exact `PageLayoutResult` tuple. `CleanTranscript` binds the structured result
-ID, root document/source/blob/hash, ordered layout result IDs, included records,
-exclusions, pages, consolidated UTF-8 text/hash/length,
-processor/configuration identity, warnings, and the fixed
-`automated_unreviewed` status.
+The result binds exact structured-transcription and layout identities, root
+source identity, ordered included and excluded records, page projections,
+deconcatenation decisions, page-number and publisher classifications,
+private-use-glyph findings, consolidated UTF-8 text, warnings, producer
+provenance, and configuration digest. Every included block and exclusion
+retains exact raw text and source spans. Ambiguous transformations remain
+explicit rather than being silently normalized.
 
-Each `CleanTranscriptBlock` retains one exact root block ID, physical and printed page, global proposed order, exact raw text, cleaned text, exact source spans, and sorted transformation evidence. Each `CleanTranscriptExclusion` retains exact raw text/spans and one typed reason: `repeated_margin`, `page_number`, or `empty_after_sanitization`. `CleanTranscriptPage` binds ordered record IDs, an explicit physical/printed page marker, page text, and text hash. Artifact construction verifies stable identities, hashes, object counts, and deterministic bounds.
-
-`DeterministicCleanTranscriptProjector` requires one exact layout per root page. It applies no compatibility normalization, dictionary, model, or semantic rewrite. It replaces bounded C0 controls with spaces, removes soft hyphens, joins only conservative ASCII hyphen-plus-line-break word continuations, collapses Unicode whitespace, and trims each included block. Repeated header/footer detection is restricted to configurable top/bottom margins and requires a bounded repeated normalized key across multiple pages; decimal and lowercase Roman page numbers are removed only in those margins. Every excluded block remains exact evidence. `CleanTranscriptV2LimitError`
-specializes `CleanTranscriptLimitError`, allowing callers to catch either the
-V2-specific bound failure or the shared clean-transcript limit category.
-
-The batch command publishes the clean artifact/text, derivation audit,
-reference-evidence projection, and manifest as one immutable per-item set.
-Owner-internal transcript batch manifest schema `2` identifies this five-file
-shape and is distinct from clean-transcript artifact generation `1` and
-reference-evidence schema generation `1`. The manifest binds its schema version,
-every deterministic intermediate result identity, the clean, audit, and
-reference-evidence artifact hashes, counts, limitations, and the explicit
-`deterministically_reconstructible_not_materialized` policy for bulky
-intermediate graphs. Replay requires byte identity. Existing four-file schema-1
-sets are preserved and fail closed as incomplete rather than being relabeled or
-repaired. The clean projection is
-suitable as extraction-derived retrieval input but is never represented as
-human-proofread, semantically corrected, mathematically correct, scientifically
-validated, publication-ready, accepted, or human-approved.
+The strict durable planner and composer publish exactly `clean.json`,
+`clean.txt`, `audit.json`, `reference-evidence.json`, and `manifest.json` under
+`derived/transcription/`. Publication is atomic and replay is byte-exact.
+Incomplete, stale, unsafe, extra, or different output fails closed. See
+[`contracts/clean-transcript.md`](contracts/clean-transcript.md) for the exact
+shape, evidence rules, commands, limits, and offline verifier.
 
 ## Reference evidence projection
 
 The Proposed `projectkoios.ingestion.reference-evidence@0.1.0` projection is a
 bounded, canonical JSON summary of one exact completed extraction, one
-`automated_unreviewed` clean-transcript artifact, and one recorded passing
+`automated_unreviewed` clean-transcript result, and one recorded passing
 complete derivation audit. It exposes source blob/hash/byte/media identity,
-extraction manifest/document/status/generator evidence, transcript generation,
-identity/status/generator evidence, and exact audit scope/status/identity. It
+extraction manifest/document/status/generator evidence, transcript result and
+producer evidence, and exact audit scope/status/identity. It
 contains artifact digests and complete named lineage but no source locator,
 filename, workspace path, protected text, or machine locator.
 
@@ -1191,7 +1177,7 @@ writes no files.
 
 ## Derivation audit
 
-Derivation-audit contract version 1.0 and processor version 2 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, JIT-processing, structured-transcription, and clean-transcript results. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
+Derivation-audit contract version 1.0 and processor version 3 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, JIT-processing, structured-transcription, and clean-transcript results. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
 
 `DerivationAuditRequest` identifies one exact `DerivationAuditInput`, including
 the source-byte digest and length, extraction manifest, ordered layer names, and

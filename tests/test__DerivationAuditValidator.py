@@ -39,6 +39,10 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.article_structure import (
     ARTICLE_STRUCTURE_PROCESSOR_VERSION,
 )
+from projectkoios.ingestion.clean_transcript import (
+    CleanTranscript,
+    CleanTranscriptRequest,
+)
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
     PageLayoutResult,
@@ -76,10 +80,6 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditValidator,
 )
 from projectkoios.ingestion.structure import StructureAnalysis
-from projectkoios.ingestion.transcript_projection import (
-    CleanTranscript,
-    CleanTranscriptRequest,
-)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,
@@ -207,7 +207,7 @@ class _CleanAuditFixture:
                 table_structure_results=(self.table_structure,),
                 figure_results=(self.figures,),
                 transcription_results=(self.transcription,),
-                clean_transcript_artifacts=(clean,),
+                clean_transcripts=(clean,),
             )
         )
 
@@ -335,12 +335,37 @@ def _rebuild_clean(
             )
         )
     text = "\n\n".join(page.text for page in pages) + "\n"
+    covered_block_ids = {
+        *(block.block_id for block in retained_blocks),
+        *(exclusion.block_id for exclusion in retained_exclusions),
+    }
+    included_block_ids = {block.block_id for block in retained_blocks}
     return CleanTranscript.create(
         transcription_result=fixture.transcription,
         layouts=fixture.layouts,
         pages=tuple(pages),
         blocks=retained_blocks,
         exclusions=retained_exclusions,
+        dehyphenation_decisions=tuple(
+            item
+            for item in original.dehyphenation_decisions
+            if item.block_id in included_block_ids
+        ),
+        page_number_classifications=tuple(
+            item
+            for item in original.page_number_classifications
+            if item.block_id in covered_block_ids
+        ),
+        publisher_front_matter=tuple(
+            item
+            for item in original.publisher_front_matter
+            if item.block_id in covered_block_ids
+        ),
+        private_use_glyph_findings=tuple(
+            item
+            for item in original.private_use_glyph_findings
+            if item.block_id in covered_block_ids
+        ),
         text=text,
         warnings=original.warnings,
         processor_name=original.processor_name,
@@ -369,6 +394,10 @@ def _recreate_block(
         clean_text=block.clean_text,
         source_spans=block.source_spans,
         transformations=block.transformations,
+        dehyphenation_decision_ids=block.dehyphenation_decision_ids,
+        page_number_classification_id=(block.page_number_classification_id),
+        publisher_classification_id=block.publisher_classification_id,
+        private_use_finding_ids=block.private_use_finding_ids,
     )
 
 
@@ -384,6 +413,7 @@ def _recreate_exclusion(
         reason=exclusion.reason,
         raw_text=exclusion.raw_text,
         source_spans=exclusion.source_spans,
+        decision_id=exclusion.decision_id,
     )
 
 
@@ -473,35 +503,33 @@ def test__derivation_audit__rejects_zero_clean_partition_coverage(
 
 
 @pytest.mark.parametrize("duplicate_kind", ("included", "cross_class"))
-def test__derivation_audit__rejects_duplicate_clean_partition_coverage(
+def test__clean_transcript__rejects_duplicate_partition_coverage(
     clean_audit_fixture: _CleanAuditFixture,
     duplicate_kind: str,
 ) -> None:
     clean = clean_audit_fixture.clean
-    if duplicate_kind == "included":
-        artifact = _rebuild_clean(
-            clean_audit_fixture,
-            blocks=(*clean.blocks, clean.blocks[0]),
-        )
-    else:
-        record = clean.blocks[0]
-        duplicate = CleanTranscriptExclusion.create(
-            block_id=record.block_id,
-            page_index=record.page_index,
-            printed_page_label=record.printed_page_label,
-            reason=CleanTranscriptExclusionReason.EMPTY_AFTER_SANITIZATION,
-            raw_text=record.raw_text,
-            source_spans=record.source_spans,
-        )
-        artifact = _rebuild_clean(
-            clean_audit_fixture,
-            exclusions=(*clean.exclusions, duplicate),
-        )
-
-    report = clean_audit_fixture.audit(artifact)
-
-    assert report.status is DerivationAuditStatus.FAILED
-    assert DerivationAuditFindingCode.DUPLICATE_OBJECT_ID in _codes(report)
+    with pytest.raises(ValueError, match="must be unique"):
+        if duplicate_kind == "included":
+            _rebuild_clean(
+                clean_audit_fixture,
+                blocks=(*clean.blocks, clean.blocks[0]),
+            )
+        else:
+            record = clean.blocks[0]
+            duplicate = CleanTranscriptExclusion.create(
+                block_id=record.block_id,
+                page_index=record.page_index,
+                printed_page_label=record.printed_page_label,
+                reason=(
+                    CleanTranscriptExclusionReason.EMPTY_AFTER_SANITIZATION
+                ),
+                raw_text=record.raw_text,
+                source_spans=record.source_spans,
+            )
+            _rebuild_clean(
+                clean_audit_fixture,
+                exclusions=(*clean.exclusions, duplicate),
+            )
 
 
 def test__derivation_audit__rejects_cross_page_clean_block(

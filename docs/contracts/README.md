@@ -3,10 +3,9 @@
 This directory contains stable contract proposals and accepted contracts owned
 by `projectkoios-ingestion`.
 
-| Contract ID | Authoritative document | Scope |
+| Component | Authoritative document | Scope |
 |---|---|---|
-| `projectkoios.ingestion.clean-transcript` | [`clean-transcript-v2.md`](clean-transcript-v2.md#contract-metadata-clean-transcript) | Evidence-conservative clean-transcript artifacts |
-| `projectkoios.ingestion.transcript-batch-plan` | [`clean-transcript-v2.md`](clean-transcript-v2.md#contract-metadata-transcript-batch-plan) | Reproducible transcript batch planning |
+| Canonical clean transcript and durable batch | [`clean-transcript.md`](clean-transcript.md) | Evidence-conservative projection, planning, publication, and offline verification |
 | `projectkoios.ingestion.reference-evidence` | [`reference-evidence.md`](reference-evidence.md#contract-metadata) | Source-bound extraction/transcript/audit evidence for external consumers |
 | `projectkoios.ingestion.reference-page-locator` | [`reference-page-locator.md`](reference-page-locator.md#contract-metadata) | Bounded whole-token page navigation over exact transcript evidence |
 | `projectkoios.ingestion.reference-claim-candidate` | [`reference-claim-candidate.md`](reference-claim-candidate.md#contract-metadata) | Payload-free claim-to-page candidate evidence requiring manual review |

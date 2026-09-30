@@ -451,81 +451,60 @@ writes no files, and stores nothing in raw `ExtractionCache`.
 
 ## Automated clean transcript materialization
 
-`DeterministicCleanTranscriptProjector` creates a separate immutable, automated, unreviewed projection over one complete structured-transcription result and its exact layouts. It preserves each included block's exact raw text, source spans, physical and printed page, proposed order, cleaned text, and typed transformation counts. Excluded repeated margin text, page numbers, and content empty after control-character sanitization retain their exact raw evidence and typed reason. Cleanup is limited to removing soft hyphens, replacing C0 control characters, joining conservative ASCII line-break hyphenations, and collapsing Unicode whitespace; it performs no spelling, symbol, semantic, or scientific correction.
+`CleanTranscriptRequest` → `DeterministicCleanTranscriptProjector` →
+`CleanTranscript` is the single canonical action family. It retains exact raw
+text and source spans together with typed dehyphenation, page-number,
+publisher-front-matter, private-use-glyph, exclusion, and transformation
+evidence. Ambiguous dehyphenation remains visible; numeric margin text is not
+excluded without printed-label or recurring-sequence evidence. The result is
+always `automated_unreviewed` and performs no spelling, symbol, semantic, or
+scientific correction.
 
-`koios-compose-pdf-transcripts-batch` consumes the same hash-locked `PdfBatchPlan` after raw extraction and equation detection. Dry-run is the default. Explicit `--apply` deterministically runs layout, article structure, equation replay, table detection/reconstruction, figure detection, structured composition, clean projection, and a complete derivation audit. It publishes an all-or-none per-item set containing the clean artifact/text, derivation audit, Proposed reference-evidence projection, and batch manifest. Owner-internal transcript batch manifest schema `2` identifies this five-file artifact-set shape; it is distinct from clean-transcript artifact generation `1` and reference-evidence schema generation `1`. The manifest binds its schema version, every reconstructible intermediate result identity, and all artifact hashes; bulky intermediate table, figure, and full transcription graphs are not materialized. Exact replay verifies all five files byte-for-byte and reports `unchanged`. Legacy four-file schema-`1` sets, incomplete sets, unsafe sets, and different existing sets are preserved and fail closed rather than being relabeled or repaired.
+`koios-plan-pdf-transcripts-batch` creates a strict durable plan after raw
+extraction and equation detection. `koios-compose-pdf-transcripts-batch`
+consumes that plan. Both commands are dry-run by default; explicit `--apply`
+publishes the plan or output. Composition deterministically replays extraction
+and equation evidence, derives layouts and structured evidence, projects the
+clean transcript, requires a passing derivation audit, and publishes exactly
+`derived/transcription/{clean.json,clean.txt,audit.json,reference-evidence.json,manifest.json}`.
+Publication is all-or-none. Exact replay verifies all five files byte-for-byte
+and reports `unchanged`; incomplete, unsafe, stale, extra, or different output
+fails closed.
 
-External consumers receive the canonical reference-evidence bytes through an
-injected boundary; they do not discover them by constructing this private
-workspace layout. The record binds exact source bytes, completed extraction,
-`automated_unreviewed` transcript generation `1`, and the recorded derivation
-audit while omitting source locators, filenames, paths, and protected text.
-Strict parse and verify APIs reject unsupported generations, unknown fields,
-noncanonical bytes, incomplete lineage, and source mismatch. This Proposed
-projection does not claim independent revalidation, proofreading, extraction
-accuracy, scientific validity, or publication suitability; references-side
-consumption and cross-repository conformance remain pending.
+External consumers receive canonical reference-evidence bytes through an
+injected boundary rather than discovering the private workspace. The record
+binds exact source bytes, completed extraction, the clean-transcript result,
+and its recorded audit while omitting source locators, filenames, paths, and
+protected text. Strict parsing rejects unknown fields, noncanonical bytes,
+incomplete lineage, and source mismatch.
 
 `ReferencePageLocatorChecker` provides the separate bounded navigation step. It
-requires that complete reference evidence and the supplied clean transcript
-form one exact source/document/transcript lineage, then searches one explicit
-page for complete Unicode-normalized token phrases. Token boundaries prevent
-`mass` from matching `biomass`; punctuation differences such as
-`effective-mass` versus `effective mass` remain searchable. Results retain only
-page and lineage identities, page-text identity, hashed topic-anchor identities,
-the match partition, processor identity, and explicit limitations. They do not
-embed the phrase-bearing locator, retain text, or make a claim-support,
-proofreading, scientific-validation, acceptance, or publication assertion.
-
-`ReferenceClaimCandidate.create` binds an externally owned
-`research-claim:sha256` identity to one positive locator result and its exact
-reusable reference-evidence lineage. The candidate retains only identities,
-digests, lengths, matched anchor identities, and explicit limitations. It
-contains no claim text, quotation, page text, path, authority, decision, or
-publication state. Its only status is `manual_review_required`; a positive
-candidate is not claim support or citation acceptance.
+requires one exact source/document/transcript lineage and searches one explicit
+page for complete Unicode-normalized token phrases. `ReferenceClaimCandidate`
+then binds an externally owned claim identity to a positive locator result; it
+is still only `manual_review_required`, not claim support or citation
+acceptance.
 
 ```bash
-koios-compose-pdf-transcripts-batch batch.json \
+koios-plan-pdf-transcripts-batch batch.json \
   --source-root ~/projectkoios/assets/references \
   --ingestion-root ~/projectkoios/.koios/ingestion \
-  --cache-root ~/projectkoios/.koios/extraction-cache
-koios-compose-pdf-transcripts-batch batch.json \
+  --output ~/projectkoios/.koios/plans/transcript.json
+koios-plan-pdf-transcripts-batch batch.json \
+  --source-root ~/projectkoios/assets/references \
+  --ingestion-root ~/projectkoios/.koios/ingestion \
+  --output ~/projectkoios/.koios/plans/transcript.json \
+  --apply
+koios-compose-pdf-transcripts-batch \
+  ~/projectkoios/.koios/plans/transcript.json \
   --source-root ~/projectkoios/assets/references \
   --ingestion-root ~/projectkoios/.koios/ingestion \
   --cache-root ~/projectkoios/.koios/extraction-cache \
   --apply
 ```
 
-Transcript generation 2 uses separate commands and never changes the generation-1
-command or files. `koios-plan-pdf-transcripts-v2-batch` deterministically binds
-the verified source, extraction artifact, equation-detection artifact, complete
-cleanup configuration, processor version, and generation-specific destination
-into an immutable durable plan. Planning and composition are dry-run by default.
-Explicit `--apply` publishes the plan or one complete per-item artifact directory.
-Each generation-2 directory is published with a same-filesystem rename only after
-all four files have been written and synced. Existing byte-identical sets report
-`unchanged`; partial, different, extra, symlinked, or stale-predecessor sets fail
-closed. Generation 2 is written only under
-`derived/transcription/generation-2/` and remains `automated_unreviewed`.
-
-```bash
-koios-plan-pdf-transcripts-v2-batch batch.json \
-  --source-root ~/projectkoios/assets/references \
-  --ingestion-root ~/projectkoios/.koios/ingestion \
-  --output ~/projectkoios/.koios/plans/transcript-v2.json
-koios-plan-pdf-transcripts-v2-batch batch.json \
-  --source-root ~/projectkoios/assets/references \
-  --ingestion-root ~/projectkoios/.koios/ingestion \
-  --output ~/projectkoios/.koios/plans/transcript-v2.json \
-  --apply
-koios-compose-pdf-transcripts-v2-batch \
-  ~/projectkoios/.koios/plans/transcript-v2.json \
-  --source-root ~/projectkoios/assets/references \
-  --ingestion-root ~/projectkoios/.koios/ingestion \
-  --cache-root ~/projectkoios/.koios/extraction-cache \
-  --apply
-```
+The bounded offline verifier is documented in
+[`docs/contracts/clean-transcript.md`](docs/contracts/clean-transcript.md#offline-deterministic-verifier).
 
 The plain-text file includes explicit physical/printed page markers and is suitable as source-linked retrieval input, not as a human-proofread edition. Markdown notes and generated relevance assessments remain downstream views and must not replace or feed back into this source corpus.
 

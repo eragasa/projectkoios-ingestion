@@ -9,7 +9,7 @@
 | Status | Proposed |
 | Owner | `projectkoios-ingestion` |
 | Acceptance authority | Project Koios operator after ingestion and workflow-consumer review |
-| Dependency | `projectkoios.ingestion.reference-evidence@0.1.0` and clean transcript generation 1 |
+| Dependency | `projectkoios.ingestion.reference-evidence@0.1.0` and the canonical clean-transcript result |
 | Consumer | `projectkoios.workflow.reference_review` candidate adapter |
 | Effective baseline | None while proposed |
 
@@ -17,7 +17,7 @@
 
 The locator performs bounded mechanical page navigation over one exact
 `CleanTranscriptPage`. It binds a reusable complete reference-evidence record,
-clean-transcript artifact, page identity/index, and a sorted set of topic-anchor
+clean-transcript result, page identity/index, and a sorted set of topic-anchor
 alternatives. It does not read a PDF, discover a source, run OCR, retain page
 text, assess a claim, accept evidence, or authorize publication.
 

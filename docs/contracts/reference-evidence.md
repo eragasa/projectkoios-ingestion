@@ -13,9 +13,9 @@
 | Acceptance authority | Project Koios operator after ingestion-owner and materially affected references-consumer review |
 | Architecture record | Accepted `ADR20260918: Reference authority and projection architecture` at `projectkoios@f94fc07ae6db0ff341682571bd974835d48238fb` |
 | Task | `ING-REFERENCE-EVIDENCE-01`, `projectkoios-ingestion#3` |
-| Predecessor | None registered; owner-internal transcript batch manifest schema `2` publishes this projection but is not a cross-repository contract |
+| Predecessor | None registered; the owner-internal canonical transcript materializer publishes this projection |
 | Supersedes | None while proposed |
-| Dependencies | Owner-internal extraction `2.2`, clean-transcript implementation generation `1`/contract `1.0`, and derivation-audit `1.0` evidence |
+| Dependencies | Owner-internal extraction, canonical clean-transcript result, and derivation-audit evidence |
 | Consumers | `projectkoios-references` through its adapter under `projectkoios-references#18` |
 | Compatibility | New projection; compatibility is unknown until real consumer conformance is recorded |
 | Effective baseline | None while proposed |
@@ -33,25 +33,21 @@ serialization**, **Failure behavior**, and **Authority limits**. Conformance
 subjects are the ingestion producer, strict parser/verifier, and the separate
 references-owned consumer adapter.
 
-This projection evaluates current implemented artifacts. It does not rename the
-existing Proposed `projectkoios.ingestion.clean-transcript@0.1.0` contract,
-claim transcript-v2 generation `2`, or accept either proposal. The current
-projection explicitly records legacy clean-transcript artifact generation `1`.
-Owner-internal transcript batch manifest schema `2` identifies the new five-file
-publication set; that version is independent of both artifact generations.
-Legacy four-file batch-manifest schema-`1` sets remain preserved and fail closed
-rather than being upgraded in place. A clean-transcript artifact reporting
-another generation is unsupported by this contract and fails closed.
+This projection evaluates the single canonical clean-transcript result. Its
+transcript member records the exact result identity, producer provenance,
+configuration digest, text identity, status, warnings, and layout/transcription
+lineage. It has no clean-transcript generation or compatibility-version field.
+Unknown legacy keys fail strict parsing rather than selecting an old shape.
 
 ## Producer input and lineage
 
 A complete record MUST be built from exactly one:
 
 - completed extraction result and exact serialized extraction artifact;
-- `AUTOMATED_UNREVIEWED` clean-transcript artifact;
+- `AUTOMATED_UNREVIEWED` clean-transcript result;
 - recorded passing derivation-audit report covering the extraction manifest,
   extracted document, every named layout, structured-transcription result, and
-  clean-transcript artifact; and
+  clean-transcript result; and
 - exact serialized clean-transcript and derivation-audit artifacts.
 
 The producer MUST reject mismatched logical source, blob, content hash,
@@ -72,10 +68,10 @@ The immutable record contains:
 - exact extraction-artifact digest/length, extraction contract, manifest and
   document identities, status, extractor version, configuration identity, and
   warning count;
-- exact clean-transcript artifact digest/length, implementation generation,
-  contract and artifact identities, `automated_unreviewed` status, structured
-  transcription and ordered layout identities, consolidated-text digest/length,
-  projector version/configuration, and warning count;
+- exact serialized clean-transcript digest/length, result identity,
+  `automated_unreviewed` status, structured-transcription and ordered-layout
+  identities, consolidated-text digest/length, projector provenance,
+  configuration digest, and warning count;
 - exact derivation-audit artifact digest/length, contract/report/status and
   validator versions, complete audited artifact identities and layer counts,
   finding count, the scope `recorded_producer_derivation_audit`, and
@@ -137,8 +133,9 @@ construct ingestion workspace paths or infer evidence from producer filenames.
 
 Sanitized deterministic fixtures are under
 `tests/fixtures/reference_evidence/`. `complete.json` is a valid producer-shaped
-record with synthetic identities. `unsupported-generation.json` is an awkward
-fixture that MUST fail strict parsing. Neither contains private evidence.
+record with synthetic identities. Parser tests inject removed transcript keys
+and require strict unknown-field rejection. The fixture contains no private
+evidence.
 
 Before acceptance, the remaining evidence includes a real references adapter,
 fixture exchange against these exact bytes, a recorded cross-repository

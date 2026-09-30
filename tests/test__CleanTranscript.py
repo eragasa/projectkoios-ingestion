@@ -5,21 +5,24 @@ from io import BytesIO
 from typing import Any
 
 import pytest
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion import (
-    CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
-    CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
     ClassificationDisposition,
-    CleanTranscriptLimitError,
-    CleanTranscriptV2Configuration,
-    CleanTranscriptV2ExclusionReason,
-    CleanTranscriptV2LimitError,
-    CleanTranscriptV2Status,
+    CleanTranscript,
+    CleanTranscriptConfiguration,
+    CleanTranscriptExclusionReason,
+    CleanTranscriptRequest,
+    CleanTranscriptStatus,
     DehyphenationOutcome,
     DerivationAuditInput,
     DerivationAuditStatus,
     DerivationAuditValidator,
     DeterministicArticleStructureAnalyzer,
-    DeterministicCleanTranscriptV2Projector,
+    DeterministicCleanTranscriptProjector,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicLayoutProcessor,
@@ -77,9 +80,9 @@ def _pipeline(*, replacement_split: str | None = None):
     payload = _pdf()
     source = SourceDocument.from_bytes(
         payload,
-        source_id="fixture:clean-transcript-v2",
+        source_id="fixture:clean-transcript",
         media_type="application/pdf",
-        locator="memory://clean-transcript-v2.pdf",
+        locator="memory://clean-transcript.pdf",
     )
     extraction = PyMuPdfExtractor().extract(source, BytesIO(payload))
     document = extraction.document
@@ -128,30 +131,57 @@ def _pipeline(*, replacement_split: str | None = None):
     return payload, extraction, layouts, transcription, private_block_id
 
 
-def test__clean_transcript_v2_limit_is_a_clean_transcript_limit() -> None:
-    assert issubclass(CleanTranscriptV2LimitError, CleanTranscriptLimitError)
-
-
-def test__clean_transcript_v2__is_additive_deterministic_contract() -> None:
+def test__clean_transcript__is_one_deterministic_action_family() -> None:
     _, _, layouts, transcription, _ = _pipeline()
-    projector = DeterministicCleanTranscriptV2Projector()
+    projector = DeterministicCleanTranscriptProjector()
+    request = CleanTranscriptRequest.create(
+        transcription_result=transcription,
+        layouts=layouts,
+        configuration=projector.configuration,
+    )
 
-    first = projector.project(transcription, layouts)
+    first = projector.action(request=request)
     second = projector.project(transcription, layouts)
 
+    assert isinstance(request, DataObjectActionRequest)
+    assert isinstance(projector, DataObjectActionizer)
+    assert isinstance(first, DataObjectActionResult)
+    assert isinstance(first, CleanTranscript)
     assert first == second
-    assert first.contract_version == CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
-    assert first.artifact_generation == CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION
-    assert first.status is CleanTranscriptV2Status.AUTOMATED_UNREVIEWED
-    assert first.artifact_id != first.transcription_result_id
-    with pytest.raises(ValueError, match="artifact ID"):
-        replace(first, artifact_id="tampered")
+    assert first.status is CleanTranscriptStatus.AUTOMATED_UNREVIEWED
+    assert first.result_id != first.transcription_result_id
+    with pytest.raises(ValueError, match="result ID"):
+        replace(first, result_id="tampered")
 
 
-def test__clean_transcript_v2__uses_positive_dehyphenation_evidence() -> None:
+def test__clean_transcript__rejects_removed_format_keys() -> None:
+    _, _, layouts, transcription, _ = _pipeline()
+    projector = DeterministicCleanTranscriptProjector()
+    request = CleanTranscriptRequest.create(
+        transcription_result=transcription,
+        layouts=layouts,
+        configuration=projector.configuration,
+    )
+    result = projector.action(request=request)
+
+    for removed_key in (
+        "artifact_generation",
+        "contract_id",
+        "contract_version",
+        "schema_version",
+    ):
+        values = dict(result.__dict__)
+        values[removed_key] = 1
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            CleanTranscript(**values)
+    with pytest.raises(TypeError, match="unexpected keyword argument"):
+        CleanTranscriptConfiguration(configuration_version="legacy")
+
+
+def test__clean_transcript__uses_positive_dehyphenation_evidence() -> None:
     _, _, layouts, transcription, _ = _pipeline()
 
-    result = DeterministicCleanTranscriptV2Projector().project(
+    result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
 
@@ -183,12 +213,12 @@ def test__clean_transcript_v2__uses_positive_dehyphenation_evidence() -> None:
         ("state-\nof", "stateof"),
     ),
 )
-def test__clean_transcript_v2__known_bad_compounds_never_join_without_evidence(
+def test__clean_transcript__known_bad_compounds_never_join_without_evidence(
     source_split: str, wrong_join: str
 ) -> None:
     _, _, layouts, transcription, _ = _pipeline(replacement_split=source_split)
 
-    result = DeterministicCleanTranscriptV2Projector().project(
+    result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
 
@@ -201,10 +231,10 @@ def test__clean_transcript_v2__known_bad_compounds_never_join_without_evidence(
     assert decision.outcome is not DehyphenationOutcome.JOIN
 
 
-def test__clean_transcript_v2__does_not_exclude_plot_axis_number() -> None:
+def test__clean_transcript__does_not_exclude_plot_axis_number() -> None:
     _, _, layouts, transcription, _ = _pipeline()
 
-    result = DeterministicCleanTranscriptV2Projector().project(
+    result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
 
@@ -225,14 +255,14 @@ def test__clean_transcript_v2__does_not_exclude_plot_axis_number() -> None:
     assert {
         item.raw_text.strip()
         for item in result.exclusions
-        if item.reason is CleanTranscriptV2ExclusionReason.PAGE_NUMBER
+        if item.reason is CleanTranscriptExclusionReason.PAGE_NUMBER
     } == page_numbers
 
 
-def test__clean_transcript_v2__retains_private_use_glyph_with_locator() -> None:
+def test__clean_transcript__retains_private_use_glyph_with_locator() -> None:
     _, _, layouts, transcription, private_block_id = _pipeline()
 
-    result = DeterministicCleanTranscriptV2Projector().project(
+    result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
 
@@ -250,12 +280,10 @@ def test__clean_transcript_v2__retains_private_use_glyph_with_locator() -> None:
     assert "private_use_glyph_retained" in result.warnings
 
 
-def test__clean_transcript_v2__types_publisher_material_without_deleting() -> (
-    None
-):
+def test__clean_transcript__types_publisher_material_without_deleting() -> None:
     _, _, layouts, transcription, _ = _pipeline()
 
-    included = DeterministicCleanTranscriptV2Projector().project(
+    included = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
 
@@ -267,8 +295,8 @@ def test__clean_transcript_v2__types_publisher_material_without_deleting() -> (
     assert classification.disposition is ClassificationDisposition.INCLUDED
     assert "Copyright 2026 Example Publisher" in included.text
 
-    excluded = DeterministicCleanTranscriptV2Projector(
-        CleanTranscriptV2Configuration(
+    excluded = DeterministicCleanTranscriptProjector(
+        CleanTranscriptConfiguration(
             excluded_publisher_front_matter=(
                 PublisherFrontMatterKind.LICENSING,
             )
@@ -284,15 +312,15 @@ def test__clean_transcript_v2__types_publisher_material_without_deleting() -> (
         ClassificationDisposition.EXCLUDED
     )
     assert any(
-        item.reason is CleanTranscriptV2ExclusionReason.PUBLISHER_FRONT_MATTER
+        item.reason is CleanTranscriptExclusionReason.PUBLISHER_FRONT_MATTER
         and item.decision_id == excluded_classification.classification_id
         for item in excluded.exclusions
     )
 
 
-def test__clean_transcript_v2__passes_transitive_derivation_audit() -> None:
+def test__clean_transcript__passes_transitive_derivation_audit() -> None:
     payload, extraction, layouts, transcription, _ = _pipeline()
-    artifact = DeterministicCleanTranscriptV2Projector().project(
+    artifact = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
     transcription_input = transcription.transcription_input
@@ -310,13 +338,10 @@ def test__clean_transcript_v2__passes_transitive_derivation_audit() -> None:
             table_structure_results=(table_structure,),
             figure_results=(transcription_input.figure_detection_result,),
             transcription_results=(transcription,),
-            clean_transcript_v2_artifacts=(artifact,),
+            clean_transcripts=(artifact,),
         )
     )
 
     assert report.status is DerivationAuditStatus.PASSED
     assert not report.findings
-    assert (
-        dict(report.audited_layer_counts)["clean_transcript_v2_artifacts"]
-        == "1"
-    )
+    assert dict(report.audited_layer_counts)["clean_transcripts"] == "1"

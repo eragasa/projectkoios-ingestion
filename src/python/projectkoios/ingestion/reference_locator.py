@@ -8,14 +8,14 @@ import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.ingestion.clean_transcript import (
+    CleanTranscript,
+    CleanTranscriptPage,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.reference_evidence import (
     ReferenceEvidenceRecord,
     ReferenceEvidenceVerificationError,
-)
-from projectkoios.ingestion.transcript_projection import (
-    CleanTranscript,
-    CleanTranscriptPage,
 )
 
 REFERENCE_LOCATOR_CONTRACT_VERSION = "0.1.0"
@@ -31,8 +31,8 @@ _IDENTITY_PATTERNS = {
     "reference_evidence_record_id": re.compile(
         r"reference-evidence-record:sha256:[0-9a-f]{64}"
     ),
-    "transcript_artifact_id": re.compile(
-        r"clean-transcript-artifact:sha256:[0-9a-f]{64}"
+    "transcript_result_id": re.compile(
+        r"clean-transcript-result:sha256:[0-9a-f]{64}"
     ),
     "page_id": re.compile(r"clean-transcript-page:sha256:[0-9a-f]{64}"),
 }
@@ -139,7 +139,7 @@ def _verified_page(
             "reference evidence is not reusable"
         ) from error
     if (
-        record.transcript.artifact_id != transcript.artifact_id
+        record.transcript.result_id != transcript.result_id
         or record.transcript.structured_transcription_result_id
         != transcript.transcription_result_id
         or record.transcript.layout_result_ids != transcript.layout_result_ids
@@ -174,7 +174,7 @@ class ReferencePageLocator:
 
     locator_id: str
     reference_evidence_record_id: str
-    transcript_artifact_id: str
+    transcript_result_id: str
     page_id: str
     page_index: int
     topic_anchor_alternatives: tuple[str, ...]
@@ -209,7 +209,7 @@ class ReferencePageLocator:
         locator_id = stable_id(
             "reference-page-locator",
             record.record_id,
-            transcript.artifact_id,
+            transcript.result_id,
             page.page_id,
             page.page_index,
             anchors,
@@ -218,7 +218,7 @@ class ReferencePageLocator:
         return cls(
             locator_id,
             record.record_id,
-            transcript.artifact_id,
+            transcript.result_id,
             page.page_id,
             page.page_index,
             anchors,
@@ -230,7 +230,7 @@ class ReferencePageLocator:
         for name, value in (
             ("locator_id", self.locator_id),
             ("reference_evidence_record_id", self.reference_evidence_record_id),
-            ("transcript_artifact_id", self.transcript_artifact_id),
+            ("transcript_result_id", self.transcript_result_id),
             ("page_id", self.page_id),
         ):
             if (
@@ -244,7 +244,7 @@ class ReferencePageLocator:
         expected = stable_id(
             "reference-page-locator",
             self.reference_evidence_record_id,
-            self.transcript_artifact_id,
+            self.transcript_result_id,
             self.page_id,
             self.page_index,
             anchors,
@@ -261,7 +261,7 @@ class ReferencePageLocatorResult:
     result_id: str
     locator_id: str
     reference_evidence_record_id: str
-    transcript_artifact_id: str
+    transcript_result_id: str
     page_id: str
     page_index: int
     topic_anchor_identities: tuple[str, ...]
@@ -279,7 +279,7 @@ class ReferencePageLocatorResult:
         for name, value in (
             ("locator_id", self.locator_id),
             ("reference_evidence_record_id", self.reference_evidence_record_id),
-            ("transcript_artifact_id", self.transcript_artifact_id),
+            ("transcript_result_id", self.transcript_result_id),
             ("page_id", self.page_id),
         ):
             if (
@@ -372,7 +372,7 @@ class ReferencePageLocatorResult:
             "reference-page-locator-result",
             self.locator_id,
             self.reference_evidence_record_id,
-            self.transcript_artifact_id,
+            self.transcript_result_id,
             self.page_id,
             self.page_index,
             self.topic_anchor_identities,
@@ -415,7 +415,7 @@ class ReferencePageLocatorChecker:
         )
         if (
             locator.reference_evidence_record_id != record.record_id
-            or locator.transcript_artifact_id != transcript.artifact_id
+            or locator.transcript_result_id != transcript.result_id
         ):
             raise ReferenceLocatorVerificationError(
                 "locator does not match supplied evidence"
@@ -453,7 +453,7 @@ class ReferencePageLocatorChecker:
             "reference-page-locator-result",
             locator.locator_id,
             locator.reference_evidence_record_id,
-            locator.transcript_artifact_id,
+            locator.transcript_result_id,
             locator.page_id,
             locator.page_index,
             all_identities,
@@ -471,7 +471,7 @@ class ReferencePageLocatorChecker:
             result_id,
             locator.locator_id,
             locator.reference_evidence_record_id,
-            locator.transcript_artifact_id,
+            locator.transcript_result_id,
             locator.page_id,
             locator.page_index,
             all_identities,

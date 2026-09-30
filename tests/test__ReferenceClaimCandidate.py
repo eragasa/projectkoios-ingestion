@@ -47,11 +47,11 @@ def test__reference_claim_candidate__binds_exact_payload_free_evidence() -> (
     )
     assert candidate.candidate_id == (
         "reference-claim-candidate:sha256:"
-        "fd86bb918a76960c2a3106a5268dde230647ba62e1dc1e6001c5fdff927c0bdd"
+        "9dd1e00170caa02b1ecf071294239bb4af3f4d0fae5ba14aed8d94aff1df5950"
     )
     assert result.result_id == (
         "reference-page-locator-result:sha256:"
-        "b2fac7eb7a48e3682ea9b16107ab9b44399c048f0df881c94a070ac6cffd0cec"
+        "89fa0b08ce9aad0afd53c62573571b6250916bcb283f3c0e3621d40a443e92b3"
     )
     assert candidate.reference_evidence_record_id == record.record_id
     assert candidate.locator_result_id == result.result_id

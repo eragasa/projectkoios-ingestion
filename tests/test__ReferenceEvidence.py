@@ -10,6 +10,7 @@ from projectkoios.ingestion import (
     DerivationAuditStatus,
     IngestionStatus,
 )
+from projectkoios.ingestion.clean_transcript import CleanTranscriptStatus
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.reference_evidence import (
     REFERENCE_EVIDENCE_CONTRACT_VERSION,
@@ -30,7 +31,6 @@ from projectkoios.ingestion.reference_evidence import (
     serialize_reference_evidence,
     verify_reference_evidence,
 )
-from projectkoios.ingestion.transcript_projection import CleanTranscriptStatus
 
 FIXTURES = Path(__file__).parent / "fixtures" / "reference_evidence"
 _SOURCE_BYTES = b"sanitized reference-evidence fixture source\n"
@@ -52,7 +52,7 @@ def _record() -> ReferenceEvidenceRecord:
     document_id = stable_id("document", "sanitized-fixture")
     layout_id = stable_id("layout", "sanitized-fixture")
     transcription_id = stable_id("transcription", "sanitized-fixture")
-    clean_id = stable_id("clean-transcript", "sanitized-fixture")
+    clean_id = stable_id("clean-transcript-result", "sanitized-fixture")
     return ReferenceEvidenceRecord.create(
         source=ReferenceEvidenceSource(
             blob_id=f"blob:sha256:{source_sha256}",
@@ -82,9 +82,7 @@ def _record() -> ReferenceEvidenceRecord:
                 _TRANSCRIPT_BYTES,
                 "application/vnd.projectkoios.ingestion.clean-transcript+json",
             ),
-            artifact_generation=1,
-            contract_version="1.0",
-            artifact_id=clean_id,
+            result_id=clean_id,
             status=CleanTranscriptStatus.AUTOMATED_UNREVIEWED,
             structured_transcription_result_id=transcription_id,
             layout_result_ids=(layout_id,),
@@ -121,9 +119,7 @@ def _record() -> ReferenceEvidenceRecord:
                 clean_id,
             ),
             audited_layer_counts=(
-                ReferenceEvidenceLayerCount(
-                    layer="clean_transcript_artifacts", count=1
-                ),
+                ReferenceEvidenceLayerCount(layer="clean_transcripts", count=1),
                 ReferenceEvidenceLayerCount(layer="extraction_result", count=1),
                 ReferenceEvidenceLayerCount(layer="layout_results", count=1),
                 ReferenceEvidenceLayerCount(
@@ -165,7 +161,7 @@ def test__reference_evidence__verification_binds_source_and_artifacts() -> None:
         source_byte_length=len(_SOURCE_BYTES),
         source_media_type="application/pdf",
         extraction_artifact=_EXTRACTION_BYTES,
-        clean_transcript_artifact=_TRANSCRIPT_BYTES,
+        clean_transcript_result_bytes=_TRANSCRIPT_BYTES,
         derivation_audit_artifact=_AUDIT_BYTES,
     )
 
@@ -181,14 +177,14 @@ def test__reference_evidence__verification_binds_source_and_artifacts() -> None:
         )
     with pytest.raises(
         ReferenceEvidenceVerificationError,
-        match="clean-transcript artifact",
+        match="serialized clean-transcript result",
     ):
         verify_reference_evidence(
             record,
             source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
             source_byte_length=len(_SOURCE_BYTES),
             source_media_type="application/pdf",
-            clean_transcript_artifact=b"changed",
+            clean_transcript_result_bytes=b"changed",
         )
 
 
@@ -215,7 +211,8 @@ def test__reference_evidence__changed_bound_evidence_changes_identity() -> None:
     ("mutation", "message"),
     (
         ("unknown_root_field", "unknown fields"),
-        ("unknown_generation", "unsupported transcript artifact generation"),
+        ("removed_generation_key", "unknown fields"),
+        ("removed_contract_key", "unknown fields"),
         (
             "unsupported_version",
             "unsupported reference-evidence contract version",
@@ -234,8 +231,11 @@ def test__reference_evidence__strict_parse_rejects_external_mutation(
     if mutation == "unknown_root_field":
         value["external"] = True
         payload = canonical_json(value).encode()
-    elif mutation == "unknown_generation":
-        value["transcript"]["artifact_generation"] = 99
+    elif mutation == "removed_generation_key":
+        value["transcript"]["artifact_generation"] = 1
+        payload = canonical_json(value).encode()
+    elif mutation == "removed_contract_key":
+        value["transcript"]["contract_version"] = "1.0"
         payload = canonical_json(value).encode()
     elif mutation == "unsupported_version":
         value["contract_version"] = "0.2.0"
@@ -249,18 +249,6 @@ def test__reference_evidence__strict_parse_rejects_external_mutation(
         payload = canonical_json(value).encode()
 
     with pytest.raises(ReferenceEvidenceParseError, match=message):
-        parse_reference_evidence(payload)
-
-
-def test__reference_evidence__awkward_fixture_fails_unknown_generation() -> (
-    None
-):
-    payload = (FIXTURES / "unsupported-generation.json").read_bytes()
-
-    with pytest.raises(
-        ReferenceEvidenceParseError,
-        match="unsupported transcript artifact generation",
-    ):
         parse_reference_evidence(payload)
 
 

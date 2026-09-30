@@ -7,6 +7,11 @@ import unicodedata
 from collections import Counter
 from typing import TYPE_CHECKING, Any
 
+from projectkoios.ingestion.clean_transcript import (
+    ClassificationDisposition,
+    CleanTranscriptExclusionReason,
+    PageNumberOutcome,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     ExtractedBlock,
@@ -20,11 +25,6 @@ from projectkoios.ingestion.provenance.audit import (
     DerivationAuditFindingCode,
     DerivationAuditInput,
     _Registry,
-)
-from projectkoios.ingestion.transcript_v2 import (
-    ClassificationDisposition,
-    CleanTranscriptV2ExclusionReason,
-    PageNumberOutcome,
 )
 from projectkoios.ingestion.transcription import TranscriptionSourceObjectKind
 
@@ -241,52 +241,28 @@ class _DomainAuditWalker:
                         identity,
                         f"{prefix}.{suffix}",
                     )
-        for index, clean_artifact in enumerate(
-            self.audit_input.clean_transcript_artifacts
+        for index, clean_transcript in enumerate(
+            self.audit_input.clean_transcripts
         ):
-            prefix = f"clean_transcript_artifacts[{index}]"
+            prefix = f"clean_transcripts[{index}]"
             if (
-                clean_artifact.transcription_result_id
+                clean_transcript.transcription_result_id
                 not in self.registry.transcriptions
             ):
                 self._add(
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
                     f"{prefix}.transcription_result_id",
                     "clean transcript references an unregistered transcription",
-                    clean_artifact.transcription_result_id,
+                    clean_transcript.transcription_result_id,
                 )
             for layout_index, layout_id in enumerate(
-                clean_artifact.layout_result_ids
+                clean_transcript.layout_result_ids
             ):
                 if layout_id not in self.registry.layouts:
                     self._add(
                         DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
                         f"{prefix}.layout_result_ids[{layout_index}]",
                         "clean transcript references an unregistered layout",
-                        layout_id,
-                    )
-        for index, v2_artifact in enumerate(
-            self.audit_input.clean_transcript_v2_artifacts
-        ):
-            prefix = f"clean_transcript_v2_artifacts[{index}]"
-            if (
-                v2_artifact.transcription_result_id
-                not in self.registry.transcriptions
-            ):
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                    f"{prefix}.transcription_result_id",
-                    "transcript v2 references an unregistered transcription",
-                    v2_artifact.transcription_result_id,
-                )
-            for layout_index, layout_id in enumerate(
-                v2_artifact.layout_result_ids
-            ):
-                if layout_id not in self.registry.layouts:
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                        f"{prefix}.layout_result_ids[{layout_index}]",
-                        "transcript v2 references an unregistered layout",
                         layout_id,
                     )
 
@@ -713,43 +689,21 @@ class _DomainAuditWalker:
             if block.kind == "text" and block.text is not None
         )
         for artifact_index, artifact in enumerate(
-            self.audit_input.clean_transcript_artifacts
+            self.audit_input.clean_transcripts
         ):
-            prefix = f"clean_transcript_artifacts[{artifact_index}]"
-            if artifact.document_id != self.document.document_id:
+            prefix = f"clean_transcripts[{artifact_index}]"
+            if (
+                artifact.document_id != self.document.document_id
+                or artifact.source_id != self.source.source_id
+                or artifact.source_blob_id != self.source.blob_id
+                or artifact.source_content_hash != self.source.content_hash
+            ):
                 self._add(
                     DerivationAuditFindingCode.SOURCE_DOCUMENT_MISMATCH,
-                    f"{prefix}.document_id",
-                    "clean transcript document differs from the root document",
-                    artifact.artifact_id,
+                    prefix,
+                    "clean transcript differs from the root source document",
+                    artifact.result_id,
                 )
-
-            record_id_counts = Counter(
-                record.record_id for record in artifact.blocks
-            )
-            exclusion_id_counts = Counter(
-                exclusion.exclusion_id for exclusion in artifact.exclusions
-            )
-            for record_id, count in sorted(record_id_counts.items()):
-                if count > 1:
-                    self._add(
-                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                        f"{prefix}.blocks",
-                        "clean transcript block record ID is duplicated",
-                        record_id,
-                    )
-            for exclusion_id, count in sorted(exclusion_id_counts.items()):
-                if count > 1:
-                    self._add(
-                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                        f"{prefix}.exclusions",
-                        "clean transcript exclusion ID is duplicated",
-                        exclusion_id,
-                    )
-
-            block_records = {
-                record.record_id: record for record in artifact.blocks
-            }
             included_by_block = {
                 record.block_id: record for record in artifact.blocks
             }
@@ -763,13 +717,22 @@ class _DomainAuditWalker:
                     *(item.block_id for item in artifact.exclusions),
                 )
             )
-            included_counts = Counter(
-                record.block_id for record in artifact.blocks
-            )
-            excluded_counts = Counter(
-                item.block_id for item in artifact.exclusions
-            )
-
+            for block_id in eligible_root_ids:
+                count = coverage_counts[block_id]
+                if count == 0:
+                    self._add(
+                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
+                        f"{prefix}.blocks_and_exclusions",
+                        "eligible root block is absent from clean transcript",
+                        block_id,
+                    )
+                elif count > 1:
+                    self._add(
+                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
+                        f"{prefix}.blocks_and_exclusions",
+                        "root block occurs more than once in clean transcript",
+                        block_id,
+                    )
             for record_index, record in enumerate(artifact.blocks):
                 path = f"{prefix}.blocks[{record_index}]"
                 root = self.blocks.get(record.block_id)
@@ -810,316 +773,6 @@ class _DomainAuditWalker:
                         path,
                         "clean transcript exclusion differs from its "
                         "root block",
-                        exclusion.exclusion_id,
-                    )
-
-            for block_id in eligible_root_ids:
-                count = coverage_counts[block_id]
-                if count == 0:
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                        f"{prefix}.blocks_and_exclusions",
-                        "eligible root text block is absent from the clean "
-                        "transcript partition",
-                        block_id,
-                    )
-                elif count > 1:
-                    self._add(
-                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                        f"{prefix}.blocks_and_exclusions",
-                        "eligible root text block occurs more than once in "
-                        "the clean transcript partition",
-                        block_id,
-                        (
-                            (
-                                "excluded_count",
-                                str(excluded_counts[block_id]),
-                            ),
-                            (
-                                "included_count",
-                                str(included_counts[block_id]),
-                            ),
-                        ),
-                    )
-
-            actual_page_indexes = tuple(
-                page.page_index for page in artifact.pages
-            )
-            if actual_page_indexes != root_page_indexes:
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{prefix}.pages",
-                    "clean transcript pages do not exactly cover root pages "
-                    "in source order",
-                    artifact.artifact_id,
-                )
-
-            clean_layouts = tuple(
-                self.registry.layouts[layout_id]
-                for layout_id in artifact.layout_result_ids
-                if layout_id in self.registry.layouts
-            )
-            layout_page_indexes = tuple(
-                layout.page_index for layout in clean_layouts
-            )
-            if (
-                len(clean_layouts) == len(artifact.layout_result_ids)
-                and layout_page_indexes != root_page_indexes
-            ):
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{prefix}.layout_result_ids",
-                    "clean transcript layouts do not exactly cover root "
-                    "pages in source order",
-                    artifact.artifact_id,
-                )
-            layout_by_page = {
-                layout.page_index: layout for layout in clean_layouts
-            }
-
-            actual_order = tuple(
-                record.order_index for record in artifact.blocks
-            )
-            if actual_order != tuple(range(len(artifact.blocks))):
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{prefix}.blocks",
-                    "clean transcript block order indices are not contiguous "
-                    "in retained order",
-                    artifact.artifact_id,
-                )
-
-            listed_record_counts: Counter[str] = Counter()
-            expected_global_record_ids: list[str] = []
-            expected_exclusion_ids: list[str] = []
-            for page_position, root_page in enumerate(self.document.pages):
-                page = (
-                    artifact.pages[page_position]
-                    if page_position < len(artifact.pages)
-                    else None
-                )
-                if page is not None:
-                    page_path = f"{prefix}.pages[{page_position}]"
-                    if (
-                        page.page_index != root_page.page_index
-                        or page.printed_page_label
-                        != root_page.printed_page_label
-                    ):
-                        self._add(
-                            DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                            page_path,
-                            "clean transcript page differs from its root page",
-                            page.page_id,
-                        )
-                    for record_id in page.block_record_ids:
-                        listed_record_counts[record_id] += 1
-                        page_record = block_records.get(record_id)
-                        if page_record is None:
-                            self._orphan(
-                                f"{page_path}.block_record_ids", record_id
-                            )
-                        elif page_record.page_index != page.page_index:
-                            self._add(
-                                DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                                f"{page_path}.block_record_ids",
-                                "clean transcript page references another "
-                                "page's block",
-                                record_id,
-                            )
-
-                layout = layout_by_page.get(root_page.page_index)
-                block_by_id = {
-                    block.block_id: block for block in root_page.blocks
-                }
-                text_ids = tuple(
-                    block.block_id
-                    for block in root_page.blocks
-                    if block.kind == "text" and block.text is not None
-                )
-                ordered_ids = (
-                    tuple(
-                        block_id
-                        for block_id in layout.proposed_order
-                        if block_id in block_by_id
-                        and block_by_id[block_id].kind == "text"
-                        and block_by_id[block_id].text is not None
-                    )
-                    if layout is not None
-                    else text_ids
-                )
-                fallback_ids = tuple(
-                    block_id
-                    for block_id in text_ids
-                    if block_id not in ordered_ids
-                )
-                root_order = (*ordered_ids, *fallback_ids)
-                expected_page_record_ids = tuple(
-                    included_by_block[block_id].record_id
-                    for block_id in root_order
-                    if block_id in included_by_block
-                )
-                expected_global_record_ids.extend(expected_page_record_ids)
-                expected_exclusion_ids.extend(
-                    excluded_by_block[block_id].exclusion_id
-                    for block_id in root_order
-                    if block_id in excluded_by_block
-                )
-                if (
-                    page is not None
-                    and page.block_record_ids != expected_page_record_ids
-                ):
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                        f"{prefix}.pages[{page_position}].block_record_ids",
-                        "clean transcript page block membership or order "
-                        "differs from its layout",
-                        page.page_id,
-                    )
-
-            for record in artifact.blocks:
-                listed_count = listed_record_counts[record.record_id]
-                if listed_count == 0:
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                        f"{prefix}.pages.block_record_ids",
-                        "clean transcript block is absent from page membership",
-                        record.record_id,
-                    )
-                elif listed_count > 1:
-                    self._add(
-                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                        f"{prefix}.pages.block_record_ids",
-                        "clean transcript block occurs in page membership "
-                        "more than once",
-                        record.record_id,
-                    )
-
-            if tuple(record.record_id for record in artifact.blocks) != tuple(
-                expected_global_record_ids
-            ):
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{prefix}.blocks",
-                    "clean transcript blocks are not retained in exact "
-                    "page and layout order",
-                    artifact.artifact_id,
-                )
-            if tuple(
-                item.exclusion_id for item in artifact.exclusions
-            ) != tuple(expected_exclusion_ids):
-                self._add(
-                    DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                    f"{prefix}.exclusions",
-                    "clean transcript exclusions are not retained in exact "
-                    "page and layout order",
-                    artifact.artifact_id,
-                )
-
-            expected_text = (
-                "\n\n".join(page.text for page in artifact.pages) + "\n"
-            )
-            if artifact.text != expected_text:
-                self._add(
-                    DerivationAuditFindingCode.CONTENT_IDENTITY_MISMATCH,
-                    f"{prefix}.text",
-                    "clean transcript text differs from its page projections",
-                    artifact.artifact_id,
-                )
-
-    def _audit_clean_transcript_v2_references(self) -> None:
-        root_page_indexes = tuple(
-            page.page_index for page in self.document.pages
-        )
-        eligible_root_ids = tuple(
-            block.block_id
-            for page in self.document.pages
-            for block in page.blocks
-            if block.kind == "text" and block.text is not None
-        )
-        for artifact_index, artifact in enumerate(
-            self.audit_input.clean_transcript_v2_artifacts
-        ):
-            prefix = f"clean_transcript_v2_artifacts[{artifact_index}]"
-            if (
-                artifact.document_id != self.document.document_id
-                or artifact.source_id != self.source.source_id
-                or artifact.source_blob_id != self.source.blob_id
-                or artifact.source_content_hash != self.source.content_hash
-            ):
-                self._add(
-                    DerivationAuditFindingCode.SOURCE_DOCUMENT_MISMATCH,
-                    prefix,
-                    "transcript v2 differs from the root source document",
-                    artifact.artifact_id,
-                )
-            included_by_block = {
-                record.block_id: record for record in artifact.blocks
-            }
-            excluded_by_block = {
-                exclusion.block_id: exclusion
-                for exclusion in artifact.exclusions
-            }
-            coverage_counts = Counter(
-                (
-                    *(record.block_id for record in artifact.blocks),
-                    *(item.block_id for item in artifact.exclusions),
-                )
-            )
-            for block_id in eligible_root_ids:
-                count = coverage_counts[block_id]
-                if count == 0:
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISSING,
-                        f"{prefix}.blocks_and_exclusions",
-                        "eligible root block is absent from transcript v2",
-                        block_id,
-                    )
-                elif count > 1:
-                    self._add(
-                        DerivationAuditFindingCode.DUPLICATE_OBJECT_ID,
-                        f"{prefix}.blocks_and_exclusions",
-                        "root block occurs more than once in transcript v2",
-                        block_id,
-                    )
-            for record_index, record in enumerate(artifact.blocks):
-                path = f"{prefix}.blocks[{record_index}]"
-                root = self.blocks.get(record.block_id)
-                root_page = self.block_pages.get(record.block_id)
-                if root is None or root_page is None:
-                    self._orphan(f"{path}.block_id", record.block_id)
-                elif (
-                    root.kind != "text"
-                    or root.text is None
-                    or root.text != record.raw_text
-                    or root.source_spans != record.source_spans
-                    or root_page.page_index != record.page_index
-                    or root_page.printed_page_label != record.printed_page_label
-                ):
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                        path,
-                        "transcript-v2 block differs from its root block",
-                        record.record_id,
-                    )
-            for exclusion_index, exclusion in enumerate(artifact.exclusions):
-                path = f"{prefix}.exclusions[{exclusion_index}]"
-                root = self.blocks.get(exclusion.block_id)
-                root_page = self.block_pages.get(exclusion.block_id)
-                if root is None or root_page is None:
-                    self._orphan(f"{path}.block_id", exclusion.block_id)
-                elif (
-                    root.kind != "text"
-                    or root.text is None
-                    or root.text != exclusion.raw_text
-                    or root.source_spans != exclusion.source_spans
-                    or root_page.page_index != exclusion.page_index
-                    or root_page.printed_page_label
-                    != exclusion.printed_page_label
-                ):
-                    self._add(
-                        DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
-                        path,
-                        "transcript-v2 exclusion differs from its root block",
                         exclusion.exclusion_id,
                     )
             page_classification_by_id = {
@@ -1212,7 +865,7 @@ class _DomainAuditWalker:
                     and (
                         page_exclusion is None
                         or page_exclusion.reason
-                        is not CleanTranscriptV2ExclusionReason.PAGE_NUMBER
+                        is not CleanTranscriptExclusionReason.PAGE_NUMBER
                     )
                 ):
                     self._add(
@@ -1226,7 +879,7 @@ class _DomainAuditWalker:
                     is not PageNumberOutcome.PAGE_NUMBER
                     and page_exclusion is not None
                     and page_exclusion.reason
-                    is CleanTranscriptV2ExclusionReason.PAGE_NUMBER
+                    is CleanTranscriptExclusionReason.PAGE_NUMBER
                 ):
                     self._add(
                         DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
@@ -1271,7 +924,7 @@ class _DomainAuditWalker:
                         publisher_exclusion is None
                         or publisher_exclusion.reason
                         is not (
-                            CleanTranscriptV2ExclusionReason.PUBLISHER_FRONT_MATTER
+                            CleanTranscriptExclusionReason.PUBLISHER_FRONT_MATTER
                         )
                     )
                 ):
@@ -1321,7 +974,7 @@ class _DomainAuditWalker:
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                     f"{prefix}.private_use_glyph_findings",
                     "private-use findings do not exactly cover source glyphs",
-                    artifact.artifact_id,
+                    artifact.result_id,
                 )
             actual_page_indexes = tuple(
                 page.page_index for page in artifact.pages
@@ -1330,8 +983,8 @@ class _DomainAuditWalker:
                 self._add(
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                     f"{prefix}.pages",
-                    "transcript-v2 pages do not exactly cover root pages",
-                    artifact.artifact_id,
+                    "clean transcript pages do not exactly cover root pages",
+                    artifact.result_id,
                 )
             layouts = tuple(
                 self.registry.layouts[layout_id]
@@ -1391,8 +1044,8 @@ class _DomainAuditWalker:
                     self._add(
                         DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                         f"{prefix}.pages[{page_index}]",
-                        "transcript-v2 page membership differs from layout",
-                        artifact.artifact_id,
+                        "clean transcript page membership differs from layout",
+                        artifact.result_id,
                     )
             if tuple(item.record_id for item in artifact.blocks) != tuple(
                 expected_record_ids
@@ -1400,8 +1053,8 @@ class _DomainAuditWalker:
                 self._add(
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                     f"{prefix}.blocks",
-                    "transcript-v2 blocks are not in exact layout order",
-                    artifact.artifact_id,
+                    "clean transcript blocks are not in exact layout order",
+                    artifact.result_id,
                 )
             if tuple(
                 item.exclusion_id for item in artifact.exclusions
@@ -1409,8 +1062,8 @@ class _DomainAuditWalker:
                 self._add(
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                     f"{prefix}.exclusions",
-                    "transcript-v2 exclusions are not in exact layout order",
-                    artifact.artifact_id,
+                    "clean transcript exclusions are not in exact layout order",
+                    artifact.result_id,
                 )
             if tuple(item.order_index for item in artifact.blocks) != tuple(
                 range(len(artifact.blocks))
@@ -1418,8 +1071,8 @@ class _DomainAuditWalker:
                 self._add(
                     DerivationAuditFindingCode.UPSTREAM_ARTIFACT_MISMATCH,
                     f"{prefix}.blocks",
-                    "transcript-v2 retained order is not contiguous",
-                    artifact.artifact_id,
+                    "clean transcript retained order is not contiguous",
+                    artifact.result_id,
                 )
             expected_text = (
                 "\n\n".join(page.text for page in artifact.pages) + "\n"
@@ -1428,8 +1081,8 @@ class _DomainAuditWalker:
                 self._add(
                     DerivationAuditFindingCode.CONTENT_IDENTITY_MISMATCH,
                     f"{prefix}.text",
-                    "transcript-v2 text differs from page projections",
-                    artifact.artifact_id,
+                    "clean transcript text differs from page projections",
+                    artifact.result_id,
                 )
             for record in artifact.blocks:
                 if record.page_number_classification_id is not None and (

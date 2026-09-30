@@ -110,7 +110,7 @@ def test__actionizer_binds_exact_request_result_and_actionizer_identity() -> (
         "deterministic-derivation-audit-actionizer"
     )
     assert result.actionizer_version == "1"
-    assert result.report.processor_version == "2"
+    assert result.report.processor_version == "3"
     assert result.valid
     assert result.status is result.report.status
     result.require_valid()

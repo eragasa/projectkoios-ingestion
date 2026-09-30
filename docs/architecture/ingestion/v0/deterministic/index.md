@@ -46,10 +46,8 @@ flowchart TD
     TableStructure --> Compose
     Figures --> Compose
 
-    Compose --> CleanV1[DeterministicCleanTranscriptProjector]
-    Compose --> CleanV2[DeterministicCleanTranscriptV2Projector]
-    Layout --> CleanV1
-    Layout --> CleanV2
+    Compose --> Clean[DeterministicCleanTranscriptProjector]
+    Layout --> Clean
 ```
 
 The pilot facade documented by [ingestion v0](../index.md) does not implicitly
@@ -65,5 +63,5 @@ page text; deterministic derivations remain explicit caller-selected stages.
 - **`DeterministicTableCandidateDetector`** and **`DeterministicTableStructureReconstructor`** — detect and reconstruct table evidence.
 - **`DeterministicFigureCandidateDetector`** — retains source-backed figure candidates and associations.
 - **`DeterministicStructuredTranscriptionComposer`** — composes typed evidence into an ordered transcript proposal.
-- **`DeterministicCleanTranscriptProjector`** and **`DeterministicCleanTranscriptV2Projector`** — produce conservative clean projections.
+- **`DeterministicCleanTranscriptProjector`** — produces the canonical evidence-conservative clean projection.
 - **`DerivationAuditValidator`** — deterministically validates retained provenance consistency.

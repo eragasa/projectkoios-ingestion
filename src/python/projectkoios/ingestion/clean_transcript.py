@@ -8,23 +8,21 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, fields
 from enum import StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
 from projectkoios.ingestion.structure import StructureKind
-from projectkoios.ingestion.transcript_projection import (
-    CleanTranscriptLimitError,
-)
 from projectkoios.ingestion.transcription import (
     StructuredTranscriptionResult,
     TranscriptionItemKind,
 )
 
-CLEAN_TRANSCRIPT_V2_CONTRACT_ID = "projectkoios.ingestion.clean-transcript"
-CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION = "0.1.0"
-CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION = 2
-CLEAN_TRANSCRIPT_V2_CONFIGURATION_VERSION = "2"
-CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION = "2"
+CLEAN_TRANSCRIPT_PROCESSOR_VERSION = "2"
 _MAX_PAGES = 512
 _MAX_BLOCKS = 32_768
 _MAX_EXCLUSIONS = 16_384
@@ -44,11 +42,11 @@ _WHITESPACE = re.compile(r"\s+")
 _WORD_CHARACTER = re.compile(r"[A-Za-z]")
 
 
-class CleanTranscriptV2LimitError(CleanTranscriptLimitError):
-    """Raised before a transcript-v2 projection exceeds a hard bound."""
+class CleanTranscriptLimitError(ValueError):
+    """Raised before a clean transcript projection exceeds a hard bound."""
 
 
-class CleanTranscriptV2Status(StrEnum):
+class CleanTranscriptStatus(StrEnum):
     AUTOMATED_UNREVIEWED = "automated_unreviewed"
 
 
@@ -87,7 +85,7 @@ class ClassificationDisposition(StrEnum):
     EXCLUDED = "excluded"
 
 
-class CleanTranscriptV2ExclusionReason(StrEnum):
+class CleanTranscriptExclusionReason(StrEnum):
     REPEATED_MARGIN = "repeated_margin"
     PAGE_NUMBER = "page_number"
     PUBLISHER_FRONT_MATTER = "publisher_front_matter"
@@ -95,7 +93,7 @@ class CleanTranscriptV2ExclusionReason(StrEnum):
 
 
 @dataclass(frozen=True)
-class CleanTranscriptV2Configuration:
+class CleanTranscriptConfiguration:
     top_margin_fraction: float = 0.12
     bottom_margin_fraction: float = 0.12
     minimum_repeated_margin_pages: int = 3
@@ -105,14 +103,8 @@ class CleanTranscriptV2Configuration:
     accepted_joined_forms: tuple[str, ...] = ()
     accepted_hyphenated_forms: tuple[str, ...] = ()
     excluded_publisher_front_matter: tuple[PublisherFrontMatterKind, ...] = ()
-    configuration_version: str = CLEAN_TRANSCRIPT_V2_CONFIGURATION_VERSION
 
     def __post_init__(self) -> None:
-        if (
-            self.configuration_version
-            != CLEAN_TRANSCRIPT_V2_CONFIGURATION_VERSION
-        ):
-            raise ValueError("unsupported transcript-v2 configuration version")
         for name in (
             "top_margin_fraction",
             "bottom_margin_fraction",
@@ -138,10 +130,10 @@ class CleanTranscriptV2Configuration:
                 or not minimum <= value <= _MAX_PAGES
             ):
                 raise ValueError(f"{name} must be in [{minimum}, {_MAX_PAGES}]")
-        joined = CleanTranscriptV2Contract._normalized_forms(
+        joined = CleanTranscriptContract._normalized_forms(
             "accepted_joined_forms", self.accepted_joined_forms, hyphen=False
         )
-        hyphenated = CleanTranscriptV2Contract._normalized_forms(
+        hyphenated = CleanTranscriptContract._normalized_forms(
             "accepted_hyphenated_forms",
             self.accepted_hyphenated_forms,
             hyphen=True,
@@ -168,12 +160,78 @@ class CleanTranscriptV2Configuration:
     @property
     def configuration_digest(self) -> str:
         return stable_id(
-            "clean-transcript-v2-configuration", self.identity_parts()
+            "clean-transcript-configuration", self.identity_parts()
         )
 
     def identity_parts(self) -> tuple[object, ...]:
         return tuple(
             (field.name, getattr(self, field.name)) for field in fields(self)
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class CleanTranscriptRequest(DataObjectActionRequest):
+    """Complete immutable intent for one clean-transcript projection."""
+
+    request_id: str
+    transcription_result: StructuredTranscriptionResult
+    layouts: tuple[PageLayoutResult, ...]
+    configuration: CleanTranscriptConfiguration
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptConfiguration,
+    ) -> CleanTranscriptRequest:
+        return cls(
+            request_id=cls._request_id(
+                transcription_result=transcription_result,
+                layouts=layouts,
+                configuration=configuration,
+            ),
+            transcription_result=transcription_result,
+            layouts=layouts,
+            configuration=configuration,
+        )
+
+    def __post_init__(self) -> None:
+        if not isinstance(
+            self.transcription_result, StructuredTranscriptionResult
+        ):
+            raise TypeError(
+                "transcription_result must be StructuredTranscriptionResult"
+            )
+        if not isinstance(self.layouts, tuple) or any(
+            not isinstance(layout, PageLayoutResult) for layout in self.layouts
+        ):
+            raise TypeError("layouts must contain PageLayoutResult values")
+        if not isinstance(self.configuration, CleanTranscriptConfiguration):
+            raise TypeError(
+                "configuration must be CleanTranscriptConfiguration"
+            )
+        expected = self._request_id(
+            transcription_result=self.transcription_result,
+            layouts=self.layouts,
+            configuration=self.configuration,
+        )
+        if self.request_id != expected:
+            raise ValueError("clean-transcript request ID is inconsistent")
+
+    @staticmethod
+    def _request_id(
+        *,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+        configuration: CleanTranscriptConfiguration,
+    ) -> str:
+        return stable_id(
+            "clean-transcript-request",
+            transcription_result.result_id,
+            tuple(layout.result_id for layout in layouts),
+            configuration.configuration_digest,
         )
 
 
@@ -194,7 +252,6 @@ class DehyphenationDecision:
     rule_id: str
     evidence: Metadata
     source_spans: tuple[SourceSpan, ...]
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -217,7 +274,7 @@ class DehyphenationDecision:
         normalized_evidence = tuple(sorted(evidence))
         rule_id = "document-lexical-evidence-v1"
         decision_id = stable_id(
-            "clean-transcript-v2-dehyphenation",
+            "clean-transcript-dehyphenation",
             block_id,
             page_index,
             printed_page_label,
@@ -231,7 +288,7 @@ class DehyphenationDecision:
             outcome,
             rule_id,
             normalized_evidence,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
         )
         return cls(
             decision_id=decision_id,
@@ -252,8 +309,6 @@ class DehyphenationDecision:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported dehyphenation decision version")
         if not isinstance(self.outcome, DehyphenationOutcome):
             raise TypeError("unsupported dehyphenation outcome")
         if (
@@ -275,7 +330,7 @@ class DehyphenationDecision:
                 "hyphenated dehyphenation candidate is inconsistent"
             )
         expected = stable_id(
-            "clean-transcript-v2-dehyphenation",
+            "clean-transcript-dehyphenation",
             self.block_id,
             self.page_index,
             self.printed_page_label,
@@ -289,7 +344,7 @@ class DehyphenationDecision:
             self.outcome,
             self.rule_id,
             self.evidence,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
         )
         if self.decision_id != expected:
             raise ValueError("dehyphenation decision ID is inconsistent")
@@ -309,7 +364,6 @@ class PageNumberClassification:
     rule_version: str
     evidence: Metadata
     source_spans: tuple[SourceSpan, ...]
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -329,7 +383,7 @@ class PageNumberClassification:
         normalized_evidence = tuple(sorted(evidence))
         rule_version = "page-number-evidence-v1"
         classification_id = stable_id(
-            "clean-transcript-v2-page-number",
+            "clean-transcript-page-number",
             block_id,
             page_index,
             printed_page_label,
@@ -340,7 +394,7 @@ class PageNumberClassification:
             method,
             rule_version,
             normalized_evidence,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
         )
         return cls(
             classification_id=classification_id,
@@ -358,8 +412,6 @@ class PageNumberClassification:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported page-number classification version")
         if not isinstance(self.outcome, PageNumberOutcome) or not isinstance(
             self.method, PageNumberMethod
         ):
@@ -376,7 +428,7 @@ class PageNumberClassification:
         if not _PAGE_NUMBER.fullmatch(self.normalized_value):
             raise ValueError("page-number classification value is not numeric")
         expected = stable_id(
-            "clean-transcript-v2-page-number",
+            "clean-transcript-page-number",
             self.block_id,
             self.page_index,
             self.printed_page_label,
@@ -387,7 +439,7 @@ class PageNumberClassification:
             self.method,
             self.rule_version,
             self.evidence,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
         )
         if self.classification_id != expected:
             raise ValueError("page-number classification ID is inconsistent")
@@ -403,7 +455,6 @@ class PublisherFrontMatterClassification:
     method: str
     evidence: Metadata
     source_spans: tuple[SourceSpan, ...]
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -419,14 +470,14 @@ class PublisherFrontMatterClassification:
         method = "explicit-publisher-lexicon-v1"
         normalized_evidence = tuple(sorted(evidence))
         classification_id = stable_id(
-            "clean-transcript-v2-publisher-front-matter",
+            "clean-transcript-publisher-front-matter",
             block_id,
             page_index,
             kind,
             disposition,
             method,
             normalized_evidence,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
         )
         return cls(
             classification_id=classification_id,
@@ -440,8 +491,6 @@ class PublisherFrontMatterClassification:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported publisher classification version")
         if not isinstance(
             self.kind, PublisherFrontMatterKind
         ) or not isinstance(self.disposition, ClassificationDisposition):
@@ -449,14 +498,14 @@ class PublisherFrontMatterClassification:
         if not self.block_id or self.page_index < 0 or not self.method:
             raise ValueError("publisher classification evidence is incomplete")
         expected = stable_id(
-            "clean-transcript-v2-publisher-front-matter",
+            "clean-transcript-publisher-front-matter",
             self.block_id,
             self.page_index,
             self.kind,
             self.disposition,
             self.method,
             self.evidence,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
         )
         if self.classification_id != expected:
             raise ValueError("publisher classification ID is inconsistent")
@@ -472,7 +521,6 @@ class PrivateUseGlyphFinding:
     code_point: str
     raw_character: str
     source_spans: tuple[SourceSpan, ...]
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -487,14 +535,14 @@ class PrivateUseGlyphFinding:
     ) -> PrivateUseGlyphFinding:
         code_point = f"U+{ord(raw_character):04X}"
         finding_id = stable_id(
-            "clean-transcript-v2-private-use-glyph",
+            "clean-transcript-private-use-glyph",
             block_id,
             page_index,
             printed_page_label,
             character_offset,
             code_point,
             raw_character,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
         )
         return cls(
             finding_id=finding_id,
@@ -508,8 +556,6 @@ class PrivateUseGlyphFinding:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported private-use finding version")
         if (
             not self.block_id
             or self.page_index < 0
@@ -520,21 +566,21 @@ class PrivateUseGlyphFinding:
         ):
             raise ValueError("private-use glyph evidence is inconsistent")
         expected = stable_id(
-            "clean-transcript-v2-private-use-glyph",
+            "clean-transcript-private-use-glyph",
             self.block_id,
             self.page_index,
             self.printed_page_label,
             self.character_offset,
             self.code_point,
             self.raw_character,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
         )
         if self.finding_id != expected:
             raise ValueError("private-use glyph finding ID is inconsistent")
 
 
 @dataclass(frozen=True)
-class CleanTranscriptV2Block:
+class CleanTranscriptBlock:
     record_id: str
     block_id: str
     page_index: int
@@ -548,7 +594,6 @@ class CleanTranscriptV2Block:
     page_number_classification_id: str | None
     publisher_classification_id: str | None
     private_use_finding_ids: tuple[str, ...]
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -566,7 +611,7 @@ class CleanTranscriptV2Block:
         page_number_classification_id: str | None,
         publisher_classification_id: str | None,
         private_use_finding_ids: tuple[str, ...],
-    ) -> CleanTranscriptV2Block:
+    ) -> CleanTranscriptBlock:
         normalized = tuple(sorted(transformations))
         parts = (
             block_id,
@@ -575,7 +620,7 @@ class CleanTranscriptV2Block:
             order_index,
             raw_text,
             clean_text,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
             normalized,
             dehyphenation_decision_ids,
             page_number_classification_id,
@@ -583,7 +628,7 @@ class CleanTranscriptV2Block:
             private_use_finding_ids,
         )
         return cls(
-            record_id=stable_id("clean-transcript-v2-block", *parts),
+            record_id=stable_id("clean-transcript-block", *parts),
             block_id=block_id,
             page_index=page_index,
             printed_page_label=printed_page_label,
@@ -599,8 +644,6 @@ class CleanTranscriptV2Block:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported transcript-v2 block version")
         if (
             not self.block_id
             or not self.raw_text
@@ -608,18 +651,18 @@ class CleanTranscriptV2Block:
             or self.page_index < 0
             or self.order_index < 0
         ):
-            raise ValueError("transcript-v2 block evidence is incomplete")
+            raise ValueError("clean transcript block evidence is incomplete")
         if len(self.raw_text) > _MAX_BLOCK_CHARACTERS:
-            raise CleanTranscriptV2LimitError("raw block text exceeds limit")
+            raise CleanTranscriptLimitError("raw block text exceeds limit")
         expected = stable_id(
-            "clean-transcript-v2-block",
+            "clean-transcript-block",
             self.block_id,
             self.page_index,
             self.printed_page_label,
             self.order_index,
             self.raw_text,
             self.clean_text,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
             self.transformations,
             self.dehyphenation_decision_ids,
             self.page_number_classification_id,
@@ -627,20 +670,19 @@ class CleanTranscriptV2Block:
             self.private_use_finding_ids,
         )
         if self.record_id != expected:
-            raise ValueError("transcript-v2 block ID is inconsistent")
+            raise ValueError("clean transcript block ID is inconsistent")
 
 
 @dataclass(frozen=True)
-class CleanTranscriptV2Exclusion:
+class CleanTranscriptExclusion:
     exclusion_id: str
     block_id: str
     page_index: int
     printed_page_label: str | None
-    reason: CleanTranscriptV2ExclusionReason
+    reason: CleanTranscriptExclusionReason
     raw_text: str
     source_spans: tuple[SourceSpan, ...]
     decision_id: str | None = None
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -649,22 +691,22 @@ class CleanTranscriptV2Exclusion:
         block_id: str,
         page_index: int,
         printed_page_label: str | None,
-        reason: CleanTranscriptV2ExclusionReason,
+        reason: CleanTranscriptExclusionReason,
         raw_text: str,
         source_spans: tuple[SourceSpan, ...],
         decision_id: str | None = None,
-    ) -> CleanTranscriptV2Exclusion:
+    ) -> CleanTranscriptExclusion:
         parts = (
             block_id,
             page_index,
             printed_page_label,
             reason,
             raw_text,
-            CleanTranscriptV2Contract._span_parts(source_spans),
+            CleanTranscriptContract._span_parts(source_spans),
             decision_id,
         )
         return cls(
-            exclusion_id=stable_id("clean-transcript-v2-exclusion", *parts),
+            exclusion_id=stable_id("clean-transcript-exclusion", *parts),
             block_id=block_id,
             page_index=page_index,
             printed_page_label=printed_page_label,
@@ -675,47 +717,46 @@ class CleanTranscriptV2Exclusion:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported transcript-v2 exclusion version")
         if (
             not self.block_id
             or not self.raw_text
             or self.page_index < 0
-            or not isinstance(self.reason, CleanTranscriptV2ExclusionReason)
+            or not isinstance(self.reason, CleanTranscriptExclusionReason)
         ):
-            raise ValueError("transcript-v2 exclusion evidence is incomplete")
+            raise ValueError(
+                "clean transcript exclusion evidence is incomplete"
+            )
         if (
             self.reason
             in {
-                CleanTranscriptV2ExclusionReason.PAGE_NUMBER,
-                CleanTranscriptV2ExclusionReason.PUBLISHER_FRONT_MATTER,
+                CleanTranscriptExclusionReason.PAGE_NUMBER,
+                CleanTranscriptExclusionReason.PUBLISHER_FRONT_MATTER,
             }
             and not self.decision_id
         ):
             raise ValueError("typed exclusion requires its decision identity")
         expected = stable_id(
-            "clean-transcript-v2-exclusion",
+            "clean-transcript-exclusion",
             self.block_id,
             self.page_index,
             self.printed_page_label,
             self.reason,
             self.raw_text,
-            CleanTranscriptV2Contract._span_parts(self.source_spans),
+            CleanTranscriptContract._span_parts(self.source_spans),
             self.decision_id,
         )
         if self.exclusion_id != expected:
-            raise ValueError("transcript-v2 exclusion ID is inconsistent")
+            raise ValueError("clean transcript exclusion ID is inconsistent")
 
 
 @dataclass(frozen=True)
-class CleanTranscriptV2Page:
+class CleanTranscriptPage:
     page_id: str
     page_index: int
     printed_page_label: str | None
     block_record_ids: tuple[str, ...]
     text: str
     text_sha256: str
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -725,10 +766,10 @@ class CleanTranscriptV2Page:
         printed_page_label: str | None,
         block_record_ids: tuple[str, ...],
         text: str,
-    ) -> CleanTranscriptV2Page:
+    ) -> CleanTranscriptPage:
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         page_id = stable_id(
-            "clean-transcript-v2-page",
+            "clean-transcript-page",
             page_index,
             printed_page_label,
             block_record_ids,
@@ -744,36 +785,32 @@ class CleanTranscriptV2Page:
         )
 
     def __post_init__(self) -> None:
-        if self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION:
-            raise ValueError("unsupported transcript-v2 page version")
         digest = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
         if self.page_index < 0 or self.text_sha256 != digest:
-            raise ValueError("transcript-v2 page evidence is inconsistent")
+            raise ValueError("clean transcript page evidence is inconsistent")
         expected = stable_id(
-            "clean-transcript-v2-page",
+            "clean-transcript-page",
             self.page_index,
             self.printed_page_label,
             self.block_record_ids,
             self.text_sha256,
         )
         if self.page_id != expected:
-            raise ValueError("transcript-v2 page ID is inconsistent")
+            raise ValueError("clean transcript page ID is inconsistent")
 
 
 @dataclass(frozen=True)
-class CleanTranscriptV2Artifact:
-    artifact_id: str
-    contract_id: str
-    artifact_generation: int
+class CleanTranscript(DataObjectActionResult):
+    result_id: str
     transcription_result_id: str
     document_id: str
     source_id: str
     source_blob_id: str
     source_content_hash: str
     layout_result_ids: tuple[str, ...]
-    pages: tuple[CleanTranscriptV2Page, ...]
-    blocks: tuple[CleanTranscriptV2Block, ...]
-    exclusions: tuple[CleanTranscriptV2Exclusion, ...]
+    pages: tuple[CleanTranscriptPage, ...]
+    blocks: tuple[CleanTranscriptBlock, ...]
+    exclusions: tuple[CleanTranscriptExclusion, ...]
     dehyphenation_decisions: tuple[DehyphenationDecision, ...]
     page_number_classifications: tuple[PageNumberClassification, ...]
     publisher_front_matter: tuple[PublisherFrontMatterClassification, ...]
@@ -781,12 +818,11 @@ class CleanTranscriptV2Artifact:
     text: str
     text_sha256: str
     utf8_byte_length: int
-    status: CleanTranscriptV2Status
+    status: CleanTranscriptStatus
     warnings: tuple[str, ...]
     processor_name: str
     processor_version: str
     configuration_digest: str
-    contract_version: str = CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
 
     @classmethod
     def create(
@@ -794,9 +830,9 @@ class CleanTranscriptV2Artifact:
         *,
         transcription_result: StructuredTranscriptionResult,
         layouts: tuple[PageLayoutResult, ...],
-        pages: tuple[CleanTranscriptV2Page, ...],
-        blocks: tuple[CleanTranscriptV2Block, ...],
-        exclusions: tuple[CleanTranscriptV2Exclusion, ...],
+        pages: tuple[CleanTranscriptPage, ...],
+        blocks: tuple[CleanTranscriptBlock, ...],
+        exclusions: tuple[CleanTranscriptExclusion, ...],
         dehyphenation_decisions: tuple[DehyphenationDecision, ...],
         page_number_classifications: tuple[PageNumberClassification, ...],
         publisher_front_matter: tuple[PublisherFrontMatterClassification, ...],
@@ -806,17 +842,14 @@ class CleanTranscriptV2Artifact:
         processor_name: str,
         processor_version: str,
         configuration_digest: str,
-    ) -> CleanTranscriptV2Artifact:
+    ) -> CleanTranscript:
         document = transcription_result.transcription_input.document
         encoded = text.encode("utf-8")
         digest = hashlib.sha256(encoded).hexdigest()
         layout_ids = tuple(layout.result_id for layout in layouts)
         normalized_warnings = tuple(sorted(set(warnings)))
-        status = CleanTranscriptV2Status.AUTOMATED_UNREVIEWED
+        status = CleanTranscriptStatus.AUTOMATED_UNREVIEWED
         identity_parts = (
-            CLEAN_TRANSCRIPT_V2_CONTRACT_ID,
-            CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION,
-            CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
             transcription_result.result_id,
             document.document_id,
             document.source.source_id,
@@ -841,11 +874,7 @@ class CleanTranscriptV2Artifact:
             configuration_digest,
         )
         return cls(
-            artifact_id=stable_id(
-                "clean-transcript-v2-artifact", *identity_parts
-            ),
-            contract_id=CLEAN_TRANSCRIPT_V2_CONTRACT_ID,
-            artifact_generation=CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION,
+            result_id=stable_id("clean-transcript-result", *identity_parts),
             transcription_result_id=transcription_result.result_id,
             document_id=document.document_id,
             source_id=document.source.source_id,
@@ -870,13 +899,6 @@ class CleanTranscriptV2Artifact:
         )
 
     def __post_init__(self) -> None:
-        if (
-            self.contract_id != CLEAN_TRANSCRIPT_V2_CONTRACT_ID
-            or self.contract_version != CLEAN_TRANSCRIPT_V2_CONTRACT_VERSION
-            or self.artifact_generation
-            != CLEAN_TRANSCRIPT_V2_ARTIFACT_GENERATION
-        ):
-            raise ValueError("unsupported transcript-v2 artifact contract")
         for bounded_values, limit in (
             (self.pages, _MAX_PAGES),
             (self.blocks, _MAX_BLOCKS),
@@ -888,28 +910,32 @@ class CleanTranscriptV2Artifact:
             (self.warnings, _MAX_WARNINGS),
         ):
             if len(bounded_values) > limit:
-                raise CleanTranscriptV2LimitError(
-                    "transcript-v2 objects exceed limit"
+                raise CleanTranscriptLimitError(
+                    "clean transcript objects exceed limit"
                 )
         if len(self.text) > _MAX_TEXT_CHARACTERS:
-            raise CleanTranscriptV2LimitError(
-                "transcript-v2 text exceeds limit"
+            raise CleanTranscriptLimitError(
+                "clean transcript text exceeds limit"
             )
         encoded = self.text.encode("utf-8")
         if (
             len(encoded) != self.utf8_byte_length
             or hashlib.sha256(encoded).hexdigest() != self.text_sha256
         ):
-            raise ValueError("transcript-v2 text identity is inconsistent")
+            raise ValueError("clean transcript text identity is inconsistent")
         if self.warnings != tuple(sorted(set(self.warnings))):
-            raise ValueError("transcript-v2 warnings must be sorted and unique")
+            raise ValueError(
+                "clean transcript warnings must be sorted and unique"
+            )
         expected_text = "\n\n".join(page.text for page in self.pages) + "\n"
         if self.text != expected_text:
-            raise ValueError("transcript-v2 text differs from page projections")
-        CleanTranscriptV2Contract._require_unique(
+            raise ValueError(
+                "clean transcript text differs from page projections"
+            )
+        CleanTranscriptContract._require_unique(
             "block record IDs", tuple(item.record_id for item in self.blocks)
         )
-        CleanTranscriptV2Contract._require_unique(
+        CleanTranscriptContract._require_unique(
             "exclusion IDs",
             tuple(item.exclusion_id for item in self.exclusions),
         )
@@ -917,7 +943,7 @@ class CleanTranscriptV2Artifact:
             *(item.block_id for item in self.blocks),
             *(item.block_id for item in self.exclusions),
         )
-        CleanTranscriptV2Contract._require_unique("covered block IDs", covered)
+        CleanTranscriptContract._require_unique("covered block IDs", covered)
         decision_by_id = {
             item.decision_id: item for item in self.dehyphenation_decisions
         }
@@ -1016,10 +1042,7 @@ class CleanTranscriptV2Artifact:
             if decision.block_id not in block_by_id:
                 raise ValueError("dehyphenation decision is not retained")
         expected_id = stable_id(
-            "clean-transcript-v2-artifact",
-            self.contract_id,
-            self.contract_version,
-            self.artifact_generation,
+            "clean-transcript-result",
             self.transcription_result_id,
             self.document_id,
             self.source_id,
@@ -1046,8 +1069,8 @@ class CleanTranscriptV2Artifact:
             self.processor_version,
             self.configuration_digest,
         )
-        if self.artifact_id != expected_id:
-            raise ValueError("transcript-v2 artifact ID is inconsistent")
+        if self.result_id != expected_id:
+            raise ValueError("clean transcript result ID is inconsistent")
 
 
 @dataclass(frozen=True)
@@ -1063,26 +1086,33 @@ class _NumericCandidate:
     page_height: float
 
 
-class DeterministicCleanTranscriptV2Projector:
-    """Create an evidence-conservative transcript-v2 projection."""
+class DeterministicCleanTranscriptProjector(
+    DataObjectActionizer[CleanTranscriptRequest, CleanTranscript]
+):
+    """Create an evidence-conservative clean transcript projection."""
 
     name = "deterministic-clean-transcript-projector"
-    version = CLEAN_TRANSCRIPT_V2_PROCESSOR_VERSION
+    version = CLEAN_TRANSCRIPT_PROCESSOR_VERSION
 
     def __init__(
-        self, configuration: CleanTranscriptV2Configuration | None = None
+        self, configuration: CleanTranscriptConfiguration | None = None
     ) -> None:
-        self.configuration = configuration or CleanTranscriptV2Configuration()
+        self.configuration = configuration or CleanTranscriptConfiguration()
 
-    def project(
-        self,
-        transcription_result: StructuredTranscriptionResult,
-        layouts: tuple[PageLayoutResult, ...],
-    ) -> CleanTranscriptV2Artifact:
-        document, layout_by_page = CleanTranscriptV2Contract._validate_inputs(
+    def action(self, *, request: CleanTranscriptRequest) -> CleanTranscript:
+        """Project one complete clean-transcript request."""
+        if not isinstance(request, CleanTranscriptRequest):
+            raise TypeError("request must be CleanTranscriptRequest")
+        if request.configuration != self.configuration:
+            raise ValueError(
+                "request configuration must match projector configuration"
+            )
+        transcription_result = request.transcription_result
+        layouts = request.layouts
+        document, layout_by_page = CleanTranscriptContract._validate_inputs(
             transcription_result, layouts
         )
-        configuration = self.configuration
+        configuration = request.configuration
         all_text = tuple(
             block.text
             for page in document.pages
@@ -1100,23 +1130,23 @@ class DeterministicCleanTranscriptV2Projector:
             }
             for block_id in item.source_block_ids
         }
-        numeric_candidates = CleanTranscriptV2Contract._numeric_candidates(
+        numeric_candidates = CleanTranscriptContract._numeric_candidates(
             document
         )
-        sequence_ids = CleanTranscriptV2Contract._recurring_sequence_ids(
+        sequence_ids = CleanTranscriptContract._recurring_sequence_ids(
             numeric_candidates, configuration
         )
         printed_label_match_counts = Counter(
             (candidate.page_index, candidate.normalized_value)
             for candidate in numeric_candidates
             if candidate.printed_page_label is not None
-            and CleanTranscriptV2Contract._basic_clean(
+            and CleanTranscriptContract._basic_clean(
                 candidate.printed_page_label
             ).casefold()
             == candidate.normalized_value
         )
         page_classifications = tuple(
-            CleanTranscriptV2Contract._classify_page_number(
+            CleanTranscriptContract._classify_page_number(
                 candidate,
                 protected_ids=protected_ids,
                 recurring_sequence_ids=sequence_ids,
@@ -1131,19 +1161,19 @@ class DeterministicCleanTranscriptV2Projector:
             item.block_id: item for item in page_classifications
         }
         publisher_classifications = (
-            CleanTranscriptV2Contract._publisher_classifications(
+            CleanTranscriptContract._publisher_classifications(
                 transcription_result, configuration
             )
         )
         publisher_by_block = {
             item.block_id: item for item in publisher_classifications
         }
-        repeated_margin_keys = CleanTranscriptV2Contract._repeated_margin_keys(
+        repeated_margin_keys = CleanTranscriptContract._repeated_margin_keys(
             transcription_result, layouts, configuration
         )
-        records: list[CleanTranscriptV2Block] = []
-        exclusions: list[CleanTranscriptV2Exclusion] = []
-        pages: list[CleanTranscriptV2Page] = []
+        records: list[CleanTranscriptBlock] = []
+        exclusions: list[CleanTranscriptExclusion] = []
+        pages: list[CleanTranscriptPage] = []
         dehyphenation: list[DehyphenationDecision] = []
         glyph_findings: list[PrivateUseGlyphFinding] = []
         warnings = {
@@ -1155,7 +1185,7 @@ class DeterministicCleanTranscriptV2Projector:
         for page in document.pages:
             layout = layout_by_page[page.page_index]
             block_by_id = {block.block_id: block for block in page.blocks}
-            root_order = CleanTranscriptV2Contract._text_block_order(
+            root_order = CleanTranscriptContract._text_block_order(
                 page.blocks, layout.proposed_order
             )
             ordered_count = sum(
@@ -1165,13 +1195,13 @@ class DeterministicCleanTranscriptV2Projector:
             )
             if ordered_count < len(root_order):
                 warnings.add("raw_block_order_fallback_retained")
-            page_records: list[CleanTranscriptV2Block] = []
+            page_records: list[CleanTranscriptBlock] = []
             for block_id in root_order:
                 block = block_by_id[block_id]
                 assert block.text is not None
                 page_classification = page_classification_by_block.get(block_id)
                 publisher_classification = publisher_by_block.get(block_id)
-                findings = CleanTranscriptV2Contract._private_use_findings(
+                findings = CleanTranscriptContract._private_use_findings(
                     block_id=block_id,
                     page_index=page.page_index,
                     printed_page_label=page.printed_page_label,
@@ -1187,11 +1217,11 @@ class DeterministicCleanTranscriptV2Projector:
                     is PageNumberOutcome.PAGE_NUMBER
                 ):
                     exclusions.append(
-                        CleanTranscriptV2Exclusion.create(
+                        CleanTranscriptExclusion.create(
                             block_id=block_id,
                             page_index=page.page_index,
                             printed_page_label=page.printed_page_label,
-                            reason=CleanTranscriptV2ExclusionReason.PAGE_NUMBER,
+                            reason=CleanTranscriptExclusionReason.PAGE_NUMBER,
                             raw_text=block.text,
                             source_spans=block.source_spans,
                             decision_id=page_classification.classification_id,
@@ -1204,12 +1234,12 @@ class DeterministicCleanTranscriptV2Projector:
                     is ClassificationDisposition.EXCLUDED
                 ):
                     exclusions.append(
-                        CleanTranscriptV2Exclusion.create(
+                        CleanTranscriptExclusion.create(
                             block_id=block_id,
                             page_index=page.page_index,
                             printed_page_label=page.printed_page_label,
                             reason=(
-                                CleanTranscriptV2ExclusionReason.PUBLISHER_FRONT_MATTER
+                                CleanTranscriptExclusionReason.PUBLISHER_FRONT_MATTER
                             ),
                             raw_text=block.text,
                             source_spans=block.source_spans,
@@ -1217,25 +1247,25 @@ class DeterministicCleanTranscriptV2Projector:
                         )
                     )
                     continue
-                clean_for_margin = CleanTranscriptV2Contract._basic_clean(
+                clean_for_margin = CleanTranscriptContract._basic_clean(
                     block.text
                 )
                 if (
-                    CleanTranscriptV2Contract._is_margin(
+                    CleanTranscriptContract._is_margin(
                         block.source_spans,
                         page.height,
                         configuration,
                     )
-                    and CleanTranscriptV2Contract._margin_key(clean_for_margin)
+                    and CleanTranscriptContract._margin_key(clean_for_margin)
                     in repeated_margin_keys
                 ):
                     exclusions.append(
-                        CleanTranscriptV2Exclusion.create(
+                        CleanTranscriptExclusion.create(
                             block_id=block_id,
                             page_index=page.page_index,
                             printed_page_label=page.printed_page_label,
                             reason=(
-                                CleanTranscriptV2ExclusionReason.REPEATED_MARGIN
+                                CleanTranscriptExclusionReason.REPEATED_MARGIN
                             ),
                             raw_text=block.text,
                             source_spans=block.source_spans,
@@ -1243,7 +1273,7 @@ class DeterministicCleanTranscriptV2Projector:
                     )
                     continue
                 clean_text, transformations, decisions = (
-                    CleanTranscriptV2Contract._clean_text(
+                    CleanTranscriptContract._clean_text(
                         block_id=block_id,
                         page_index=page.page_index,
                         printed_page_label=page.printed_page_label,
@@ -1260,11 +1290,11 @@ class DeterministicCleanTranscriptV2Projector:
                     for decision in decisions
                 ):
                     warnings.add("ambiguous_dehyphenation_retained")
-                if CleanTranscriptV2Contract._metadata_count(
+                if CleanTranscriptContract._metadata_count(
                     transformations, "control_character_offsets"
                 ):
                     warnings.add("control_characters_replaced")
-                if CleanTranscriptV2Contract._metadata_count(
+                if CleanTranscriptContract._metadata_count(
                     transformations, "soft_hyphen_offsets"
                 ):
                     warnings.add("soft_hyphens_removed")
@@ -1282,19 +1312,19 @@ class DeterministicCleanTranscriptV2Projector:
                     warnings.add("unrecognized_publisher_front_matter")
                 if not clean_text:
                     exclusions.append(
-                        CleanTranscriptV2Exclusion.create(
+                        CleanTranscriptExclusion.create(
                             block_id=block_id,
                             page_index=page.page_index,
                             printed_page_label=page.printed_page_label,
                             reason=(
-                                CleanTranscriptV2ExclusionReason.EMPTY_AFTER_SANITIZATION
+                                CleanTranscriptExclusionReason.EMPTY_AFTER_SANITIZATION
                             ),
                             raw_text=block.text,
                             source_spans=block.source_spans,
                         )
                     )
                     continue
-                record = CleanTranscriptV2Block.create(
+                record = CleanTranscriptBlock.create(
                     block_id=block_id,
                     page_index=page.page_index,
                     printed_page_label=page.printed_page_label,
@@ -1324,11 +1354,11 @@ class DeterministicCleanTranscriptV2Projector:
                 page_records.append(record)
                 global_order += 1
             pages.append(
-                CleanTranscriptV2Contract._page_projection(
+                CleanTranscriptContract._page_projection(
                     page, tuple(page_records)
                 )
             )
-        CleanTranscriptV2Contract._bounded_result(
+        CleanTranscriptContract._bounded_result(
             records,
             exclusions,
             dehyphenation,
@@ -1337,7 +1367,7 @@ class DeterministicCleanTranscriptV2Projector:
             glyph_findings,
         )
         text = "\n\n".join(page.text for page in pages) + "\n"
-        return CleanTranscriptV2Artifact.create(
+        return CleanTranscript.create(
             transcription_result=transcription_result,
             layouts=layouts,
             pages=tuple(pages),
@@ -1354,9 +1384,23 @@ class DeterministicCleanTranscriptV2Projector:
             configuration_digest=configuration.configuration_digest,
         )
 
+    def project(
+        self,
+        transcription_result: StructuredTranscriptionResult,
+        layouts: tuple[PageLayoutResult, ...],
+    ) -> CleanTranscript:
+        """Project through the canonical action path."""
+        return self.action(
+            request=CleanTranscriptRequest.create(
+                transcription_result=transcription_result,
+                layouts=layouts,
+                configuration=self.configuration,
+            )
+        )
 
-class CleanTranscriptV2Contract:
-    """Own transcript-v2 projection and contract behavior."""
+
+class CleanTranscriptContract:
+    """Own clean transcript projection and contract behavior."""
 
     @staticmethod
     def _validate_inputs(
@@ -1371,7 +1415,7 @@ class CleanTranscriptV2Contract:
             raise TypeError("layouts must be a tuple")
         document = transcription_result.transcription_input.document
         if len(document.pages) > _MAX_PAGES:
-            raise CleanTranscriptV2LimitError("document pages exceed limit")
+            raise CleanTranscriptLimitError("document pages exceed limit")
         if len(layouts) != len(document.pages):
             raise ValueError("one layout is required per document page")
         layout_by_page = {layout.page_index: layout for layout in layouts}
@@ -1398,7 +1442,7 @@ class CleanTranscriptV2Contract:
         text: str,
         source_spans: tuple[SourceSpan, ...],
         all_text: tuple[str, ...],
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> tuple[str, Metadata, tuple[DehyphenationDecision, ...]]:
         decisions: list[DehyphenationDecision] = []
 
@@ -1410,14 +1454,14 @@ class CleanTranscriptV2Contract:
             joined_evidence = (
                 joined in configuration.accepted_joined_forms
                 or any(
-                    CleanTranscriptV2Contract._contains_form(value, joined)
+                    CleanTranscriptContract._contains_form(value, joined)
                     for value in all_text
                 )
             )
             hyphenated_evidence = (
                 hyphenated in configuration.accepted_hyphenated_forms
                 or any(
-                    CleanTranscriptV2Contract._contains_form(value, hyphenated)
+                    CleanTranscriptContract._contains_form(value, hyphenated)
                     for value in all_text
                 )
             )
@@ -1427,12 +1471,12 @@ class CleanTranscriptV2Contract:
             if hyphenated in configuration.accepted_hyphenated_forms:
                 evidence.append(("accepted_hyphenated_form", hyphenated))
             if any(
-                CleanTranscriptV2Contract._contains_form(value, joined)
+                CleanTranscriptContract._contains_form(value, joined)
                 for value in all_text
             ):
                 evidence.append(("same_document_joined_form", joined))
             if any(
-                CleanTranscriptV2Contract._contains_form(value, hyphenated)
+                CleanTranscriptContract._contains_form(value, hyphenated)
                 for value in all_text
             ):
                 evidence.append(("same_document_hyphenated_form", hyphenated))
@@ -1499,7 +1543,7 @@ class CleanTranscriptV2Contract:
             for block in page.blocks:
                 if block.kind != "text" or block.text is None:
                     continue
-                value = CleanTranscriptV2Contract._basic_clean(
+                value = CleanTranscriptContract._basic_clean(
                     block.text
                 ).casefold()
                 if not _PAGE_NUMBER.fullmatch(value):
@@ -1511,7 +1555,7 @@ class CleanTranscriptV2Contract:
                         printed_page_label=page.printed_page_label,
                         raw_text=block.text,
                         normalized_value=value,
-                        bounding_box=CleanTranscriptV2Contract._union_box(
+                        bounding_box=CleanTranscriptContract._union_box(
                             block.source_spans
                         ),
                         source_spans=block.source_spans,
@@ -1528,13 +1572,13 @@ class CleanTranscriptV2Contract:
         protected_ids: set[str],
         recurring_sequence_ids: frozenset[str],
         printed_label_match_count: int,
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> PageNumberClassification:
         if candidate.block_id in protected_ids:
             outcome = PageNumberOutcome.NOT_PAGE_NUMBER
             method = PageNumberMethod.TYPED_CONTENT
             evidence = (("typed_structured_content", "true"),)
-        elif not CleanTranscriptV2Contract._candidate_is_margin(
+        elif not CleanTranscriptContract._candidate_is_margin(
             candidate, configuration
         ):
             outcome = PageNumberOutcome.NOT_PAGE_NUMBER
@@ -1542,7 +1586,7 @@ class CleanTranscriptV2Contract:
             evidence = (("margin_candidate", "false"),)
         elif (
             candidate.printed_page_label is not None
-            and CleanTranscriptV2Contract._basic_clean(
+            and CleanTranscriptContract._basic_clean(
                 candidate.printed_page_label
             ).casefold()
             == candidate.normalized_value
@@ -1575,18 +1619,18 @@ class CleanTranscriptV2Contract:
     @staticmethod
     def _recurring_sequence_ids(
         candidates: tuple[_NumericCandidate, ...],
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> frozenset[str]:
         groups: dict[tuple[str, int], list[tuple[_NumericCandidate, int]]] = (
             defaultdict(list)
         )
         tolerance = configuration.page_number_horizontal_tolerance_fraction
         for candidate in candidates:
-            if not CleanTranscriptV2Contract._candidate_is_margin(
+            if not CleanTranscriptContract._candidate_is_margin(
                 candidate, configuration
             ):
                 continue
-            number = CleanTranscriptV2Contract._page_ordinal(
+            number = CleanTranscriptContract._page_ordinal(
                 candidate.normalized_value
             )
             box = candidate.bounding_box
@@ -1619,7 +1663,7 @@ class CleanTranscriptV2Contract:
     @staticmethod
     def _publisher_classifications(
         transcription_result: StructuredTranscriptionResult,
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> tuple[PublisherFrontMatterClassification, ...]:
         document = transcription_result.transcription_input.document
         structure = transcription_result.transcription_input.structure_analysis
@@ -1635,7 +1679,7 @@ class CleanTranscriptV2Contract:
                 if block.kind != "text" or block.text is None:
                     continue
                 structure_front_matter = block.block_id in front_ids
-                kind, signal = CleanTranscriptV2Contract._publisher_kind(
+                kind, signal = CleanTranscriptContract._publisher_kind(
                     block.text,
                     structure_front_matter=structure_front_matter,
                     first_page=page.page_index == 0,
@@ -1666,7 +1710,7 @@ class CleanTranscriptV2Contract:
         structure_front_matter: bool,
         first_page: bool,
     ) -> tuple[PublisherFrontMatterKind | None, str]:
-        value = CleanTranscriptV2Contract._basic_clean(text).casefold()
+        value = CleanTranscriptContract._basic_clean(text).casefold()
         strong_signals = (
             (
                 PublisherFrontMatterKind.LICENSING,
@@ -1727,7 +1771,7 @@ class CleanTranscriptV2Contract:
     def _repeated_margin_keys(
         transcription_result: StructuredTranscriptionResult,
         layouts: tuple[PageLayoutResult, ...],
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> frozenset[str]:
         document = transcription_result.transcription_input.document
         layout_by_page = {layout.page_index: layout for layout in layouts}
@@ -1738,14 +1782,14 @@ class CleanTranscriptV2Contract:
                 block = block_by_id[block_id]
                 if block.kind != "text" or block.text is None:
                     continue
-                if not CleanTranscriptV2Contract._is_margin(
+                if not CleanTranscriptContract._is_margin(
                     block.source_spans, page.height, configuration
                 ):
                     continue
-                clean = CleanTranscriptV2Contract._basic_clean(block.text)
+                clean = CleanTranscriptContract._basic_clean(block.text)
                 if clean and not _PAGE_NUMBER.fullmatch(clean.casefold()):
                     pages_by_key[
-                        CleanTranscriptV2Contract._margin_key(clean)
+                        CleanTranscriptContract._margin_key(clean)
                     ].add(page.page_index)
         threshold = max(
             configuration.minimum_repeated_margin_pages,
@@ -1761,7 +1805,7 @@ class CleanTranscriptV2Contract:
         )
 
     @staticmethod
-    def _page_projection(page, records) -> CleanTranscriptV2Page:
+    def _page_projection(page, records) -> CleanTranscriptPage:
         label = (
             "none"
             if page.printed_page_label is None
@@ -1770,7 +1814,7 @@ class CleanTranscriptV2Contract:
         marker = f'[[PAGE physical={page.page_index + 1} printed="{label}"]]'
         body = "\n\n".join(item.clean_text for item in records)
         text = marker if not body else f"{marker}\n\n{body}"
-        return CleanTranscriptV2Page.create(
+        return CleanTranscriptPage.create(
             page_index=page.page_index,
             printed_page_label=page.printed_page_label,
             block_record_ids=tuple(item.record_id for item in records),
@@ -1807,7 +1851,7 @@ class CleanTranscriptV2Contract:
 
     @staticmethod
     def _contains_form(text: str, form: str) -> bool:
-        value = CleanTranscriptV2Contract._basic_clean(text).casefold()
+        value = CleanTranscriptContract._basic_clean(text).casefold()
         start = 0
         while True:
             index = value.find(form, start)
@@ -1827,7 +1871,7 @@ class CleanTranscriptV2Contract:
     @staticmethod
     def _candidate_is_margin(
         candidate: _NumericCandidate,
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> bool:
         box = candidate.bounding_box
         if box is None:
@@ -1844,9 +1888,9 @@ class CleanTranscriptV2Contract:
     def _is_margin(
         spans: tuple[SourceSpan, ...],
         page_height: float,
-        configuration: CleanTranscriptV2Configuration,
+        configuration: CleanTranscriptConfiguration,
     ) -> bool:
-        box = CleanTranscriptV2Contract._union_box(spans)
+        box = CleanTranscriptContract._union_box(spans)
         if box is None:
             return False
         return box[3] <= page_height * configuration.top_margin_fraction or box[
@@ -1934,8 +1978,8 @@ class CleanTranscriptV2Contract:
 
     @staticmethod
     def _bounded_result(
-        records: list[CleanTranscriptV2Block],
-        exclusions: list[CleanTranscriptV2Exclusion],
+        records: list[CleanTranscriptBlock],
+        exclusions: list[CleanTranscriptExclusion],
         dehyphenation: list[DehyphenationDecision],
         page_classifications: tuple[PageNumberClassification, ...],
         publisher_classifications: tuple[
@@ -1952,6 +1996,6 @@ class CleanTranscriptV2Contract:
             (glyph_findings, _MAX_FINDINGS),
         ):
             if len(values) > limit:
-                raise CleanTranscriptV2LimitError(
-                    "transcript-v2 projection exceeds an object limit"
+                raise CleanTranscriptLimitError(
+                    "clean transcript projection exceeds an object limit"
                 )

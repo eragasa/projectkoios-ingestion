@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 from pathlib import Path, PurePosixPath
 
@@ -9,22 +10,34 @@ import pytest
 from projectkoios.ingestion import (
     PdfBatchItem,
     PdfBatchPlan,
-    parse_reference_evidence,
-    verify_reference_evidence,
+    TranscriptBatchPlan,
 )
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
-from projectkoios.ingestion.transcript_batch_cli import main as transcript_batch
+from projectkoios.ingestion.transcript_batch import (
+    TRANSCRIPT_OUTPUT_RELATIVE_PATH,
+    TranscriptBatchPublicationError,
+    _publish_directory,
+)
+from projectkoios.ingestion.transcript_batch_cli import (
+    main as transcript_batch,
+)
+from projectkoios.ingestion.transcript_plan_cli import (
+    main as transcript_plan,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
 
 
-def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _setup(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> tuple[Path, Path, Path, Path]:
     payload = (FIXTURES / "equations.pdf").read_bytes()
     source = tmp_path / "source"
-    source.mkdir()
+    source.mkdir(mode=0o700)
     shutil.copyfile(FIXTURES / "equations.pdf", source / "equations.pdf")
-    plan = PdfBatchPlan(
+    source_plan = PdfBatchPlan(
         schema_version=1,
         items=(
             PdfBatchItem(
@@ -37,13 +50,13 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
             ),
         ),
     )
-    plan_path = tmp_path / "plan.json"
-    plan_path.write_text(plan.to_json(), encoding="utf-8")
+    source_plan_path = tmp_path / "source-plan.json"
+    source_plan_path.write_text(source_plan.to_json(), encoding="utf-8")
     ingestion = tmp_path / "ingestion"
     assert (
         ingest_batch(
             [
-                str(plan_path),
+                str(source_plan_path),
                 "--source-root",
                 str(source),
                 "--output-root",
@@ -56,7 +69,7 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     assert (
         equation_batch(
             [
-                str(plan_path),
+                str(source_plan_path),
                 "--source-root",
                 str(source),
                 "--ingestion-root",
@@ -66,12 +79,35 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
         )
         == 0
     )
-    return source, plan_path, ingestion
+    capsys.readouterr()
+    durable_plan = tmp_path / "plans/transcript-plan.json"
+    return source, source_plan_path, ingestion, durable_plan
 
 
-def _arguments(source: Path, plan: Path, ingestion: Path) -> list[str]:
+def _plan_arguments(
+    source: Path,
+    source_plan: Path,
+    ingestion: Path,
+    durable_plan: Path,
+) -> list[str]:
     return [
-        str(plan),
+        str(source_plan),
+        "--source-root",
+        str(source),
+        "--ingestion-root",
+        str(ingestion),
+        "--output",
+        str(durable_plan),
+    ]
+
+
+def _batch_arguments(
+    source: Path,
+    ingestion: Path,
+    durable_plan: Path,
+) -> list[str]:
+    return [
+        str(durable_plan),
         "--source-root",
         str(source),
         "--ingestion-root",
@@ -79,125 +115,261 @@ def _arguments(source: Path, plan: Path, ingestion: Path) -> list[str]:
     ]
 
 
-def test__transcript_batch__plans_and_materializes_audited_projection(
+def _create_plan(
+    source: Path,
+    source_plan: Path,
+    ingestion: Path,
+    durable_plan: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> TranscriptBatchPlan:
+    arguments = _plan_arguments(source, source_plan, ingestion, durable_plan)
+    assert transcript_plan(arguments) == 2
+    assert not durable_plan.exists()
+    planned = json.loads(capsys.readouterr().out)
+    assert planned["status"] == "planned"
+    assert transcript_plan([*arguments, "--apply"]) == 0
+    created = json.loads(capsys.readouterr().out)
+    assert created["action"] == "created"
+    assert oct(durable_plan.stat().st_mode & 0o777) == "0o600"
+    assert oct(durable_plan.parent.stat().st_mode & 0o777) == "0o700"
+    assert transcript_plan([*arguments, "--apply"]) == 0
+    unchanged = json.loads(capsys.readouterr().out)
+    assert unchanged["action"] == "unchanged"
+    plan = TranscriptBatchPlan.from_json(
+        durable_plan.read_text(encoding="utf-8")
+    )
+    assert plan.plan_id == created["plan_id"]
+    return plan
+
+
+def test__transcript_batch__plans_publishes_and_replays_immutably(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    source, plan, ingestion = _setup(tmp_path)
-    capsys.readouterr()
-    arguments = _arguments(source, plan, ingestion)
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    plan = _create_plan(
+        source,
+        source_plan,
+        ingestion,
+        durable_plan,
+        capsys,
+    )
+    arguments = _batch_arguments(source, ingestion, durable_plan)
 
     assert transcript_batch(arguments) == 2
     planned = json.loads(capsys.readouterr().out)
-    assert planned["transcript_batch_manifest_schema_version"] == 2
     assert planned["items"][0]["action"] == "create"
 
     assert transcript_batch([*arguments, "--apply"]) == 0
-    completed = json.loads(capsys.readouterr().out)
-    item = completed["items"][0]
-    assert completed["transcript_batch_manifest_schema_version"] == 2
-    assert item["transcript_batch_manifest_schema_version"] == 2
-    assert item["action"] == "created"
-    assert item["audit_status"] == "passed"
-    assert item["counts"]["source_pages"] == 1
-    assert item["counts"]["equation_candidates"] == 1
-
-    derived = ingestion / "article/derived/transcription"
-    assert {path.name for path in derived.iterdir()} == {
+    first = json.loads(capsys.readouterr().out)
+    assert first["items"][0]["action"] == "created"
+    assert first["items"][0]["audit_status"] == "passed"
+    target = ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+    assert {path.name for path in target.iterdir()} == {
         "audit.json",
         "clean.json",
         "clean.txt",
         "manifest.json",
         "reference-evidence.json",
     }
-    clean = json.loads((derived / "clean.json").read_text())
-    manifest = json.loads((derived / "manifest.json").read_text())
-    audit = json.loads((derived / "audit.json").read_text())
-    evidence_bytes = (derived / "reference-evidence.json").read_bytes()
-    evidence = parse_reference_evidence(evidence_bytes)
-    text = (derived / "clean.txt").read_text()
-    assert clean["status"] == "automated_unreviewed"
-    assert clean["text"] == text
-    assert "E = m c^2" in text
-    assert clean["blocks"][0]["raw_text"]
-    assert clean["blocks"][0]["source_spans"]
-    assert manifest["schema_version"] == 2
+    assert oct(target.stat().st_mode & 0o777) == "0o700"
+    assert all(
+        oct(path.stat().st_mode & 0o777) == "0o600" for path in target.iterdir()
+    )
+    manifest = json.loads((target / "manifest.json").read_text())
+    clean = json.loads((target / "clean.json").read_text())
+    audit = json.loads((target / "audit.json").read_text())
+    assert manifest["plan_id"] == plan.plan_id
     assert manifest["status"] == "automated_unreviewed"
-    assert manifest["intermediate_policy"] == (
-        "deterministically_reconstructible_not_materialized"
-    )
+    assert clean["status"] == "automated_unreviewed"
+    assert dict(audit["audited_layer_counts"])["clean_transcripts"] == "1"
     assert audit["status"] == "passed"
-    assert (
-        dict(audit["audited_layer_counts"])["clean_transcript_artifacts"] == "1"
-    )
-    assert clean["artifact_id"] in audit["audited_artifact_ids"]
-    assert not audit["findings"]
-    assert item["reference_evidence_record_id"] == evidence.record_id
-    assert manifest["reference_evidence_record_id"] == evidence.record_id
-    assert evidence.source.content_sha256 == manifest["source_sha256"]
-    assert evidence.source.byte_length == manifest["source_byte_size"]
-    assert evidence.transcript.artifact_id == clean["artifact_id"]
-    assert evidence.derivation_audit.report_id == audit["report_id"]
-    assert evidence.derivation_audit.independently_revalidated is False
-    verify_reference_evidence(
-        evidence,
-        source_sha256=manifest["source_sha256"],
-        source_byte_length=manifest["source_byte_size"],
-        source_media_type="application/pdf",
-        extraction_artifact=(
-            ingestion / "article/extraction.json"
-        ).read_bytes(),
-        clean_transcript_artifact=(derived / "clean.json").read_bytes(),
-        derivation_audit_artifact=(derived / "audit.json").read_bytes(),
-    )
-    assert b"assets/equations.pdf" not in evidence_bytes
-    assert b"derived/transcription" not in evidence_bytes
+    first_bytes = {path.name: path.read_bytes() for path in target.iterdir()}
+
+    assert transcript_batch([*arguments, "--apply"]) == 0
+    second = json.loads(capsys.readouterr().out)
+    assert second["items"][0]["action"] == "unchanged"
+    assert {
+        path.name: path.read_bytes() for path in target.iterdir()
+    } == first_bytes
 
 
-def test__transcript_batch__preserves_legacy_schema_one_set(
+def test__transcript_batch__different_existing_output_fails_closed(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    source, plan, ingestion = _setup(tmp_path)
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    _create_plan(source, source_plan, ingestion, durable_plan, capsys)
+    arguments = _batch_arguments(source, ingestion, durable_plan)
+    assert transcript_batch([*arguments, "--apply"]) == 0
     capsys.readouterr()
-    target = ingestion / "article/derived/transcription"
-    target.mkdir()
-    legacy_payloads = {
-        "clean.json": b'{"legacy":"clean"}\n',
-        "clean.txt": b"legacy clean text\n",
-        "audit.json": b'{"legacy":"audit"}\n',
-        "manifest.json": b'{"schema_version":1}\n',
-    }
-    for name, payload in legacy_payloads.items():
-        (target / name).write_bytes(payload)
+    target = ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+    changed = target / "clean.txt"
+    changed.write_text("tampered\n", encoding="utf-8")
 
     with pytest.raises(SystemExit, match="2"):
-        transcript_batch([*_arguments(source, plan, ingestion), "--apply"])
+        transcript_batch([*arguments, "--apply"])
 
-    assert "transcription artifact set is incomplete" in capsys.readouterr().err
-    assert not (target / "reference-evidence.json").exists()
-    assert {
-        name: (target / name).read_bytes() for name in legacy_payloads
-    } == legacy_payloads
+    assert "existing transcript artifact differs" in capsys.readouterr().err
+    assert changed.read_text(encoding="utf-8") == "tampered\n"
 
 
-def test__transcript_batch__replay_is_immutable_and_tampering_fails(
+def test__transcript_batch__incomplete_and_symlinked_sets_fail_closed(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    source, plan, ingestion = _setup(tmp_path)
-    capsys.readouterr()
-    arguments = [*_arguments(source, plan, ingestion), "--apply"]
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    _create_plan(source, source_plan, ingestion, durable_plan, capsys)
+    arguments = _batch_arguments(source, ingestion, durable_plan)
+    target = ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+    target.mkdir(parents=True)
+    (target / "clean.txt").write_text("partial\n", encoding="utf-8")
 
-    assert transcript_batch(arguments) == 0
-    first = json.loads(capsys.readouterr().out)
-    assert transcript_batch(arguments) == 0
-    second = json.loads(capsys.readouterr().out)
-    assert first["items"][0]["action"] == "created"
-    assert second["items"][0]["action"] == "unchanged"
-    assert first["items"][0]["manifest_id"] == second["items"][0]["manifest_id"]
-
-    clean_text = ingestion / "article/derived/transcription/clean.txt"
-    clean_text.write_text("changed\n", encoding="utf-8")
     with pytest.raises(SystemExit, match="2"):
         transcript_batch(arguments)
+    assert "incomplete or contains extras" in capsys.readouterr().err
+
+    shutil.rmtree(target)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(SystemExit, match="2"):
+        transcript_batch(arguments)
+    assert "not a safe directory" in capsys.readouterr().err
+    assert not tuple(outside.iterdir())
+
+
+def test__transcript_batch__predecessor_change_invalidates_plan(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    _create_plan(source, source_plan, ingestion, durable_plan, capsys)
+    detection = ingestion / "article/derived/equations/detection.json"
+    original = detection.read_bytes()
+    detection.write_bytes(original + b" ")
+
+    with pytest.raises(SystemExit, match="2"):
+        transcript_batch(_batch_arguments(source, ingestion, durable_plan))
+
+    assert "differs from the durable plan" in capsys.readouterr().err
+    assert detection.read_bytes() == original + b" "
+
+
+def test__transcript_batch__rejects_symlinked_inputs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    original_pdf = source / "equations-original.pdf"
+    (source / "equations.pdf").rename(original_pdf)
+    (source / "equations.pdf").symlink_to(original_pdf)
+
+    with pytest.raises(SystemExit, match="2"):
+        transcript_plan(
+            _plan_arguments(
+                source,
+                source_plan,
+                ingestion,
+                durable_plan,
+            )
+        )
+    assert "cannot traverse a symlink" in capsys.readouterr().err
+
+    (source / "equations.pdf").unlink()
+    original_pdf.rename(source / "equations.pdf")
+    _create_plan(source, source_plan, ingestion, durable_plan, capsys)
+    real_plan = tmp_path / "real-plan.json"
+    durable_plan.rename(real_plan)
+    durable_plan.symlink_to(real_plan)
+    with pytest.raises(SystemExit, match="2"):
+        transcript_batch(_batch_arguments(source, ingestion, durable_plan))
+    assert "safe regular file" in capsys.readouterr().err
+
+
+def test__transcript_batch__publication_failure_removes_staging(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from projectkoios.ingestion import transcript_batch as module
+
+    target = tmp_path / "derived/transcription"
+    calls = 0
+    original = module._write_staged_file
+
+    def fail_second(path: Path, text: str) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("injected write failure")
+        original(path, text)
+
+    monkeypatch.setattr(module, "_write_staged_file", fail_second)
+    files = {name: f"{name}\n" for name in module._OUTPUT_NAMES}
+
+    with pytest.raises(
+        TranscriptBatchPublicationError,
+        match="could not publish",
+    ):
+        _publish_directory(target, files)
+
+    assert not target.exists()
+    assert not tuple(target.parent.glob(".transcription.tmp-*"))
+    lock = target.parent / ".transcription.publish.lock"
+    assert not lock.exists()
+
+    monkeypatch.setattr(module, "_write_staged_file", original)
+    lock.write_text("active\n", encoding="utf-8")
+    with pytest.raises(
+        TranscriptBatchPublicationError,
+        match="another transcript publication is active",
+    ):
+        _publish_directory(target, files)
+    assert lock.read_text(encoding="utf-8") == "active\n"
+
+
+def test__transcript_batch__plan_rejects_unknown_and_duplicate_fields(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    source, source_plan, ingestion, durable_plan = _setup(tmp_path, capsys)
+    plan = _create_plan(
+        source,
+        source_plan,
+        ingestion,
+        durable_plan,
+        capsys,
+    )
+    value = json.loads(plan.to_json())
+    value["unknown"] = True
+    with pytest.raises(ValueError, match="fields do not match"):
+        TranscriptBatchPlan.from_json(json.dumps(value))
+
+    duplicate = plan.to_json().replace(
+        '"plan_id":',
+        '"plan_id": "duplicate", "plan_id":',
+    )
+    with pytest.raises(ValueError, match="duplicate member"):
+        TranscriptBatchPlan.from_json(duplicate)
+
+    changed = json.loads(plan.to_json())
+    changed["extraction_low_text_threshold"] = 41
+    with pytest.raises(ValueError, match="identity is inconsistent"):
+        TranscriptBatchPlan.from_json(json.dumps(changed))
+    with pytest.raises(ValueError, match="malformed"):
+        TranscriptBatchPlan.from_json(plan.to_json()[:-3])
+
+    for removed_key in (
+        "artifact_generation",
+        "schema_version",
+        "contract_version",
+        "configuration_version",
+    ):
+        removed = json.loads(plan.to_json())
+        removed[removed_key] = 1
+        with pytest.raises(ValueError, match="fields do not match"):
+            TranscriptBatchPlan.from_json(json.dumps(removed))
+
+    assert not os.path.lexists(
+        ingestion / "article/derived/transcription/clean.json"
+    )

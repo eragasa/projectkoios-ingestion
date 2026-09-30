@@ -10,6 +10,7 @@ from projectkoios.base import (
     DataObjectActionRequest,
     DataObjectActionResult,
 )
+from projectkoios.ingestion.clean_transcript import CleanTranscript
 from projectkoios.ingestion.equations import EquationDetectionResult
 from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.identity import stable_id
@@ -30,13 +31,10 @@ from projectkoios.ingestion.reconciliation import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
-from projectkoios.ingestion.transcript_projection import CleanTranscript
-from projectkoios.ingestion.transcript_v2 import CleanTranscriptV2Artifact
 from projectkoios.ingestion.transcription import StructuredTranscriptionResult
 
 DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"
-DERIVATION_AUDIT_PROCESSOR_VERSION = "2"
-DERIVATION_AUDIT_V2_PROCESSOR_VERSION = "3"
+DERIVATION_AUDIT_PROCESSOR_VERSION = "3"
 DERIVATION_AUDIT_ACTION_CONTRACT_VERSION = "1.0"
 DERIVATION_AUDIT_ACTIONIZER_NAME = "deterministic-derivation-audit-actionizer"
 DERIVATION_AUDIT_ACTIONIZER_VERSION = "1"
@@ -152,9 +150,8 @@ class DerivationAuditInput:
     figure_results: tuple[FigureDetectionResult, ...] = ()
     processing_results: tuple[ProcessingResult, ...] = ()
     transcription_results: tuple[StructuredTranscriptionResult, ...] = ()
-    clean_transcript_artifacts: tuple[CleanTranscript, ...] = ()
+    clean_transcripts: tuple[CleanTranscript, ...] = ()
     contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
-    clean_transcript_v2_artifacts: tuple[CleanTranscriptV2Artifact, ...] = ()
 
     def __post_init__(self) -> None:
         if self.contract_version != DERIVATION_AUDIT_CONTRACT_VERSION:
@@ -298,8 +295,7 @@ _LAYER_TYPES: dict[str, type[object]] = {
     "figure_results": FigureDetectionResult,
     "processing_results": ProcessingResult,
     "transcription_results": StructuredTranscriptionResult,
-    "clean_transcript_artifacts": CleanTranscript,
-    "clean_transcript_v2_artifacts": CleanTranscriptV2Artifact,
+    "clean_transcripts": CleanTranscript,
 }
 _LAYER_FIELDS = (
     "ocr_results",
@@ -312,8 +308,7 @@ _LAYER_FIELDS = (
     "figure_results",
     "processing_results",
     "transcription_results",
-    "clean_transcript_artifacts",
-    "clean_transcript_v2_artifacts",
+    "clean_transcripts",
 )
 
 
@@ -450,7 +445,6 @@ class _Registry:
     processing: dict[str, ProcessingResult]
     transcriptions: dict[str, StructuredTranscriptionResult]
     clean_transcripts: dict[str, CleanTranscript]
-    clean_transcripts_v2: dict[str, CleanTranscriptV2Artifact]
 
 
 from projectkoios.ingestion.provenance.domains import (  # noqa: E402
@@ -512,11 +506,7 @@ class DerivationAuditValidator(
         self.audit(audit_input).require_valid()
 
     def _processor_version(self, *, audit_input: DerivationAuditInput) -> str:
-        return (
-            DERIVATION_AUDIT_V2_PROCESSOR_VERSION
-            if audit_input.clean_transcript_v2_artifacts
-            else self.version
-        )
+        return self.version
 
     def _audit(
         self,
@@ -598,14 +588,9 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
                 "transcription_results",
             ),
             clean_transcripts=self._index(
-                audit_input.clean_transcript_artifacts,
-                "artifact_id",
-                "clean_transcript_artifacts",
-            ),
-            clean_transcripts_v2=self._index(
-                audit_input.clean_transcript_v2_artifacts,
-                "artifact_id",
-                "clean_transcript_v2_artifacts",
+                audit_input.clean_transcripts,
+                "result_id",
+                "clean_transcripts",
             ),
         )
 
@@ -623,7 +608,6 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
         self._audit_processing_references()
         self._audit_transcription_references()
         self._audit_clean_transcript_references()
-        self._audit_clean_transcript_v2_references()
         self._walk(self.extraction, "extraction_result")
         for layer_name in _LAYER_FIELDS:
             for index, artifact in enumerate(
@@ -647,8 +631,6 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
                     *(
                         (name, str(len(getattr(self.audit_input, name))))
                         for name in _LAYER_FIELDS
-                        if name != "clean_transcript_v2_artifacts"
-                        or self.audit_input.clean_transcript_v2_artifacts
                     ),
                 )
             )
@@ -785,7 +767,6 @@ __all__ = [
     "DERIVATION_AUDIT_ACTIONIZER_VERSION",
     "DERIVATION_AUDIT_CONTRACT_VERSION",
     "DERIVATION_AUDIT_PROCESSOR_VERSION",
-    "DERIVATION_AUDIT_V2_PROCESSOR_VERSION",
     "DerivationAuditError",
     "DerivationAuditFinding",
     "DerivationAuditFindingCode",

@@ -27,8 +27,8 @@ from projectkoios.ingestion import (
     ReferencePageLocatorStatus,
     reference_topic_anchor_identity,
 )
+from projectkoios.ingestion.clean_transcript import CleanTranscript
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.transcript_projection import CleanTranscript
 
 
 def evidence(
@@ -46,11 +46,11 @@ def evidence(
         block_record_ids=(),
         text=page_text,
     )
-    text = page_text
+    text = f"{page_text}\n"
     text_bytes = text.encode()
     transcript_digest = hashlib.sha256(text_bytes).hexdigest()
     transcript_id = stable_id(
-        "clean-transcript-artifact",
+        "clean-transcript-result",
         transcription_id,
         document_id,
         "reference:fixture",
@@ -58,6 +58,10 @@ def evidence(
         source_digest,
         (layout_id,),
         (page.page_id,),
+        (),
+        (),
+        (),
+        (),
         (),
         (),
         transcript_digest,
@@ -69,7 +73,7 @@ def evidence(
         "fixture-configuration",
     )
     transcript = CleanTranscript(
-        artifact_id=transcript_id,
+        result_id=transcript_id,
         transcription_result_id=transcription_id,
         document_id=document_id,
         source_id="reference:fixture",
@@ -79,6 +83,10 @@ def evidence(
         pages=(page,),
         blocks=(),
         exclusions=(),
+        dehyphenation_decisions=(),
+        page_number_classifications=(),
+        publisher_front_matter=(),
+        private_use_glyph_findings=(),
         text=text,
         text_sha256=transcript_digest,
         utf8_byte_length=len(text_bytes),
@@ -124,9 +132,7 @@ def evidence(
                     "application/vnd.projectkoios.ingestion.clean-transcript+json"
                 ),
             ),
-            artifact_generation=1,
-            contract_version="1.0",
-            artifact_id=transcript_id,
+            result_id=transcript_id,
             status=CleanTranscriptStatus.AUTOMATED_UNREVIEWED,
             structured_transcription_result_id=transcription_id,
             layout_result_ids=(layout_id,),
@@ -161,9 +167,7 @@ def evidence(
                 transcription_id,
             ),
             audited_layer_counts=(
-                ReferenceEvidenceLayerCount(
-                    layer="clean_transcript_artifacts", count=1
-                ),
+                ReferenceEvidenceLayerCount(layer="clean_transcripts", count=1),
                 ReferenceEvidenceLayerCount(layer="extraction_result", count=1),
                 ReferenceEvidenceLayerCount(layer="layout_results", count=1),
                 ReferenceEvidenceLayerCount(
