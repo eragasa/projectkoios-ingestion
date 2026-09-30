@@ -4,7 +4,6 @@ from projectkoios.ingestion.layout.actionizer import (
     LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION,
     LAYOUT_ANALYSIS_ACTIONIZER_NAME,
     LAYOUT_ANALYSIS_ACTIONIZER_VERSION,
-    LayoutAnalysisActionizer,
     LayoutAnalysisRequest,
     LayoutAnalysisResult,
 )
@@ -27,7 +26,6 @@ __all__ = [
     "LAYOUT_ANALYSIS_ACTIONIZER_VERSION",
     "LAYOUT_CONTRACT_VERSION",
     "DeterministicLayoutProcessor",
-    "LayoutAnalysisActionizer",
     "LayoutAnalysisLimitError",
     "LayoutAnalysisRequest",
     "LayoutAnalysisResult",

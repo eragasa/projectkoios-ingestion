@@ -745,7 +745,7 @@ scores, and ranking features are not part of this contract.
 
 `LayoutAnalysisRequest` binds one exact `ExtractedDocument`, one exact
 `LayoutConfiguration`, and the layout action contract into a stable request
-identity. `LayoutAnalysisActionizer.action()` returns a deterministic
+identity. `DeterministicLayoutProcessor.action()` returns a deterministic
 `LayoutAnalysisResult` that binds the request, actionizer contract,
 configuration digest, ordered `PageLayoutResult` identities, and retained page
 results. The request, actionizer, and result inherit the thin public Project

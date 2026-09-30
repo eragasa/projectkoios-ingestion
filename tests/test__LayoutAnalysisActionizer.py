@@ -16,7 +16,6 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
-    LayoutAnalysisActionizer,
     LayoutAnalysisRequest,
     LayoutAnalysisResult,
     LayoutConfiguration,
@@ -75,7 +74,7 @@ def test__layout_actionizer_binds_request_configuration_and_results() -> None:
         configuration=configuration,
     )
 
-    actionizer = LayoutAnalysisActionizer()
+    actionizer = DeterministicLayoutProcessor(configuration=configuration)
     result = actionizer.action(request=request)
     legacy_results = DeterministicLayoutProcessor(
         configuration=configuration
@@ -96,7 +95,7 @@ def test__layout_actionizer_binds_request_configuration_and_results() -> None:
     with pytest.raises(ValueError, match="result ID"):
         replace(result, result_id="layout-analysis-action-result:invalid")
     with pytest.raises(TypeError, match="LayoutAnalysisRequest"):
-        LayoutAnalysisActionizer().execute(
+        DeterministicLayoutProcessor().execute(
             request=request.document  # type: ignore[arg-type]
         )
 
@@ -122,15 +121,12 @@ def test__layout_facade_preserves_old_imports_without_implementation() -> None:
         "projectkoios.ingestion.layout"
     )
     assert LayoutConfiguration.__module__ == "projectkoios.ingestion.layout"
-    assert LayoutAnalysisActionizer.__module__ == (
-        "projectkoios.ingestion.layout.actionizer"
-    )
     assert LayoutAnalysisRequest.__module__ == (
         "projectkoios.ingestion.layout.actionizer"
     )
     assert LayoutAnalysisResult.__module__ == (
         "projectkoios.ingestion.layout.actionizer"
     )
-    assert "LayoutAnalysisActionizer" in layout_api
+    assert "DeterministicLayoutProcessor" in layout_api
     assert "LayoutAnalysisRequest" in layout_api
     assert "LayoutAnalysisResult" in layout_api

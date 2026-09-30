@@ -6,6 +6,11 @@ import math
 from dataclasses import dataclass
 from enum import StrEnum
 
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -20,6 +25,155 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
 
 LAYOUT_CONTRACT_VERSION = "1.0"
+
+LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION = "1.0"
+LAYOUT_ANALYSIS_ACTIONIZER_NAME = "deterministic-layout-analysis-actionizer"
+LAYOUT_ANALYSIS_ACTIONIZER_VERSION = "1"
+
+
+class LayoutAnalysisContract:
+    """Own layout action stable identity."""
+
+    @staticmethod
+    def request_id(
+        *,
+        document: ExtractedDocument,
+        configuration: LayoutConfiguration,
+    ) -> str:
+        return stable_id(
+            "layout-analysis-request",
+            document,
+            configuration.configuration_digest,
+            LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LayoutAnalysisRequest(DataObjectActionRequest):
+    """Complete immutable intent for deterministic document layout analysis."""
+
+    request_id: str
+    document: ExtractedDocument
+    configuration: LayoutConfiguration
+    contract_version: str = LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        document: ExtractedDocument,
+        configuration: LayoutConfiguration,
+    ) -> LayoutAnalysisRequest:
+        if not isinstance(document, ExtractedDocument):
+            raise TypeError("document must be ExtractedDocument")
+        if not isinstance(configuration, LayoutConfiguration):
+            raise TypeError("configuration must be LayoutConfiguration")
+        return cls(
+            request_id=LayoutAnalysisContract.request_id(
+                document=document,
+                configuration=configuration,
+            ),
+            document=document,
+            configuration=configuration,
+        )
+
+    def __post_init__(self) -> None:
+        if self.contract_version != LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION:
+            raise ValueError("unsupported layout-analysis request contract")
+        if not isinstance(self.document, ExtractedDocument):
+            raise TypeError("document must be ExtractedDocument")
+        if not isinstance(self.configuration, LayoutConfiguration):
+            raise TypeError("configuration must be LayoutConfiguration")
+        expected = LayoutAnalysisContract.request_id(
+            document=self.document,
+            configuration=self.configuration,
+        )
+        if self.request_id != expected:
+            raise ValueError("layout-analysis request ID is inconsistent")
+
+
+@dataclass(frozen=True, slots=True)
+class LayoutAnalysisResult(DataObjectActionResult):
+    """Identified deterministic outcome for one exact layout request."""
+
+    result_id: str
+    request_id: str
+    page_results: tuple[PageLayoutResult, ...]
+    actionizer_name: str
+    actionizer_version: str
+    configuration_digest: str
+    contract_version: str = LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        request: LayoutAnalysisRequest,
+        page_results: tuple[PageLayoutResult, ...],
+        actionizer_name: str,
+        actionizer_version: str,
+    ) -> LayoutAnalysisResult:
+        if not isinstance(request, LayoutAnalysisRequest):
+            raise TypeError("request must be LayoutAnalysisRequest")
+        if not isinstance(page_results, tuple) or any(
+            not isinstance(result, PageLayoutResult) for result in page_results
+        ):
+            raise TypeError("page_results must contain PageLayoutResult values")
+        expected_indices = tuple(
+            page.page_index for page in request.document.pages
+        )
+        actual_indices = tuple(result.page_index for result in page_results)
+        if actual_indices != expected_indices:
+            raise ValueError("layout results do not match request page order")
+        result_id = stable_id(
+            "layout-analysis-action-result",
+            request.request_id,
+            tuple(result.result_id for result in page_results),
+            actionizer_name,
+            actionizer_version,
+            request.configuration.configuration_digest,
+            LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION,
+        )
+        return cls(
+            result_id=result_id,
+            request_id=request.request_id,
+            page_results=page_results,
+            actionizer_name=actionizer_name,
+            actionizer_version=actionizer_version,
+            configuration_digest=request.configuration.configuration_digest,
+        )
+
+    def __post_init__(self) -> None:
+        if self.contract_version != LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION:
+            raise ValueError("unsupported layout-analysis result contract")
+        if not self.request_id:
+            raise ValueError("request_id must be non-empty")
+        if not isinstance(self.page_results, tuple) or any(
+            not isinstance(result, PageLayoutResult)
+            for result in self.page_results
+        ):
+            raise TypeError("page_results must contain PageLayoutResult values")
+        result_ids = tuple(result.result_id for result in self.page_results)
+        if len(result_ids) != len(set(result_ids)):
+            raise ValueError("page_results must have unique identities")
+        if any(
+            result.configuration_digest != self.configuration_digest
+            for result in self.page_results
+        ):
+            raise ValueError("layout result configuration identities disagree")
+        if not self.actionizer_name or not self.actionizer_version:
+            raise ValueError("actionizer identity must be complete")
+        expected = stable_id(
+            "layout-analysis-action-result",
+            self.request_id,
+            result_ids,
+            self.actionizer_name,
+            self.actionizer_version,
+            self.configuration_digest,
+            self.contract_version,
+        )
+        if self.result_id != expected:
+            raise ValueError("layout-analysis result ID is inconsistent")
 
 
 class LayoutAnalysisLimitError(ValueError):
@@ -155,10 +309,12 @@ class LayoutBlockReference:
             raise ValueError("layout block reference ID must be non-empty")
         if not self.kind:
             raise ValueError("layout block reference kind must be non-empty")
-        _require_tuple("source_spans", self.source_spans)
+        LayoutContract._require_tuple("source_spans", self.source_spans)
         if not self.source_spans:
             raise ValueError("layout block reference must retain source spans")
-        normalized = tuple(_normalized_span(span) for span in self.source_spans)
+        normalized = tuple(
+            LayoutContract._normalized_span(span) for span in self.source_spans
+        )
         object.__setattr__(self, "source_spans", normalized)
 
     @property
@@ -170,7 +326,7 @@ class LayoutBlockReference:
         )
         if len(boxes) != len(self.source_spans):
             return None
-        return _union_box(boxes)
+        return LayoutContract._union_box(boxes)
 
     def identity_parts(self) -> tuple[object, ...]:
         return (
@@ -193,7 +349,7 @@ class LayoutExclusion:
             raise ValueError(
                 "layout exclusion identity and reason are required"
             )
-        _validate_metadata(self.evidence, required=True)
+        LayoutContract._validate_metadata(self.evidence, required=True)
 
     def identity_parts(self) -> tuple[object, ...]:
         return (self.block_id, self.reason, self.evidence)
@@ -228,9 +384,11 @@ class LayoutGroupHypothesis:
         confidence: float,
         warning_ids: tuple[str, ...] = (),
     ) -> LayoutGroupHypothesis:
-        normalized_box = _validated_box(bounding_box, positive_area=True)
-        normalized_confidence = _validated_confidence(confidence)
-        group_id = _layout_group_id(
+        normalized_box = LayoutContract._validated_box(
+            bounding_box, positive_area=True
+        )
+        normalized_confidence = LayoutContract._validated_confidence(confidence)
+        group_id = LayoutContract._layout_group_id(
             source_id,
             source_blob_id,
             page_index,
@@ -267,7 +425,7 @@ class LayoutGroupHypothesis:
             raise ValueError("layout group page_index must be non-negative")
         if not isinstance(self.kind, LayoutGroupKind):
             raise ValueError("layout group kind is unsupported")
-        _require_tuple("block_ids", self.block_ids)
+        LayoutContract._require_tuple("block_ids", self.block_ids)
         if not self.block_ids or len(set(self.block_ids)) != len(
             self.block_ids
         ):
@@ -279,16 +437,20 @@ class LayoutGroupHypothesis:
         object.__setattr__(
             self,
             "bounding_box",
-            _validated_box(self.bounding_box, positive_area=True),
+            LayoutContract._validated_box(
+                self.bounding_box, positive_area=True
+            ),
         )
-        _validate_metadata(self.evidence, required=True)
+        LayoutContract._validate_metadata(self.evidence, required=True)
         object.__setattr__(
-            self, "confidence", _validated_confidence(self.confidence)
+            self,
+            "confidence",
+            LayoutContract._validated_confidence(self.confidence),
         )
-        _require_tuple("warning_ids", self.warning_ids)
+        LayoutContract._require_tuple("warning_ids", self.warning_ids)
         if len(set(self.warning_ids)) != len(self.warning_ids):
             raise ValueError("layout group warning IDs must be unique")
-        expected_group_id = _layout_group_id(
+        expected_group_id = LayoutContract._layout_group_id(
             self.source_id,
             self.source_blob_id,
             self.page_index,
@@ -353,10 +515,10 @@ class PageLayoutResult:
         processor_version: str,
         configuration_digest: str,
     ) -> PageLayoutResult:
-        page_id = _source_page_id(
+        page_id = LayoutContract._source_page_id(
             source.source_id, source.blob_id, page.page_index
         )
-        normalized_confidence = _validated_confidence(confidence)
+        normalized_confidence = LayoutContract._validated_confidence(confidence)
         raw_blocks = tuple(
             LayoutBlockReference.from_block(block) for block in page.blocks
         )
@@ -377,13 +539,15 @@ class PageLayoutResult:
                 "layout non-text IDs must exactly match raw non-text blocks"
             )
         raw_block_ids = tuple(block.block_id for block in page.blocks)
-        result_id = _page_layout_result_id(
+        result_id = LayoutContract._page_layout_result_id(
             page_id=page_id,
             source_id=source.source_id,
             source_blob_id=source.blob_id,
             source_content_hash=source.content_hash,
-            page_width=_finite_float(page.width, "page_width"),
-            page_height=_finite_float(page.height, "page_height"),
+            page_width=LayoutContract._finite_float(page.width, "page_width"),
+            page_height=LayoutContract._finite_float(
+                page.height, "page_height"
+            ),
             coordinate_system=page.coordinate_system,
             rotation_degrees=page.rotation_degrees,
             raw_blocks=raw_blocks,
@@ -434,15 +598,17 @@ class PageLayoutResult:
             raise ValueError("layout result identity must be complete")
         if not self.source_id or not self.source_blob_id:
             raise ValueError("layout source identity must be complete")
-        _validate_sha256_source(self.source_blob_id, self.source_content_hash)
+        LayoutContract._validate_sha256_source(
+            self.source_blob_id, self.source_content_hash
+        )
         if (
             isinstance(self.page_index, bool)
             or not isinstance(self.page_index, int)
             or self.page_index < 0
         ):
             raise ValueError("layout page_index must be non-negative")
-        width = _finite_float(self.page_width, "page_width")
-        height = _finite_float(self.page_height, "page_height")
+        width = LayoutContract._finite_float(self.page_width, "page_width")
+        height = LayoutContract._finite_float(self.page_height, "page_height")
         if width <= 0.0 or height <= 0.0:
             raise ValueError("layout page dimensions must be positive")
         object.__setattr__(self, "page_width", width)
@@ -469,7 +635,7 @@ class PageLayoutResult:
             ("warnings", self.warnings),
         )
         for name, value in tuple_fields:
-            _require_tuple(name, value)
+            LayoutContract._require_tuple(name, value)
         if (
             tuple(reference.block_id for reference in self.raw_blocks)
             != self.raw_block_ids
@@ -607,9 +773,13 @@ class PageLayoutResult:
             raise ValueError("layout warning IDs must be unique")
         allowed_warning_objects = set(text_ids).union(group_ids)
         for warning in self.warnings:
-            _require_tuple("warning object_ids", warning.object_ids)
-            _require_tuple("warning source_spans", warning.source_spans)
-            _validate_metadata(warning.evidence, required=False)
+            LayoutContract._require_tuple(
+                "warning object_ids", warning.object_ids
+            )
+            LayoutContract._require_tuple(
+                "warning source_spans", warning.source_spans
+            )
+            LayoutContract._validate_metadata(warning.evidence, required=False)
             if any(
                 object_id not in allowed_warning_objects
                 for object_id in warning.object_ids
@@ -618,7 +788,7 @@ class PageLayoutResult:
                     "layout warning object IDs must resolve in the result"
                 )
             for span in warning.source_spans:
-                _validate_result_span(self, span)
+                LayoutContract._validate_result_span(self, span)
             expected_warning_id = stable_id(
                 "warning",
                 warning.code,
@@ -658,9 +828,11 @@ class PageLayoutResult:
                     "layout group block IDs must follow proposed order"
                 )
             membership.extend(group.block_ids)
-            expected_box = _union_box(
+            expected_box = LayoutContract._union_box(
                 tuple(
-                    _required_reference_box(references_by_id[block_id])
+                    LayoutContract._required_reference_box(
+                        references_by_id[block_id]
+                    )
                     for block_id in group.block_ids
                 )
             )
@@ -685,7 +857,7 @@ class PageLayoutResult:
                         "layout group warnings must target the group or a "
                         "member block"
                     )
-            expected_group_id = _layout_group_id(
+            expected_group_id = LayoutContract._layout_group_id(
                 self.source_id,
                 self.source_blob_id,
                 self.page_index,
@@ -742,9 +914,11 @@ class PageLayoutResult:
                 "uncertain layout groups and candidates must link to an "
                 "explicit warning"
             )
-        _validate_metadata(self.evidence, required=True)
+        LayoutContract._validate_metadata(self.evidence, required=True)
         object.__setattr__(
-            self, "confidence", _validated_confidence(self.confidence)
+            self,
+            "confidence",
+            LayoutContract._validated_confidence(self.confidence),
         )
         identity_fields = (
             self.processor_name,
@@ -755,14 +929,14 @@ class PageLayoutResult:
             raise ValueError("layout processor identity must be complete")
         if self.contract_version != LAYOUT_CONTRACT_VERSION:
             raise ValueError("unsupported layout contract version")
-        expected_page_id = _source_page_id(
+        expected_page_id = LayoutContract._source_page_id(
             self.source_id, self.source_blob_id, self.page_index
         )
         if self.page_id != expected_page_id:
             raise ValueError(
                 "layout page ID does not match its source identity"
             )
-        expected_result_id = _page_layout_result_id(
+        expected_result_id = LayoutContract._page_layout_result_id(
             page_id=self.page_id,
             source_id=self.source_id,
             source_blob_id=self.source_blob_id,
@@ -790,7 +964,245 @@ class PageLayoutResult:
             raise ValueError("layout result ID does not match its evidence")
 
 
-class DeterministicLayoutProcessor:
+class LayoutContract:
+    """Own page-layout identities and contract validation."""
+
+    @staticmethod
+    def _source_page_id(
+        source_id: str, source_blob_id: str, page_index: int
+    ) -> str:
+        return stable_id("source-page", source_id, source_blob_id, page_index)
+
+    @staticmethod
+    def _layout_group_id(
+        source_id: str,
+        source_blob_id: str,
+        page_index: int,
+        kind: LayoutGroupKind,
+        block_ids: tuple[str, ...],
+        bounding_box: BoundingBox,
+        evidence: Metadata,
+        confidence: float,
+        warning_ids: tuple[str, ...],
+    ) -> str:
+        return stable_id(
+            "layout-group",
+            source_id,
+            source_blob_id,
+            page_index,
+            kind.value,
+            block_ids,
+            bounding_box,
+            evidence,
+            confidence,
+            warning_ids,
+        )
+
+    @staticmethod
+    def _page_layout_result_id(
+        *,
+        page_id: str,
+        source_id: str,
+        source_blob_id: str,
+        source_content_hash: str,
+        page_width: float,
+        page_height: float,
+        coordinate_system: str,
+        rotation_degrees: int,
+        raw_blocks: tuple[LayoutBlockReference, ...],
+        raw_block_ids: tuple[str, ...],
+        input_text_blocks: tuple[LayoutBlockReference, ...],
+        non_text_block_ids: tuple[str, ...],
+        proposed_order: tuple[str, ...],
+        exclusions: tuple[LayoutExclusion, ...],
+        groups: tuple[LayoutGroupHypothesis, ...],
+        page_kind: LayoutPageKind,
+        evidence: Metadata,
+        confidence: float,
+        warning_ids: tuple[str, ...],
+        processor_name: str,
+        processor_version: str,
+        configuration_digest: str,
+    ) -> str:
+        return stable_id(
+            "page-layout-result",
+            LAYOUT_CONTRACT_VERSION,
+            page_id,
+            source_id,
+            source_blob_id,
+            source_content_hash,
+            page_width,
+            page_height,
+            coordinate_system,
+            rotation_degrees,
+            tuple(reference.identity_parts() for reference in raw_blocks),
+            raw_block_ids,
+            tuple(
+                reference.identity_parts() for reference in input_text_blocks
+            ),
+            non_text_block_ids,
+            proposed_order,
+            tuple(exclusion.identity_parts() for exclusion in exclusions),
+            tuple(group.group_id for group in groups),
+            page_kind.value,
+            evidence,
+            confidence,
+            warning_ids,
+            processor_name,
+            processor_version,
+            configuration_digest,
+        )
+
+    @staticmethod
+    def _normalized_span(span: SourceSpan) -> SourceSpan:
+        if not isinstance(span, SourceSpan):
+            raise TypeError("layout source spans must be SourceSpan values")
+        box = (
+            LayoutContract._validated_box(
+                span.bounding_box, positive_area=False
+            )
+            if span.bounding_box is not None
+            else None
+        )
+        return SourceSpan(
+            source_id=span.source_id,
+            source_blob_id=span.source_blob_id,
+            page_index=span.page_index,
+            printed_page_label=span.printed_page_label,
+            source_object_id=span.source_object_id,
+            bounding_box=box,
+            start_offset=span.start_offset,
+            end_offset=span.end_offset,
+        )
+
+    @staticmethod
+    def _validated_box(box: BoundingBox, *, positive_area: bool) -> BoundingBox:
+        if not isinstance(box, tuple) or len(box) != 4:
+            raise ValueError(
+                "layout bounding boxes must contain four coordinates"
+            )
+        values = tuple(
+            LayoutContract._finite_float(value, "bounding box coordinate")
+            for value in box
+        )
+        x0, y0, x1, y1 = values
+        if x1 < x0 or y1 < y0 or (positive_area and (x1 <= x0 or y1 <= y0)):
+            raise ValueError("layout bounding boxes must have ordered geometry")
+        return (x0, y0, x1, y1)
+
+    @staticmethod
+    def _finite_float(value: object, name: str) -> float:
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            raise ValueError(f"{name} must be a finite number")
+        try:
+            normalized = float(value)
+        except OverflowError as error:
+            raise ValueError(f"{name} must be a finite number") from error
+        if not math.isfinite(normalized):
+            raise ValueError(f"{name} must be a finite number")
+        return 0.0 if normalized == 0.0 else normalized
+
+    @staticmethod
+    def _union_box(boxes: tuple[BoundingBox, ...]) -> BoundingBox:
+        if not boxes:
+            raise ValueError("cannot compute a layout box without source boxes")
+        return (
+            min(box[0] for box in boxes),
+            min(box[1] for box in boxes),
+            max(box[2] for box in boxes),
+            max(box[3] for box in boxes),
+        )
+
+    @staticmethod
+    def _required_reference_box(reference: LayoutBlockReference) -> BoundingBox:
+        box = reference.bounding_box
+        if box is None or box[2] <= box[0] or box[3] <= box[1]:
+            raise ValueError(
+                "ordered layout references require positive geometry"
+            )
+        return box
+
+    @staticmethod
+    def _validate_metadata(metadata: Metadata, *, required: bool) -> None:
+        LayoutContract._require_tuple("evidence", metadata)
+        if required and not metadata:
+            raise ValueError("layout evidence must be non-empty")
+        keys: list[str] = []
+        for entry in metadata:
+            if not isinstance(entry, tuple) or len(entry) != 2:
+                raise ValueError(
+                    "layout evidence entries must be key/value tuples"
+                )
+            key, value = entry
+            if (
+                not isinstance(key, str)
+                or not key
+                or not isinstance(value, str)
+            ):
+                raise ValueError(
+                    "layout evidence must contain string keys and values"
+                )
+            keys.append(key)
+        if len(keys) != len(set(keys)):
+            raise ValueError("layout evidence keys must be unique")
+
+    @staticmethod
+    def _validated_confidence(confidence: float) -> float:
+        if isinstance(confidence, bool) or not isinstance(
+            confidence, int | float
+        ):
+            raise ValueError("layout confidence must be a finite bounded score")
+        normalized = float(confidence)
+        if not math.isfinite(normalized) or not 0.0 <= normalized <= 1.0:
+            raise ValueError("layout confidence must be between zero and one")
+        return normalized
+
+    @staticmethod
+    def _validate_sha256_source(source_blob_id: str, source_hash: str) -> None:
+        if len(source_hash) != 64:
+            raise ValueError("layout source hash must be a SHA-256 digest")
+        try:
+            int(source_hash, 16)
+        except ValueError as error:
+            raise ValueError(
+                "layout source hash must be a SHA-256 digest"
+            ) from error
+        if source_blob_id != f"blob:sha256:{source_hash}":
+            raise ValueError("layout source blob and hash must agree")
+
+    @staticmethod
+    def _validate_result_span(
+        result: PageLayoutResult, span: SourceSpan
+    ) -> None:
+        normalized = LayoutContract._normalized_span(span)
+        if (
+            normalized.source_id != result.source_id
+            or normalized.source_blob_id != result.source_blob_id
+            or normalized.page_index != result.page_index
+            or normalized.printed_page_label != result.printed_page_label
+        ):
+            raise ValueError(
+                "layout warning span must refer to the exact source page"
+            )
+        if normalized.bounding_box is not None:
+            x0, y0, x1, y1 = normalized.bounding_box
+            if (
+                x0 < 0.0
+                or y0 < 0.0
+                or x1 > result.page_width
+                or y1 > result.page_height
+            ):
+                raise ValueError("layout warning span lies outside the page")
+
+    @staticmethod
+    def _require_tuple(name: str, value: object) -> None:
+        if not isinstance(value, tuple):
+            raise TypeError(f"{name} must be an immutable tuple")
+
+
+class DeterministicLayoutProcessor(
+    DataObjectActionizer[LayoutAnalysisRequest, LayoutAnalysisResult]
+):
     """Propose bounded page-local text order from transparent geometry only."""
 
     name = "deterministic-page-layout"
@@ -804,6 +1216,28 @@ class DeterministicLayoutProcessor:
     @property
     def configuration_digest(self) -> str:
         return self.configuration.configuration_digest
+
+    def action(self, *, request: LayoutAnalysisRequest) -> LayoutAnalysisResult:
+        """Analyze one complete identified layout request."""
+        if not isinstance(request, LayoutAnalysisRequest):
+            raise TypeError("request must be LayoutAnalysisRequest")
+        if request.configuration != self.configuration:
+            raise ValueError(
+                "request configuration must match processor configuration"
+            )
+        page_results = self.analyze(request.document)
+        return LayoutAnalysisResult.create(
+            request=request,
+            page_results=page_results,
+            actionizer_name=LAYOUT_ANALYSIS_ACTIONIZER_NAME,
+            actionizer_version=LAYOUT_ANALYSIS_ACTIONIZER_VERSION,
+        )
+
+    def execute(
+        self, *, request: LayoutAnalysisRequest
+    ) -> LayoutAnalysisResult:
+        """Execute one request through the canonical action path."""
+        return self.action(request=request)
 
     def analyze(
         self, document: ExtractedDocument
@@ -828,219 +1262,6 @@ class DeterministicLayoutProcessor:
         )
 
 
-def _source_page_id(
-    source_id: str, source_blob_id: str, page_index: int
-) -> str:
-    return stable_id("source-page", source_id, source_blob_id, page_index)
-
-
-def _layout_group_id(
-    source_id: str,
-    source_blob_id: str,
-    page_index: int,
-    kind: LayoutGroupKind,
-    block_ids: tuple[str, ...],
-    bounding_box: BoundingBox,
-    evidence: Metadata,
-    confidence: float,
-    warning_ids: tuple[str, ...],
-) -> str:
-    return stable_id(
-        "layout-group",
-        source_id,
-        source_blob_id,
-        page_index,
-        kind.value,
-        block_ids,
-        bounding_box,
-        evidence,
-        confidence,
-        warning_ids,
-    )
-
-
-def _page_layout_result_id(
-    *,
-    page_id: str,
-    source_id: str,
-    source_blob_id: str,
-    source_content_hash: str,
-    page_width: float,
-    page_height: float,
-    coordinate_system: str,
-    rotation_degrees: int,
-    raw_blocks: tuple[LayoutBlockReference, ...],
-    raw_block_ids: tuple[str, ...],
-    input_text_blocks: tuple[LayoutBlockReference, ...],
-    non_text_block_ids: tuple[str, ...],
-    proposed_order: tuple[str, ...],
-    exclusions: tuple[LayoutExclusion, ...],
-    groups: tuple[LayoutGroupHypothesis, ...],
-    page_kind: LayoutPageKind,
-    evidence: Metadata,
-    confidence: float,
-    warning_ids: tuple[str, ...],
-    processor_name: str,
-    processor_version: str,
-    configuration_digest: str,
-) -> str:
-    return stable_id(
-        "page-layout-result",
-        LAYOUT_CONTRACT_VERSION,
-        page_id,
-        source_id,
-        source_blob_id,
-        source_content_hash,
-        page_width,
-        page_height,
-        coordinate_system,
-        rotation_degrees,
-        tuple(reference.identity_parts() for reference in raw_blocks),
-        raw_block_ids,
-        tuple(reference.identity_parts() for reference in input_text_blocks),
-        non_text_block_ids,
-        proposed_order,
-        tuple(exclusion.identity_parts() for exclusion in exclusions),
-        tuple(group.group_id for group in groups),
-        page_kind.value,
-        evidence,
-        confidence,
-        warning_ids,
-        processor_name,
-        processor_version,
-        configuration_digest,
-    )
-
-
-def _normalized_span(span: SourceSpan) -> SourceSpan:
-    if not isinstance(span, SourceSpan):
-        raise TypeError("layout source spans must be SourceSpan values")
-    box = (
-        _validated_box(span.bounding_box, positive_area=False)
-        if span.bounding_box is not None
-        else None
-    )
-    return SourceSpan(
-        source_id=span.source_id,
-        source_blob_id=span.source_blob_id,
-        page_index=span.page_index,
-        printed_page_label=span.printed_page_label,
-        source_object_id=span.source_object_id,
-        bounding_box=box,
-        start_offset=span.start_offset,
-        end_offset=span.end_offset,
-    )
-
-
-def _validated_box(box: BoundingBox, *, positive_area: bool) -> BoundingBox:
-    if not isinstance(box, tuple) or len(box) != 4:
-        raise ValueError("layout bounding boxes must contain four coordinates")
-    values = tuple(
-        _finite_float(value, "bounding box coordinate") for value in box
-    )
-    x0, y0, x1, y1 = values
-    if x1 < x0 or y1 < y0 or (positive_area and (x1 <= x0 or y1 <= y0)):
-        raise ValueError("layout bounding boxes must have ordered geometry")
-    return (x0, y0, x1, y1)
-
-
-def _finite_float(value: object, name: str) -> float:
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise ValueError(f"{name} must be a finite number")
-    try:
-        normalized = float(value)
-    except OverflowError as error:
-        raise ValueError(f"{name} must be a finite number") from error
-    if not math.isfinite(normalized):
-        raise ValueError(f"{name} must be a finite number")
-    return 0.0 if normalized == 0.0 else normalized
-
-
-def _union_box(boxes: tuple[BoundingBox, ...]) -> BoundingBox:
-    if not boxes:
-        raise ValueError("cannot compute a layout box without source boxes")
-    return (
-        min(box[0] for box in boxes),
-        min(box[1] for box in boxes),
-        max(box[2] for box in boxes),
-        max(box[3] for box in boxes),
-    )
-
-
-def _required_reference_box(reference: LayoutBlockReference) -> BoundingBox:
-    box = reference.bounding_box
-    if box is None or box[2] <= box[0] or box[3] <= box[1]:
-        raise ValueError("ordered layout references require positive geometry")
-    return box
-
-
-def _validate_metadata(metadata: Metadata, *, required: bool) -> None:
-    _require_tuple("evidence", metadata)
-    if required and not metadata:
-        raise ValueError("layout evidence must be non-empty")
-    keys: list[str] = []
-    for entry in metadata:
-        if not isinstance(entry, tuple) or len(entry) != 2:
-            raise ValueError("layout evidence entries must be key/value tuples")
-        key, value = entry
-        if not isinstance(key, str) or not key or not isinstance(value, str):
-            raise ValueError(
-                "layout evidence must contain string keys and values"
-            )
-        keys.append(key)
-    if len(keys) != len(set(keys)):
-        raise ValueError("layout evidence keys must be unique")
-
-
-def _validated_confidence(confidence: float) -> float:
-    if isinstance(confidence, bool) or not isinstance(confidence, int | float):
-        raise ValueError("layout confidence must be a finite bounded score")
-    normalized = float(confidence)
-    if not math.isfinite(normalized) or not 0.0 <= normalized <= 1.0:
-        raise ValueError("layout confidence must be between zero and one")
-    return normalized
-
-
-def _validate_sha256_source(source_blob_id: str, source_hash: str) -> None:
-    if len(source_hash) != 64:
-        raise ValueError("layout source hash must be a SHA-256 digest")
-    try:
-        int(source_hash, 16)
-    except ValueError as error:
-        raise ValueError(
-            "layout source hash must be a SHA-256 digest"
-        ) from error
-    if source_blob_id != f"blob:sha256:{source_hash}":
-        raise ValueError("layout source blob and hash must agree")
-
-
-def _validate_result_span(result: PageLayoutResult, span: SourceSpan) -> None:
-    normalized = _normalized_span(span)
-    if (
-        normalized.source_id != result.source_id
-        or normalized.source_blob_id != result.source_blob_id
-        or normalized.page_index != result.page_index
-        or normalized.printed_page_label != result.printed_page_label
-    ):
-        raise ValueError(
-            "layout warning span must refer to the exact source page"
-        )
-    if normalized.bounding_box is not None:
-        x0, y0, x1, y1 = normalized.bounding_box
-        if (
-            x0 < 0.0
-            or y0 < 0.0
-            or x1 > result.page_width
-            or y1 > result.page_height
-        ):
-            raise ValueError("layout warning span lies outside the page")
-
-
-def _require_tuple(name: str, value: object) -> None:
-    if not isinstance(value, tuple):
-        raise TypeError(f"{name} must be an immutable tuple")
-
-
 _COMPATIBILITY_TYPES = (
     DeterministicLayoutProcessor,
     LayoutAnalysisLimitError,
@@ -1056,9 +1277,17 @@ for _compatibility_type in _COMPATIBILITY_TYPES:
     _compatibility_type.__module__ = "projectkoios.ingestion.layout"
 del _compatibility_type
 
+LayoutAnalysisRequest.__module__ = "projectkoios.ingestion.layout.actionizer"
+LayoutAnalysisResult.__module__ = "projectkoios.ingestion.layout.actionizer"
+
 
 __all__ = [
+    "LAYOUT_ANALYSIS_ACTION_CONTRACT_VERSION",
+    "LAYOUT_ANALYSIS_ACTIONIZER_NAME",
+    "LAYOUT_ANALYSIS_ACTIONIZER_VERSION",
     "LAYOUT_CONTRACT_VERSION",
+    "LayoutAnalysisRequest",
+    "LayoutAnalysisResult",
     "DeterministicLayoutProcessor",
     "LayoutAnalysisLimitError",
     "LayoutBlockReference",

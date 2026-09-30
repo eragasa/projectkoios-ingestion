@@ -9,14 +9,12 @@ from projectkoios.ingestion.layout.contracts import (
     LayoutAnalysisLimitError,
     LayoutBlockReference,
     LayoutConfiguration,
+    LayoutContract,
     LayoutExclusion,
     LayoutGroupHypothesis,
     LayoutGroupKind,
     LayoutPageKind,
     PageLayoutResult,
-    _finite_float,
-    _union_box,
-    _validated_box,
 )
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -44,6 +42,47 @@ class _PreparedPage:
     non_text_ids: tuple[str, ...]
     items: tuple[_Item, ...]
     exclusions: tuple[LayoutExclusion, ...]
+
+
+class LayoutGeometryContract:
+    """Own deterministic layout geometry operations."""
+
+    @staticmethod
+    def _horizontal_extent(items: list[_Item]) -> float:
+        return max(item.box[2] for item in items) - min(
+            item.box[0] for item in items
+        )
+
+    @staticmethod
+    def _geometric_key(item: _Item) -> tuple[float, float, float, float, str]:
+        return (
+            item.box[1],
+            item.box[0],
+            item.box[3],
+            item.box[2],
+            item.reference.block_id,
+        )
+
+    @staticmethod
+    def _vertical_overlap_ratio(first: _Item, second: _Item) -> float:
+        overlap = min(first.box[3], second.box[3]) - max(
+            first.box[1], second.box[1]
+        )
+        if overlap <= 0.0:
+            return 0.0
+        return overlap / min(
+            first.box[3] - first.box[1],
+            second.box[3] - second.box[1],
+        )
+
+    @staticmethod
+    def _number(value: float) -> str:
+        normalized = 0.0 if value == 0.0 else value
+        return format(normalized, ".6g")
+
+    @staticmethod
+    def _box_text(box: BoundingBox) -> str:
+        return ",".join(LayoutGeometryContract._number(value) for value in box)
 
 
 class _LayoutPageAnalyzer:
@@ -216,7 +255,12 @@ class _LayoutPageAnalyzer:
                     LayoutExclusion(
                         block_id=reference.block_id,
                         reason="non_positive_geometry",
-                        evidence=(("bounding_box", _box_text(box)),),
+                        evidence=(
+                            (
+                                "bounding_box",
+                                LayoutGeometryContract._box_text(box),
+                            ),
+                        ),
                     )
                 )
                 continue
@@ -388,7 +432,7 @@ class _LayoutPageAnalyzer:
                 ),
             )
 
-        ordered_flow = sorted(flow, key=_geometric_key)
+        ordered_flow = sorted(flow, key=LayoutGeometryContract._geometric_key)
         groups = (
             [
                 self._group(
@@ -415,7 +459,7 @@ class _LayoutPageAnalyzer:
             item.reference.block_id
             for item in [
                 *ordered_flow,
-                *sorted(bottom_text, key=_geometric_key),
+                *sorted(bottom_text, key=LayoutGeometryContract._geometric_key),
             ]
         )
         return self._result(
@@ -472,8 +516,14 @@ class _LayoutPageAnalyzer:
                     items=tuple(items),
                     object_ids=tuple(item.reference.block_id for item in items),
                     evidence=(
-                        ("column_gap_points", _number(gap)),
-                        ("minimum_column_gap_points", _number(minimum_gap)),
+                        (
+                            "column_gap_points",
+                            LayoutGeometryContract._number(gap),
+                        ),
+                        (
+                            "minimum_column_gap_points",
+                            LayoutGeometryContract._number(minimum_gap),
+                        ),
                     ),
                 )
             )
@@ -488,7 +538,7 @@ class _LayoutPageAnalyzer:
                 evidence=(
                     ("algorithm", _ALGORITHM),
                     ("ambiguity", "weak_column_separation"),
-                    ("column_gap_points", _number(gap)),
+                    ("column_gap_points", LayoutGeometryContract._number(gap)),
                 ),
             )
 
@@ -573,8 +623,8 @@ class _LayoutPageAnalyzer:
                 ),
             )
 
-        left_width = _horizontal_extent(left)
-        right_width = _horizontal_extent(right)
+        left_width = LayoutGeometryContract._horizontal_extent(left)
+        right_width = LayoutGeometryContract._horizontal_extent(right)
         width_balance = min(left_width, right_width) / max(
             left_width, right_width
         )
@@ -666,17 +716,29 @@ class _LayoutPageAnalyzer:
             items=tuple(sidebar_items),
             object_ids=tuple(item.reference.block_id for item in sidebar_items),
             evidence=(
-                ("column_width_balance", _number(width_balance)),
+                (
+                    "column_width_balance",
+                    LayoutGeometryContract._number(width_balance),
+                ),
                 (
                     "narrow_width_points",
-                    _number(min(left_width, right_width)),
+                    LayoutGeometryContract._number(
+                        min(left_width, right_width)
+                    ),
                 ),
             ),
         )
         warnings.append(warning)
-        sorted_spanning = sorted(spanning, key=_geometric_key)
-        middle = sorted([*main_items, *sidebar_items], key=_geometric_key)
-        sorted_bottom_text = sorted(bottom_text, key=_geometric_key)
+        sorted_spanning = sorted(
+            spanning, key=LayoutGeometryContract._geometric_key
+        )
+        middle = sorted(
+            [*main_items, *sidebar_items],
+            key=LayoutGeometryContract._geometric_key,
+        )
+        sorted_bottom_text = sorted(
+            bottom_text, key=LayoutGeometryContract._geometric_key
+        )
         groups: list[LayoutGroupHypothesis] = []
         if sorted_spanning:
             groups.append(
@@ -694,7 +756,7 @@ class _LayoutPageAnalyzer:
                 source,
                 page,
                 LayoutGroupKind.COLUMN,
-                sorted(main_items, key=_geometric_key),
+                sorted(main_items, key=LayoutGeometryContract._geometric_key),
                 (("role", "main_flow_candidate"),),
                 0.45,
             )
@@ -704,7 +766,9 @@ class _LayoutPageAnalyzer:
                 source,
                 page,
                 LayoutGroupKind.SIDEBAR,
-                sorted(sidebar_items, key=_geometric_key),
+                sorted(
+                    sidebar_items, key=LayoutGeometryContract._geometric_key
+                ),
                 (
                     ("role", "narrow_concurrent_side_group"),
                     ("ordering", "uncertain"),
@@ -734,7 +798,7 @@ class _LayoutPageAnalyzer:
                 ("algorithm", _ALGORITHM),
                 ("hypothesis", "main_flow_with_sidebar"),
                 ("ordering", "geometric_and_explicitly_uncertain"),
-                ("column_gap_points", _number(gap)),
+                ("column_gap_points", LayoutGeometryContract._number(gap)),
             ),
             confidence=0.35,
             warnings=tuple(warnings),
@@ -756,10 +820,14 @@ class _LayoutPageAnalyzer:
         gap: float,
         overlap_ratio: float,
     ) -> PageLayoutResult:
-        sorted_spanning = sorted(spanning, key=_geometric_key)
-        sorted_left = sorted(left, key=_geometric_key)
-        sorted_right = sorted(right, key=_geometric_key)
-        sorted_bottom_text = sorted(bottom_text, key=_geometric_key)
+        sorted_spanning = sorted(
+            spanning, key=LayoutGeometryContract._geometric_key
+        )
+        sorted_left = sorted(left, key=LayoutGeometryContract._geometric_key)
+        sorted_right = sorted(right, key=LayoutGeometryContract._geometric_key)
+        sorted_bottom_text = sorted(
+            bottom_text, key=LayoutGeometryContract._geometric_key
+        )
         confidence = min(0.95, 0.72 + gap / page.width)
         groups: list[LayoutGroupHypothesis] = []
         if sorted_spanning:
@@ -773,7 +841,9 @@ class _LayoutPageAnalyzer:
                         ("position", "above_concurrent_columns"),
                         (
                             "minimum_width_ratio",
-                            _number(self.configuration.spanning_width_ratio),
+                            LayoutGeometryContract._number(
+                                self.configuration.spanning_width_ratio
+                            ),
                         ),
                     ),
                     confidence,
@@ -828,8 +898,11 @@ class _LayoutPageAnalyzer:
             evidence=(
                 ("algorithm", _ALGORITHM),
                 ("column_count", "2"),
-                ("column_gap_points", _number(gap)),
-                ("vertical_overlap_ratio", _number(overlap_ratio)),
+                ("column_gap_points", LayoutGeometryContract._number(gap)),
+                (
+                    "vertical_overlap_ratio",
+                    LayoutGeometryContract._number(overlap_ratio),
+                ),
                 ("bottom_text_block_count", str(len(bottom_text))),
                 ("non_text_block_count", str(len(prepared.non_text_ids))),
             ),
@@ -950,8 +1023,8 @@ class _LayoutPageAnalyzer:
     def _validate_source_page(
         source: SourceDocument, page: ExtractedPage
     ) -> None:
-        width = _finite_float(page.width, "page width")
-        height = _finite_float(page.height, "page height")
+        width = LayoutContract._finite_float(page.width, "page width")
+        height = LayoutContract._finite_float(page.height, "page height")
         if width <= 0.0 or height <= 0.0:
             raise ValueError("layout page dimensions must be positive")
         raw_ids = tuple(block.block_id for block in page.blocks)
@@ -974,7 +1047,9 @@ class _LayoutPageAnalyzer:
                         "layout input span label differs from its page"
                     )
                 if span.bounding_box is not None:
-                    box = _validated_box(span.bounding_box, positive_area=False)
+                    box = LayoutContract._validated_box(
+                        span.bounding_box, positive_area=False
+                    )
                     if (
                         box[0] < 0.0
                         or box[1] < 0.0
@@ -1071,11 +1146,17 @@ class _LayoutPageAnalyzer:
         ):
             return None
         left_support = [
-            max(_vertical_overlap_ratio(item, other) for other in right)
+            max(
+                LayoutGeometryContract._vertical_overlap_ratio(item, other)
+                for other in right
+            )
             for item in left
         ]
         right_support = [
-            max(_vertical_overlap_ratio(item, other) for other in left)
+            max(
+                LayoutGeometryContract._vertical_overlap_ratio(item, other)
+                for other in left
+            )
             for item in right
         ]
         support = min(*left_support, *right_support)
@@ -1158,7 +1239,7 @@ class _LayoutPageAnalyzer:
         *,
         evidence: Metadata,
     ) -> PageLayoutResult:
-        ordered = sorted(items, key=_geometric_key)
+        ordered = sorted(items, key=LayoutGeometryContract._geometric_key)
         ordered_ids = {item.reference.block_id for item in ordered}
         warning_ids = tuple(
             warning.warning_id
@@ -1205,7 +1286,7 @@ class _LayoutPageAnalyzer:
                 source,
                 page,
                 LayoutGroupKind.FOOTNOTE_CANDIDATE,
-                sorted(bottom_text, key=_geometric_key),
+                sorted(bottom_text, key=LayoutGeometryContract._geometric_key),
                 (
                     ("position", "separated_near_page_bottom"),
                     ("role", "footnote_candidate"),
@@ -1233,7 +1314,9 @@ class _LayoutPageAnalyzer:
             page_index=page.page_index,
             kind=kind,
             block_ids=tuple(item.reference.block_id for item in items),
-            bounding_box=_union_box(tuple(item.box for item in items)),
+            bounding_box=LayoutContract._union_box(
+                tuple(item.box for item in items)
+            ),
             evidence=evidence,
             confidence=confidence,
             warning_ids=warning_ids,
@@ -1287,40 +1370,3 @@ def analyze_layout_page(
         processor_name=processor_name,
         processor_version=processor_version,
     ).analyze(source, page)
-
-
-def _horizontal_extent(items: list[_Item]) -> float:
-    return max(item.box[2] for item in items) - min(
-        item.box[0] for item in items
-    )
-
-
-def _geometric_key(item: _Item) -> tuple[float, float, float, float, str]:
-    return (
-        item.box[1],
-        item.box[0],
-        item.box[3],
-        item.box[2],
-        item.reference.block_id,
-    )
-
-
-def _vertical_overlap_ratio(first: _Item, second: _Item) -> float:
-    overlap = min(first.box[3], second.box[3]) - max(
-        first.box[1], second.box[1]
-    )
-    if overlap <= 0.0:
-        return 0.0
-    return overlap / min(
-        first.box[3] - first.box[1],
-        second.box[3] - second.box[1],
-    )
-
-
-def _number(value: float) -> str:
-    normalized = 0.0 if value == 0.0 else value
-    return format(normalized, ".6g")
-
-
-def _box_text(box: BoundingBox) -> str:
-    return ",".join(_number(value) for value in box)

@@ -3,7 +3,7 @@
 ## Status
 
 **Implemented.** The identified operation is
-[`LayoutAnalysisActionizer`](../../../../../../src/python/projectkoios/ingestion/layout/actionizer.py),
+[`DeterministicLayoutProcessor`](../../../../../../src/python/projectkoios/ingestion/layout/actionizer.py),
 with a stable request and result. The compatibility processor retains layout
 contract version `1.0`, processor name `deterministic-page-layout`, and
 processor version `2`.
@@ -32,7 +32,7 @@ or filesystem mutation.
 flowchart LR
     Document[ExtractedDocument] --> Request[LayoutAnalysisRequest]
     Config[LayoutConfiguration] --> Request
-    Request --> Actionizer[LayoutAnalysisActionizer]
+    Request --> Actionizer[DeterministicLayoutProcessor]
     Actionizer --> ActionResult[LayoutAnalysisResult]
     Actionizer --> Processor[DeterministicLayoutProcessor]
     Processor --> Result[PageLayoutResult tuple]
@@ -66,7 +66,7 @@ Existing package and root imports, processor identity, and contract values are
 preserved.
 
 - **`LayoutAnalysisRequest`** — binds the exact document and configuration.
-- **`LayoutAnalysisActionizer`** — executes one exact request.
+- **`DeterministicLayoutProcessor`** — executes one exact request.
 - **`LayoutAnalysisResult`** — binds the request, actionizer, configuration,
   and ordered page results.
 - **`DeterministicLayoutProcessor`** — compatibility processor that validates
