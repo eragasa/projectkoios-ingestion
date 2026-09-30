@@ -1167,7 +1167,7 @@ Derivation-audit contract version 1.0 and processor version 2 validate one exact
 
 `DerivationAuditRequest` identifies one exact `DerivationAuditInput`, including
 the source-byte digest and length, extraction manifest, ordered layer names, and
-ordered artifact identities. `DerivationAuditActionizer.action()` processes
+ordered artifact identities. `DerivationAuditValidator.action()` processes
 that request and returns a distinct `DerivationAuditResult` binding the request,
 actionizer contract identity, and unchanged `DerivationAuditReport` domain
 output. The request, actionizer, and result inherit the thin public Project

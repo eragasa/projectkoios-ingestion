@@ -22,7 +22,7 @@ that commit; it never depends on a machine-local repository path.
 | `DeterministicStructuredTranscriptionComposer` | [`transcription.py`](../../../../../src/python/projectkoios/ingestion/transcription.py) | [`test__StructuredTranscriptionComposer.py`](../../../../../tests/test__StructuredTranscriptionComposer.py) |
 | `DeterministicCleanTranscriptProjector` | [`transcript_projection.py`](../../../../../src/python/projectkoios/ingestion/transcript_projection.py) | [`test__CleanTranscriptProjection.py`](../../../../../tests/test__CleanTranscriptProjection.py) |
 | `DeterministicCleanTranscriptV2Projector` | [`transcript_v2.py`](../../../../../src/python/projectkoios/ingestion/transcript_v2.py) | [`test__CleanTranscriptV2.py`](../../../../../tests/test__CleanTranscriptV2.py) |
-| `DerivationAuditRequest` → `DerivationAuditActionizer` → `DerivationAuditResult` | [`provenance/audit.py`](../../../../../src/python/projectkoios/ingestion/provenance/audit.py) | [`test__DerivationAuditActionizer.py`](../../../../../tests/test__DerivationAuditActionizer.py) |
+| `DerivationAuditRequest` → `DerivationAuditValidator` → `DerivationAuditResult` | [`provenance/audit.py`](../../../../../src/python/projectkoios/ingestion/provenance/audit.py) | [`test__DerivationAuditValidator.py`](../../../../../tests/test__DerivationAuditValidator.py) |
 
 The figure and table packages keep stable public imports through small explicit
 `__init__.py` facades. Their contracts live in `contracts.py`; `inspection.py`,

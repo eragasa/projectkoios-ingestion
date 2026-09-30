@@ -317,26 +317,6 @@ _LAYER_FIELDS = (
 )
 
 
-def _derivation_audit_request_id(audit_input: DerivationAuditInput) -> str:
-    return stable_id(
-        "derivation-audit-request",
-        hashlib.sha256(audit_input.source_content).hexdigest(),
-        len(audit_input.source_content),
-        audit_input.extraction_result.manifest.manifest_id,
-        tuple(
-            (
-                name,
-                tuple(
-                    _artifact_id(item) for item in getattr(audit_input, name)
-                ),
-            )
-            for name in _LAYER_FIELDS
-        ),
-        audit_input.contract_version,
-        DERIVATION_AUDIT_ACTION_CONTRACT_VERSION,
-    )
-
-
 @dataclass(frozen=True, slots=True)
 class DerivationAuditRequest(DataObjectActionRequest):
     """Complete immutable intent for one bounded derivation audit."""
@@ -352,7 +332,7 @@ class DerivationAuditRequest(DataObjectActionRequest):
         if not isinstance(audit_input, DerivationAuditInput):
             raise TypeError("audit_input must be DerivationAuditInput")
         return cls(
-            request_id=_derivation_audit_request_id(audit_input),
+            request_id=cls._request_id(audit_input),
             audit_input=audit_input,
         )
 
@@ -361,8 +341,29 @@ class DerivationAuditRequest(DataObjectActionRequest):
             raise ValueError("unsupported derivation-audit request contract")
         if not isinstance(self.audit_input, DerivationAuditInput):
             raise TypeError("audit_input must be DerivationAuditInput")
-        if self.request_id != _derivation_audit_request_id(self.audit_input):
+        if self.request_id != self._request_id(self.audit_input):
             raise ValueError("derivation-audit request ID is inconsistent")
+
+    @staticmethod
+    def _request_id(audit_input: DerivationAuditInput) -> str:
+        return stable_id(
+            "derivation-audit-request",
+            hashlib.sha256(audit_input.source_content).hexdigest(),
+            len(audit_input.source_content),
+            audit_input.extraction_result.manifest.manifest_id,
+            tuple(
+                (
+                    name,
+                    tuple(
+                        _artifact_id(item)
+                        for item in getattr(audit_input, name)
+                    ),
+                )
+                for name in _LAYER_FIELDS
+            ),
+            audit_input.contract_version,
+            DERIVATION_AUDIT_ACTION_CONTRACT_VERSION,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -460,7 +461,7 @@ from projectkoios.ingestion.provenance.walker import (  # noqa: E402
 )
 
 
-class DerivationAuditActionizer(
+class DerivationAuditValidator(
     DataObjectActionizer[DerivationAuditRequest, DerivationAuditResult]
 ):
     """Validate exact transitive provenance without changing any artifact."""
@@ -526,12 +527,6 @@ class DerivationAuditActionizer(
         state = _AuditState(audit_input, self.name, processor_version)
         state.run()
         return state.report()
-
-
-class DerivationAuditValidator(DerivationAuditActionizer):
-    """Compatibility name for the established audit API."""
-
-    __slots__ = ()
 
 
 class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
@@ -791,7 +786,6 @@ __all__ = [
     "DERIVATION_AUDIT_CONTRACT_VERSION",
     "DERIVATION_AUDIT_PROCESSOR_VERSION",
     "DERIVATION_AUDIT_V2_PROCESSOR_VERSION",
-    "DerivationAuditActionizer",
     "DerivationAuditError",
     "DerivationAuditFinding",
     "DerivationAuditFindingCode",

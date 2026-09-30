@@ -28,7 +28,6 @@ from projectkoios.ingestion.models import (
     SourceSpan,
 )
 from projectkoios.ingestion.provenance import (
-    DerivationAuditActionizer,
     DerivationAuditInput,
     DerivationAuditReport,
     DerivationAuditRequest,
@@ -97,7 +96,7 @@ def test__actionizer_binds_exact_request_result_and_actionizer_identity() -> (
     request = DerivationAuditRequest.create(audit_input=audit_input)
     repeated_request = DerivationAuditRequest.create(audit_input=audit_input)
 
-    actionizer = DerivationAuditActionizer()
+    actionizer = DerivationAuditValidator()
     result = actionizer.action(request=request)
     repeated_result = actionizer.execute(request=repeated_request)
 
@@ -121,7 +120,7 @@ def test__actionizer_binds_exact_request_result_and_actionizer_identity() -> (
     with pytest.raises(ValueError, match="result ID"):
         replace(result, result_id="derivation-audit-action-result:invalid")
     with pytest.raises(TypeError, match="DerivationAuditRequest"):
-        DerivationAuditActionizer().execute(
+        DerivationAuditValidator().execute(
             request=audit_input  # type: ignore[arg-type]
         )
 
@@ -140,12 +139,12 @@ def test__request_identity_changes_with_exact_source_bytes() -> None:
 def test__legacy_api_and_import_paths_remain_exact_compatibility_aliases() -> (
     None
 ):
-    assert issubclass(DerivationAuditValidator, DerivationAuditActionizer)
+    assert isinstance(DerivationAuditValidator(), DataObjectActionizer)
     assert RootDerivationAuditValidator is DerivationAuditValidator
     assert RootDerivationAuditInput is DerivationAuditInput
     assert RootDerivationAuditReport is DerivationAuditReport
-    assert DerivationAuditActionizer.__module__ == (
-        "projectkoios.ingestion.provenance.audit"
+    assert DerivationAuditValidator.__module__ == (
+        "projectkoios.ingestion.provenance"
     )
     assert DerivationAuditValidator.__module__ == (
         "projectkoios.ingestion.provenance"
@@ -156,6 +155,6 @@ def test__legacy_api_and_import_paths_remain_exact_compatibility_aliases() -> (
     assert DerivationAuditResult.__module__ == (
         "projectkoios.ingestion.provenance.audit"
     )
-    assert "DerivationAuditActionizer" in provenance_api
+    assert "DerivationAuditValidator" in provenance_api
     assert "DerivationAuditRequest" in provenance_api
     assert "DerivationAuditResult" in provenance_api
