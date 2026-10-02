@@ -23,6 +23,7 @@ from projectkoios.ingestion import (
     TableDetectionResult,
     TableEvidenceStatus,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.tables import _axis_segments
 
 pymupdf = pytest.importorskip("pymupdf")
@@ -159,9 +160,13 @@ def _detect(
     configuration: TableDetectionConfiguration | None = None,
 ) -> TableDetectionResult:
     _, document = _extract(payload, suffix)
-    return DeterministicTableCandidateDetector(configuration).detect(
-        document, BytesIO(payload)
-    )
+    return DeterministicTableCandidateDetector(
+        configuration,
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        ),
+    ).detect(document, BytesIO(payload))
 
 
 def test__table_detector__detects_maintained_ruled_fixture() -> None:
@@ -349,9 +354,12 @@ def test__table_detector__rejects_stale_layout() -> None:
     stale = DeterministicLayoutProcessor().analyze(other)
 
     with pytest.raises(ValueError, match="does not match"):
-        DeterministicTableCandidateDetector().detect_with_layout(
-            document, BytesIO(payload), stale
-        )
+        DeterministicTableCandidateDetector(
+            region_renderer=PyMuPdfRegionRenderer(
+                max_total_pixels=100_000_000,
+                max_total_raster_bytes=100_000_000,
+            )
+        ).detect_with_layout(document, BytesIO(payload), stale)
 
 
 def test__table_detector__requires_exact_pdf_bytes() -> None:
@@ -359,9 +367,12 @@ def test__table_detector__requires_exact_pdf_bytes() -> None:
     _, document = _extract(payload, "exact")
 
     with pytest.raises(ValueError, match="source bytes"):
-        DeterministicTableCandidateDetector().detect(
-            document, BytesIO(b"not the source PDF")
-        )
+        DeterministicTableCandidateDetector(
+            region_renderer=PyMuPdfRegionRenderer(
+                max_total_pixels=100_000_000,
+                max_total_raster_bytes=100_000_000,
+            )
+        ).detect(document, BytesIO(b"not the source PDF"))
 
 
 def test__table_detector__enforces_candidate_limit_before_rendering() -> None:
@@ -422,7 +433,12 @@ def test__table_detector__is_deterministic_immutable_and_protocol_typed() -> (
     assert first == second
     assert first.result_id == second.result_id
     assert first.candidates[0].candidate_id == second.candidates[0].candidate_id
-    detector: TableCandidateDetector = DeterministicTableCandidateDetector()
+    detector: TableCandidateDetector = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    )
     assert detector.name == "deterministic-table-candidate-detector"
     with pytest.raises(FrozenInstanceError):
         first.result_id = "changed"  # type: ignore[misc]

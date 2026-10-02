@@ -27,6 +27,7 @@ from projectkoios.ingestion import (
     PyMuPdfFigureInspector,
     SourceDocument,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -79,7 +80,11 @@ def _detect(
 ):
     _, document = _extract(payload, suffix)
     detector: FigureCandidateDetector = DeterministicFigureCandidateDetector(
-        configuration
+        configuration,
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        ),
     )
     return detector.detect(document, BytesIO(payload))
 
@@ -343,7 +348,12 @@ def test__figure_detector__rejects_wrong_source_and_stale_layout() -> None:
         PyMuPdfExtractor().extract(other_source, BytesIO(payload)).document
     )
     stale_layouts = DeterministicLayoutProcessor().analyze(other_document)
-    detector = DeterministicFigureCandidateDetector()
+    detector = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    )
 
     wrong_payload = bytearray(payload)
     wrong_payload[-1] ^= 1

@@ -52,14 +52,14 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 
 class _DetectorContext(Protocol):
     name: str
     version: str
     configuration: FigureDetectionConfiguration
-    region_renderer: PdfRegionRenderer
+    region_renderer: PageRegionRenderer
     figure_inspector: _FigureInspector
 
     @property

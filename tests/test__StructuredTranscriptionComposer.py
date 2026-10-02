@@ -27,6 +27,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion import (
     TranscriptionInput as DeprecatedRootInput,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.protocols import (
     StructuredTranscriptionComposer as DeprecatedComposerProtocol,
 )
@@ -62,18 +63,24 @@ def _pipeline(fixture_name: str):
     )
     document = PyMuPdfExtractor().extract(source, BytesIO(payload)).document
     structure = DeterministicArticleStructureAnalyzer().analyze(document)
-    equations = DeterministicEquationCandidateDetector().detect(
-        document, BytesIO(payload)
-    )
-    table_detection = DeterministicTableCandidateDetector().detect(
-        document, BytesIO(payload)
-    )
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect(document, BytesIO(payload))
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect(document, BytesIO(payload))
     tables = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect(
-        document, BytesIO(payload)
-    )
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect(document, BytesIO(payload))
     transcription_input = StructuredTranscriptionRequest.create(
         document=document,
         structure_analysis=structure,
@@ -131,18 +138,24 @@ def _uncertain_input() -> StructuredTranscriptionRequest:
         processor_version="1",
         configuration_digest="empty-fixture-structure-v1",
     )
-    equations = DeterministicEquationCandidateDetector().detect(
-        altered, BytesIO(payload)
-    )
-    table_detection = DeterministicTableCandidateDetector().detect(
-        altered, BytesIO(payload)
-    )
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect(altered, BytesIO(payload))
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect(altered, BytesIO(payload))
     tables = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect(
-        altered, BytesIO(payload)
-    )
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect(altered, BytesIO(payload))
     return StructuredTranscriptionRequest.create(
         document=altered,
         structure_analysis=structure,

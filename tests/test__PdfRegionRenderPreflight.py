@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import ast
+import inspect
 from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 
 import pytest
 from projectkoios.ingestion import (
+    PageRegionRenderer,
     PageRegionSelection,
     PdfRegionRenderer,
     PdfRegionRenderLimitError,
-    PyMuPdfRegionRenderer,
     RegionColorMode,
     RegionRenderConfiguration,
     SourceDocument,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.preflight import (
     PdfRegionRenderPreflight,
     PdfRegionRenderPreflightPlan,
@@ -202,24 +204,24 @@ def test__preflight__owns_aggregate_unique_allocation_limits() -> None:
         ).validate_aggregate(plans)
 
 
-def test__renderer_contract__has_one_canonical_public_identity() -> None:
-    from projectkoios.ingestion import PageRegionRenderer
+def test__renderer_contract__has_canonical_nominal_public_bases() -> None:
+    import projectkoios.ingestion.protocols as protocols
+    from projectkoios.ingestion.pdf import (
+        PageRegionRenderer as PdfPackagePageRegionRenderer,
+    )
     from projectkoios.ingestion.pdf import (
         PdfRegionRenderer as PdfPackageRegionRenderer,
     )
-    from projectkoios.ingestion.pdf.adapters.pymupdf import (
-        PyMuPdfRegionRenderer as AdapterRegionRenderer,
-    )
-    from projectkoios.ingestion.protocols import (
-        PageRegionRenderer as ProtocolsPageRegionRenderer,
-    )
 
+    assert PdfPackagePageRegionRenderer is PageRegionRenderer
     assert PdfPackageRegionRenderer is PdfRegionRenderer
-    assert PageRegionRenderer is PdfRegionRenderer
-    assert ProtocolsPageRegionRenderer is PdfRegionRenderer
-    assert AdapterRegionRenderer is PyMuPdfRegionRenderer
+    assert not hasattr(protocols, "PageRegionRenderer")
+    assert inspect.isabstract(PageRegionRenderer)
+    assert inspect.isabstract(PdfRegionRenderer)
+    assert issubclass(PdfRegionRenderer, PageRegionRenderer)
+    assert issubclass(PyMuPdfRegionRenderer, PdfRegionRenderer)
 
-    renderer: PdfRegionRenderer = PyMuPdfRegionRenderer()
+    renderer: PageRegionRenderer = PyMuPdfRegionRenderer()
     assert renderer.name == "pymupdf-region-renderer"
 
 

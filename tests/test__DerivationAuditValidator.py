@@ -58,6 +58,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
 )
 from projectkoios.ingestion.pdf import PYMUPDF_COORDINATE_SYSTEM
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.processing import (
     BoundedProcessingCoordinator,
     ProcessingDerivedArtifact,
@@ -246,18 +247,24 @@ def clean_audit_fixture() -> _CleanAuditFixture:
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
     structure = DeterministicArticleStructureAnalyzer().analyze(document)
-    equations = DeterministicEquationCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
-    table_detection = DeterministicTableCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect_with_layout(document, BytesIO(content), layouts)
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(document, BytesIO(content), layouts)
     table_structure = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(document, BytesIO(content), layouts)
     transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,
@@ -620,18 +627,24 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
     structure = DeterministicArticleStructureAnalyzer().analyze(document)
-    equations = DeterministicEquationCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
-    table_detection = DeterministicTableCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect_with_layout(document, BytesIO(content), layouts)
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(document, BytesIO(content), layouts)
     table_structure = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect_with_layout(
-        document, BytesIO(content), layouts
-    )
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(document, BytesIO(content), layouts)
     transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,

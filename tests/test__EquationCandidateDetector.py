@@ -19,6 +19,7 @@ from projectkoios.ingestion import (
     SourceDocument,
     SourceSpan,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -61,7 +62,10 @@ def _detect(
     configuration: EquationDetectionConfiguration | None = None,
 ):
     _, document = _extract(payload, suffix=suffix)
-    detector = DeterministicEquationCandidateDetector(configuration)
+    detector = DeterministicEquationCandidateDetector(
+        configuration,
+        region_renderer=PyMuPdfRegionRenderer(),
+    )
     return detector.detect(document, BytesIO(payload))
 
 
@@ -147,9 +151,9 @@ def test__equation_detector__requires_exact_pdf_bytes_for_rendering() -> None:
     _, document = _extract(payload, suffix="exact-bytes")
 
     with pytest.raises(ValueError, match="source bytes"):
-        DeterministicEquationCandidateDetector().detect(
-            document, BytesIO(b"not the source PDF")
-        )
+        DeterministicEquationCandidateDetector(
+            region_renderer=PyMuPdfRegionRenderer()
+        ).detect(document, BytesIO(b"not the source PDF"))
 
 
 def test__equation_detector__does_not_promote_equation_prose() -> None:
@@ -196,9 +200,9 @@ def test__equation_detector__warns_when_geometry_cannot_be_rendered() -> None:
         ),
     )
 
-    result = DeterministicEquationCandidateDetector().detect(
-        document, BytesIO(payload)
-    )
+    result = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect(document, BytesIO(payload))
 
     assert not result.candidates
     assert result.warnings[0].code == "equation.missing_geometry"
@@ -224,7 +228,9 @@ def test__equation_detector__rejects_stale_layout_evidence() -> None:
     stale = DeterministicLayoutProcessor().analyze(other)
 
     with pytest.raises(ValueError, match="does not match"):
-        DeterministicEquationCandidateDetector().detect_with_layout(
+        DeterministicEquationCandidateDetector(
+            region_renderer=PyMuPdfRegionRenderer()
+        ).detect_with_layout(
             document,
             BytesIO(payload),
             stale,

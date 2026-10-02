@@ -20,7 +20,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 from projectkoios.ingestion.tables.contracts import (
     _CAPTION,
     _CONTINUED,
@@ -53,7 +53,7 @@ class _DetectorContext(Protocol):
     name: str
     version: str
     configuration: TableDetectionConfiguration
-    region_renderer: PdfRegionRenderer
+    region_renderer: PageRegionRenderer
     rule_inspector: _TableRuleInspector
 
     @property

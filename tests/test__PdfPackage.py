@@ -92,9 +92,9 @@ from io import BytesIO
 from projectkoios.ingestion import (
     PageRegionSelection,
     PdfDependencyUnavailableError,
-    PyMuPdfRegionRenderer,
     SourceDocument,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 content = b"fixture"
 source = SourceDocument.from_bytes(
     content,

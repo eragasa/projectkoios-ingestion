@@ -21,13 +21,12 @@ from projectkoios.ingestion.models import (
     SourceSpan,
     WarningSeverity,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 EQUATION_CONTRACT_VERSION = "1.0"
 EQUATION_DETECTOR_VERSION = "1"
@@ -533,13 +532,13 @@ class DeterministicEquationCandidateDetector:
         configuration: EquationDetectionConfiguration | None = None,
         *,
         layout_processor: _PageLayoutProcessor | None = None,
-        region_renderer: PdfRegionRenderer | None = None,
+        region_renderer: PageRegionRenderer,
     ) -> None:
         self.configuration = configuration or EquationDetectionConfiguration()
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer()
+        self.region_renderer = region_renderer
 
     @property
     def configuration_digest(self) -> str:

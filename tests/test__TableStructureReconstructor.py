@@ -24,6 +24,7 @@ from projectkoios.ingestion import (
     TableStructureLimitError,
     TableStructureReconstructor,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.table_structure import (
     TableStructureRequest,
     TableStructureResult,
@@ -105,7 +106,12 @@ def _pdf(page_specs: tuple[dict[str, object], ...]) -> bytes:
 def _detect(payload: bytes, suffix: str):
     source = _source(payload, suffix)
     document = PyMuPdfExtractor().extract(source, BytesIO(payload)).document
-    detector: TableCandidateDetector = DeterministicTableCandidateDetector()
+    detector: TableCandidateDetector = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    )
     return detector.detect(document, BytesIO(payload))
 
 

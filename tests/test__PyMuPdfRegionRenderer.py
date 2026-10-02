@@ -9,10 +9,10 @@ from projectkoios.ingestion import (
     PYMUPDF_COORDINATE_SYSTEM,
     PageRegionSelection,
     PdfRegionRenderLimitError,
-    PyMuPdfRegionRenderer,
     RegionColorMode,
     SourceDocument,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pymupdf = pytest.importorskip("pymupdf")
 

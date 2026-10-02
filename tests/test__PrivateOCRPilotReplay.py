@@ -18,12 +18,12 @@ from projectkoios.ingestion import (
     OCRSelection,
     OCRSelectionStatus,
     PageRegionSelection,
-    PyMuPdfRegionRenderer,
     SourceDocument,
     TesseractAdapterConfiguration,
     TesseractLanguageBinding,
     TesseractOCRProcessor,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.serialization import serialize_contract
 
 _MAX_JSON_BYTES = 64_000_000

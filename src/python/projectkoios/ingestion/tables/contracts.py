@@ -22,12 +22,11 @@ from projectkoios.ingestion.models import (
     SourceDocument,
     SourceSpan,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 TABLE_CONTRACT_VERSION = "1.0"
 TABLE_DETECTOR_VERSION = "1"
@@ -933,17 +932,14 @@ class DeterministicTableCandidateDetector:
         configuration: TableDetectionConfiguration | None = None,
         *,
         layout_processor: _PageLayoutProcessor | None = None,
-        region_renderer: PdfRegionRenderer | None = None,
+        region_renderer: PageRegionRenderer,
         rule_inspector: _TableRuleInspector | None = None,
     ) -> None:
         self.configuration = configuration or TableDetectionConfiguration()
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer(
-            max_total_pixels=_MAX_TOTAL_RENDERED_PIXELS,
-            max_total_raster_bytes=_MAX_TOTAL_RENDERED_PNG_BYTES,
-        )
+        self.region_renderer = region_renderer
         self.rule_inspector = rule_inspector or PyMuPdfTableRuleInspector()
 
     @property

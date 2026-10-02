@@ -21,6 +21,7 @@ from projectkoios.ingestion.equation_enrichment import (
     Pix2TexCliEquationRecognizer,
     build_equation_index,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.serialization import serialize_contract
 
 
@@ -231,9 +232,9 @@ def main(arguments: list[str] | None = None) -> int:
                 raise ValueError(
                     "PDF source changed after enrichment preflight"
                 )
-            assembly = DeterministicEquationAssembler().assemble(
-                detection, payload
-            )
+            assembly = DeterministicEquationAssembler(
+                renderer=PyMuPdfRegionRenderer()
+            ).assemble(detection, payload)
             assembly_text = serialize_contract(assembly) + "\n"
             if target.existing:
                 if target.assembly.read_text(encoding="utf-8") != assembly_text:
