@@ -196,12 +196,19 @@ class PyMuPdfRegionRenderer:
                         page_width,
                         page_height,
                     )
-                display_rect = pymupdf.Rect(*source_box) * page.rotation_matrix
+                requested_display_rect = (
+                    pymupdf.Rect(*source_box) * page.rotation_matrix
+                )
+                effective_display_rect = requested_display_rect & page.rect
+                if effective_display_rect.is_empty:
+                    raise ValueError(
+                        "region selection does not intersect the rendered page"
+                    )
                 display_clip = (
-                    float(display_rect.x0),
-                    float(display_rect.y0),
-                    float(display_rect.x1),
-                    float(display_rect.y1),
+                    float(effective_display_rect.x0),
+                    float(effective_display_rect.y0),
+                    float(effective_display_rect.x1),
+                    float(effective_display_rect.y1),
                 )
                 (
                     width_pixels,
@@ -213,7 +220,8 @@ class PyMuPdfRegionRenderer:
                 ) = self._pixel_geometry(
                     pymupdf,
                     page,
-                    display_rect,
+                    requested_display_rect,
+                    effective_display_rect,
                 )
                 self._check_limits(width_pixels, height_pixels)
                 raw_label = page.get_label()
@@ -257,7 +265,8 @@ class PyMuPdfRegionRenderer:
         self,
         pymupdf: Any,
         page: Any,
-        display_rect: Any,
+        requested_display_rect: Any,
+        effective_display_rect: Any,
     ) -> tuple[
         int,
         int,
@@ -267,8 +276,8 @@ class PyMuPdfRegionRenderer:
         int,
     ]:
         largest_point_dimension = max(
-            float(display_rect.width),
-            float(display_rect.height),
+            float(requested_display_rect.width),
+            float(requested_display_rect.height),
         )
         if (
             not math.isfinite(largest_point_dimension)
@@ -294,7 +303,9 @@ class PyMuPdfRegionRenderer:
             raise PdfRegionRenderLimitError(
                 "resolution_dpi cannot be represented for rasterization"
             ) from error
-        pixel_rect = (display_rect * pymupdf.Matrix(scale, scale)).irect
+        pixel_rect = (
+            effective_display_rect * pymupdf.Matrix(scale, scale)
+        ).irect
         width_pixels = int(pixel_rect.width)
         height_pixels = int(pixel_rect.height)
         pixel_to_display = pymupdf.Matrix(
