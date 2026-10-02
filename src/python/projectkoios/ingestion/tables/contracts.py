@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, BinaryIO, Protocol, cast
@@ -23,12 +22,12 @@ from projectkoios.ingestion.models import (
     SourceDocument,
     SourceSpan,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,
-    PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
 
 TABLE_CONTRACT_VERSION = "1.0"
 TABLE_DETECTOR_VERSION = "1"
@@ -70,15 +69,6 @@ class _PageLayoutProcessor(Protocol):
     def analyze(
         self, document: ExtractedDocument
     ) -> tuple[PageLayoutResult, ...]: ...
-
-
-class _PageRegionRenderer(Protocol):
-    def render(
-        self,
-        source: SourceDocument,
-        content: BinaryIO,
-        selections: Iterable[PageRegionSelection],
-    ) -> tuple[RenderedRegion, ...]: ...
 
 
 class _TableRuleInspector(Protocol):
@@ -943,7 +933,7 @@ class DeterministicTableCandidateDetector:
         configuration: TableDetectionConfiguration | None = None,
         *,
         layout_processor: _PageLayoutProcessor | None = None,
-        region_renderer: _PageRegionRenderer | None = None,
+        region_renderer: PdfRegionRenderer | None = None,
         rule_inspector: _TableRuleInspector | None = None,
     ) -> None:
         self.configuration = configuration or TableDetectionConfiguration()

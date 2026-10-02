@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.artifacts import (
     PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION,
     RAW_EXTRACTION_MEDIA_TYPE,
@@ -37,8 +38,8 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import (
+    PdfRegionRenderer,
     PdfRegionRenderLimitError,
-    PyMuPdfRegionRenderer,
 )
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     "PdfExtractionTranscript",
     "PdfExtractionTranscriptPage",
     "PdfPageLimitError",
+    "PdfRegionRenderer",
     "PdfRegionRenderLimitError",
     "PdfSourceIntegrityError",
     "PyMuPdfExtractor",

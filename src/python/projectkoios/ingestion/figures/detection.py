@@ -31,7 +31,6 @@ from projectkoios.ingestion.figures.contracts import (
     _near_box,
     _optional_block_box,
     _padded_box,
-    _PageRegionRenderer,
     _source_label,
     _union_boxes,
     _union_boxes_allowing_extents,
@@ -53,13 +52,14 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
+from projectkoios.ingestion.pdf.renderer import PdfRegionRenderer
 
 
 class _DetectorContext(Protocol):
     name: str
     version: str
     configuration: FigureDetectionConfiguration
-    region_renderer: _PageRegionRenderer
+    region_renderer: PdfRegionRenderer
     figure_inspector: _FigureInspector
 
     @property
