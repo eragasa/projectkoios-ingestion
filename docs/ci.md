@@ -2,7 +2,7 @@
 
 The hosted workflow runs on Python 3.14 using the committed `uv.lock`. The
 `projectkoios==0.0.0` dependency is pinned to Git commit
-`88c37990fd37650b3091b2cb2f605a589ab624f4`; CI does not resolve a moving
+`233f36900b9b44c943ecc5e27f2968ad4bee97ad`; CI does not resolve a moving
 branch.
 
 Every pull request and `master` push runs:
