@@ -24,3 +24,7 @@ height, and device origin to equal the precomputed geometry. It then converts
 the pixmap to PNG and constructs `RenderedRegion` with the existing processor,
 backend, configuration, coordinate, and identity evidence. There is no adapter
 copy of request or resource-limit policy.
+
+Verification includes an optional, environment-configured private ten-page
+OCR integration test. It rediscovers and replays the bounded selection without
+committing a private fixture or persisting output.

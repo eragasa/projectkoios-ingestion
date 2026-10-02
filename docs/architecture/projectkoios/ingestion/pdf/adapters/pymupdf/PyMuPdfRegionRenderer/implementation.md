@@ -17,3 +17,8 @@ conservative scale guard.
 Results preserve requested order and return the same object for duplicate
 selections. Processor/backend identities and PNG construction remain unchanged,
 so the ownership move itself does not authorize output or identity drift.
+
+An optional pytest integration test, configured only through explicit
+environment values, deterministically rediscovers and replays the private
+bounded ten-page OCR selection twice. It commits no private fixture and writes
+no output artifact.
