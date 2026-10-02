@@ -64,7 +64,7 @@ jobs:
         run: |
           uv venv /tmp/projectkoios-ingestion-wheel --python 3.14 --clear
           uv pip install --python /tmp/projectkoios-ingestion-wheel/bin/python \
-            "projectkoios @ git+https://github.com/eragasa/projectkoios.git@88c37990fd37650b3091b2cb2f605a589ab624f4" \
+            "projectkoios @ git+https://github.com/eragasa/projectkoios.git@233f36900b9b44c943ecc5e27f2968ad4bee97ad" \
             dist/*.whl
           /tmp/projectkoios-ingestion-wheel/bin/python - <<'PY'
           from projectkoios.ingestion import (
