@@ -1,19 +1,19 @@
-# `projectkoios.ingestion` touched-slice schematic
+# `projectkoios.ingestion` schematic
 
 ```mermaid
 flowchart LR
-    Producer["clean_transcript<br/>canonical projection"]
-    Transcript["CleanTranscript"]
-    Selection["transcript.evidence.selection"]
-    Evidence["paired clean/raw selected evidence"]
-    Downstream["downstream authoring<br/>outside ingestion"]
+    Source["source documents"]
+    Pdf["ingestion.pdf<br/>PDF extraction and bounded rendering"]
+    Transcript["ingestion.transcript<br/>canonical transcript derivations"]
+    Public["ingestion package exports"]
+    Consumers["ingestion processors"]
 
-    Producer --> Transcript
-    Transcript --> Selection
-    Selection --> Evidence
-    Evidence -. "explicit handoff" .-> Downstream
+    Source --> Pdf
+    Pdf --> Transcript
+    Pdf --> Public
+    Transcript --> Public
+    Public --> Consumers
 ```
 
-The selector consumes an in-memory canonical transcript. It introduces no
-source-asset, reference, rights, search, generation, storage, API, or workflow
-boundary.
+The package initializer exposes owned contracts and concrete processors without
+moving their implementation into the package root.
