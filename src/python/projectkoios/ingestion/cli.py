@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import stat
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
@@ -68,7 +69,7 @@ def extract_pdf_evidence(
     maximum_pages: int = DEFAULT_MAXIMUM_PDF_PAGES,
 ) -> tuple[bytes, ExtractionResult]:
     """Return exact PDF bytes and raw extraction, optionally from cache."""
-    payload = pdf.read_bytes()
+    payload = _read_pdf_bytes(pdf)
     actual_sha256 = hashlib.sha256(payload).hexdigest()
     planned_sha256 = expected_source_sha256 or actual_sha256
     planned_size = (
@@ -196,6 +197,41 @@ def main(arguments: list[str] | None = None) -> int:
     return 0
 
 
+def _read_pdf_bytes(path: Path) -> bytes:
+    """Read one regular PDF without following symbolic links."""
+    source = path.expanduser().absolute()
+    try:
+        if source.resolve() != source:
+            raise ValueError("PDF source cannot traverse a symlink")
+        before = source.lstat()
+        if not stat.S_ISREG(before.st_mode):
+            raise ValueError("PDF source must be a safe regular file")
+        descriptor = os.open(source, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            opened = os.fstat(descriptor)
+            identity = (opened.st_dev, opened.st_ino, opened.st_size)
+            if identity != (before.st_dev, before.st_ino, before.st_size):
+                raise ValueError("PDF source changed before read")
+            chunks: list[bytes] = []
+            remaining = opened.st_size
+            while remaining:
+                chunk = os.read(descriptor, min(8 * 1024 * 1024, remaining))
+                if not chunk:
+                    raise ValueError("PDF source ended during read")
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            if os.read(descriptor, 1):
+                raise ValueError("PDF source grew during read")
+            after = os.fstat(descriptor)
+            if (after.st_dev, after.st_ino, after.st_size) != identity:
+                raise ValueError("PDF source changed during read")
+            return b"".join(chunks)
+        finally:
+            os.close(descriptor)
+    except (OSError, RuntimeError) as error:
+        raise ValueError("could not safely read PDF source") from error
+
+
 def _publish_artifacts(artifacts: Sequence[Artifact]) -> None:
     normalized_paths = tuple(path.absolute() for path, _ in artifacts)
     if len(set(normalized_paths)) != len(normalized_paths):
@@ -242,7 +278,7 @@ def _create_parent_directories(
         current = current.parent
     for directory in reversed(missing):
         try:
-            directory.mkdir()
+            directory.mkdir(mode=0o700)
         except FileExistsError:
             if not directory.is_dir():
                 raise
@@ -252,11 +288,22 @@ def _create_parent_directories(
 
 def _write_new(path: Path, text: str) -> None:
     created = False
+    descriptor: int | None = None
     try:
-        with path.open("x", encoding="utf-8") as stream:
-            created = True
+        descriptor = os.open(
+            path,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+        created = True
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            descriptor = None
             stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
     except Exception as error:
+        if descriptor is not None:
+            os.close(descriptor)
         if created:
             raise _ArtifactWriteError(path, error) from error
         raise

@@ -13,6 +13,8 @@ dependencies = ["projectkoios==0.0.0"]
 [project.scripts]
 koios-ingest-pdf = "projectkoios.ingestion.cli:main"
 koios-ingest-pdf-batch = "projectkoios.ingestion.batch_cli:main"
+koios-plan-pdf-corpus = "projectkoios.ingestion.corpus_plan_cli:main"
+koios-validate-pdf-corpus = "projectkoios.ingestion.corpus_validation_cli:main"
 koios-detect-pdf-equations-batch = "projectkoios.ingestion.equation_batch_cli:main"
 koios-enrich-pdf-equations-batch = "projectkoios.ingestion.equation_enrichment_cli:main"
 koios-plan-pdf-transcripts-batch = "projectkoios.ingestion.transcript_plan_cli:main"

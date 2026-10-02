@@ -51,6 +51,8 @@ Available extras are:
 | --- | --- |
 | `koios-ingest-pdf` | Extract one PDF. |
 | `koios-ingest-pdf-batch` | Extract PDFs described by a batch plan. |
+| `koios-plan-pdf-corpus` | Discover bounded PDFs and publish content-addressed batch plans. |
+| `koios-validate-pdf-corpus` | Validate a native-text extraction corpus against its plans. |
 | `koios-detect-pdf-equations-batch` | Detect equation candidates in an extracted batch. |
 | `koios-enrich-pdf-equations-batch` | Run configured equation-recognition tools. |
 | `koios-plan-pdf-transcripts-batch` | Prepare a transcript batch plan. |
@@ -68,8 +70,11 @@ artifacts are checked before reuse and are not silently replaced.
 
 These checks establish consistency of the software records; they do not show
 that extracted text is correct, that OCR is adequate, or that a derived result
-is scientifically valid. PyMuPDF, OCR engines, and model executables are not
-security sandboxes. Processing untrusted documents may require operating-system
+is scientifically valid. A validated native-text corpus is not an OCR corpus,
+equation corpus, embedding index, or RAG system. See
+[`docs/native-text-corpus.md`](docs/native-text-corpus.md) for the preparation
+boundary and later-stage responsibilities. PyMuPDF, OCR engines, and model
+executables are not security sandboxes. Processing untrusted documents may require operating-system
 isolation in addition to the limits implemented here.
 
 ## Development
@@ -92,6 +97,7 @@ The continuous-integration environment is described in
 - [Current ingestion architecture](docs/architecture/projectkoios/ingestion/index.md)
 - [Contract catalog](docs/contracts/README.md)
 - [PDF byte extraction](docs/pdf-byte-extraction.md)
+- [Native-text corpus preparation](docs/native-text-corpus.md)
 - [Tesseract configuration](docs/tesseract.md)
 - [Pix2tex configuration](docs/pix2tex.md)
 - [Ollama multimodal processing](docs/ollama-multimodal.md)

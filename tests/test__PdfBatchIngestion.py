@@ -139,6 +139,35 @@ def test__batch_cli__rejects_source_changed_after_plan(
     assert not output.exists()
 
 
+def test__batch_cli__rejects_symlinked_source(
+    tmp_path: Path,
+) -> None:
+    sources = tmp_path / "sources"
+    sources.mkdir()
+    shutil.copyfile(
+        FIXTURES / "born-digital-text.pdf", sources / "first-real.pdf"
+    )
+    (sources / "first.pdf").symlink_to(sources / "first-real.pdf")
+    shutil.copyfile(FIXTURES / "figures.pdf", sources / "second.pdf")
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(_plan().to_json(), encoding="utf-8")
+    output = tmp_path / "ingestion"
+
+    with pytest.raises(SystemExit, match="2"):
+        main(
+            [
+                str(plan_path),
+                "--source-root",
+                str(sources),
+                "--output-root",
+                str(output),
+                "--apply",
+            ]
+        )
+
+    assert not output.exists()
+
+
 def test__batch_cli__rejects_existing_output_symlink(
     tmp_path: Path,
 ) -> None:

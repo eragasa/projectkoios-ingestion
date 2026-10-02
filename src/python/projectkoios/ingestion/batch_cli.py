@@ -11,6 +11,7 @@ from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
     ExtractionCacheOperationError,
+    _read_pdf_bytes,
     ingest_pdf_artifacts,
 )
 from projectkoios.ingestion.models import ExtractionResult
@@ -40,20 +41,19 @@ def _resolve_items(
     source_root: Path,
     output_root: Path,
 ) -> tuple[_ResolvedItem, ...]:
-    source_root = source_root.expanduser().resolve()
-    output_root = output_root.expanduser().resolve()
-    if not source_root.is_dir():
-        raise ValueError("source root must be an existing directory")
+    source_root = source_root.expanduser().absolute()
+    output_root = output_root.expanduser().absolute()
+    _require_safe_root(source_root, "source root", must_exist=True)
+    _require_safe_root(output_root, "output root", must_exist=False)
     resolved: list[_ResolvedItem] = []
     for item in plan.items:
-        pdf = (source_root / Path(item.pdf_path)).resolve()
-        if not pdf.is_relative_to(source_root):
-            raise ValueError(f"source PDF escapes source root: {item.pdf_path}")
+        _reject_symlink_components(source_root, Path(item.pdf_path))
+        pdf = source_root / Path(item.pdf_path)
         if not pdf.is_file():
             raise ValueError(
                 f"source PDF is not a regular file: {item.pdf_path}"
             )
-        content = pdf.read_bytes()
+        content = _read_pdf_bytes(pdf)
         if not content.startswith(b"%PDF-"):
             raise ValueError(
                 f"source does not have a PDF header: {item.pdf_path}"
@@ -62,19 +62,47 @@ def _resolve_items(
             raise ValueError(f"source size changed: {item.pdf_path}")
         if hashlib.sha256(content).hexdigest() != item.sha256:
             raise ValueError(f"source hash changed: {item.pdf_path}")
+        _reject_symlink_components(
+            output_root, Path(item.output_directory), include_leaf=False
+        )
         raw_output_directory = output_root / Path(item.output_directory)
         if os.path.lexists(raw_output_directory):
             raise FileExistsError(
                 "refusing to overwrite batch output directory: "
                 f"{raw_output_directory}"
             )
-        output_directory = raw_output_directory.resolve()
-        if not output_directory.is_relative_to(output_root):
-            raise ValueError(
-                f"output directory escapes output root: {item.output_directory}"
-            )
+        output_directory = raw_output_directory
         resolved.append(_ResolvedItem(item, pdf, output_directory))
     return tuple(resolved)
+
+
+def _require_safe_root(root: Path, label: str, *, must_exist: bool) -> None:
+    if os.path.lexists(root):
+        if root.is_symlink() or not root.is_dir() or root.resolve() != root:
+            raise ValueError(f"{label} must be a non-symlink directory")
+        return
+    if must_exist:
+        raise ValueError(f"{label} must be an existing directory")
+    current = root.parent
+    while not current.exists():
+        current = current.parent
+    if (
+        current.is_symlink()
+        or not current.is_dir()
+        or current.resolve() != current
+    ):
+        raise ValueError(f"{label} parent must be a non-symlink directory")
+
+
+def _reject_symlink_components(
+    root: Path, relative: Path, *, include_leaf: bool = True
+) -> None:
+    current = root
+    parts = relative.parts if include_leaf else relative.parts[:-1]
+    for part in parts:
+        current /= part
+        if current.is_symlink():
+            raise ValueError("batch path cannot traverse a symlink")
 
 
 def _planned_summary(items: tuple[_ResolvedItem, ...]) -> dict[str, object]:
@@ -150,7 +178,7 @@ def main(arguments: list[str] | None = None) -> int:
         return 2
 
     completed: list[dict[str, object]] = []
-    output_root = args.output_root.expanduser().resolve()
+    output_root = args.output_root.expanduser().absolute()
     try:
         for item in resolved:
             current_output = (
