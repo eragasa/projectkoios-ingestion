@@ -23,4 +23,5 @@ environment values, deterministically rediscovers and replays the private
 bounded ten-page OCR selection twice. It commits no private fixture and writes
 no output artifact. The test is an executable downstream composition example
 using existing public rendering and OCR primitives, not a production replay,
-service, workflow, facade, or corpus API.
+service, workflow, facade, or corpus API. Existing component tests provide
+hermetic coverage; there is no synthetic end-to-end replay-equivalent test.
