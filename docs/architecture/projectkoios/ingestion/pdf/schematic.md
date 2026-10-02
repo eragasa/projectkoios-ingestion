@@ -3,21 +3,23 @@
 ```mermaid
 flowchart LR
     Models["PDF selection and result models"]
-    Renderer["renderer<br/>neutral contract"]
+    PageBase["PageRegionRenderer<br/>broad nominal base"]
+    PdfBase["PdfRegionRenderer<br/>bounded PDF base"]
     Preflight["preflight<br/>neutral policy"]
     Adapter["adapters<br/>backend execution"]
-    Exports["pdf package exports"]
-    Consumer["document processors"]
+    Exports["neutral pdf package exports"]
+    Consumers["broad and PDF-aware consumers"]
+    Roots["composition roots and integration tests"]
 
-    Models --> Renderer
-    Models --> Preflight
-    Renderer --> Adapter
-    Renderer --> Preflight
-    Preflight --> Adapter
-    Adapter --> Exports
-    Renderer --> Exports
-    Exports --> Consumer
+    Models --> PageBase
+    PageBase --> PdfBase
+    Preflight --> PdfBase
+    PdfBase --> Adapter
+    PageBase --> Exports
+    PdfBase --> Exports
+    Exports --> Consumers
+    Roots --> Adapter
 ```
 
-The renderer module is a contract boundary, not an intermediate execution
-layer. Policy and adapter implementations remain in their owning packages.
+Neutral package exports stop at the nominal bases. Concrete adapter selection
+belongs only to composition roots and integration tests.

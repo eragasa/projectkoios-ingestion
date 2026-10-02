@@ -2,18 +2,19 @@
 
 ```mermaid
 classDiagram
+    class ABC
+    class PageRegionRenderer
     class PdfRegionRenderer
     class PdfRegionRenderLimitError
-    class PageRegionSelection
-    class RenderedRegion
-    class ConcreteAdapter
-    class PreflightPolicy
+    class PdfRegionRenderPreflight
+    class ConcretePdfAdapter
 
-    PdfRegionRenderer --> PageRegionSelection
-    PdfRegionRenderer --> RenderedRegion
-    ConcreteAdapter ..|> PdfRegionRenderer
-    PreflightPolicy ..> PdfRegionRenderLimitError : raises
+    ABC <|-- PageRegionRenderer
+    PageRegionRenderer <|-- PdfRegionRenderer
+    PdfRegionRenderer <|-- ConcretePdfAdapter
+    PdfRegionRenderer --> PdfRegionRenderPreflight : composes
+    PdfRegionRenderPreflight ..> PdfRegionRenderLimitError : raises
 ```
 
-The contract is shared directly by consumers and concrete adapters. It is not a
-runtime forwarding or orchestration layer.
+Broad consumers depend on `PageRegionRenderer`; PDF-aware consumers may depend
+on `PdfRegionRenderer`. Only composition roots select a concrete adapter.

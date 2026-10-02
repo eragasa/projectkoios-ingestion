@@ -1,6 +1,7 @@
 # `projectkoios.ingestion.pdf.renderer`
 
-This module owns the backend-neutral public contract for bounded PDF region
-rendering and its stable resource-limit error. It defines required behavior and
-evidence shape only; it performs no preflight policy, backend adaptation,
-coordinate calculation, document access, rasterization, or encoding.
+This module owns the nominal backend-neutral bases for page-region rendering and
+bounded PDF rendering, plus the stable PDF render-limit error. It defines
+identity, action, configuration, and neutral preflight composition boundaries;
+it performs no backend adaptation, coordinate calculation, document access,
+rasterization, or encoding.

@@ -13,5 +13,5 @@ flowchart TD
     Aggregate --> Approved["approved preflight"]
 ```
 
-All rejection paths occur before raster allocation. The adapter supplies
-measurements but cannot bypass or duplicate these checks.
+All rejection paths occur before raster allocation. The PDF template submits
+hook measurements; concrete adapters cannot bypass or duplicate these checks.

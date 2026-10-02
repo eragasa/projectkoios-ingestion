@@ -7,7 +7,7 @@ deduplication, per-selection plan construction, and aggregate plan validation.
 
 The scale guard accepts only a finite positive input dimension and unit scale;
 it preserves the existing conservative maximum-DPI rejection before a concrete
-adapter constructs a potentially excessive matrix. Exact integer raster
+adapter hook constructs a potentially excessive matrix. Exact integer raster
 dimensions then drive all remaining limits. Aggregate totals count each unique
 selection once because each unique raster is allocated once.
 

@@ -2,21 +2,20 @@
 
 ```mermaid
 classDiagram
-    class SourceDocument
-    class PageRegionSelection
+    class PageRegionRenderer
     class PdfRegionRenderer
     class PdfRegionRenderPreflight
     class PyMuPdfRegionRenderer
-    class RenderedRegion
     class PyMuPDF
+    class RenderedRegion
 
-    PdfRegionRenderer <|.. PyMuPdfRegionRenderer
-    PyMuPdfRegionRenderer --> PdfRegionRenderPreflight : composes
-    PyMuPdfRegionRenderer --> PyMuPDF : adapts
-    PyMuPdfRegionRenderer --> SourceDocument : verifies
-    PyMuPdfRegionRenderer --> PageRegionSelection : renders
-    PyMuPdfRegionRenderer --> RenderedRegion : creates
+    PageRegionRenderer <|-- PdfRegionRenderer
+    PdfRegionRenderer <|-- PyMuPdfRegionRenderer
+    PdfRegionRenderer --> PdfRegionRenderPreflight : composes
+    PdfRegionRenderer --> RenderedRegion : creates
+    PyMuPdfRegionRenderer --> PyMuPDF : hook implementation
 ```
 
-Preflight approves allocations; the renderer alone translates between the
-domain coordinate evidence and backend coordinates.
+The PDF base owns the template workflow and domain result. The concrete adapter
+implements only backend lifecycle, geometry, identity, raster, and encoding
+hooks.

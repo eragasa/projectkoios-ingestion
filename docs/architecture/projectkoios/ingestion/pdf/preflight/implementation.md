@@ -9,4 +9,5 @@ The package has no optional-backend import, backend version lookup, document
 open, page object, dynamically typed backend object, rectangle/matrix type,
 pixmap operation, colorspace choice, or image encoding. A static boundary test
 must reject such imports and references. Exact backend geometry is computed by
-the adapter and supplied only as primitive dimensions to policy.
+adapter hooks and supplied by the PDF template only as primitive dimensions to
+policy.

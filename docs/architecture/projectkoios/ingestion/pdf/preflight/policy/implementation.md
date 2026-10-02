@@ -17,6 +17,7 @@ one sequence of checks:
 7. validate aggregate unique-selection pixel and raster-byte ceilings.
 
 Selection deduplication preserves first occurrence for allocation while the
-adapter restores requested order and duplicate identity in results. Channel
-accounting derives once from `RegionRenderConfiguration.color_mode`. No
+PDF renderer template restores requested order and duplicate identity in
+results. Channel accounting derives once from
+`RegionRenderConfiguration.color_mode`. No
 backend-specific fallback or parallel limit calculation is permitted.

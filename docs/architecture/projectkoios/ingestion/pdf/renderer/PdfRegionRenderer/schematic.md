@@ -1,18 +1,17 @@
 # `PdfRegionRenderer` schematic
 
 ```mermaid
-classDiagram
-    class SourceDocument
-    class PageRegionSelection
-    class RegionRenderConfiguration
-    class RenderedRegion
-    class PdfRegionRenderer
-
-    PdfRegionRenderer --> SourceDocument
-    PdfRegionRenderer --> PageRegionSelection
-    PdfRegionRenderer --> RegionRenderConfiguration
-    PdfRegionRenderer --> RenderedRegion
+flowchart TD
+    PageBase["PageRegionRenderer"] --> PdfBase["PdfRegionRenderer template"]
+    Request["source + stream + selections"] --> Validate["validate and bound"]
+    PdfBase --> Validate
+    Validate --> Open["protected backend open/metadata hooks"]
+    Open --> Plan["protected geometry-planning hooks"]
+    Plan --> Limits["neutral per-selection + aggregate preflight"]
+    Limits --> Raster["protected raster hooks"]
+    Raster --> Result["RenderedRegion construction"]
+    Result --> Order["requested order + duplicate identity"]
 ```
 
-The contract exposes domain inputs, configuration identity, and domain outputs
-without exposing a backend or its intermediate objects.
+The template owns control flow and domain results. Protected hooks expose only
+the backend mechanics required at each step.

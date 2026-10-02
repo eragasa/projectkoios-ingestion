@@ -2,18 +2,23 @@
 
 ```mermaid
 flowchart LR
-    Models["PDF domain models"]
+    PageBase["PageRegionRenderer"]
+    PdfBase["PdfRegionRenderer"]
+    Root["composition root or integration test"]
     Backend["optional PDF backend"]
     Adapter["concrete adapter"]
     Preflight["neutral preflight policy"]
     Result["RenderedRegion"]
 
-    Models --> Adapter
+    PageBase --> PdfBase
+    PdfBase --> Adapter
+    Root --> Adapter
     Backend --> Adapter
     Adapter --> Preflight
     Preflight --> Adapter
     Adapter --> Result
 ```
 
-Adapters own backend translation and execution while preflight remains the
-single owner of request validation and allocation limits.
+Composition roots choose concrete adapters. Adapters own backend translation
+and execution while the nominal bases and preflight retain neutral contracts
+and policy.

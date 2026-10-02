@@ -3,17 +3,18 @@
 ```mermaid
 flowchart LR
     Source["source documents"]
-    Pdf["ingestion.pdf<br/>PDF extraction and bounded rendering"]
-    Transcript["ingestion.transcript<br/>canonical transcript derivations"]
-    Public["ingestion package exports"]
-    Consumers["ingestion processors"]
+    Pdf["ingestion.pdf<br/>neutral rendering bases and policy"]
+    Public["neutral ingestion exports"]
+    Consumers["equation, figure, and table consumers"]
+    Roots["batch/CLI composition roots"]
+    Adapter["concrete PDF adapter"]
 
     Source --> Pdf
-    Pdf --> Transcript
     Pdf --> Public
-    Transcript --> Public
     Public --> Consumers
+    Roots --> Adapter
+    Adapter --> Consumers
 ```
 
-The package initializer exposes owned contracts and concrete processors without
-moving their implementation into the package root.
+Neutral exports stop at nominal bases. Concrete adapter selection occurs only
+where a batch, command, or integration test composes executable processing.

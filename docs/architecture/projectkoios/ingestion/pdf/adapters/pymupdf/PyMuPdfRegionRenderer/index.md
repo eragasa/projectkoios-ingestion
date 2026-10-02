@@ -1,5 +1,5 @@
 # `PyMuPdfRegionRenderer`
 
-Concrete renderer that executes validated PDF page-region selections through
-the optional PyMuPDF backend and returns deterministic `RenderedRegion` values
-without writing raster files.
+Concrete `PdfRegionRenderer` subclass implementing only the PyMuPDF lifecycle,
+page/geometry, backend-identity, rasterization, and PNG hooks required by the
+inherited bounded render template.

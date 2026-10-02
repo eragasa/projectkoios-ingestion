@@ -3,17 +3,16 @@
 ```mermaid
 flowchart LR
     Request["source + bounded selections"]
-    Measurements["primitive page/raster measurements"]
+    Hook["backend planning hook<br/>primitive measurements"]
     Policy["preflight policy"]
     Plan["immutable allocation plan"]
-    Adapter["concrete adapter"]
+    Template["PdfRegionRenderer template"]
 
     Request --> Policy
-    Measurements --> Policy
+    Hook --> Policy
     Policy --> Plan
-    Plan --> Adapter
+    Plan --> Template
 ```
 
-Only validated primitive facts cross from a concrete adapter into preflight;
-backend document, page, rectangle, matrix, pixmap, and colorspace objects do
-not.
+Only primitive facts from backend planning hooks enter preflight; backend
+document, page, rectangle, matrix, pixmap, and colorspace objects do not.

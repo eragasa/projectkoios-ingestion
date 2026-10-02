@@ -1,12 +1,12 @@
 # `projectkoios.ingestion.pdf` implementation
 
-`pdf.__init__` preserves the existing public `PdfRegionRenderLimitError` and
-`PyMuPdfRegionRenderer` imports by exporting the exact objects from their new
-canonical modules. It also exports the canonical neutral `PdfRegionRenderer`
-contract. Existing PDF models and extractors retain their ownership.
+`pdf.__init__` exports the exact canonical `PageRegionRenderer`,
+`PdfRegionRenderer`, and `PdfRegionRenderLimitError` objects from
+`pdf.renderer`. It does not export a concrete renderer. Existing PDF models and
+extractors retain their ownership.
 
-`pdf/renderer.py` remains, but all concrete behavior is removed. It owns only
-the neutral renderer protocol and render-limit error; it is neither a
-compatibility implementation shim nor an execution layer. Repository-owned
-consumers use this one contract instead of defining duplicate local renderer
-protocols, while importing the concrete default from `pdf.adapters.pymupdf`.
+`pdf/renderer.py` owns the nominal renderer inheritance boundary and neutral PDF
+configuration/preflight composition; it is neither a compatibility shim nor an
+execution layer. Broad consumers depend on `PageRegionRenderer`, PDF-aware
+consumers may depend on `PdfRegionRenderer`, and composition roots import the
+concrete default directly from `pdf.adapters.pymupdf`.
