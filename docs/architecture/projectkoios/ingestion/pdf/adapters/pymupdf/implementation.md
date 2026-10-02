@@ -27,4 +27,6 @@ copy of request or resource-limit policy.
 
 Verification includes an optional, environment-configured private ten-page
 OCR integration test. It rediscovers and replays the bounded selection without
-committing a private fixture or persisting output.
+committing a private fixture or persisting output. The test composes existing
+bounded rendering and OCR primitives directly as a downstream usage example;
+it introduces no production replay or corpus-orchestration API.
