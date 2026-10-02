@@ -25,10 +25,12 @@ the pixmap to PNG and constructs `RenderedRegion` with the existing processor,
 backend, configuration, coordinate, and identity evidence. There is no adapter
 copy of request or resource-limit policy.
 
-Verification includes an optional, environment-configured private ten-page
-OCR integration test. It rediscovers and replays the bounded selection without
-committing a private fixture or persisting output. The test composes existing
-bounded rendering and OCR primitives directly as a downstream usage example;
-it introduces no production replay or corpus-orchestration API. Existing
-component tests remain the hermetic coverage; no synthetic end-to-end replay
-duplicate is added.
+Verification includes an optional pytest integration test configured with one
+content-addressed processed-reference root plus explicit OCR engine and language
+resource paths. It inspects only immediate SHA directories, reads only the
+transcript fields needed for deterministic selection, and verifies the selected
+PDF and empty-page text hashes. It composes existing bounded rendering and OCR
+primitives twice and compares canonical result and aggregate digests in memory.
+It reads no prior replay artifact, commits no private fixture, and writes no
+output. This remains a downstream usage example, not a production replay or
+corpus-observation API; existing component tests provide hermetic coverage.

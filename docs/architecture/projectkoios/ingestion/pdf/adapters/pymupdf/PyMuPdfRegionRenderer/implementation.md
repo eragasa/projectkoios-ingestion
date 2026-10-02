@@ -18,10 +18,11 @@ Results preserve requested order and return the same object for duplicate
 selections. Processor/backend identities and PNG construction remain unchanged,
 so the ownership move itself does not authorize output or identity drift.
 
-An optional pytest integration test, configured only through explicit
-environment values, deterministically rediscovers and replays the private
-bounded ten-page OCR selection twice. It commits no private fixture and writes
-no output artifact. The test is an executable downstream composition example
-using existing public rendering and OCR primitives, not a production replay,
-service, workflow, facade, or corpus API. Existing component tests provide
-hermetic coverage; there is no synthetic end-to-end replay-equivalent test.
+An optional pytest integration test accepts one environment-configured
+content-addressed processed-reference root plus explicit OCR engine and language
+resource paths. It minimally selects the bounded ten pages, verifies only their
+source and empty-page text hashes, and executes the public render/OCR composition
+twice. Canonical result and aggregate digests are compared in memory; no prior
+summary or output artifact is read or written. The test is a downstream usage
+example, not a production replay, service, workflow, facade, corpus API, or hard
+observational schema.
