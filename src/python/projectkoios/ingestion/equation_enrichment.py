@@ -24,7 +24,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 EQUATION_ENRICHMENT_CONTRACT_VERSION = "1.0"
 _MAX_ASSEMBLIES = 256
@@ -365,10 +365,8 @@ class EquationIndexArtifact:
 class DeterministicEquationAssembler:
     """Group same-line display fragments and preserve all evidence layers."""
 
-    def __init__(
-        self, *, renderer: PyMuPdfRegionRenderer | None = None
-    ) -> None:
-        self.renderer = renderer or PyMuPdfRegionRenderer()
+    def __init__(self, *, renderer: PageRegionRenderer) -> None:
+        self.renderer = renderer
 
     def assemble(
         self,

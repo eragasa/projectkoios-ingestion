@@ -20,6 +20,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 from projectkoios.ingestion.tables.contracts import (
     _CAPTION,
     _CONTINUED,
@@ -41,7 +42,6 @@ from projectkoios.ingestion.tables.contracts import (
     _boxes_intersect,
     _expand_box,
     _padded_box,
-    _PageRegionRenderer,
     _TableRuleInspector,
     _union_boxes,
     _validate_rendered_aggregate,
@@ -53,7 +53,7 @@ class _DetectorContext(Protocol):
     name: str
     version: str
     configuration: TableDetectionConfiguration
-    region_renderer: _PageRegionRenderer
+    region_renderer: PageRegionRenderer
     rule_inspector: _TableRuleInspector
 
     @property

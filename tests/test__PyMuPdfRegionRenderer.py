@@ -9,10 +9,10 @@ from projectkoios.ingestion import (
     PYMUPDF_COORDINATE_SYSTEM,
     PageRegionSelection,
     PdfRegionRenderLimitError,
-    PyMuPdfRegionRenderer,
     RegionColorMode,
     SourceDocument,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -32,6 +32,22 @@ def _fixture_pdf() -> bytes:
     document.set_page_labels(
         [{"startpage": 0, "prefix": "App-", "style": "D", "firstpagenum": 7}]
     )
+    payload = document.tobytes()
+    document.close()
+    return payload
+
+
+def _protruding_cropbox_fixture_pdf() -> bytes:
+    """Build sanitized rotations whose crop boxes exceed their media boxes."""
+    document = pymupdf.open()
+    cases = (
+        (612, "[0 381.6 612.1 1224.1]", 270),
+        (608, "[0 397.3 609 1224.1]", 90),
+    )
+    for width, raw_cropbox, rotation in cases:
+        page = document.new_page(width=width, height=1224)
+        document.xref_set_key(page.xref, "CropBox", raw_cropbox)
+        page.set_rotation(rotation)
     payload = document.tobytes()
     document.close()
     return payload
@@ -203,6 +219,56 @@ def test__renderer__full_page_is_explicit_and_uses_unrotated_cropbox() -> None:
     assert result.media_type == "image/png"
     assert result.byte_length == len(result.content)
     assert result.alpha is False
+
+
+def test__renderer__preflights_rotated_protruding_cropboxes_exactly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = _protruding_cropbox_fixture_pdf()
+    source = _source(payload)
+    selections = tuple(
+        PageRegionSelection.for_full_page(source, page_index)
+        for page_index in range(2)
+    )
+
+    results = PyMuPdfRegionRenderer(
+        resolution_dpi=300,
+        max_total_pixels=20_000_000,
+        max_total_raster_bytes=60_000_000,
+    ).render(source, BytesIO(payload), selections)
+
+    assert [result.page_rotation_degrees for result in results] == [270, 90]
+    assert [
+        (result.width_pixels, result.height_pixels) for result in results
+    ] == [(3510, 2550), (3445, 2534)]
+    assert [
+        (
+            pymupdf.Pixmap(result.content).width,
+            pymupdf.Pixmap(result.content).height,
+        )
+        for result in results
+    ] == [(3510, 2550), (3445, 2534)]
+    assert results[0].source_bounding_box == pytest.approx(
+        (0.0, 0.0, 612.1, 842.5)
+    )
+    assert results[1].source_bounding_box == pytest.approx(
+        (0.0, 0.0, 609.0, 826.8)
+    )
+    for result in results:
+        requested = result.source_bounding_box
+        effective = result.effective_source_bounding_box
+        assert requested[0] <= effective[0] <= effective[2] <= requested[2]
+        assert requested[1] <= effective[1] <= effective[3] <= requested[3]
+
+    def unexpected_render(*args: object, **kwargs: object) -> None:
+        raise AssertionError("get_pixmap was called before limit rejection")
+
+    monkeypatch.setattr(pymupdf.Page, "get_pixmap", unexpected_render)
+    with pytest.raises(PdfRegionRenderLimitError, match="max_pixels"):
+        PyMuPdfRegionRenderer(
+            resolution_dpi=300,
+            max_pixels=8_950_499,
+        ).render(source, BytesIO(payload), selections[:1])
 
 
 def test__renderer__preserves_printed_page_label_exactly() -> None:

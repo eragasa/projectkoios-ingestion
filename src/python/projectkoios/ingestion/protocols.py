@@ -28,10 +28,6 @@ from projectkoios.ingestion.ocr import (
     OCRRequest,
     OCRResult,
 )
-from projectkoios.ingestion.pdf.models import (
-    PageRegionSelection,
-    RenderedRegion,
-)
 from projectkoios.ingestion.processing import (
     ProcessingInvocationResult,
     ProcessingProcessorIdentity,
@@ -75,18 +71,6 @@ class PageLayoutProcessor(Protocol):
     def analyze_page(
         self, source: SourceDocument, page: ExtractedPage
     ) -> PageLayoutResult: ...
-
-
-class PageRegionRenderer(Protocol):
-    name: str
-    version: str
-
-    def render(
-        self,
-        source: SourceDocument,
-        content: BinaryIO,
-        selections: Iterable[PageRegionSelection],
-    ) -> tuple[RenderedRegion, ...]: ...
 
 
 class OCRProcessor(Protocol):

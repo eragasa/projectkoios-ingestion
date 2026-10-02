@@ -37,8 +37,9 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import (
+    PageRegionRenderer,
+    PdfRegionRenderer,
     PdfRegionRenderLimitError,
-    PyMuPdfRegionRenderer,
 )
 
 __all__ = [
@@ -49,6 +50,7 @@ __all__ = [
     "RAW_EXTRACTION_RELATIVE_PATH",
     "RAW_PAGE_DIRECTORY",
     "RAW_PAGE_TEXT_MEDIA_TYPE",
+    "PageRegionRenderer",
     "PageRegionSelection",
     "PdfDependencyUnavailableError",
     "PdfExtractionArtifactBundle",
@@ -62,10 +64,10 @@ __all__ = [
     "PdfExtractionTranscript",
     "PdfExtractionTranscriptPage",
     "PdfPageLimitError",
+    "PdfRegionRenderer",
     "PdfRegionRenderLimitError",
     "PdfSourceIntegrityError",
     "PyMuPdfExtractor",
-    "PyMuPdfRegionRenderer",
     "RegionColorMode",
     "RegionRenderConfiguration",
     "RenderedRegion",

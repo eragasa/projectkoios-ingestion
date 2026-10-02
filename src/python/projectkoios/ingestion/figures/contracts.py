@@ -27,10 +27,9 @@ from projectkoios.ingestion.models import (
 )
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,
-    PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 FIGURE_CONTRACT_VERSION = "1.0"
 FIGURE_DETECTOR_VERSION = "1"
@@ -97,18 +96,6 @@ class _PageLayoutProcessor(Protocol):
     def analyze(
         self, document: ExtractedDocument
     ) -> tuple[PageLayoutResult, ...]: ...
-
-
-class _PageRegionRenderer(Protocol):
-    name: str
-    version: str
-
-    def render(
-        self,
-        source: SourceDocument,
-        content: BinaryIO,
-        selections: tuple[PageRegionSelection, ...],
-    ) -> tuple[RenderedRegion, ...]: ...
 
 
 class _FigureInspector(Protocol):
@@ -1137,17 +1124,14 @@ class DeterministicFigureCandidateDetector:
         configuration: FigureDetectionConfiguration | None = None,
         *,
         layout_processor: _PageLayoutProcessor | None = None,
-        region_renderer: _PageRegionRenderer | None = None,
+        region_renderer: PageRegionRenderer,
         figure_inspector: _FigureInspector | None = None,
     ) -> None:
         self.configuration = configuration or FigureDetectionConfiguration()
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer(
-            max_total_pixels=_MAX_TOTAL_RENDERED_PIXELS,
-            max_total_raster_bytes=_MAX_TOTAL_RENDERED_PNG_BYTES,
-        )
+        self.region_renderer = region_renderer
         self.figure_inspector = figure_inspector or PyMuPdfFigureInspector()
 
     @property

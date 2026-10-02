@@ -1,19 +1,20 @@
-# `projectkoios.ingestion` touched-slice schematic
+# `projectkoios.ingestion` schematic
 
 ```mermaid
 flowchart LR
-    Producer["clean_transcript<br/>canonical projection"]
-    Transcript["CleanTranscript"]
-    Selection["transcript.evidence.selection"]
-    Evidence["paired clean/raw selected evidence"]
-    Downstream["downstream authoring<br/>outside ingestion"]
+    Source["source documents"]
+    Pdf["ingestion.pdf<br/>neutral rendering bases and policy"]
+    Public["neutral ingestion exports"]
+    Consumers["equation, figure, and table consumers"]
+    Roots["batch/CLI composition roots"]
+    Adapter["concrete PDF adapter"]
 
-    Producer --> Transcript
-    Transcript --> Selection
-    Selection --> Evidence
-    Evidence -. "explicit handoff" .-> Downstream
+    Source --> Pdf
+    Pdf --> Public
+    Public --> Consumers
+    Roots --> Adapter
+    Adapter --> Consumers
 ```
 
-The selector consumes an in-memory canonical transcript. It introduces no
-source-asset, reference, rights, search, generation, storage, API, or workflow
-boundary.
+Neutral exports stop at nominal bases. Concrete adapter selection occurs only
+where a batch, command, or integration test composes executable processing.

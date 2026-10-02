@@ -23,6 +23,7 @@ from projectkoios.ingestion.equations import (
     DeterministicEquationCandidateDetector,
     EquationDetectionResult,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
@@ -240,7 +241,9 @@ def _derive(
     replayed_extraction = contract_dict(extraction)
     if existing_extraction.get("document") != replayed_extraction["document"]:
         raise ValueError("raw extraction document changed after preflight")
-    detection = DeterministicEquationCandidateDetector().detect(
+    detection = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect(
         extraction.document,
         BytesIO(payload),
     )

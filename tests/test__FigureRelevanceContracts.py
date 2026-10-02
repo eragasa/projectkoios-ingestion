@@ -33,6 +33,7 @@ from projectkoios.ingestion.figure_relevance import (
     FigureRelevanceWarning,
     build_figure_relevance_cache_key,
 )
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pytest.importorskip("pymupdf")
 
@@ -52,9 +53,12 @@ def _detection(fixture_name: str, suffix: str):
         locator=f"memory://figure-relevance-{suffix}.pdf",
     )
     document = PyMuPdfExtractor().extract(source, BytesIO(payload)).document
-    return DeterministicFigureCandidateDetector().detect(
-        document, BytesIO(payload)
-    )
+    return DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect(document, BytesIO(payload))
 
 
 def _selection(fixture_name: str = "figures", suffix: str = "selection"):

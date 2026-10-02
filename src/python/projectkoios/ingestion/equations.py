@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 from typing import BinaryIO, Protocol
@@ -27,7 +26,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     RenderedRegion,
 )
-from projectkoios.ingestion.pdf.renderer import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 EQUATION_CONTRACT_VERSION = "1.0"
 EQUATION_DETECTOR_VERSION = "1"
@@ -70,15 +69,6 @@ class _PageLayoutProcessor(Protocol):
     def analyze(
         self, document: ExtractedDocument
     ) -> tuple[PageLayoutResult, ...]: ...
-
-
-class _PageRegionRenderer(Protocol):
-    def render(
-        self,
-        source: SourceDocument,
-        content: BinaryIO,
-        selections: Iterable[PageRegionSelection],
-    ) -> tuple[RenderedRegion, ...]: ...
 
 
 class EquationDetectionLimitError(ValueError):
@@ -542,13 +532,13 @@ class DeterministicEquationCandidateDetector:
         configuration: EquationDetectionConfiguration | None = None,
         *,
         layout_processor: _PageLayoutProcessor | None = None,
-        region_renderer: _PageRegionRenderer | None = None,
+        region_renderer: PageRegionRenderer,
     ) -> None:
         self.configuration = configuration or EquationDetectionConfiguration()
         self.layout_processor = (
             layout_processor or DeterministicLayoutProcessor()
         )
-        self.region_renderer = region_renderer or PyMuPdfRegionRenderer()
+        self.region_renderer = region_renderer
 
     @property
     def configuration_digest(self) -> str:
@@ -1725,7 +1715,7 @@ def _block_box(source_spans: tuple[SourceSpan, ...]) -> BoundingBox | None:
                 max(box[3] for box in boxes),
             )
         )
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

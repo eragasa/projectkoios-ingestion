@@ -31,6 +31,7 @@ from projectkoios.ingestion.equations import (
 from projectkoios.ingestion.figures import DeterministicFigureCandidateDetector
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import DeterministicLayoutProcessor
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,
@@ -578,7 +579,9 @@ def execute_transcript_batch_item(
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
     structure = DeterministicArticleStructureAnalyzer().analyze(document)
-    equations = DeterministicEquationCandidateDetector().detect_with_layout(
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect_with_layout(
         document,
         BytesIO(payload),
         layouts,
@@ -594,7 +597,12 @@ def execute_transcript_batch_item(
         raise TranscriptBatchError(
             "equation detection identity differs from transcript plan"
         )
-    table_detection = DeterministicTableCandidateDetector().detect_with_layout(
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(
         document,
         BytesIO(payload),
         layouts,
@@ -602,7 +610,12 @@ def execute_transcript_batch_item(
     tables = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect_with_layout(
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer(
+            max_total_pixels=100_000_000,
+            max_total_raster_bytes=100_000_000,
+        )
+    ).detect_with_layout(
         document,
         BytesIO(payload),
         layouts,

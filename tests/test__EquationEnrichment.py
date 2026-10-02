@@ -23,6 +23,7 @@ from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
 from projectkoios.ingestion.equation_enrichment import _sanitize_native_text
 from projectkoios.ingestion.equation_enrichment_cli import main as enrich_batch
+from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 
 pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
@@ -37,9 +38,9 @@ def _detection():
         locator="assets/equations.pdf",
     )
     extraction = PyMuPdfExtractor().extract(source, BytesIO(payload))
-    detection = DeterministicEquationCandidateDetector().detect(
-        extraction.document, BytesIO(payload)
-    )
+    detection = DeterministicEquationCandidateDetector(
+        region_renderer=PyMuPdfRegionRenderer()
+    ).detect(extraction.document, BytesIO(payload))
     return payload, detection
 
 
@@ -69,7 +70,9 @@ def test__equation_enrichment__keeps_raw_sanitized_and_visual_layers(
 ) -> None:
     payload, detection = _detection()
 
-    assembly = DeterministicEquationAssembler().assemble(detection, payload)
+    assembly = DeterministicEquationAssembler(
+        renderer=PyMuPdfRegionRenderer()
+    ).assemble(detection, payload)
     recognition = _recognizer(tmp_path).process(assembly)
     index = build_equation_index(assembly, recognition)
 
@@ -96,7 +99,9 @@ def test__equation_enrichment__malformed_latex_remains_auxiliary(
     tmp_path: Path,
 ) -> None:
     payload, detection = _detection()
-    assembly = DeterministicEquationAssembler().assemble(detection, payload)
+    assembly = DeterministicEquationAssembler(
+        renderer=PyMuPdfRegionRenderer()
+    ).assemble(detection, payload)
 
     recognition = _recognizer(tmp_path, latex=r"\frac{x{").process(assembly)
     index = build_equation_index(assembly, recognition)
@@ -110,7 +115,9 @@ def test__equation_enrichment__keeps_prose_like_latex_auxiliary(
     tmp_path: Path,
 ) -> None:
     payload, detection = _detection()
-    assembly = DeterministicEquationAssembler().assemble(detection, payload)
+    assembly = DeterministicEquationAssembler(
+        renderer=PyMuPdfRegionRenderer()
+    ).assemble(detection, payload)
 
     recognition = _recognizer(
         tmp_path, latex=r"\mathrm{largest~eigenvalue}"
@@ -249,7 +256,9 @@ def test__equation_enrichment__resource_identity_changes_with_model(
     )
 
     payload, detection = _detection()
-    assembly = DeterministicEquationAssembler().assemble(detection, payload)
+    assembly = DeterministicEquationAssembler(
+        renderer=PyMuPdfRegionRenderer()
+    ).assemble(detection, payload)
     with pytest.raises(ValueError, match="resource changed"):
         first.process(assembly)
 
