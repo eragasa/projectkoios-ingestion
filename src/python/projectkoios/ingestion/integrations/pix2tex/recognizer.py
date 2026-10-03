@@ -13,6 +13,9 @@ from projectkoios.ingestion.equations.assembly.model import EquationAssembly
 from projectkoios.ingestion.equations.assembly.result import (
     EquationAssemblyResult,
 )
+from projectkoios.ingestion.equations.image.factory import EquationImage
+from projectkoios.ingestion.equations.latex import EquationLatex
+from projectkoios.ingestion.equations.mathml import EquationMathML
 from projectkoios.ingestion.equations.recognition.artifact import (
     EquationRecognitionArtifact,
 )
@@ -56,6 +59,9 @@ from projectkoios.ingestion.integrations.pix2tex.invocation.request import (
 from projectkoios.ingestion.integrations.pix2tex.invocation.result import (
     Pix2TexInvocationResult,
 )
+from projectkoios.ingestion.integrations.pix2tex.resource import (
+    Pix2TexResourceBinding,
+)
 
 
 class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
@@ -69,7 +75,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         executable: Path,
         *,
         backend_version: str,
-        resources: tuple[tuple[str, Path], ...],
+        resources: tuple[Pix2TexResourceBinding, ...],
         temperature: float = 0.01,
         timeout_seconds: int = 900,
     ) -> None:
@@ -81,16 +87,20 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         if timeout_seconds <= 0 or timeout_seconds > 3600:
             raise ValueError("pix2tex timeout must be in (0, 3600]")
         self.timeout_seconds = timeout_seconds
+        if type(resources) is not tuple or any(
+            type(binding) is not Pix2TexResourceBinding for binding in resources
+        ):
+            raise TypeError("Pix2Tex resources must be named bindings")
         resource_values = tuple(
             EquationRecognitionResource(
-                name=name,
-                path=str(path.expanduser().resolve()),
+                name=binding.name,
+                path=str(binding.path.expanduser().resolve()),
                 sha256=hashlib.sha256(
-                    path.expanduser().resolve().read_bytes()
+                    binding.path.expanduser().resolve().read_bytes()
                 ).hexdigest(),
-                byte_size=path.expanduser().resolve().stat().st_size,
+                byte_size=(binding.path.expanduser().resolve().stat().st_size),
             )
-            for name, path in sorted(resources)
+            for binding in sorted(resources, key=lambda item: item.name)
         )
         executable_content = self.executable.read_bytes()
         self._identity = EquationRecognitionProcessorIdentity(
@@ -313,7 +323,11 @@ def _recognition_proposal(
 ) -> EquationRecognitionProposal:
     warnings: list[str] = []
     failure: str | None = None
-    mathml: str | None = None
+    mathml_content: str | None = None
+    mathml_processor_identity: str | None = None
+    mathml_processor_version: str | None = None
+    latex_equation: EquationLatex | None = None
+    mathml_equation: EquationMathML | None = None
     if not is_primary_equation_recognition_candidate(assembly):
         status = EquationRecognitionStatus.NOT_REQUESTED
         warnings.append("recognition_not_requested_for_non_primary_evidence")
@@ -327,13 +341,35 @@ def _recognition_proposal(
     else:
         status = EquationRecognitionStatus.PROPOSED
         warnings.append("recognition_confidence_unavailable")
+        equation_image = EquationImage.from_bytes(
+            content=assembly.rendered_region.content,
+            source_ids=(assembly.rendered_region.region_id,),
+        )
+        latex_equation = EquationLatex(
+            source_ids=(equation_image.equation_id,),
+            latex=latex,
+        )
         if not _latex_is_well_formed(latex):
             warnings.append("latex_structure_suspect")
         try:
+            import latex2mathml
             from latex2mathml.converter import convert
 
-            mathml = convert(latex)
+            mathml_processor_version = latex2mathml.__version__
+            mathml_processor_identity = stable_id(
+                "equation-mathml-processor",
+                "latex2mathml",
+                mathml_processor_version,
+            )
+            mathml_content = convert(latex)
+            mathml_equation = EquationMathML(
+                source_ids=(latex_equation.equation_id,),
+                mathml=mathml_content,
+            )
         except Exception:  # latex2mathml exposes multiple parser exceptions
+            mathml_content = None
+            mathml_processor_identity = None
+            mathml_processor_version = None
             warnings.append("mathml_conversion_unavailable")
     proposal_id = stable_id(
         "equation-recognition-proposal",
@@ -341,7 +377,7 @@ def _recognition_proposal(
         assembly.assembly_id,
         status,
         latex,
-        mathml,
+        mathml_content,
         tuple(warnings),
         failure,
         processor_identity_digest,
@@ -350,8 +386,10 @@ def _recognition_proposal(
         proposal_id=proposal_id,
         assembly_id=assembly.assembly_id,
         status=status,
-        latex=latex,
-        mathml=mathml,
+        latex=latex_equation,
+        mathml=mathml_equation,
+        mathml_processor_identity=mathml_processor_identity,
+        mathml_processor_version=mathml_processor_version,
         warning_codes=tuple(warnings),
         failure_message=failure,
         processor_identity_digest=processor_identity_digest,
@@ -361,8 +399,7 @@ def _recognition_proposal(
 def _latex_is_well_formed(value: str) -> bool:
     if (
         not value
-        or len(value)
-        > Pix2TexCliEquationRecognizer.MAX_LATEX_CHARACTERS
+        or len(value) > Pix2TexCliEquationRecognizer.MAX_LATEX_CHARACTERS
     ):
         return False
     depth = 0

@@ -2,4 +2,4 @@
 
 
 class EquationPublicationInventoryError(ValueError):
-    """Raised when recognition/index publication evidence is partial."""
+    """Raised when equation publication evidence is partial."""

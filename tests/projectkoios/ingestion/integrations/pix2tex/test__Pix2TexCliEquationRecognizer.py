@@ -26,6 +26,9 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
     _recognition_proposal,
 )
+from projectkoios.ingestion.integrations.pix2tex.resource import (
+    Pix2TexResourceBinding,
+)
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
@@ -103,7 +106,7 @@ def test__pix2tex__does_not_run_for_ambiguous_detector_evidence(
     recognizer = Pix2TexCliEquationRecognizer(
         executable,
         backend_version="test-1",
-        resources=(("model", model),),
+        resources=(Pix2TexResourceBinding(name="model", path=model),),
     )
     artifact = _ambiguous_assembly((FIXTURES / "equations.pdf").read_bytes())
     request = EquationRecognitionRequest.create(
@@ -143,7 +146,7 @@ def test__pix2tex__discards_stdout_before_parsing_nonzero_exit(
     recognizer = Pix2TexCliEquationRecognizer(
         executable,
         backend_version="test-1",
-        resources=(("model", model),),
+        resources=(Pix2TexResourceBinding(name="model", path=model),),
     )
     artifact = _assembly((FIXTURES / "equations.pdf").read_bytes())
     request = EquationRecognitionRequest.create(

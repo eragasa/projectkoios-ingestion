@@ -4,6 +4,7 @@ import pytest
 from projectkoios.ingestion.equations.derivation.recognition.result import (
     EquationRecognitionDerivationResult,
 )
+from projectkoios.ingestion.equations.image.factory import EquationImage
 from projectkoios.ingestion.equations.recognition.artifact import (
     EquationRecognitionArtifact,
 )
@@ -78,9 +79,13 @@ def test__equation_recognition_workflow__returns_correlated_success_trace() -> (
 
     assert isinstance(derivation, EquationRecognitionDerivationResult)
     assert derivation.recognition == legacy
+    proposal = derivation.recognition.proposals[0]
+    assert proposal.latex is not None
+    assert proposal.mathml is not None
     assert derivation.trace.root_equation_ids == (
-        recognition_assembly.artifact_id,
+        proposal.latex.equation_source_ids[0],
     )
+    assert derivation.trace.final_equation_ids == (proposal.mathml.equation_id,)
 
 
 def test__equation_recognition_workflow__rejects_uncorrelated_result() -> None:
@@ -116,9 +121,10 @@ def test__equation_recognition_workflow__raises_failure_with_trace() -> None:
         )
 
     assert isinstance(raised.value, EquationRecognitionError)
-    assert raised.value.failure.trace.root_equation_ids == (
-        recognition_assembly.artifact_id,
+    equation_assembly = recognition_assembly.assemblies[0]
+    image = EquationImage.from_bytes(
+        content=equation_assembly.rendered_region.content,
+        source_ids=(equation_assembly.rendered_region.region_id,),
     )
-    assert raised.value.failure.trace.final_equation_ids == (
-        recognition_assembly.artifact_id,
-    )
+    assert raised.value.failure.trace.root_equation_ids == (image.equation_id,)
+    assert raised.value.failure.trace.final_equation_ids == (image.equation_id,)

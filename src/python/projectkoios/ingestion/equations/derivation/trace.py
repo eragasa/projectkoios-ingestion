@@ -27,22 +27,14 @@ class EquationDerivationTrace(AbstractImmutableDataObject):
 
     root_equation_ids: tuple[str, ...]
     transitions: tuple[EquationDerivationTransition, ...]
-    _trace_id: str = field(init=False, repr=False)
-    _final_equation_ids: tuple[str, ...] = field(init=False, repr=False)
-
-    @property
-    def trace_id(self) -> str:
-        return self._trace_id
-
-    @property
-    def final_equation_ids(self) -> tuple[str, ...]:
-        return self._final_equation_ids
+    trace_id: str = field(init=False)
+    final_equation_ids: tuple[str, ...] = field(init=False)
 
     def __post_init__(self) -> None:
         self._validate_root_ids()
         if type(self.transitions) is not tuple:
             raise TypeError("equation derivation transitions must be a tuple")
-        if not self.transitions or len(self.transitions) > self.MAX_TRANSITIONS:
+        if len(self.transitions) > self.MAX_TRANSITIONS:
             raise ValueError(
                 "equation derivation transition count is out of bounds"
             )
@@ -86,10 +78,10 @@ class EquationDerivationTrace(AbstractImmutableDataObject):
                 ]
                 available.extend(transition.output_ids)
                 known.update(transition.output_ids)
-        object.__setattr__(self, "_final_equation_ids", tuple(available))
+        object.__setattr__(self, "final_equation_ids", tuple(available))
         object.__setattr__(
             self,
-            "_trace_id",
+            "trace_id",
             stable_id(
                 "equation-derivation-trace",
                 self.CONTRACT_VERSION,
@@ -102,11 +94,9 @@ class EquationDerivationTrace(AbstractImmutableDataObject):
     def _validate_root_ids(self) -> None:
         if type(self.root_equation_ids) is not tuple:
             raise TypeError("equation derivation root IDs must be a tuple")
-        if (
-            not self.root_equation_ids
-            or len(self.root_equation_ids) > self.MAX_ROOT_IDS
-            or len(self.root_equation_ids) != len(set(self.root_equation_ids))
-        ):
+        if len(self.root_equation_ids) > self.MAX_ROOT_IDS or len(
+            self.root_equation_ids
+        ) != len(set(self.root_equation_ids)):
             raise ValueError("equation derivation root IDs are invalid")
         if any(
             type(value) is not str

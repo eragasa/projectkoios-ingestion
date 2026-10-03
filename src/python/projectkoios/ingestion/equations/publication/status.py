@@ -4,8 +4,9 @@ from enum import StrEnum
 
 
 class EquationPublicationInventoryStatus(StrEnum):
-    """Completeness of the recognition/index publication pair."""
+    """Completeness of recognition/index/derivation publication evidence."""
 
     NONE = "none"
-    COMPLETE_PAIR = "complete_pair"
+    COMPLETE_SET = "complete_set"
+    LEGACY_PAIR = "legacy_pair"
     PARTIAL = "partial"

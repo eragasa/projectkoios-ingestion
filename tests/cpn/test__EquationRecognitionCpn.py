@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from projectkoios.ingestion.equations.image.factory import EquationImage
 from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
 )
@@ -67,6 +68,9 @@ def test__equation_recognition_cpn__routes_correlated_failure_trace() -> None:
     observed = record_equation_recognition_failure(net, failure)
 
     assert observed == failure
-    assert observed.trace.final_equation_ids == (
-        request.assembly_artifact.artifact_id,
+    equation_assembly = request.assembly_artifact.assemblies[0]
+    image = EquationImage.from_bytes(
+        content=equation_assembly.rendered_region.content,
+        source_ids=(equation_assembly.rendered_region.region_id,),
     )
+    assert observed.trace.final_equation_ids == (image.equation_id,)

@@ -30,6 +30,7 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 _MAX_EXTRACTION_ARTIFACT_BYTES = 128_000_000
 
@@ -265,8 +266,14 @@ def _derive(
     else:
         _publish_artifacts(
             [
-                (item.detection_artifact, detection_text),
-                (item.retrieval_artifact, retrieval_text),
+                ArtifactPublicationItem(
+                    path=item.detection_artifact,
+                    text=detection_text,
+                ),
+                ArtifactPublicationItem(
+                    path=item.retrieval_artifact,
+                    text=retrieval_text,
+                ),
             ]
         )
     return detection, retrieval, action

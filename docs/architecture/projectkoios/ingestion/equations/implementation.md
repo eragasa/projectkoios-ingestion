@@ -14,7 +14,9 @@ input and KaTeX version. Representation identities preserve immediate
 derivation links. `EquationDerivationTransition` records one ordered success or
 exceptional failure with request, result, processor, configuration, warning,
 and failure identities. `EquationDerivationTrace` enforces sequence continuity,
-causal closure, unique outputs, and deterministic terminal identities.
+causal closure, unique outputs, and deterministic terminal identities. Empty
+traces are valid only when a request contains no equation representations or no
+representation transition was requested.
 
 Detection now belongs to `ingestion.equations.detection`. It depends on the
 nominal `PageRegionRenderer` boundary. The deterministic detector requires a
@@ -26,12 +28,23 @@ removed. The result retains the existing serialized fields and
 `equation-assembly-artifact` stable identity namespace during migration.
 Recognition request/result contracts belong to `ingestion.equations.recognition`,
 while complete success and failure traces belong to
-`ingestion.equations.derivation.recognition`.
+`ingestion.equations.derivation.recognition`. Recognition proposals retain
+`EquationLatex` and `EquationMathML` objects rather than raw representation
+strings. Their immediate source identities preserve the equation-image-to-LaTeX
+and LaTeX-to-MathML derivation chain. MathML proposals retain the exact converter
+processor identity and version; proposal IDs remain based on exact textual
+content for compatibility. Successful traces use exact equation-image IDs as
+roots and record separate image-to-LaTeX and LaTeX-to-MathML transitions.
+Effect-level request/result correlation remains on the derivation result and its
+compact durable record rather than masquerading as an equation representation.
 
 Compact retrieval records belong to `ingestion.equations.index`. Recognition
 checkpoint transitions belong to `ingestion.equations.recognition.checkpoint`,
-and create-once recognition/index file inspection belongs to
-`ingestion.equations.publication`. The former flat
+and create-once recognition/index/derivation file inspection belongs to
+`ingestion.equations.publication`. New publications contain the complete set;
+validated recognition/index pairs remain identifiable as legacy evidence.
+`EquationPublicationRequest` binds four named members and removes positional
+path/content coupling before the filesystem adapter boundary. The former flat
 `projectkoios.ingestion.equation_enrichment` module no longer exists. The
 `scripts.equation_enrichment` composition command remains an operational CLI,
 not a domain owner.

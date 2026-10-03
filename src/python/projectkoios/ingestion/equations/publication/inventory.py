@@ -16,11 +16,12 @@ from projectkoios.ingestion.equations.publication.status import (
 
 @dataclass(frozen=True)
 class EquationPublicationInventory:
-    """Safety classification of recognition/index publication files."""
+    """Safety classification of recognition/index/derivation files."""
 
     status: EquationPublicationInventoryStatus
     recognition_present: bool
     index_present: bool
+    derivation_present: bool
     problem_codes: tuple[str, ...]
 
     def __post_init__(self) -> None:
@@ -30,16 +31,31 @@ class EquationPublicationInventory:
             if (
                 self.recognition_present
                 or self.index_present
+                or self.derivation_present
                 or self.problem_codes
             ):
                 raise ValueError("empty publication inventory is inconsistent")
-        elif self.status is EquationPublicationInventoryStatus.COMPLETE_PAIR:
-            if not self.recognition_present or not self.index_present:
+        elif self.status is EquationPublicationInventoryStatus.COMPLETE_SET:
+            if not all(
+                (
+                    self.recognition_present,
+                    self.index_present,
+                    self.derivation_present,
+                )
+            ):
                 raise ValueError(
                     "complete publication inventory is inconsistent"
                 )
             if self.problem_codes:
                 raise ValueError("complete publication inventory has problems")
+        elif self.status is EquationPublicationInventoryStatus.LEGACY_PAIR:
+            if (
+                not self.recognition_present
+                or not self.index_present
+                or self.derivation_present
+                or self.problem_codes
+            ):
+                raise ValueError("legacy publication inventory is inconsistent")
         elif not self.problem_codes:
             raise ValueError("partial publication inventory needs a problem")
 
@@ -47,11 +63,12 @@ class EquationPublicationInventory:
 def inspect_equation_publication_inventory(
     directory: Path,
 ) -> EquationPublicationInventory:
-    """Classify the create-once recognition/index artifact pair."""
+    """Classify create-once recognition/index/derivation evidence."""
 
     entries = {
         "recognition": directory / "recognition.json",
         "index": directory / "index.json",
+        "derivation": directory / "derivation.json",
     }
     present: dict[str, bool] = {}
     problems: list[str] = []
@@ -70,10 +87,28 @@ def inspect_equation_publication_inventory(
             problems.append(f"{name}_unsafe")
     recognition_present = present["recognition"]
     index_present = present["index"]
-    if not recognition_present and not index_present and not problems:
+    derivation_present = present["derivation"]
+    if (
+        not recognition_present
+        and not index_present
+        and not derivation_present
+        and not problems
+    ):
         status = EquationPublicationInventoryStatus.NONE
-    elif recognition_present and index_present and not problems:
-        status = EquationPublicationInventoryStatus.COMPLETE_PAIR
+    elif (
+        recognition_present
+        and index_present
+        and derivation_present
+        and not problems
+    ):
+        status = EquationPublicationInventoryStatus.COMPLETE_SET
+    elif (
+        recognition_present
+        and index_present
+        and not derivation_present
+        and not problems
+    ):
+        status = EquationPublicationInventoryStatus.LEGACY_PAIR
     else:
         status = EquationPublicationInventoryStatus.PARTIAL
         if (
@@ -83,10 +118,16 @@ def inspect_equation_publication_inventory(
             problems.append("recognition_missing")
         if not index_present and "index_uninspectable" not in problems:
             problems.append("index_missing")
+        if (
+            not derivation_present
+            and "derivation_uninspectable" not in problems
+        ):
+            problems.append("derivation_missing")
     return EquationPublicationInventory(
         status=status,
         recognition_present=recognition_present,
         index_present=index_present,
+        derivation_present=derivation_present,
         problem_codes=tuple(problems),
     )
 

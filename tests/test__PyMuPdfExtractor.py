@@ -23,6 +23,7 @@ from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
 )
+from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -538,7 +539,9 @@ def test__cli__reports_in_progress_file_cleanup_failure(
     monkeypatch.setattr(Path, "unlink", fail_output_unlink)
     try:
         with pytest.raises(ArtifactPublicationError) as raised:
-            _publish_artifacts([(output, "\ud800")])
+            _publish_artifacts(
+                [ArtifactPublicationItem(path=output, text="\ud800")]
+            )
 
         assert "rollback incomplete" in str(raised.value)
         assert str(output) in str(raised.value)
