@@ -18,6 +18,7 @@ koios-validate-pdf-corpus = "projectkoios.ingestion.corpus_validation_cli:main"
 koios-detect-pdf-equations-batch = "projectkoios.ingestion.equation_batch_cli:main"
 koios-plan-pdf-transcripts-batch = "projectkoios.ingestion.transcript_plan_cli:main"
 koios-compose-pdf-transcripts-batch = "projectkoios.ingestion.transcript_batch_cli:main"
+koios-run-selective-ocr = "projectkoios.ingestion.ocr_batch_cli:main"
 
 [build-system]
 requires = ["setuptools==84.0.0"]

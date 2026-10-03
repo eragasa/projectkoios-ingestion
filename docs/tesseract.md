@@ -114,6 +114,54 @@ The adapter hashes the bounded normalized version report, configured executable,
 and exact requested traineddata bytes. Upgrading Tesseract or replacing a
 resource therefore changes `OCRProcessorIdentity` and the OCR cache key.
 
+## Selective batch publication
+
+`koios-run-selective-ocr` consumes a versioned `SelectiveOCRPlan`. Every plan
+item locks one `PdfBatchItem`, the exact SHA-256 of its validated
+`extraction.json`, an explicit output directory, and a strictly ordered set of
+zero-based page indices. Source, ingestion, and output roots are supplied
+separately; symlink traversal and changed source or extraction evidence fail
+closed.
+
+The command is dry-run by default. Dry-run performs no OCR and reports whether
+each page would be created or verified. Explicit `--apply` replays the native
+extraction, renders only the selected full pages, and invokes the repository's
+local `TesseractOCRProcessor`. Each page is independently published with mode
+`0600` as a create-once `result.json`. Its `SelectiveOCRPublication` binds the
+exact source and extraction hashes, selected page, and complete `OCRResult`,
+making a partially completed plan
+resumable without rerunning valid existing pages. Existing results are matched
+to the exact rerendered request, processor/resource identity, and cache key.
+Conflicting, partial, or unsafe artifacts are never overwritten.
+
+Native block references and OCR tokens/lines remain separate evidence inside
+the request/result contract. This command does not reconcile streams, compose
+replacement text, mutate native extraction, call Search, create embeddings, or
+publish a RAG index.
+
+Example plan shape:
+
+```json
+{
+  "schema_version": 1,
+  "items": [
+    {
+      "source": {
+        "source_id": "source:example",
+        "pdf_path": "documents/example.pdf",
+        "output_directory": "native/example",
+        "sha256": "<64 lowercase hex characters>",
+        "byte_size": 12345,
+        "locator": "documents/example.pdf"
+      },
+      "extraction_sha256": "<64 lowercase hex characters>",
+      "output_directory": "ocr/example",
+      "pages": [{"page_index": 4}]
+    }
+  ]
+}
+```
+
 ## Operational boundary
 
 The adapter uses a bounded, no-shell POSIX subprocess with timeout and output

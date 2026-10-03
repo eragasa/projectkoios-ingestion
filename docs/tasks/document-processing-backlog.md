@@ -272,6 +272,36 @@ remains deferred.
 OCR-only, native-only, blank, rotated, ambiguous, stale-provenance, immutable
 identity, and pre-matching resource bounds; full tests and static analysis pass.
 
+### ING-OCR-04 — Selective local OCR batch publication (implemented)
+
+`SelectiveOCRPlan` authorizes only explicitly named, strictly ordered pages. Each
+item retains a hash-locked `PdfBatchItem`, the exact validated native-extraction
+SHA-256, and separate ingestion and output directories. The plan bounds item,
+per-item page, and aggregate page counts and rejects duplicate sources, paths,
+or destinations.
+
+`koios-run-selective-ocr` requires explicit source, ingestion, and output roots,
+a local executable, and one exact traineddata resource. It is dry-run by
+default. Explicit apply replays the hash-locked extraction, renders only each
+selected full page, retains matching native block references, and invokes
+`TesseractOCRProcessor`. Each `SelectiveOCRPublication` binds the exact source
+and extraction hashes, selected page, and complete result. Publications are
+written independently per page with private permissions and create-once
+semantics. Valid existing results are
+verified against the exact rerendered request, processor/resource identity, and
+cache key without rerunning OCR, so interrupted plans are resumable. Unsafe,
+partial, stale, or conflicting evidence fails closed.
+
+OCR tokens and lines remain separate from native text. The command performs no
+reconciliation, replacement-text composition, Search mutation, embedding, or
+index publication.
+
+**Depends on:** `ING-OCR-01`, `ING-OCR-02`, `ING-CACHE-01`, `ING-REGION-01`.
+
+**Validation:** focused tests cover plan round-trip and bounds, dry-run with no
+OCR invocation, explicit create, native/OCR separation, create-once replay
+without reinvocation, and conflicting-result rejection.
+
 ## Structural tasks
 
 ### ING-STRUCTURE-01 — Article structure analyzer (implemented)

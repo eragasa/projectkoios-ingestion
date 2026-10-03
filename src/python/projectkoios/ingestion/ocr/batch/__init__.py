@@ -1,0 +1,1 @@
+"""Selective OCR batch contracts."""

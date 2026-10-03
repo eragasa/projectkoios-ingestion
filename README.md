@@ -56,6 +56,7 @@ Available extras are:
 | `koios-plan-pdf-corpus` | Discover bounded PDFs and publish content-addressed batch plans. |
 | `koios-validate-pdf-corpus` | Validate a native-text extraction corpus against its plans. |
 | `koios-detect-pdf-equations-batch` | Detect equation candidates in an extracted batch. |
+| `koios-run-selective-ocr` | Dry-run or publish local Tesseract evidence for explicitly selected pages. |
 | `python -m scripts.equation_enrichment` | Run configured equation-recognition tools from the repository workflow boundary. |
 | `python -m scripts.extraction_publication` | Publish an exact PDF extraction to disk and MongoDB. |
 | `python -m scripts.extraction_projection_recovery` | Rebuild MongoDB extraction projections from an authoritative disk journal. |
