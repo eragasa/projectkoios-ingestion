@@ -22,10 +22,14 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
-from projectkoios.ingestion.equation_enrichment import (
+from projectkoios.ingestion.equations.assembly.text import (
+    sanitize_equation_native_text,
+)
+from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
+)
+from projectkoios.ingestion.equations.recognition.request import (
     EquationRecognitionRequest,
-    _sanitize_native_text,
 )
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
@@ -161,7 +165,7 @@ def test__equation_enrichment__keeps_prose_like_latex_auxiliary(
 def test__equation_enrichment__sanitizes_without_erasing_raw_evidence() -> None:
     raw = "x\x08 = y\n+ z"
 
-    sanitized, count = _sanitize_native_text(raw)
+    sanitized, count = sanitize_equation_native_text(raw)
 
     assert raw == "x\x08 = y\n+ z"
     assert sanitized == "x� = y + z"

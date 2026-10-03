@@ -9,19 +9,39 @@ import tempfile
 from pathlib import Path
 from typing import ClassVar
 
-from projectkoios.ingestion.equation_enrichment import (
-    EQUATION_ENRICHMENT_CONTRACT_VERSION,
-    AbstractEquationRecognizer,
-    EquationAssembly,
-    EquationAssemblyArtifact,
+from projectkoios.ingestion.equations.assembly.model import EquationAssembly
+from projectkoios.ingestion.equations.assembly.result import (
+    EquationAssemblyResult,
+)
+from projectkoios.ingestion.equations.recognition.artifact import (
     EquationRecognitionArtifact,
+)
+from projectkoios.ingestion.equations.recognition.base import (
+    AbstractEquationRecognizer,
+)
+from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
-    EquationRecognitionProcessorIdentity,
-    EquationRecognitionProposal,
-    EquationRecognitionRequest,
-    EquationRecognitionResource,
-    EquationRecognitionStatus,
+)
+from projectkoios.ingestion.equations.recognition.identity import (
+    EQUATION_RECOGNITION_CONTRACT_VERSION,
+)
+from projectkoios.ingestion.equations.recognition.policy import (
     is_primary_equation_recognition_candidate,
+)
+from projectkoios.ingestion.equations.recognition.processor.identity import (
+    EquationRecognitionProcessorIdentity,
+)
+from projectkoios.ingestion.equations.recognition.proposal import (
+    EquationRecognitionProposal,
+)
+from projectkoios.ingestion.equations.recognition.request import (
+    EquationRecognitionRequest,
+)
+from projectkoios.ingestion.equations.recognition.resource import (
+    EquationRecognitionResource,
+)
+from projectkoios.ingestion.equations.recognition.status import (
+    EquationRecognitionStatus,
 )
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.pix2tex.invocation.error import (
@@ -115,7 +135,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
 
     def _recognize(
         self,
-        artifact: EquationAssemblyArtifact,
+        artifact: EquationAssemblyResult,
     ) -> EquationRecognitionArtifact:
         if self.executable.is_symlink() or not self.executable.is_file():
             raise EquationRecognitionError(
@@ -184,7 +204,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         diagnostic_sha256 = hashlib.sha256(invocation_diagnostic).hexdigest()
         artifact_id = stable_id(
             "equation-recognition-artifact",
-            EQUATION_ENRICHMENT_CONTRACT_VERSION,
+            EQUATION_RECOGNITION_CONTRACT_VERSION,
             artifact.artifact_id,
             self.identity.identity_digest,
             tuple(item.proposal_id for item in proposals),
@@ -317,7 +337,7 @@ def _recognition_proposal(
             warnings.append("mathml_conversion_unavailable")
     proposal_id = stable_id(
         "equation-recognition-proposal",
-        EQUATION_ENRICHMENT_CONTRACT_VERSION,
+        EQUATION_RECOGNITION_CONTRACT_VERSION,
         assembly.assembly_id,
         status,
         latex,

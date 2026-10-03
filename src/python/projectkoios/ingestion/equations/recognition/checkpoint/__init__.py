@@ -1,0 +1,1 @@
+"""Equation-recognition checkpoint namespace."""

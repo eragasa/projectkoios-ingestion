@@ -105,8 +105,7 @@ class EquationDerivationTrace(AbstractImmutableDataObject):
         if (
             not self.root_equation_ids
             or len(self.root_equation_ids) > self.MAX_ROOT_IDS
-            or len(self.root_equation_ids)
-            != len(set(self.root_equation_ids))
+            or len(self.root_equation_ids) != len(set(self.root_equation_ids))
         ):
             raise ValueError("equation derivation root IDs are invalid")
         if any(

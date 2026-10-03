@@ -1,88 +1,72 @@
 from __future__ import annotations
 
-import hashlib
-
-from projectkoios.ingestion.equation_enrichment import (
-    EQUATION_ENRICHMENT_CONTRACT_VERSION,
-    EquationAssemblyArtifact,
-    EquationRecognitionProcessorIdentity,
-    EquationRecognitionResource,
+from projectkoios.ingestion.equations.recognition.error import (
+    EquationRecognitionError,
 )
-from projectkoios.ingestion.identity import stable_id
 
 from cpn.equation_recognition import (
-    EquationRecognitionFailureToken,
     build_equation_recognition_net,
     project_equation_recognition_request,
     record_equation_recognition_failure,
+    record_equation_recognition_result,
 )
-from workflow.equation_recognition import plan_equation_recognition
-
-
-def _assembly() -> EquationAssemblyArtifact:
-    source_id = "source:cpn-shadow"
-    source_hash = hashlib.sha256(source_id.encode()).hexdigest()
-    artifact_id = stable_id(
-        "equation-assembly-artifact",
-        EQUATION_ENRICHMENT_CONTRACT_VERSION,
-        source_id,
-        source_hash,
-        "document:cpn-shadow",
-        "detection:cpn-shadow",
-        (),
-    )
-    return EquationAssemblyArtifact(
-        artifact_id=artifact_id,
-        source_id=source_id,
-        source_content_hash=source_hash,
-        document_id="document:cpn-shadow",
-        detection_result_id="detection:cpn-shadow",
-        assemblies=(),
-    )
-
-
-def _processor() -> EquationRecognitionProcessorIdentity:
-    return EquationRecognitionProcessorIdentity(
-        processor_name="bounded-recognizer",
-        processor_version="1",
-        backend_name="test",
-        backend_version="1",
-        executable_sha256="a" * 64,
-        executable_semantic_sha256="b" * 64,
-        resources=(
-            EquationRecognitionResource(
-                name="model",
-                path="/bounded/model",
-                sha256="c" * 64,
-                byte_size=1,
-            ),
-        ),
-        temperature=0.01,
-    )
+from tests.equation_recognition_derivation_support import (
+    artifact,
+    assembly,
+    processor,
+)
+from workflow.equation_recognition import (
+    plan_equation_recognition,
+    record_equation_recognition_derivation,
+)
+from workflow.equation_recognition import (
+    record_equation_recognition_failure as workflow_failure,
+)
 
 
 def test__equation_recognition_cpn__shadows_workflow_request() -> None:
-    assembly = _assembly()
-    processor = _processor()
+    recognition_assembly = assembly()
+    recognition_processor = processor()
     expected = plan_equation_recognition(
-        assembly=assembly,
-        processor=processor,
+        assembly=recognition_assembly,
+        processor=recognition_processor,
     )
-    net = build_equation_recognition_net(assembly, processor)
+    net = build_equation_recognition_net(
+        recognition_assembly,
+        recognition_processor,
+    )
 
     observed = project_equation_recognition_request(net)
 
     assert observed == expected
 
 
-def test__equation_recognition_cpn__routes_correlated_failure() -> None:
-    assembly = _assembly()
-    processor = _processor()
-    net = build_equation_recognition_net(assembly, processor)
+def test__equation_recognition_cpn__shadows_correlated_success_trace() -> None:
+    net = build_equation_recognition_net(assembly(), processor())
     request = project_equation_recognition_request(net)
-    failure = EquationRecognitionFailureToken(
-        request_id=request.request_id,
-        message="bounded recognition failure",
+    recognition = artifact(recognition_request=request)
+    expected = record_equation_recognition_derivation(
+        request=request,
+        result=recognition,
     )
 
-    assert record_equation_recognition_failure(net, failure) is failure
+    observed = record_equation_recognition_result(net, recognition)
+
+    assert observed == expected
+    assert observed.trace.trace_id == expected.trace.trace_id
+
+
+def test__equation_recognition_cpn__routes_correlated_failure_trace() -> None:
+    net = build_equation_recognition_net(assembly(), processor())
+    request = project_equation_recognition_request(net)
+    failure = workflow_failure(
+        request=request,
+        error=EquationRecognitionError("bounded recognition failure"),
+    )
+
+    observed = record_equation_recognition_failure(net, failure)
+
+    assert observed == failure
+    assert observed.trace.final_equation_ids == (
+        request.assembly_artifact.artifact_id,
+    )

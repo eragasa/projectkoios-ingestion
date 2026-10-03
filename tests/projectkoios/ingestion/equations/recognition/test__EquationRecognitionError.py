@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from projectkoios.ingestion.equation_enrichment import EquationRecognitionError
+from projectkoios.ingestion.equations.recognition.error import (
+    EquationRecognitionError,
+)
 
 
 def test__equation_recognition_error__is_a_concrete_runtime_failure() -> None:
