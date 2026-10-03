@@ -23,7 +23,9 @@ from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
 from projectkoios.ingestion.equation_enrichment import _sanitize_native_text
 from projectkoios.ingestion.equation_enrichment_cli import main as enrich_batch
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 
 pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"

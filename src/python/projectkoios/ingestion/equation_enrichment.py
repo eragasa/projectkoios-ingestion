@@ -4,6 +4,7 @@ import hashlib
 import math
 import os
 import re
+import stat
 import subprocess
 import tempfile
 import unicodedata
@@ -53,6 +54,175 @@ class EquationIndexTier(StrEnum):
     PRIMARY = "primary"
     AUXILIARY = "auxiliary"
     REJECTED = "rejected"
+
+
+class EquationEnrichmentInventoryStatus(StrEnum):
+    NONE = "none"
+    COMPLETE_PAIR = "complete_pair"
+    PARTIAL = "partial"
+
+
+class EquationRecognitionWorkState(StrEnum):
+    PENDING = "pending"
+    NOT_REQUESTED = "not_requested"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+class EquationEnrichmentInventoryError(ValueError):
+    """Raised when recognition/index checkpoint evidence is partial."""
+
+
+@dataclass(frozen=True)
+class EquationEnrichmentInventory:
+    status: EquationEnrichmentInventoryStatus
+    recognition_present: bool
+    index_present: bool
+    problem_codes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.problem_codes) != len(set(self.problem_codes)):
+            raise ValueError("enrichment inventory problems must be unique")
+        if self.status is EquationEnrichmentInventoryStatus.NONE:
+            if (
+                self.recognition_present
+                or self.index_present
+                or self.problem_codes
+            ):
+                raise ValueError("empty enrichment inventory is inconsistent")
+        elif self.status is EquationEnrichmentInventoryStatus.COMPLETE_PAIR:
+            if not self.recognition_present or not self.index_present:
+                raise ValueError(
+                    "complete enrichment inventory is inconsistent"
+                )
+            if self.problem_codes:
+                raise ValueError("complete enrichment inventory has problems")
+        elif not self.problem_codes:
+            raise ValueError("partial enrichment inventory needs a problem")
+
+
+@dataclass(frozen=True)
+class EquationRecognitionCheckpoint:
+    state: EquationRecognitionWorkState
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.state is EquationRecognitionWorkState.FAILED:
+            if self.error is None or not self.error.strip():
+                raise ValueError(
+                    "failed recognition checkpoint requires an error"
+                )
+        elif self.error is not None:
+            raise ValueError(
+                "non-failed recognition checkpoint cannot have an error"
+            )
+
+
+@dataclass(frozen=True)
+class EquationRecognitionDeferral:
+    previous_state: EquationRecognitionWorkState
+    resulting_state: EquationRecognitionWorkState
+    preserved_error: str | None
+    changed: bool
+
+    def __post_init__(self) -> None:
+        expected_state = (
+            EquationRecognitionWorkState.NOT_REQUESTED
+            if self.previous_state is EquationRecognitionWorkState.PENDING
+            else self.previous_state
+        )
+        if self.resulting_state is not expected_state:
+            raise ValueError("recognition deferral transition is inconsistent")
+        if self.changed is not (
+            self.previous_state is EquationRecognitionWorkState.PENDING
+        ):
+            raise ValueError("recognition deferral change flag is inconsistent")
+        if self.previous_state is EquationRecognitionWorkState.FAILED:
+            if self.preserved_error is None or not self.preserved_error.strip():
+                raise ValueError(
+                    "recognition failure evidence was not preserved"
+                )
+        elif self.preserved_error is not None:
+            raise ValueError("recognition deferral has an unexpected error")
+
+
+def inspect_equation_enrichment_inventory(
+    directory: Path,
+) -> EquationEnrichmentInventory:
+    """Classify the create-once recognition/index artifact pair."""
+
+    entries = {
+        "recognition": directory / "recognition.json",
+        "index": directory / "index.json",
+    }
+    present: dict[str, bool] = {}
+    problems: list[str] = []
+    for name, path in entries.items():
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            present[name] = False
+            continue
+        except OSError:
+            present[name] = False
+            problems.append(f"{name}_uninspectable")
+            continue
+        present[name] = True
+        if path.is_symlink() or not stat.S_ISREG(metadata.st_mode):
+            problems.append(f"{name}_unsafe")
+    recognition_present = present["recognition"]
+    index_present = present["index"]
+    if not recognition_present and not index_present and not problems:
+        status = EquationEnrichmentInventoryStatus.NONE
+    elif recognition_present and index_present and not problems:
+        status = EquationEnrichmentInventoryStatus.COMPLETE_PAIR
+    else:
+        status = EquationEnrichmentInventoryStatus.PARTIAL
+        if (
+            not recognition_present
+            and "recognition_uninspectable" not in problems
+        ):
+            problems.append("recognition_missing")
+        if not index_present and "index_uninspectable" not in problems:
+            problems.append("index_missing")
+    return EquationEnrichmentInventory(
+        status=status,
+        recognition_present=recognition_present,
+        index_present=index_present,
+        problem_codes=tuple(problems),
+    )
+
+
+def require_equation_enrichment_inventory(
+    directory: Path,
+) -> EquationEnrichmentInventory:
+    """Reject partial enrichment while allowing complete or absent evidence."""
+
+    inventory = inspect_equation_enrichment_inventory(directory)
+    if inventory.status is EquationEnrichmentInventoryStatus.PARTIAL:
+        problems = ",".join(inventory.problem_codes)
+        raise EquationEnrichmentInventoryError(
+            f"equation enrichment inventory is partial: {problems}"
+        )
+    return inventory
+
+
+def defer_equation_recognition(
+    checkpoint: EquationRecognitionCheckpoint,
+) -> EquationRecognitionDeferral:
+    """Defer only untouched pending work and preserve every other state."""
+
+    resulting_state = (
+        EquationRecognitionWorkState.NOT_REQUESTED
+        if checkpoint.state is EquationRecognitionWorkState.PENDING
+        else checkpoint.state
+    )
+    return EquationRecognitionDeferral(
+        previous_state=checkpoint.state,
+        resulting_state=resulting_state,
+        preserved_error=checkpoint.error,
+        changed=checkpoint.state is EquationRecognitionWorkState.PENDING,
+    )
 
 
 @dataclass(frozen=True)
@@ -460,7 +630,7 @@ class Pix2TexCliEquationRecognizer:
         executable_content = self.executable.read_bytes()
         self.identity = EquationRecognitionProcessorIdentity(
             processor_name="pix2tex-cli-equation-recognizer",
-            processor_version="1",
+            processor_version="3",
             backend_name="pix2tex",
             backend_version=backend_version,
             executable_sha256=hashlib.sha256(executable_content).hexdigest(),
@@ -499,8 +669,7 @@ class Pix2TexCliEquationRecognizer:
         selected = tuple(
             assembly
             for assembly in artifact.assemblies
-            if assembly.kind is EquationAssemblyKind.DISPLAY
-            and not assembly.rejected
+            if _is_primary_recognition_candidate(assembly)
         )
         latex_by_id: dict[str, str] = {}
         exit_code = 0
@@ -841,6 +1010,19 @@ def _assembly_from_group(
     )
 
 
+def _is_primary_recognition_candidate(
+    assembly: EquationAssembly,
+) -> bool:
+    return (
+        assembly.kind is EquationAssemblyKind.DISPLAY
+        and not assembly.rejected
+        and all(
+            status is EquationEvidenceStatus.PROPOSED
+            for status in assembly.detector_evidence_statuses
+        )
+    )
+
+
 def _recognition_proposal(
     assembly: EquationAssembly,
     *,
@@ -851,15 +1033,16 @@ def _recognition_proposal(
     warnings: list[str] = []
     failure: str | None = None
     mathml: str | None = None
-    if assembly.rejected or assembly.kind is EquationAssemblyKind.INLINE:
+    if not _is_primary_recognition_candidate(assembly):
         status = EquationRecognitionStatus.NOT_REQUESTED
-        warnings.append("recognition_not_requested_for_non_primary_shape")
+        warnings.append("recognition_not_requested_for_non_primary_evidence")
     elif exit_code != 0 or latex is None:
         status = EquationRecognitionStatus.FAILED
         warnings.append("pix2tex_failed")
         failure = (
             f"pix2tex exit code {exit_code}; no bounded proposal was retained"
         )
+        latex = None
     else:
         status = EquationRecognitionStatus.PROPOSED
         warnings.append("recognition_confidence_unavailable")

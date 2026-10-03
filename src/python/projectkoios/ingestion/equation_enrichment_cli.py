@@ -21,7 +21,9 @@ from projectkoios.ingestion.equation_enrichment import (
     Pix2TexCliEquationRecognizer,
     build_equation_index,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.serialization import serialize_contract
 
 

@@ -1,0 +1,1 @@
+"""Ollama multimodal preflight namespace."""

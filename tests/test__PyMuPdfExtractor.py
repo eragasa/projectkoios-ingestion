@@ -20,7 +20,9 @@ from projectkoios.ingestion.cli import (
     main,
 )
 from projectkoios.ingestion.models import SourceDocument
-from projectkoios.ingestion.pdf import PyMuPdfExtractor
+from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
+    PyMuPdfExtractor,
+)
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -233,7 +235,7 @@ def test__pymupdf_extractor__keeps_native_order_without_layout_warning() -> (
     ]
     assert result.warnings == ()
     assert result.document.pages[0].warning_ids == ()
-    assert result.manifest.extractor_version.startswith("2+pymupdf.")
+    assert result.manifest.extractor_version.startswith("4+pymupdf.")
 
 
 def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
@@ -271,7 +273,7 @@ def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
         entries[0].title = "Changed"  # type: ignore[misc]
 
 
-def test__pymupdf_extractor__version_two_misses_version_one_cache() -> None:
+def test__pymupdf_extractor__version_four_misses_version_three_cache() -> None:
     content = _fixture_pdf(blank_page=False)
     source = _source(content)
     extractor = PyMuPdfExtractor(low_text_character_threshold=0)
@@ -282,14 +284,14 @@ def test__pymupdf_extractor__version_two_misses_version_one_cache() -> None:
         extractor_name=extractor.name,
         extractor_version=(
             current.manifest.extractor_version.replace(
-                "2+pymupdf.", "1+pymupdf.", 1
+                "4+pymupdf.", "3+pymupdf.", 1
             )
         ),
         configuration_digest=extractor.configuration_digest,
         contract_version="2.1",
     )
 
-    assert current.manifest.extractor_version.startswith("2+pymupdf.")
+    assert current.manifest.extractor_version.startswith("4+pymupdf.")
     assert current.manifest.cache_key != old_key
     assert current.manifest.contract_version == "2.2"
 

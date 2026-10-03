@@ -17,10 +17,12 @@ from projectkoios.ingestion.pdf import (
     DEFAULT_MAXIMUM_PDF_PAGES,
     RAW_EXTRACTION_RELATIVE_PATH,
     PdfExtractionConfiguration,
-    PyMuPdfExtractor,
     build_pdf_extraction_artifacts,
     extract_pdf_bytes,
     prepare_pdf_bytes_extraction,
+)
+from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
+    PyMuPdfExtractor,
 )
 
 Artifact = tuple[Path, str]

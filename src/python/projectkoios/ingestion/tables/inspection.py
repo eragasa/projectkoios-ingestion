@@ -39,7 +39,7 @@ class _PyMuPdfTableRuleInspector:
         try:
             import pymupdf
         except ImportError as error:
-            from projectkoios.ingestion.pdf.extractor import (
+            from projectkoios.ingestion.pdf.adapters.errors import (
                 PdfDependencyUnavailableError,
             )
 

@@ -3,18 +3,18 @@
 ```mermaid
 flowchart LR
     Source["source documents"]
-    Pdf["ingestion.pdf<br/>neutral rendering bases and policy"]
-    Public["neutral ingestion exports"]
-    Consumers["equation, figure, and table consumers"]
-    Roots["batch/CLI composition roots"]
-    Adapter["concrete PDF adapter"]
+    PdfExtraction["pdf.extraction<br/>neutral actions"]
+    PdfAdapter["pdf.adapters.pymupdf<br/>concrete integration"]
+    TranscriptBatch["transcript.batch<br/>composition root"]
+    Owners["layout/equation/table/figure/transcript owners"]
+    Outputs["validated derived artifacts"]
 
-    Source --> Pdf
-    Pdf --> Public
-    Public --> Consumers
-    Roots --> Adapter
-    Adapter --> Consumers
+    Source --> PdfAdapter
+    PdfAdapter <--> PdfExtraction
+    PdfAdapter --> TranscriptBatch
+    Owners --> TranscriptBatch
+    TranscriptBatch --> Outputs
 ```
 
-Neutral exports stop at nominal bases. Concrete adapter selection occurs only
-where a batch, command, or integration test composes executable processing.
+Backend integration, neutral actions, and composition remain distinct ownership
+boundaries.

@@ -94,7 +94,9 @@ from projectkoios.ingestion import (
     PdfDependencyUnavailableError,
     SourceDocument,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 content = b"fixture"
 source = SourceDocument.from_bytes(
     content,

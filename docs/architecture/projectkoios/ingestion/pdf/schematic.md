@@ -2,24 +2,27 @@
 
 ```mermaid
 flowchart LR
-    Models["PDF selection and result models"]
-    PageBase["PageRegionRenderer<br/>broad nominal base"]
-    PdfBase["PdfRegionRenderer<br/>bounded PDF base"]
-    Preflight["preflight<br/>neutral policy"]
-    Adapter["adapters<br/>backend execution"]
-    Exports["neutral pdf package exports"]
-    Consumers["broad and PDF-aware consumers"]
-    Roots["composition roots and integration tests"]
+    Backend["PyMuPDF backend values"]
+    Adapter["pdf.adapters.pymupdf<br/>concrete integration"]
+    Geometry["pdf.extraction.geometry<br/>typed geometry action"]
+    Text["pdf.extraction.text<br/>typed text action"]
+    Document["ExtractedDocument"]
+    PageBase["PageRegionRenderer"]
+    PdfBase["PdfRegionRenderer"]
+    Render["PyMuPDF rendering adapter"]
+    Region["RenderedRegion"]
 
-    Models --> PageBase
+    Backend --> Adapter
+    Adapter --> Geometry
+    Adapter --> Text
+    Geometry --> Adapter
+    Text --> Adapter
+    Adapter --> Document
     PageBase --> PdfBase
-    Preflight --> PdfBase
-    PdfBase --> Adapter
-    PageBase --> Exports
-    PdfBase --> Exports
-    Exports --> Consumers
-    Roots --> Adapter
+    PdfBase --> Render
+    Backend --> Render
+    Render --> Region
 ```
 
-Neutral package exports stop at the nominal bases. Concrete adapter selection
-belongs only to composition roots and integration tests.
+Neutral extraction actions classify typed bounded evidence. Concrete adapters
+alone translate backend objects and execute PyMuPDF operations.

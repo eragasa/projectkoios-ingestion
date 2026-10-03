@@ -23,7 +23,9 @@ from projectkoios.ingestion.equations import (
     DeterministicEquationCandidateDetector,
     EquationDetectionResult,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,

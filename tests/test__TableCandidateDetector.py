@@ -23,7 +23,9 @@ from projectkoios.ingestion import (
     TableDetectionResult,
     TableEvidenceStatus,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.tables import _axis_segments
 
 pymupdf = pytest.importorskip("pymupdf")

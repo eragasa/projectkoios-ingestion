@@ -2,23 +2,18 @@
 
 ```mermaid
 flowchart LR
-    PageBase["PageRegionRenderer"]
-    PdfBase["PdfRegionRenderer"]
-    Root["composition root or integration test"]
-    Backend["optional PDF backend"]
-    Adapter["concrete adapter"]
-    Preflight["neutral preflight policy"]
-    Result["RenderedRegion"]
+    Backend["optional PyMuPDF dependency"]
+    Extraction["pymupdf.extraction"]
+    Rendering["pymupdf.rendering"]
+    NeutralExtraction["pdf.extraction actions"]
+    NeutralRender["PdfRegionRenderer + preflight"]
+    Document["ExtractedDocument"]
+    Region["RenderedRegion"]
 
-    PageBase --> PdfBase
-    PdfBase --> Adapter
-    Root --> Adapter
-    Backend --> Adapter
-    Adapter --> Preflight
-    Preflight --> Adapter
-    Adapter --> Result
+    Backend --> Extraction
+    Backend --> Rendering
+    Extraction <--> NeutralExtraction
+    Rendering <--> NeutralRender
+    Extraction --> Document
+    Rendering --> Region
 ```
-
-Composition roots choose concrete adapters. Adapters own backend translation
-and execution while the nominal bases and preflight retain neutral contracts
-and policy.

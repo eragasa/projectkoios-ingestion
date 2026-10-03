@@ -21,6 +21,13 @@ from projectkoios.ingestion.transcription import (
     StructuredTranscriptionResult,
     TranscriptionItemKind,
 )
+from projectkoios.ingestion.transcripts.base import AbstractTranscript
+from projectkoios.ingestion.transcripts.block.base import (
+    AbstractTranscriptBlock,
+)
+from projectkoios.ingestion.transcripts.page.base import (
+    AbstractTranscriptPage,
+)
 
 CLEAN_TRANSCRIPT_PROCESSOR_VERSION = "2"
 _MAX_PAGES = 512
@@ -580,7 +587,7 @@ class PrivateUseGlyphFinding:
 
 
 @dataclass(frozen=True)
-class CleanTranscriptBlock:
+class CleanTranscriptBlock(AbstractTranscriptBlock):
     record_id: str
     block_id: str
     page_index: int
@@ -594,6 +601,14 @@ class CleanTranscriptBlock:
     page_number_classification_id: str | None
     publisher_classification_id: str | None
     private_use_finding_ids: tuple[str, ...]
+
+    @property
+    def transcript_block_id(self) -> str:
+        return self.record_id
+
+    @property
+    def transcript_text(self) -> str:
+        return self.clean_text
 
     @classmethod
     def create(
@@ -750,13 +765,25 @@ class CleanTranscriptExclusion:
 
 
 @dataclass(frozen=True)
-class CleanTranscriptPage:
+class CleanTranscriptPage(AbstractTranscriptPage):
     page_id: str
     page_index: int
     printed_page_label: str | None
     block_record_ids: tuple[str, ...]
     text: str
     text_sha256: str
+
+    @property
+    def transcript_page_id(self) -> str:
+        return self.page_id
+
+    @property
+    def transcript_block_ids(self) -> tuple[str, ...]:
+        return self.block_record_ids
+
+    @property
+    def transcript_text(self) -> str:
+        return self.text
 
     @classmethod
     def create(
@@ -800,7 +827,7 @@ class CleanTranscriptPage:
 
 
 @dataclass(frozen=True)
-class CleanTranscript(DataObjectActionResult):
+class CleanTranscript(AbstractTranscript, DataObjectActionResult):
     result_id: str
     transcription_result_id: str
     document_id: str
@@ -823,6 +850,26 @@ class CleanTranscript(DataObjectActionResult):
     processor_name: str
     processor_version: str
     configuration_digest: str
+
+    @property
+    def document_identity(self) -> str:
+        return self.document_id
+
+    @property
+    def transcript_id(self) -> str:
+        return self.result_id
+
+    @property
+    def transcript_pages(self) -> tuple[AbstractTranscriptPage, ...]:
+        return self.pages
+
+    @property
+    def transcript_blocks(self) -> tuple[AbstractTranscriptBlock, ...]:
+        return self.blocks
+
+    @property
+    def transcript_text(self) -> str:
+        return self.text
 
     @classmethod
     def create(

@@ -12,10 +12,10 @@ from projectkoios.ingestion.figures.contracts import (
     FigureDetectionLimitError,
     FigureDrawingEvidence,
     FigurePageEvidence,
-    _block_box,
     _box_has_area,
     _box_is_ordered,
     _box_within_page,
+    _optional_block_box,
     _positive_integer,
     _validated_box,
     _validated_extent_box,
@@ -48,7 +48,7 @@ class _PyMuPdfFigureInspector:
         try:
             import pymupdf
         except ImportError as error:
-            from projectkoios.ingestion.pdf.extractor import (
+            from projectkoios.ingestion.pdf.adapters.errors import (
                 PdfDependencyUnavailableError,
             )
 
@@ -103,16 +103,24 @@ class _PyMuPdfFigureInspector:
                     image = bytes(raw_block.get("image", b""))
                     mask_value = raw_block.get("mask")
                     mask = bytes(mask_value) if mask_value is not None else None
-                    raw_box = tuple(
-                        float(value) for value in raw_block.get("bbox", ())
-                    )
-                    if (
-                        len(raw_box) != 4
-                        or not _box_has_area(raw_box)
-                        or _validated_box(raw_box) != _block_box(block)
-                    ):
+                    image_hash = hashlib.sha256(image).hexdigest()
+                    if block.asset_id != f"asset:sha256:{image_hash}":
                         raise ValueError(
-                            "PDF image geometry differs from raw extraction"
+                            "PDF image content differs from raw extraction"
+                        )
+                    mask_hash = (
+                        hashlib.sha256(mask).hexdigest()
+                        if mask is not None
+                        else None
+                    )
+                    expected_mask_id = (
+                        f"asset:sha256:{mask_hash}"
+                        if mask_hash is not None
+                        else None
+                    )
+                    if block.asset_mask_id != expected_mask_id:
+                        raise ValueError(
+                            "PDF image mask differs from raw extraction"
                         )
                     if block.asset_media_type != _raw_image_media_type(
                         raw_block
@@ -146,6 +154,44 @@ class _PyMuPdfFigureInspector:
                         raise FigureDetectionLimitError(
                             "embedded assets exceed max_total_embedded_bytes"
                         )
+                    total_assets += 1
+                    if total_assets > configuration.max_embedded_assets:
+                        raise FigureDetectionLimitError(
+                            "embedded assets exceed max_embedded_assets"
+                        )
+                    try:
+                        raw_box = tuple(
+                            float(value) for value in raw_block.get("bbox", ())
+                        )
+                    except TypeError, ValueError, OverflowError:
+                        raw_box = ()
+                    block_box = _optional_block_box(block)
+                    if block_box is None:
+                        raw_geometry_is_valid = (
+                            len(raw_box) == 4
+                            and _box_has_area(raw_box)
+                            and all(value >= 0.0 for value in raw_box)
+                            and _box_within_page(
+                                cast(
+                                    tuple[float, float, float, float], raw_box
+                                ),
+                                extracted_page,
+                            )
+                        )
+                        if not block.warning_ids or raw_geometry_is_valid:
+                            raise ValueError(
+                                "unlocated PDF image differs from raw "
+                                "extraction"
+                            )
+                        continue
+                    if (
+                        len(raw_box) != 4
+                        or not _box_has_area(raw_box)
+                        or _validated_box(raw_box) != block_box
+                    ):
+                        raise ValueError(
+                            "PDF image geometry differs from raw extraction"
+                        )
                     artifacts.append(
                         EmbeddedFigureArtifact.create(
                             source=document.source,
@@ -161,15 +207,11 @@ class _PyMuPdfFigureInspector:
                             backend_version=backend_version,
                         )
                     )
-                    total_assets += 1
-                    if total_assets > configuration.max_embedded_assets:
-                        raise FigureDetectionLimitError(
-                            "embedded assets exceed max_embedded_assets"
-                        )
                 expected_image_ids = tuple(
                     block.block_id
                     for block in extracted_page.blocks
                     if block.kind == "image"
+                    and _optional_block_box(block) is not None
                 )
                 if (
                     tuple(item.source_block_id for item in artifacts)

@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from projectkoios.ingestion.pdf.adapters.errors import (
+    PdfDependencyUnavailableError,
+)
+from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
+    PyMuPdfExtractor,
+)
 from projectkoios.ingestion.pdf.artifacts import (
     PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION,
     RAW_EXTRACTION_MEDIA_TYPE,
@@ -22,12 +28,10 @@ from projectkoios.ingestion.pdf.artifacts import (
     prepare_pdf_bytes_extraction,
     read_pdf_extraction_transcript,
 )
-from projectkoios.ingestion.pdf.extractor import (
+from projectkoios.ingestion.pdf.extraction.contracts import (
     DEFAULT_MAXIMUM_PDF_PAGES,
-    PdfDependencyUnavailableError,
     PdfExtractionConfiguration,
     PdfPageLimitError,
-    PyMuPdfExtractor,
 )
 from projectkoios.ingestion.pdf.models import (
     PYMUPDF_COORDINATE_SYSTEM,

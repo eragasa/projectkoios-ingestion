@@ -2,11 +2,16 @@
 
 ```mermaid
 flowchart LR
-    Transcript["CleanTranscript"]
+    Owners["ingestion owner artifacts"]
+    Transcript["structured and clean transcripts"]
     Package["transcript package"]
+    Batch["transcript.batch"]
     Evidence["transcript.evidence"]
 
-    Transcript -. "input type" .-> Package
+    Owners --> Batch
+    Batch --> Transcript
+    Transcript --> Evidence
+    Package --> Batch
     Package --> Evidence
 ```
 

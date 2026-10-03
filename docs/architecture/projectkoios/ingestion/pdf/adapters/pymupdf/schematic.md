@@ -2,17 +2,17 @@
 
 ```mermaid
 flowchart TD
-    Request["source + selections"] --> Policy["neutral preflight request checks"]
-    Policy --> Document["open concrete PDF document"]
-    Document --> Geometry["crop box + rotation + effective page intersection"]
-    Geometry --> RasterFacts["exact integer raster geometry"]
-    RasterFacts --> Limits["neutral per-selection and aggregate approval"]
-    Limits --> Pixmap["backend rasterization"]
-    Pixmap --> Match["exact geometry match"]
-    Match --> PNG["PNG bytes"]
-    PNG --> Result["RenderedRegion"]
+    Source["identified PDF bytes"] --> Open["lazy PyMuPDF open"]
+    Open --> Extract["extraction.py"]
+    Open --> Render["rendering.py"]
+    Extract --> Raw["native blocks + assets + outlines"]
+    Raw --> Geometry["BlockGeometryActionizer"]
+    Raw --> Text["BlockTextActionizer"]
+    Geometry --> Document["ExtractedDocument + warnings"]
+    Text --> Document
+    Render --> Preflight["neutral render preflight"]
+    Preflight --> PNG["RenderedRegion PNG"]
 ```
 
-No raster allocation occurs until all unique selections have approved plans.
-Requested ordering and duplicates are reconstructed from the rendered unique
-selection map.
+Concrete backend objects do not cross into the neutral extraction actions or
+renderer results.

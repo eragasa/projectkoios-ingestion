@@ -1,6 +1,15 @@
 # `projectkoios.ingestion.pdf.adapters.pymupdf`
 
-This module owns the concrete PyMuPDF hook implementation required by the
-backend-neutral PDF render template. It alone owns dependency loading,
-document/page mechanics, coordinate translation, exact raster geometry,
-raster execution, encoding, and backend evidence.
+This package owns the core concrete PyMuPDF extraction and rendering
+integrations. It owns their lazy dependency loading, backend document/page
+mechanics, raw extraction dictionaries, image assets, outline destinations,
+coordinate translation, raster execution, and backend-version evidence.
+Domain-specific figure and table inspectors retain their existing ownership for
+this bounded checkpoint.
+
+## Contents
+
+- [`PyMuPdfExtractor`](PyMuPdfExtractor/index.md) — deterministic cold PDF
+  extraction adapter.
+- [`PyMuPdfRegionRenderer`](PyMuPdfRegionRenderer/index.md) — bounded region
+  rendering adapter.

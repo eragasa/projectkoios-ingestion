@@ -19,7 +19,9 @@ from projectkoios.ingestion import (
     SourceDocument,
     SourceSpan,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 
 pymupdf = pytest.importorskip("pymupdf")
 

@@ -33,9 +33,9 @@
 
 `PdfDocumentProcessor` translates the pilot document to the existing
 `SourceDocument`, calls
-[`PyMuPdfExtractor`](../../../../src/python/projectkoios/ingestion/pdf/extractor.py),
-and projects the extraction result to page text. The existing extractor remains
-the PyMuPDF adapter and continues to own rich extraction evidence.
+[`PyMuPdfExtractor`](../../../../src/python/projectkoios/ingestion/pdf/adapters/pymupdf/extraction.py),
+and projects the extraction result to page text. The concrete PyMuPDF adapter
+continues to own rich extraction evidence.
 
 ### Pilot composition
 

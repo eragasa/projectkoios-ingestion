@@ -1,0 +1,1 @@
+"""Ollama multimodal selection namespace."""

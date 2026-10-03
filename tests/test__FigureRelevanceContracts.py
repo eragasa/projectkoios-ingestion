@@ -33,7 +33,9 @@ from projectkoios.ingestion.figure_relevance import (
     FigureRelevanceWarning,
     build_figure_relevance_cache_key,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 
 pytest.importorskip("pymupdf")
 

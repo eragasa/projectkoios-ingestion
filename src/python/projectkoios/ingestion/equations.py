@@ -29,7 +29,7 @@ from projectkoios.ingestion.pdf.models import (
 from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 EQUATION_CONTRACT_VERSION = "1.0"
-EQUATION_DETECTOR_VERSION = "1"
+EQUATION_DETECTOR_VERSION = "2"
 _MAX_PAGES = 512
 _MAX_INPUT_BLOCKS = 16_384
 _MAX_TEXT_BLOCKS = 8_192
@@ -842,9 +842,27 @@ def _detect_candidates(
         else:
             inline = _inline_evidence(text, config)
             if len(inline) > config.max_inline_candidates_per_block:
-                raise EquationDetectionLimitError(
-                    "inline candidates exceed their per-block limit"
+                warnings.append(
+                    _WarningSpec(
+                        code="equation.inline_candidate_limit",
+                        message=(
+                            "Inline equation-shaped evidence exceeds the "
+                            "per-block ambiguity limit; the exact block was "
+                            "retained as prose without partial promotion"
+                        ),
+                        object_ids=(item.block.block_id,),
+                        candidate_keys=(),
+                        source_spans=item.block.source_spans,
+                        evidence=(
+                            ("inline_candidate_count", str(len(inline))),
+                            (
+                                "max_inline_candidates_per_block",
+                                str(config.max_inline_candidates_per_block),
+                            ),
+                        ),
+                    )
                 )
+                continue
             for inline_index, (start, end, method, confidence) in enumerate(
                 inline
             ):
