@@ -10,7 +10,7 @@ from projectkoios.base import (
     DataObjectActionRequest,
     DataObjectActionResult,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     EquationCandidate,
     EquationDetectionResult,
     EquationEvidenceStatus,

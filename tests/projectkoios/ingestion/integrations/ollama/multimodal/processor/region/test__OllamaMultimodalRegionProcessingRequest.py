@@ -3,6 +3,7 @@ from dataclasses import FrozenInstanceError, replace
 import pytest
 from conftest import _region, _request
 from projectkoios.base import DataObjectActionRequest
+from projectkoios.ingestion.base import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMultimodalSelection,
 )
@@ -15,6 +16,10 @@ def test__region_processing_request__is_an_action_request() -> None:
     assert issubclass(
         OllamaMultimodalRegionProcessingRequest,
         DataObjectActionRequest,
+    )
+    assert issubclass(
+        OllamaMultimodalRegionProcessingRequest,
+        AbstractImmutableDataObject,
     )
 
 

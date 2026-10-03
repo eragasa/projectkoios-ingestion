@@ -9,7 +9,7 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionRequest,
     EquationTranscriptionResult,
 )
-from projectkoios.ingestion.equations import EquationDetectionResult
+from projectkoios.ingestion.equations.detection import EquationDetectionResult
 from projectkoios.ingestion.figure_relevance import (
     FigureRelevanceProcessorIdentity,
     FigureRelevanceRequest,

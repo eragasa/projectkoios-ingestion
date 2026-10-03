@@ -42,7 +42,9 @@ uv sync --extra dev
 Available extras are:
 
 - `pdf` for PyMuPDF support;
-- `mathml` for LaTeX-to-MathML conversion; and
+- `mathml` for LaTeX-to-MathML conversion;
+- `mongodb` for the rebuildable extraction-decomposition projection;
+- `workflow` for the repository-root SNAKES CPN commands; and
 - `dev` for development and test dependencies.
 
 ## Command-line programs
@@ -54,7 +56,9 @@ Available extras are:
 | `koios-plan-pdf-corpus` | Discover bounded PDFs and publish content-addressed batch plans. |
 | `koios-validate-pdf-corpus` | Validate a native-text extraction corpus against its plans. |
 | `koios-detect-pdf-equations-batch` | Detect equation candidates in an extracted batch. |
-| `koios-enrich-pdf-equations-batch` | Run configured equation-recognition tools. |
+| `python -m scripts.equation_enrichment` | Run configured equation-recognition tools from the repository workflow boundary. |
+| `python -m scripts.extraction_publication` | Publish an exact PDF extraction to disk and MongoDB. |
+| `python -m scripts.extraction_projection_recovery` | Rebuild MongoDB extraction projections from an authoritative disk journal. |
 | `koios-plan-pdf-transcripts-batch` | Prepare a transcript batch plan. |
 | `koios-compose-pdf-transcripts-batch` | Generate transcript artifacts from a plan. |
 

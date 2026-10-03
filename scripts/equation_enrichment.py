@@ -18,13 +18,18 @@ from projectkoios.ingestion.equation_batch_cli import _derive, _resolve_items
 from projectkoios.ingestion.equation_enrichment import (
     DeterministicEquationAssembler,
     EquationIndexTier,
-    Pix2TexCliEquationRecognizer,
+    EquationRecognitionError,
     build_equation_index,
+)
+from projectkoios.ingestion.integrations.pix2tex.recognizer import (
+    Pix2TexCliEquationRecognizer,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+
+from workflow.equation_recognition import execute_equation_recognition
 
 
 class _EnrichmentTarget:
@@ -50,7 +55,9 @@ class _EnrichmentTarget:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="koios-enrich-pdf-equations-batch")
+    parser = argparse.ArgumentParser(
+        prog="python -m scripts.equation_enrichment"
+    )
     parser.add_argument("plan", type=Path)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--ingestion-root", type=Path, required=True)
@@ -259,7 +266,10 @@ def main(arguments: list[str] | None = None) -> int:
                     )
                 )
                 continue
-            recognition = recognizer.process(assembly)
+            recognition = execute_equation_recognition(
+                recognizer=recognizer,
+                assembly=assembly,
+            )
             index = build_equation_index(assembly, recognition)
             texts = (
                 assembly_text,
@@ -302,6 +312,11 @@ def main(arguments: list[str] | None = None) -> int:
                     ).hexdigest(),
                 }
             )
+    except EquationRecognitionError as error:
+        parser.error(
+            "equation-recognition transition failed after "
+            f"{len(completed)} completed items: {error}"
+        )
     except (
         ArtifactPublicationError,
         ExtractionCacheOperationError,

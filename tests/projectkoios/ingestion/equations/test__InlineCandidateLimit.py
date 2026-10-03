@@ -3,7 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 from typing import BinaryIO
 
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     DeterministicEquationCandidateDetector,
 )
 from projectkoios.ingestion.models import (

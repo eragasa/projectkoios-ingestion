@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
+from projectkoios.ingestion.base import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     _HARD_MAX_SELECTIONS,
@@ -17,7 +18,10 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 
 
 @dataclass(frozen=True)
-class OllamaMultimodalRegionProcessingRequest(DataObjectActionRequest):
+class OllamaMultimodalRegionProcessingRequest(
+    AbstractImmutableDataObject,
+    DataObjectActionRequest,
+):
     CONTRACT_NAME: ClassVar[str] = "ollama-multimodal-request"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
 

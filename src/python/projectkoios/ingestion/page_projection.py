@@ -7,6 +7,7 @@ import json
 import os
 import re
 import stat
+import unicodedata
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
@@ -118,6 +119,10 @@ class PageProjectionPage:
         orders = tuple(block.order for block in self.text_blocks)
         if len(orders) != len(set(orders)) or tuple(sorted(orders)) != orders:
             raise ValueError("text block order must be unique and increasing")
+
+    @property
+    def has_paragraph_text(self) -> bool:
+        return any(block.style != "caption" for block in self.text_blocks)
 
 
 @dataclass(frozen=True)
@@ -278,7 +283,7 @@ def validate_page_projection(
         for index, page in enumerate(baseline_pages)
         if len(_string_or_empty(page.get("text"))) >= 100
     )
-    covered = sum(bool(parsed.pages[index].text_blocks) for index in eligible)
+    covered = sum(parsed.pages[index].has_paragraph_text for index in eligible)
     coverage = covered / len(eligible) if eligible else 1.0
     character_ratio = (
         parsed.paragraph_character_count / baseline_character_count
@@ -687,6 +692,7 @@ def _validate_media(media_root: Path, paths: Sequence[str]) -> str:
     if media_root.is_symlink() or not media_root.is_dir():
         raise PageProjectionValidationError("media root is missing or unsafe")
     records: list[tuple[str, int, str]] = []
+    observed_file_identities: set[tuple[int, int]] = set()
     for value in paths:
         relative = PurePosixPath(value)
         current = media_root
@@ -696,6 +702,18 @@ def _validate_media(media_root: Path, paths: Sequence[str]) -> str:
                 raise PageProjectionValidationError(
                     "media path contains a symlink"
                 )
+        try:
+            metadata = current.stat(follow_symlinks=False)
+        except OSError as error:
+            raise PageProjectionValidationError(
+                "media artifact could not be inspected"
+            ) from error
+        file_identity = (metadata.st_dev, metadata.st_ino)
+        if file_identity in observed_file_identities:
+            raise PageProjectionValidationError(
+                "media artifact is referenced through an alias"
+            )
+        observed_file_identities.add(file_identity)
         content = _read_private_regular_file(current)
         if not content.startswith(_PNG_SIGNATURE):
             raise PageProjectionValidationError("media artifact is not PNG")
@@ -818,13 +836,15 @@ def _relative_media_path(value: object) -> str:
     path = PurePosixPath(value)
     if (
         path.is_absolute()
-        or "." in path.parts
         or ".." in path.parts
         or "\\" in value
         or path.suffix.lower() != ".png"
     ):
         raise PageProjectionValidationError("media path is unsafe")
-    return value
+    canonical = unicodedata.normalize("NFC", path.as_posix())
+    if value != canonical:
+        raise PageProjectionValidationError("media path is not canonical")
+    return canonical
 
 
 def _required_string(payload: Mapping[str, object], name: str) -> str:

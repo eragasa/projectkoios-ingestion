@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
+from projectkoios.ingestion.base import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMetadataResponseIdentity,
     OllamaMetadataStage,
@@ -12,7 +13,10 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 
 
 @dataclass(frozen=True)
-class OllamaModelListVerificationResult(DataObjectActionResult):
+class OllamaModelListVerificationResult(
+    AbstractImmutableDataObject,
+    DataObjectActionResult,
+):
     CONTRACT_NAME: ClassVar[str] = "ollama-model-list-verification-result"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
 

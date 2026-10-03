@@ -199,6 +199,42 @@ def test__page_projection__caption_reference_is_not_caption_duplication(
     assert projection.report.figure_count == 1
 
 
+def test__page_projection__caption_only_page_does_not_cover_paragraphs(
+    tmp_path: Path,
+) -> None:
+    plan, paths = _fixture(tmp_path)
+    pages = [
+        json.loads(line)
+        for line in paths["transcript"].read_text().splitlines()
+    ]
+    pages[0]["blocks"] = [
+        {
+            **block,
+            "order": 0,
+        }
+        for block in pages[0]["blocks"]
+        if block["type"] == "figure"
+    ]
+    transcript = (
+        "\n".join(
+            json.dumps(page, ensure_ascii=False, separators=(",", ":"))
+            for page in pages
+        )
+        + "\n"
+    ).encode()
+    summary = json.loads(paths["summary"].read_text())
+    summary["paragraphs"] = 1
+    summary["utf8_bytes"] = len(transcript)
+    _private_write(paths["transcript"], transcript)
+    _private_write(paths["summary"], json.dumps(summary).encode())
+
+    with pytest.raises(
+        PageProjectionValidationError,
+        match="paragraph page coverage is deficient",
+    ):
+        _validate(plan, paths)
+
+
 def test__page_projection__rejects_exact_caption_paragraph(
     tmp_path: Path,
 ) -> None:
@@ -242,6 +278,27 @@ def test__page_projection__rejects_reused_or_unsafe_media_path(
     )
     with pytest.raises(
         PageProjectionValidationError, match="media path is unsafe"
+    ):
+        _validate(plan, paths)
+
+    plan, paths = _fixture(
+        tmp_path / "noncanonical",
+        second_media_path="media/./figure.png",
+    )
+    with pytest.raises(
+        PageProjectionValidationError, match="media path is not canonical"
+    ):
+        _validate(plan, paths)
+
+    plan, paths = _fixture(
+        tmp_path / "hardlink",
+        second_media_path="media/alias.png",
+    )
+    alias = paths["media_root"] / "media" / "alias.png"
+    alias.hardlink_to(paths["media_root"] / "media" / "figure.png")
+    with pytest.raises(
+        PageProjectionValidationError,
+        match="media artifact is referenced through an alias",
     ):
         _validate(plan, paths)
 

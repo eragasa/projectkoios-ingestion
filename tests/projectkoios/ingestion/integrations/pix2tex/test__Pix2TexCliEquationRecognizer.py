@@ -11,22 +11,25 @@ from projectkoios.ingestion import (
     EquationAssemblyArtifact,
     EquationEvidenceStatus,
     EquationRecognitionStatus,
-    Pix2TexCliEquationRecognizer,
     PyMuPdfExtractor,
     SourceDocument,
 )
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,
+    EquationRecognitionRequest,
     _assembly_id,
-    _recognition_proposal,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.integrations.pix2tex.recognizer import (
+    Pix2TexCliEquationRecognizer,
+    _recognition_proposal,
+)
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 
 pytest.importorskip("pymupdf")
-FIXTURES = Path(__file__).parents[3] / "fixtures" / "pdf"
+FIXTURES = Path(__file__).parents[4] / "fixtures" / "pdf"
 
 
 def _assembly(payload: bytes) -> EquationAssemblyArtifact:
@@ -101,15 +104,64 @@ def test__pix2tex__does_not_run_for_ambiguous_detector_evidence(
         resources=(("model", model),),
     )
     artifact = _ambiguous_assembly((FIXTURES / "equations.pdf").read_bytes())
+    request = EquationRecognitionRequest.create(
+        assembly_artifact=artifact,
+        processor_identity=recognizer.identity,
+    )
 
-    result = recognizer.process(artifact)
+    result = recognizer.action(request=request)
 
+    assert hash(request)
+    assert hash(result)
+    assert result.request_id == request.request_id
     assert recognizer.identity.processor_version == "3"
     assert not marker.exists()
     assert len(result.proposals) == 1
     assert result.proposals[0].status is EquationRecognitionStatus.NOT_REQUESTED
     assert result.proposals[0].warning_codes == (
         "recognition_not_requested_for_non_primary_evidence",
+    )
+
+
+def test__pix2tex__discards_stdout_before_parsing_nonzero_exit(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "fake-pix2tex"
+    executable.write_text(
+        "#!/usr/bin/env python3\n"
+        "import sys\n"
+        "sys.stdout.buffer.write(b'\\xffpartial latex')\n"
+        "sys.stderr.buffer.write(b'bounded failure')\n"
+        "raise SystemExit(7)\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+    model = tmp_path / "model.pth"
+    model.write_bytes(b"bounded synthetic model identity")
+    recognizer = Pix2TexCliEquationRecognizer(
+        executable,
+        backend_version="test-1",
+        resources=(("model", model),),
+    )
+    artifact = _assembly((FIXTURES / "equations.pdf").read_bytes())
+    request = EquationRecognitionRequest.create(
+        assembly_artifact=artifact,
+        processor_identity=recognizer.identity,
+    )
+
+    result = recognizer.action(request=request)
+
+    failed = tuple(
+        proposal
+        for proposal in result.proposals
+        if proposal.status is EquationRecognitionStatus.FAILED
+    )
+    assert failed
+    assert result.invocation_exit_code == 7
+    assert result.diagnostic_byte_size == len(b"bounded failure")
+    assert all(proposal.latex is None for proposal in result.proposals)
+    assert all(
+        proposal.warning_codes == ("pix2tex_failed",) for proposal in failed
     )
 
 

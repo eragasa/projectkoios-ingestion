@@ -71,6 +71,7 @@ from projectkoios.ingestion.documents.block.base import AbstractDocumentBlock
 from projectkoios.ingestion.documents.page.base import AbstractDocumentPage
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,
+    AbstractEquationRecognizer,
     DeterministicEquationAssembler,
     EquationAssembly,
     EquationAssemblyArtifact,
@@ -79,11 +80,12 @@ from projectkoios.ingestion.equation_enrichment import (
     EquationIndexRecord,
     EquationIndexTier,
     EquationRecognitionArtifact,
+    EquationRecognitionError,
     EquationRecognitionProcessorIdentity,
     EquationRecognitionProposal,
+    EquationRecognitionRequest,
     EquationRecognitionResource,
     EquationRecognitionStatus,
-    Pix2TexCliEquationRecognizer,
     build_equation_index,
 )
 from projectkoios.ingestion.equation_retrieval import (
@@ -116,7 +118,8 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionWarning,
     build_equation_transcription_cache_key,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.base import AbstractEquation
+from projectkoios.ingestion.equations.detection import (
     EQUATION_CONTRACT_VERSION,
     EQUATION_DETECTOR_VERSION,
     DeterministicEquationCandidateDetector,
@@ -130,6 +133,17 @@ from projectkoios.ingestion.equations import (
     EquationDetectionResult,
     EquationEvidenceStatus,
 )
+from projectkoios.ingestion.equations.image.base import AbstractEquationImage
+from projectkoios.ingestion.equations.image.factory import (
+    EquationImage,
+    EquationImageFormatError,
+)
+from projectkoios.ingestion.equations.image.jpeg import EquationJpegImage
+from projectkoios.ingestion.equations.image.png import EquationPngImage
+from projectkoios.ingestion.equations.image.webp import EquationWebpImage
+from projectkoios.ingestion.equations.katex import EquationKatex
+from projectkoios.ingestion.equations.latex import EquationLatex
+from projectkoios.ingestion.equations.mathml import EquationMathML
 from projectkoios.ingestion.figure_relevance import (
     FIGURE_RELEVANCE_CONFIGURATION_VERSION,
     FIGURE_RELEVANCE_CONTRACT_VERSION,
@@ -171,6 +185,9 @@ from projectkoios.ingestion.figures import (
     FigurePageEvidence,
     FigureTextAssociation,
     PyMuPdfFigureInspector,
+)
+from projectkoios.ingestion.integrations.pix2tex.recognizer import (
+    Pix2TexCliEquationRecognizer,
 )
 from projectkoios.ingestion.layout import (
     LAYOUT_CONTRACT_VERSION,
@@ -577,6 +594,9 @@ __all__ = [
     "CodeRepositoryIndexer",
     "CodeRepositoryIngester",
     "DerivationAuditError",
+    "AbstractEquation",
+    "AbstractEquationImage",
+    "AbstractEquationRecognizer",
     "DerivationAuditFinding",
     "DerivationAuditFindingCode",
     "DerivationAuditInput",
@@ -615,12 +635,21 @@ __all__ = [
     "EquationDetectionLimitError",
     "EquationDetectionResult",
     "EquationEvidenceStatus",
+    "EquationImage",
+    "EquationImageFormatError",
     "EquationIndexArtifact",
     "EquationIndexRecord",
     "EquationIndexTier",
+    "EquationJpegImage",
+    "EquationKatex",
+    "EquationLatex",
+    "EquationMathML",
+    "EquationPngImage",
     "EquationRecognitionArtifact",
+    "EquationRecognitionError",
     "EquationRecognitionProcessorIdentity",
     "EquationRecognitionProposal",
+    "EquationRecognitionRequest",
     "EquationRecognitionResource",
     "EquationRecognitionStatus",
     "EquationRetrievalArtifact",
@@ -646,6 +675,7 @@ __all__ = [
     "EquationTranscriptionStatus",
     "EquationTranscriptionSymbol",
     "EquationTranscriptionWarning",
+    "EquationWebpImage",
     "ExtractionCache",
     "ExtractionCacheCorruptionError",
     "ExtractionCacheError",

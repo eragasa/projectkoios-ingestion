@@ -25,7 +25,7 @@ from projectkoios.ingestion.equation_batch_cli import (
     _resolve_items,
     _ResolvedItem,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     DeterministicEquationCandidateDetector,
 )
 from projectkoios.ingestion.figures import DeterministicFigureCandidateDetector
