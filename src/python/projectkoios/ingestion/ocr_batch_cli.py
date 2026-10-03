@@ -73,6 +73,19 @@ class _ResolvedOCRItem:
     pages: tuple[_ResolvedOCRPage, ...]
 
 
+def _configure_pymupdf_messages() -> None:
+    try:
+        import pymupdf
+    except ImportError as error:
+        raise ValueError("selective OCR requires PyMuPDF") from error
+    set_messages = getattr(pymupdf, "set_messages", None)
+    if not callable(set_messages):
+        raise ValueError(
+            "selective OCR requires PyMuPDF message routing support"
+        )
+    set_messages(fd=2)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="koios-run-selective-ocr")
     parser.add_argument("plan", type=Path)
@@ -478,6 +491,7 @@ def main(arguments: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(arguments)
     try:
+        _configure_pymupdf_messages()
         plan_path = args.plan.expanduser().absolute()
         plan_content = _read_bounded(
             plan_path,

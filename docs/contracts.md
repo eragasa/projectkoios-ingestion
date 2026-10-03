@@ -1097,10 +1097,13 @@ applicable scope.
 
 `koios-run-selective-ocr` is a composition CLI rather than an OCR domain owner.
 It requires explicit non-symlink source, ingestion, and output roots and exact
-local Tesseract executable/traineddata paths. Default execution is a nonmutating
-dry run and does not invoke OCR. Explicit apply replays the exact extraction,
-compares its typed document against the stored native artifact, renders one
-selected full page at a time, builds an `OCRRequest` retaining any nonempty
+local Tesseract executable/traineddata paths. Standard output contains exactly
+one JSON summary; PyMuPDF messages are configured to file descriptor 2 at CLI
+entry so native diagnostics remain on standard error. Default execution is a
+nonmutating dry run and does not invoke OCR. Explicit apply replays the exact
+extraction, compares its typed document against the stored native artifact,
+renders one selected full page at a time, and builds an `OCRRequest` retaining
+any nonempty
 native blocks as coexistence references, and invokes `TesseractOCRProcessor`.
 
 Each `SelectiveOCRPublication` binds the exact source and extraction hashes,
