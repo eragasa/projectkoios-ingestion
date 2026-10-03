@@ -398,7 +398,7 @@ claim.
 
 `Pix2TexCliEquationRecognizer` is a bounded external adapter with exact executable, backend, temperature, model, image-resizer, tokenizer, and configuration identities. It produces unaccepted LaTeX and optional MathML proposals with unavailable-confidence warnings. `EquationIndexArtifact` places only strictly complete detector-proposed display records in the `primary` tier; ambiguous, inline, short, malformed, prose-like, repetitive, signal-mismatched, or otherwise incomplete records remain `auxiliary`, and explicit false positives remain `rejected`.
 
-`python -m scripts.equation_enrichment` is dry-run by default and publishes separate immutable `assembly.json`, `recognition.json`, and `index.json` layers only on explicit apply. It treats the stochastic backend's first bounded output as an immutable derived-cache observation. Replay rederives the deterministic assembly and verifies all stored source, processor, assembly, recognition, and index links without claiming deterministic model recomputation.
+`python -m scripts.equation_enrichment` is dry-run by default and publishes separate immutable `assembly.json`, `recognition.json`, `index.json`, and `derivation.json` layers through one named publication request only on explicit apply. It treats the stochastic backend's first bounded output as an immutable derived-cache observation. Replay rederives the deterministic assembly and verifies all stored source, processor, assembly, recognition, index, and derivation links without claiming deterministic model recomputation. Validated three-file publications remain recognized as legacy evidence and are never silently rewritten.
 
 **Depends on:** `ING-EQUATION-01`, `ING-EQUATION-02`, `ING-EQUATION-03`, `ING-REGION-01`.
 

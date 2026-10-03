@@ -25,6 +25,14 @@ from projectkoios.ingestion.equation_batch_cli import main as equation_batch
 from projectkoios.ingestion.equations.assembly.text import (
     sanitize_equation_native_text,
 )
+from projectkoios.ingestion.equations.derivation.recognition.operation import (
+    EquationRecognitionDerivationOperation,
+)
+from projectkoios.ingestion.equations.latex import EquationLatex
+from projectkoios.ingestion.equations.mathml import EquationMathML
+from projectkoios.ingestion.equations.publication.status import (
+    EquationPublicationInventoryStatus,
+)
 from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
 )
@@ -33,6 +41,9 @@ from projectkoios.ingestion.equations.recognition.request import (
 )
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
+)
+from projectkoios.ingestion.integrations.pix2tex.resource import (
+    Pix2TexResourceBinding,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
@@ -84,7 +95,7 @@ def _recognizer(tmp_path: Path, latex: str = r"E=mc^2"):
     return Pix2TexCliEquationRecognizer(
         executable,
         backend_version="test-1",
-        resources=(("model", model),),
+        resources=(Pix2TexResourceBinding(name="model", path=model),),
     )
 
 
@@ -114,15 +125,22 @@ def test__equation_enrichment__keeps_raw_sanitized_and_visual_layers(
     assert assembled.rendered_region.content.startswith(b"\x89PNG\r\n\x1a\n")
     proposal = recognition.proposals[0]
     assert proposal.status is EquationRecognitionStatus.PROPOSED
-    assert proposal.latex == r"E=mc^2"
-    assert proposal.mathml is not None
+    assert isinstance(proposal.latex, EquationLatex)
+    assert proposal.latex.latex == r"E=mc^2"
+    assert proposal.latex.equation_source_ids[0].startswith(
+        "equation-image:sha256:"
+    )
+    assert isinstance(proposal.mathml, EquationMathML)
+    assert proposal.mathml.equation_source_ids == (proposal.latex.equation_id,)
+    assert proposal.mathml_processor_identity is not None
+    assert proposal.mathml_processor_version is not None
     assert "recognition_confidence_unavailable" in proposal.warning_codes
     record = index.records[0]
     assert record.tier is EquationIndexTier.PRIMARY
     assert record.raw_fragments == assembled.raw_fragments
     assert record.sanitized_native_text == assembled.sanitized_native_text
-    assert record.latex_proposal == proposal.latex
-    assert record.mathml_proposal == proposal.mathml
+    assert record.latex_proposal == proposal.latex.latex
+    assert record.mathml_proposal == proposal.mathml.mathml
     assert "Unaccepted LaTeX proposal" in record.retrieval_text
 
 
@@ -134,9 +152,7 @@ def test__equation_enrichment__malformed_latex_remains_auxiliary(
         renderer=PyMuPdfRegionRenderer()
     ).assemble(detection, payload)
 
-    recognition = _recognize(
-        _recognizer(tmp_path, latex=r"\frac{x{"), assembly
-    )
+    recognition = _recognize(_recognizer(tmp_path, latex=r"\frac{x{"), assembly)
     index = build_equation_index(assembly, recognition)
 
     assert "latex_structure_suspect" in recognition.proposals[0].warning_codes
@@ -243,6 +259,9 @@ def test__equation_enrichment_batch__plans_applies_and_replays(
         "auxiliary": 0,
         "rejected": 0,
     }
+    assert created["items"][0]["publication_status"] == (
+        EquationPublicationInventoryStatus.COMPLETE_SET.value
+    )
     assert enrich_batch([*arguments, "--apply"]) == 0
     replayed = json.loads(capsys.readouterr().out)
     assert replayed["items"][0]["action"] == "unchanged"
@@ -250,6 +269,46 @@ def test__equation_enrichment_batch__plans_applies_and_replays(
     assert (derived / "assembly.json").is_file()
     assert (derived / "recognition.json").is_file()
     assert (derived / "index.json").is_file()
+    assert (derived / "derivation.json").is_file()
+    derivation_path = derived / "derivation.json"
+    derivation_text = derivation_path.read_text(encoding="utf-8")
+    derivation_payload = json.loads(derivation_text)
+    assert (
+        derivation_payload["recognition_artifact_id"]
+        == (created["items"][0]["recognition_artifact_id"])
+    )
+    assert derivation_payload["trace"]["root_equation_ids"][0].startswith(
+        "equation-image:sha256:"
+    )
+    assert [
+        transition["operation_name"]
+        for transition in derivation_payload["trace"]["transitions"]
+    ] == [
+        EquationRecognitionDerivationOperation.RECOGNITION.value,
+        EquationRecognitionDerivationOperation.MATHML_CONVERSION.value,
+    ]
+
+    derivation_payload["trace"]["transitions"][0]["operation_version"] = (
+        "changed"
+    )
+    derivation_path.write_text(
+        json.dumps(derivation_payload),
+        encoding="utf-8",
+    )
+    with pytest.raises(SystemExit, match="2"):
+        enrich_batch([*arguments, "--apply"])
+    assert "existing equation derivation linkage is inconsistent" in (
+        capsys.readouterr().err
+    )
+    derivation_path.write_text(derivation_text, encoding="utf-8")
+
+    derivation_path.unlink()
+    assert enrich_batch([*arguments, "--apply"]) == 0
+    legacy_replay = json.loads(capsys.readouterr().out)
+    assert legacy_replay["items"][0]["publication_status"] == (
+        EquationPublicationInventoryStatus.LEGACY_PAIR.value
+    )
+    assert legacy_replay["items"][0]["derivation_record_id"] is None
 
 
 def test__equation_enrichment__resource_identity_changes_with_model(
@@ -270,7 +329,7 @@ def test__equation_enrichment__resource_identity_changes_with_model(
     relocated_recognizer = Pix2TexCliEquationRecognizer(
         relocated,
         backend_version="test-1",
-        resources=(("model", model),),
+        resources=(Pix2TexResourceBinding(name="model", path=model),),
     )
     assert (
         first.identity.executable_sha256
@@ -286,7 +345,7 @@ def test__equation_enrichment__resource_identity_changes_with_model(
     second = Pix2TexCliEquationRecognizer(
         tmp_path / "fake-pix2tex",
         backend_version="test-1",
-        resources=(("model", model),),
+        resources=(Pix2TexResourceBinding(name="model", path=model),),
     )
 
     payload, detection = _detection()

@@ -10,6 +10,7 @@ from projectkoios.ingestion.equations.derivation.recognition.failure import (
 from projectkoios.ingestion.equations.derivation.status import (
     EquationDerivationTransitionStatus,
 )
+from projectkoios.ingestion.equations.image.factory import EquationImage
 from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
 )
@@ -26,13 +27,17 @@ def test__recognition_derivation_failure__retains_input_and_error() -> None:
     )
 
     transition = failure.trace.transitions[0]
+    assembly = recognition_request.assembly_artifact.assemblies[0]
+    image = EquationImage.from_bytes(
+        content=assembly.rendered_region.content,
+        source_ids=(assembly.rendered_region.region_id,),
+    )
     assert isinstance(failure, DataObjectActionResult)
     assert transition.status is EquationDerivationTransitionStatus.FAILED
+    assert transition.input_ids == (image.equation_id,)
     assert transition.output_ids == ()
     assert transition.request_id == recognition_request.request_id
-    assert failure.trace.final_equation_ids == (
-        recognition_request.assembly_artifact.artifact_id,
-    )
+    assert failure.trace.final_equation_ids == (image.equation_id,)
     assert failure.failure_type == "EquationRecognitionError"
     assert failure.failure_message == "bounded recognition failure"
 

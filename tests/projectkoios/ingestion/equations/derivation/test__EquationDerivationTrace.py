@@ -28,6 +28,15 @@ def _success(
     )
 
 
+def test__equation_derivation_trace__allows_empty_derivation() -> None:
+    trace = EquationDerivationTrace(
+        root_equation_ids=(),
+        transitions=(),
+    )
+
+    assert trace.final_equation_ids == ()
+
+
 def test__equation_derivation_trace__retains_ordered_causal_chain() -> None:
     trace = EquationDerivationTrace(
         root_equation_ids=("equation-image:one",),

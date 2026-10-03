@@ -24,8 +24,7 @@ from projectkoios.ingestion.pdf import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
 )
-
-Artifact = tuple[Path, str]
+from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 
 class ArtifactPublicationError(RuntimeError):
@@ -156,19 +155,22 @@ def ingest_pdf_artifacts(
     extraction_artifact = bundle.artifacts[0]
     if extraction_artifact.relative_path != RAW_EXTRACTION_RELATIVE_PATH:
         raise RuntimeError("owner extraction artifact order is invalid")
-    artifacts: list[Artifact] = []
+    artifacts: list[ArtifactPublicationItem] = []
     if raw_text_directory is not None:
         artifacts.extend(
-            (
-                raw_text_directory / Path(item.relative_path).name,
-                item.content.decode("utf-8", errors="strict"),
+            ArtifactPublicationItem(
+                path=raw_text_directory / Path(item.relative_path).name,
+                text=item.content.decode("utf-8", errors="strict"),
             )
             for item in bundle.artifacts[1:]
         )
     artifacts.append(
-        (
-            output,
-            extraction_artifact.content.decode("utf-8", errors="strict"),
+        ArtifactPublicationItem(
+            path=output,
+            text=extraction_artifact.content.decode(
+                "utf-8",
+                errors="strict",
+            ),
         )
     )
     _publish_artifacts(artifacts)
@@ -234,8 +236,10 @@ def _read_pdf_bytes(path: Path) -> bytes:
         raise ValueError("could not safely read PDF source") from error
 
 
-def _publish_artifacts(artifacts: Sequence[Artifact]) -> None:
-    normalized_paths = tuple(path.absolute() for path, _ in artifacts)
+def _publish_artifacts(
+    artifacts: Sequence[ArtifactPublicationItem],
+) -> None:
+    normalized_paths = tuple(item.path.absolute() for item in artifacts)
     if len(set(normalized_paths)) != len(normalized_paths):
         raise ArtifactPublicationError(
             "refusing to publish duplicate extraction artifact paths"
@@ -249,10 +253,13 @@ def _publish_artifacts(artifacts: Sequence[Artifact]) -> None:
     created_files: list[Path] = []
     created_directories: list[Path] = []
     try:
-        for path, text in artifacts:
-            _create_parent_directories(path.parent, created_directories)
-            _write_new(path, text)
-            created_files.append(path)
+        for item in artifacts:
+            _create_parent_directories(
+                item.path.parent,
+                created_directories,
+            )
+            _write_new(item.path, item.text)
+            created_files.append(item.path)
     except Exception as error:
         if isinstance(error, _ArtifactWriteError):
             created_files.append(error.path)

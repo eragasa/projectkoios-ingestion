@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from projectkoios.ingestion.batch import PdfBatchPlan
@@ -14,24 +15,50 @@ from projectkoios.ingestion.cli import (
     ExtractionCacheOperationError,
     _publish_artifacts,
 )
-from projectkoios.ingestion.equation_batch_cli import _derive, _resolve_items
+from projectkoios.ingestion.equation_batch_cli import (
+    _derive,
+    _resolve_items,
+    _ResolvedItem,
+)
 from projectkoios.ingestion.equations.assembly.assembler import (
     DeterministicEquationAssembler,
 )
+from projectkoios.ingestion.equations.derivation.recognition.record import (
+    EquationRecognitionDerivationRecord,
+)
 from projectkoios.ingestion.equations.index.builder import build_equation_index
 from projectkoios.ingestion.equations.index.tier import EquationIndexTier
+from projectkoios.ingestion.equations.publication.member import (
+    EquationPublicationMember,
+    EquationPublicationMemberName,
+)
+from projectkoios.ingestion.equations.publication.request import (
+    EquationPublicationRequest,
+)
+from projectkoios.ingestion.equations.publication.status import (
+    EquationPublicationInventoryStatus,
+)
 from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
 )
+from projectkoios.ingestion.equations.recognition.identity import (
+    equation_recognition_request_id,
+)
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
+)
+from projectkoios.ingestion.integrations.pix2tex.resource import (
+    Pix2TexResourceBinding,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
-from workflow.equation_recognition import execute_equation_recognition
+from workflow.equation_recognition import (
+    execute_equation_recognition_derivation,
+)
 
 
 class _EnrichmentTarget:
@@ -40,20 +67,96 @@ class _EnrichmentTarget:
         self.assembly = root / "assembly.json"
         self.recognition = root / "recognition.json"
         self.index = root / "index.json"
-        existing = tuple(os.path.lexists(path) for path in self.paths)
-        if any(existing) and not all(existing):
+        self.derivation = root / "derivation.json"
+        assembly_exists = os.path.lexists(self.assembly)
+        recognition_exists = os.path.lexists(self.recognition)
+        index_exists = os.path.lexists(self.index)
+        derivation_exists = os.path.lexists(self.derivation)
+        core_exists = assembly_exists and recognition_exists and index_exists
+        core_partially_exists = (
+            assembly_exists or recognition_exists or index_exists
+        ) and not core_exists
+        if core_partially_exists:
             raise ValueError("equation enrichment artifact set is incomplete")
-        if all(existing) and any(
-            path.is_symlink() or not path.is_file() for path in self.paths
+        if derivation_exists and not core_exists:
+            raise ValueError("equation derivation exists without core evidence")
+        if core_exists and (
+            self._unsafe(self.assembly)
+            or self._unsafe(self.recognition)
+            or self._unsafe(self.index)
+            or (derivation_exists and self._unsafe(self.derivation))
         ):
             raise ValueError(
                 "equation enrichment artifacts are not safe regular files"
             )
-        self.existing = all(existing)
+        self.existing = core_exists
+        self.derivation_present = derivation_exists
 
-    @property
-    def paths(self) -> tuple[Path, Path, Path]:
-        return (self.assembly, self.recognition, self.index)
+    def publication_request(
+        self,
+        *,
+        assembly_content: str,
+        recognition_content: str,
+        index_content: str,
+        derivation_content: str,
+    ) -> EquationPublicationRequest:
+        return EquationPublicationRequest(
+            assembly=EquationPublicationMember(
+                name=EquationPublicationMemberName.ASSEMBLY,
+                path=self.assembly,
+                content=assembly_content,
+            ),
+            recognition=EquationPublicationMember(
+                name=EquationPublicationMemberName.RECOGNITION,
+                path=self.recognition,
+                content=recognition_content,
+            ),
+            index=EquationPublicationMember(
+                name=EquationPublicationMemberName.INDEX,
+                path=self.index,
+                content=index_content,
+            ),
+            derivation=EquationPublicationMember(
+                name=EquationPublicationMemberName.DERIVATION,
+                path=self.derivation,
+                content=derivation_content,
+            ),
+        )
+
+    @staticmethod
+    def _unsafe(path: Path) -> bool:
+        return path.is_symlink() or not path.is_file()
+
+
+@dataclass(frozen=True)
+class _EnrichmentWorkItem:
+    source: _ResolvedItem
+    target: _EnrichmentTarget
+
+
+def _publish_equation_request(
+    request: EquationPublicationRequest,
+) -> None:
+    _publish_artifacts(
+        [
+            ArtifactPublicationItem(
+                path=request.assembly.path,
+                text=request.assembly.content,
+            ),
+            ArtifactPublicationItem(
+                path=request.recognition.path,
+                text=request.recognition.content,
+            ),
+            ArtifactPublicationItem(
+                path=request.index.path,
+                text=request.index.content,
+            ),
+            ArtifactPublicationItem(
+                path=request.derivation.path,
+                text=request.derivation.content,
+            ),
+        ]
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -79,8 +182,8 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _resources(values: list[str]) -> tuple[tuple[str, Path], ...]:
-    resources: list[tuple[str, Path]] = []
+def _resources(values: list[str]) -> tuple[Pix2TexResourceBinding, ...]:
+    resources: list[Pix2TexResourceBinding] = []
     for value in values:
         name, separator, raw_path = value.partition("=")
         if not separator or not name or not raw_path:
@@ -90,8 +193,8 @@ def _resources(values: list[str]) -> tuple[tuple[str, Path], ...]:
         path = Path(raw_path).expanduser().resolve()
         if path.is_symlink() or not path.is_file():
             raise ValueError(f"pix2tex resource is not a safe file: {name}")
-        resources.append((name, path))
-    names = tuple(name for name, _ in resources)
+        resources.append(Pix2TexResourceBinding(name=name, path=path))
+    names = tuple(resource.name for resource in resources)
     if not names or len(names) != len(set(names)):
         raise ValueError("pix2tex resources must be non-empty and unique")
     return tuple(resources)
@@ -121,6 +224,11 @@ def _existing_summary(
 ) -> dict[str, object]:
     recognition = _load_bounded_json(target.recognition)
     index = _load_bounded_json(target.index)
+    derivation = (
+        _load_bounded_json(target.derivation)
+        if target.derivation_present
+        else None
+    )
     proposals = recognition.get("proposals")
     records = index.get("records")
     if not isinstance(proposals, list) or not isinstance(records, list):
@@ -136,6 +244,10 @@ def _existing_summary(
         raise ValueError("existing recognition processor identity changed")
     recognition_artifact_id = recognition.get("artifact_id")
     index_artifact_id = index.get("artifact_id")
+    expected_request_id = equation_recognition_request_id(
+        assembly_artifact_id,
+        processor_identity_digest,
+    )
     if (
         not isinstance(recognition_artifact_id, str)
         or not isinstance(index_artifact_id, str)
@@ -144,6 +256,24 @@ def _existing_summary(
         or index.get("source_id") != source_id
     ):
         raise ValueError("existing equation index linkage is inconsistent")
+    derivation_record: EquationRecognitionDerivationRecord | None = None
+    if derivation is not None:
+        try:
+            derivation_record = EquationRecognitionDerivationRecord.from_dict(
+                derivation
+            )
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "existing equation derivation linkage is inconsistent"
+            ) from error
+        if (
+            derivation_record.request_id != expected_request_id
+            or derivation_record.recognition_artifact_id
+            != recognition_artifact_id
+        ):
+            raise ValueError(
+                "existing equation derivation linkage is inconsistent"
+            )
     tiers = {tier.value: 0 for tier in EquationIndexTier}
     for record in records:
         if not isinstance(record, dict) or record.get("tier") not in tiers:
@@ -163,6 +293,16 @@ def _existing_summary(
         "assembly_artifact_id": assembly_artifact_id,
         "recognition_artifact_id": recognition_artifact_id,
         "index_artifact_id": index_artifact_id,
+        "publication_status": (
+            EquationPublicationInventoryStatus.COMPLETE_SET.value
+            if derivation is not None
+            else EquationPublicationInventoryStatus.LEGACY_PAIR.value
+        ),
+        "derivation_record_id": (
+            derivation_record.record_id
+            if derivation_record is not None
+            else None
+        ),
         "assembly_artifact_sha256": hashlib.sha256(
             target.assembly.read_bytes()
         ).hexdigest(),
@@ -172,6 +312,11 @@ def _existing_summary(
         "index_artifact_sha256": hashlib.sha256(
             target.index.read_bytes()
         ).hexdigest(),
+        "derivation_artifact_sha256": (
+            hashlib.sha256(target.derivation.read_bytes()).hexdigest()
+            if derivation is not None
+            else None
+        ),
     }
 
 
@@ -189,8 +334,12 @@ def main(arguments: list[str] | None = None) -> int:
             raise ValueError(
                 "equation detection artifacts must exist before enrichment"
             )
-        targets = tuple(
-            _EnrichmentTarget(item.ingestion_directory) for item in resolved
+        work_items = tuple(
+            _EnrichmentWorkItem(
+                source=item,
+                target=_EnrichmentTarget(item.ingestion_directory),
+            )
+            for item in resolved
         )
         resources = _resources(args.pix2tex_resource)
         recognizer = Pix2TexCliEquationRecognizer(
@@ -212,17 +361,17 @@ def main(arguments: list[str] | None = None) -> int:
                     "processor_identity": recognizer.identity.identity_digest,
                     "items": [
                         {
-                            "source_id": item.item.source_id,
+                            "source_id": work_item.source.item.source_id,
                             "output_directory": (
-                                item.item.output_directory.as_posix()
+                                work_item.source.item.output_directory.as_posix()
                             ),
                             "action": (
                                 "verify_existing"
-                                if target.existing
+                                if work_item.target.existing
                                 else "create"
                             ),
                         }
-                        for item, target in zip(resolved, targets, strict=True)
+                        for work_item in work_items
                     ],
                 },
                 indent=2,
@@ -232,7 +381,9 @@ def main(arguments: list[str] | None = None) -> int:
 
     completed: list[dict[str, object]] = []
     try:
-        for item, target in zip(resolved, targets, strict=True):
+        for work_item in work_items:
+            item = work_item.source
+            target = work_item.target
             detection, _, _ = _derive(
                 item,
                 cache_root=args.cache_root,
@@ -268,22 +419,27 @@ def main(arguments: list[str] | None = None) -> int:
                     )
                 )
                 continue
-            recognition = execute_equation_recognition(
+            derivation_result = execute_equation_recognition_derivation(
                 recognizer=recognizer,
                 assembly=assembly,
             )
+            recognition = derivation_result.recognition
+            derivation = EquationRecognitionDerivationRecord.create(
+                derivation_result
+            )
             index = build_equation_index(assembly, recognition)
-            texts = (
-                assembly_text,
-                serialize_contract(recognition) + "\n",
-                serialize_contract(index) + "\n",
+            publication = target.publication_request(
+                assembly_content=assembly_text,
+                recognition_content=serialize_contract(recognition) + "\n",
+                index_content=serialize_contract(index) + "\n",
+                derivation_content=serialize_contract(derivation) + "\n",
             )
             parent = target.assembly.parent
             if parent.resolve() != parent:
                 raise ValueError(
                     "equation enrichment path changed after planning"
                 )
-            _publish_artifacts(list(zip(target.paths, texts, strict=True)))
+            _publish_equation_request(publication)
             tiers = {
                 tier.value: sum(record.tier is tier for record in index.records)
                 for tier in EquationIndexTier
@@ -303,6 +459,10 @@ def main(arguments: list[str] | None = None) -> int:
                     "assembly_artifact_id": assembly.artifact_id,
                     "recognition_artifact_id": recognition.artifact_id,
                     "index_artifact_id": index.artifact_id,
+                    "publication_status": (
+                        EquationPublicationInventoryStatus.COMPLETE_SET.value
+                    ),
+                    "derivation_record_id": derivation.record_id,
                     "assembly_artifact_sha256": hashlib.sha256(
                         target.assembly.read_bytes()
                     ).hexdigest(),
@@ -311,6 +471,9 @@ def main(arguments: list[str] | None = None) -> int:
                     ).hexdigest(),
                     "index_artifact_sha256": hashlib.sha256(
                         target.index.read_bytes()
+                    ).hexdigest(),
+                    "derivation_artifact_sha256": hashlib.sha256(
+                        target.derivation.read_bytes()
                     ).hexdigest(),
                 }
             )

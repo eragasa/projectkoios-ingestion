@@ -63,7 +63,17 @@ class EquationRecognitionArtifact(
             raise ValueError("recognition diagnostic size is out of bounds")
         if not re.fullmatch(r"[0-9a-f]{64}", self.diagnostic_sha256):
             raise ValueError("recognition diagnostic hash must be SHA-256")
+        if type(self.proposals) is not tuple or any(
+            type(proposal) is not EquationRecognitionProposal
+            for proposal in self.proposals
+        ):
+            raise TypeError("recognition proposals must be a typed tuple")
         proposal_ids = tuple(item.proposal_id for item in self.proposals)
+        assembly_ids = tuple(item.assembly_id for item in self.proposals)
+        if len(proposal_ids) != len(set(proposal_ids)):
+            raise ValueError("recognition proposal IDs must be unique")
+        if len(assembly_ids) != len(set(assembly_ids)):
+            raise ValueError("recognition proposal assemblies must be unique")
         expected = stable_id(
             "equation-recognition-artifact",
             EQUATION_RECOGNITION_CONTRACT_VERSION,

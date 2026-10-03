@@ -36,7 +36,7 @@ class EquationDerivationTransition(AbstractImmutableDataObject):
     warning_codes: tuple[str, ...] = ()
     failure_type: str | None = None
     failure_message: str | None = None
-    _transition_id: str = field(init=False, repr=False)
+    transition_id: str = field(init=False)
 
     @classmethod
     def succeeded(
@@ -98,10 +98,6 @@ class EquationDerivationTransition(AbstractImmutableDataObject):
             failure_message=failure_message,
         )
 
-    @property
-    def transition_id(self) -> str:
-        return self._transition_id
-
     def __post_init__(self) -> None:
         if isinstance(self.sequence, bool) or not isinstance(
             self.sequence, int
@@ -159,7 +155,7 @@ class EquationDerivationTransition(AbstractImmutableDataObject):
             raise TypeError("derivation transition status is invalid")
         object.__setattr__(
             self,
-            "_transition_id",
+            "transition_id",
             stable_id(
                 "equation-derivation-transition",
                 self.CONTRACT_VERSION,

@@ -135,8 +135,14 @@ def _index_record(
         rendered_region_sha256=assembly.rendered_region.content_sha256,
         raw_fragments=assembly.raw_fragments,
         sanitized_native_text=assembly.sanitized_native_text,
-        latex_proposal=recognition.latex,
-        mathml_proposal=recognition.mathml,
+        latex_proposal=(
+            recognition.latex.latex if recognition.latex is not None else None
+        ),
+        mathml_proposal=(
+            recognition.mathml.mathml
+            if recognition.mathml is not None
+            else None
+        ),
         preceding_context_text=assembly.preceding_context_text,
         following_context_text=assembly.following_context_text,
         retrieval_text=retrieval_text,
@@ -157,7 +163,7 @@ def _index_text(
         f"Sanitized native PDF equation text:\n{assembly.sanitized_native_text}"
     )
     if recognition.latex:
-        parts.append(f"Unaccepted LaTeX proposal:\n{recognition.latex}")
+        parts.append(f"Unaccepted LaTeX proposal:\n{recognition.latex.latex}")
     if assembly.following_context_text:
         parts.append(
             f"Following context:\n{assembly.following_context_text.strip()}"
@@ -169,10 +175,11 @@ def _proposal_is_indexable(
     assembly: EquationAssembly,
     recognition: EquationRecognitionProposal,
 ) -> tuple[bool, tuple[str, ...]]:
-    latex = recognition.latex
+    latex_equation = recognition.latex
     reasons: list[str] = []
-    if latex is None:
+    if latex_equation is None:
         return False, ()
+    latex = latex_equation.latex
     if not _latex_is_well_formed(latex):
         reasons.append("latex_structure_suspect")
     if len(latex) > 2_048:
