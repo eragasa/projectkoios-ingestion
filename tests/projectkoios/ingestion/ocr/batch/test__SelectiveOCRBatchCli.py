@@ -7,14 +7,16 @@ import sys
 from pathlib import Path, PurePosixPath
 
 import pytest
+from projectkoios.ingestion import ocr_batch_cli
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
-from projectkoios.ingestion.ocr_batch_cli import main as selective_ocr_batch
 
 pymupdf = pytest.importorskip("pymupdf")
+selective_ocr_batch = ocr_batch_cli.main
+_MUPDF_DIAGNOSTIC = "MuPDF error: syntax error: invalid key in dict\n"
 
 
 def _pdf() -> bytes:
@@ -45,7 +47,8 @@ def _tesseract(tmp_path: Path, marker: Path) -> Path:
 
 def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
+    capfd: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     source_root = tmp_path / "source"
     source_root.mkdir()
@@ -77,7 +80,7 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
         )
         == 0
     )
-    capsys.readouterr()
+    capfd.readouterr()
     extraction = ingestion_root / "native/fixture/extraction.json"
     ocr_plan = SelectiveOCRPlan(
         schema_version=1,
@@ -116,13 +119,28 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
     ]
 
     assert selective_ocr_batch(arguments) == 2
-    planned = json.loads(capsys.readouterr().out)
+    planned_capture = capfd.readouterr()
+    planned = json.loads(planned_capture.out)
+    assert planned_capture.err == ""
     assert planned["ocr_execution"] == "not_executed"
     assert planned["items"][0]["action"] == "create"
     assert not marker.exists()
 
+    extract_pdf_evidence = ocr_batch_cli.extract_pdf_evidence
+
+    def extract_with_mupdf_diagnostic(*args: object, **kwargs: object):
+        pymupdf.message(_MUPDF_DIAGNOSTIC.rstrip("\n"))
+        return extract_pdf_evidence(*args, **kwargs)
+
+    monkeypatch.setattr(
+        ocr_batch_cli,
+        "extract_pdf_evidence",
+        extract_with_mupdf_diagnostic,
+    )
     assert selective_ocr_batch([*arguments, "--apply"]) == 0
-    created = json.loads(capsys.readouterr().out)
+    created_capture = capfd.readouterr()
+    created = json.loads(created_capture.out)
+    assert created_capture.err == _MUPDF_DIAGNOSTIC
     assert created["items"][0]["action"] == "created"
     assert created["items"][0]["native_text_preserved_separately"] is True
     assert marker.read_text(encoding="utf-8") == "ocr\n"
@@ -138,12 +156,17 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
     artifact.write_text(json.dumps(result), encoding="utf-8")
     with pytest.raises(SystemExit, match="2"):
         selective_ocr_batch([*arguments, "--apply"])
+    failed_capture = capfd.readouterr()
+    assert _MUPDF_DIAGNOSTIC in failed_capture.err
     assert "existing selective OCR result is inconsistent" in (
-        capsys.readouterr().err
+        failed_capture.err
     )
+    assert failed_capture.out == ""
     artifact.write_text(artifact_text, encoding="utf-8")
 
     assert selective_ocr_batch([*arguments, "--apply"]) == 0
-    replayed = json.loads(capsys.readouterr().out)
+    replay_capture = capfd.readouterr()
+    replayed = json.loads(replay_capture.out)
+    assert replay_capture.err == _MUPDF_DIAGNOSTIC
     assert replayed["items"][0]["action"] == "unchanged"
     assert marker.read_text(encoding="utf-8") == "ocr\n"

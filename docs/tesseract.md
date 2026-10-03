@@ -123,8 +123,10 @@ zero-based page indices. Source, ingestion, and output roots are supplied
 separately; symlink traversal and changed source or extraction evidence fail
 closed.
 
-The command is dry-run by default. Dry-run performs no OCR and reports whether
-each page would be created or verified. Explicit `--apply` replays the native
+The command is dry-run by default. Standard output is reserved for exactly one
+machine-readable JSON summary; PyMuPDF diagnostics are routed to standard error.
+Dry-run performs no OCR and reports whether each page would be created or
+verified. Explicit `--apply` replays the native
 extraction, renders only the selected full pages, and invokes the repository's
 local `TesseractOCRProcessor`. Each page is independently published with mode
 `0600` as a create-once `result.json`. Its `SelectiveOCRPublication` binds the
