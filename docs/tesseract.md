@@ -164,6 +164,19 @@ Example plan shape:
 }
 ```
 
+## Selective reconciliation publication
+
+`python -m scripts.ocr_reconciliation_batch` consumes a separate hash-locked
+plan,
+validated native extraction artifacts, and exact selective OCR publications.
+It is dry-run by default. Explicit `--apply` writes private create-once
+reconciliation evidence and exact replay performs no mutation.
+
+The first plan version accepts only OCR selections without native-text
+references because native reconciliation additionally requires exact layout
+evidence. It never rerenders, invokes OCR, composes replacement text, or calls
+Search.
+
 ## Operational boundary
 
 The adapter uses a bounded, no-shell POSIX subprocess with timeout and output

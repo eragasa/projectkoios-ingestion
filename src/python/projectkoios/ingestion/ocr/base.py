@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from projectkoios.ingestion.models import BoundingBox
 
 if TYPE_CHECKING:
-    from projectkoios.ingestion.ocr.contracts import OCRConfidence
+    from projectkoios.ingestion.ocr.contract.contracts import OCRConfidence
 
 
 class OCRTextOutput(ABC):
@@ -39,7 +39,7 @@ class OCRTextOutput(ABC):
 
     def _validate_common_contract(self) -> None:
         """Validate invariants shared by every OCR text output."""
-        from projectkoios.ingestion.ocr.contracts import (
+        from projectkoios.ingestion.ocr.contract.contracts import (
             _MAX_TEXT_CHARACTERS_PER_ITEM,
             PIXEL_COORDINATE_SYSTEM,
             OCRContract,

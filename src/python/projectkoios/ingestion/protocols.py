@@ -23,7 +23,7 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     SourceDocument,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCRProcessorIdentity,
     OCRRequest,
     OCRResult,
@@ -34,7 +34,7 @@ from projectkoios.ingestion.processing import (
     ProcessingSelectionResult,
     ProcessingWorkItem,
 )
-from projectkoios.ingestion.reconciliation import (
+from projectkoios.ingestion.reconciliation.deterministic import (
     OCRReconciliationInput,
     OCRReconciliationResult,
 )

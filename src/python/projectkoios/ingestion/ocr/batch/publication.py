@@ -10,7 +10,10 @@ from projectkoios.ingestion.base import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
-from projectkoios.ingestion.ocr.contracts import OCRResult
+from projectkoios.ingestion.ocr.contract.contracts import OCRResult
+from projectkoios.ingestion.ocr.contract.serialization import (
+    deserialize_ocr_result,
+)
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -55,6 +58,35 @@ class SelectiveOCRPublication(AbstractImmutableDataObject):
             extraction_sha256=item.extraction_sha256,
             page_index=page.page_index,
             result=result,
+        )
+
+    @classmethod
+    def from_dict(cls, value: object) -> SelectiveOCRPublication:
+        expected = {
+            "publication_id",
+            "source_sha256",
+            "extraction_sha256",
+            "page_index",
+            "result",
+        }
+        if type(value) is not dict or set(value) != expected:
+            raise ValueError("selective OCR publication has an invalid shape")
+        publication_id = value["publication_id"]
+        source_sha256 = value["source_sha256"]
+        extraction_sha256 = value["extraction_sha256"]
+        page_index = value["page_index"]
+        if type(publication_id) is not str:
+            raise TypeError("selective OCR publication ID must be a string")
+        if type(source_sha256) is not str or type(extraction_sha256) is not str:
+            raise TypeError("selective OCR publication hashes must be strings")
+        if type(page_index) is not int:
+            raise TypeError("selective OCR publication page must be an integer")
+        return cls(
+            publication_id=publication_id,
+            source_sha256=source_sha256,
+            extraction_sha256=extraction_sha256,
+            page_index=page_index,
+            result=deserialize_ocr_result(value["result"]),
         )
 
     def __post_init__(self) -> None:

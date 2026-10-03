@@ -29,7 +29,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCRConfidence,
     OCRConfiguration,
     OCRFailure,
@@ -51,7 +51,7 @@ from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
 )
-from projectkoios.ingestion.reconciliation import (
+from projectkoios.ingestion.reconciliation.deterministic import (
     OCRReconciliationRequest,
     OCRReconciliationResult,
 )

@@ -240,7 +240,7 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCR_CONTRACT_VERSION,
     PIXEL_COORDINATE_SYSTEM,
     OCRConfidence,
@@ -359,7 +359,7 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditStatus,
     DerivationAuditValidator,
 )
-from projectkoios.ingestion.reconciliation import (
+from projectkoios.ingestion.reconciliation.deterministic import (
     OCR_RECONCILIATION_CONTRACT_VERSION,
     DeterministicOCRReconciler,
     OCRNativeBlockEvidence,
