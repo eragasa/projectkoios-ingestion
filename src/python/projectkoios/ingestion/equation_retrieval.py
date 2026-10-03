@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     EquationCandidate,
     EquationCandidateKind,
     EquationDetectionResult,

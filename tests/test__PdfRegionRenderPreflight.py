@@ -15,7 +15,9 @@ from projectkoios.ingestion import (
     RegionRenderConfiguration,
     SourceDocument,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.pdf.preflight import (
     PdfRegionRenderPreflight,
     PdfRegionRenderPreflightPlan,

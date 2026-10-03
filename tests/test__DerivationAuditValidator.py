@@ -58,7 +58,9 @@ from projectkoios.ingestion.models import (
     SourceSpan,
 )
 from projectkoios.ingestion.pdf import PYMUPDF_COORDINATE_SYSTEM
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.processing import (
     BoundedProcessingCoordinator,
     ProcessingDerivedArtifact,

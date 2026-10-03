@@ -12,7 +12,9 @@ from projectkoios.ingestion import (
     RegionColorMode,
     SourceDocument,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 
 pymupdf = pytest.importorskip("pymupdf")
 

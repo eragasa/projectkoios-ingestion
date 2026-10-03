@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import hashlib
 import math
-import os
 import re
-import subprocess
-import tempfile
+import stat
 import unicodedata
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
 from io import BytesIO
 from pathlib import Path
+from typing import ClassVar
 
-from projectkoios.ingestion.equations import (
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectActionResult,
+)
+from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.equations.detection import (
     EquationCandidate,
     EquationCandidateKind,
     EquationDetectionResult,
@@ -29,7 +35,6 @@ from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 EQUATION_ENRICHMENT_CONTRACT_VERSION = "1.0"
 _MAX_ASSEMBLIES = 256
 _MAX_DIAGNOSTIC_BYTES = 4_000_000
-_MAX_OUTPUT_BYTES = 8_000_000
 _MAX_LATEX_CHARACTERS = 16_384
 _COORDINATE_TUPLE = re.compile(
     r"(?:\d+\s*=\s*\d+\s*[,;]\s*){2,}\d+", re.IGNORECASE
@@ -53,6 +58,175 @@ class EquationIndexTier(StrEnum):
     PRIMARY = "primary"
     AUXILIARY = "auxiliary"
     REJECTED = "rejected"
+
+
+class EquationEnrichmentInventoryStatus(StrEnum):
+    NONE = "none"
+    COMPLETE_PAIR = "complete_pair"
+    PARTIAL = "partial"
+
+
+class EquationRecognitionWorkState(StrEnum):
+    PENDING = "pending"
+    NOT_REQUESTED = "not_requested"
+    COMPLETE = "complete"
+    FAILED = "failed"
+
+
+class EquationEnrichmentInventoryError(ValueError):
+    """Raised when recognition/index checkpoint evidence is partial."""
+
+
+@dataclass(frozen=True)
+class EquationEnrichmentInventory:
+    status: EquationEnrichmentInventoryStatus
+    recognition_present: bool
+    index_present: bool
+    problem_codes: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if len(self.problem_codes) != len(set(self.problem_codes)):
+            raise ValueError("enrichment inventory problems must be unique")
+        if self.status is EquationEnrichmentInventoryStatus.NONE:
+            if (
+                self.recognition_present
+                or self.index_present
+                or self.problem_codes
+            ):
+                raise ValueError("empty enrichment inventory is inconsistent")
+        elif self.status is EquationEnrichmentInventoryStatus.COMPLETE_PAIR:
+            if not self.recognition_present or not self.index_present:
+                raise ValueError(
+                    "complete enrichment inventory is inconsistent"
+                )
+            if self.problem_codes:
+                raise ValueError("complete enrichment inventory has problems")
+        elif not self.problem_codes:
+            raise ValueError("partial enrichment inventory needs a problem")
+
+
+@dataclass(frozen=True)
+class EquationRecognitionCheckpoint:
+    state: EquationRecognitionWorkState
+    error: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.state is EquationRecognitionWorkState.FAILED:
+            if self.error is None or not self.error.strip():
+                raise ValueError(
+                    "failed recognition checkpoint requires an error"
+                )
+        elif self.error is not None:
+            raise ValueError(
+                "non-failed recognition checkpoint cannot have an error"
+            )
+
+
+@dataclass(frozen=True)
+class EquationRecognitionDeferral:
+    previous_state: EquationRecognitionWorkState
+    resulting_state: EquationRecognitionWorkState
+    preserved_error: str | None
+    changed: bool
+
+    def __post_init__(self) -> None:
+        expected_state = (
+            EquationRecognitionWorkState.NOT_REQUESTED
+            if self.previous_state is EquationRecognitionWorkState.PENDING
+            else self.previous_state
+        )
+        if self.resulting_state is not expected_state:
+            raise ValueError("recognition deferral transition is inconsistent")
+        if self.changed is not (
+            self.previous_state is EquationRecognitionWorkState.PENDING
+        ):
+            raise ValueError("recognition deferral change flag is inconsistent")
+        if self.previous_state is EquationRecognitionWorkState.FAILED:
+            if self.preserved_error is None or not self.preserved_error.strip():
+                raise ValueError(
+                    "recognition failure evidence was not preserved"
+                )
+        elif self.preserved_error is not None:
+            raise ValueError("recognition deferral has an unexpected error")
+
+
+def inspect_equation_enrichment_inventory(
+    directory: Path,
+) -> EquationEnrichmentInventory:
+    """Classify the create-once recognition/index artifact pair."""
+
+    entries = {
+        "recognition": directory / "recognition.json",
+        "index": directory / "index.json",
+    }
+    present: dict[str, bool] = {}
+    problems: list[str] = []
+    for name, path in entries.items():
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            present[name] = False
+            continue
+        except OSError:
+            present[name] = False
+            problems.append(f"{name}_uninspectable")
+            continue
+        present[name] = True
+        if path.is_symlink() or not stat.S_ISREG(metadata.st_mode):
+            problems.append(f"{name}_unsafe")
+    recognition_present = present["recognition"]
+    index_present = present["index"]
+    if not recognition_present and not index_present and not problems:
+        status = EquationEnrichmentInventoryStatus.NONE
+    elif recognition_present and index_present and not problems:
+        status = EquationEnrichmentInventoryStatus.COMPLETE_PAIR
+    else:
+        status = EquationEnrichmentInventoryStatus.PARTIAL
+        if (
+            not recognition_present
+            and "recognition_uninspectable" not in problems
+        ):
+            problems.append("recognition_missing")
+        if not index_present and "index_uninspectable" not in problems:
+            problems.append("index_missing")
+    return EquationEnrichmentInventory(
+        status=status,
+        recognition_present=recognition_present,
+        index_present=index_present,
+        problem_codes=tuple(problems),
+    )
+
+
+def require_equation_enrichment_inventory(
+    directory: Path,
+) -> EquationEnrichmentInventory:
+    """Reject partial enrichment while allowing complete or absent evidence."""
+
+    inventory = inspect_equation_enrichment_inventory(directory)
+    if inventory.status is EquationEnrichmentInventoryStatus.PARTIAL:
+        problems = ",".join(inventory.problem_codes)
+        raise EquationEnrichmentInventoryError(
+            f"equation enrichment inventory is partial: {problems}"
+        )
+    return inventory
+
+
+def defer_equation_recognition(
+    checkpoint: EquationRecognitionCheckpoint,
+) -> EquationRecognitionDeferral:
+    """Defer only untouched pending work and preserve every other state."""
+
+    resulting_state = (
+        EquationRecognitionWorkState.NOT_REQUESTED
+        if checkpoint.state is EquationRecognitionWorkState.PENDING
+        else checkpoint.state
+    )
+    return EquationRecognitionDeferral(
+        previous_state=checkpoint.state,
+        resulting_state=resulting_state,
+        preserved_error=checkpoint.error,
+        changed=checkpoint.state is EquationRecognitionWorkState.PENDING,
+    )
 
 
 @dataclass(frozen=True)
@@ -211,6 +385,59 @@ class EquationRecognitionProcessorIdentity:
 
 
 @dataclass(frozen=True)
+class EquationRecognitionRequest(
+    AbstractImmutableDataObject,
+    DataObjectActionRequest,
+):
+    """Request one recognition effect for an exact assembly and processor."""
+
+    CONTRACT_NAME: ClassVar[str] = "equation-recognition-request"
+    CONTRACT_VERSION: ClassVar[str] = "1.0"
+
+    request_id: str
+    assembly_artifact: EquationAssemblyArtifact
+    processor_identity: EquationRecognitionProcessorIdentity
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        assembly_artifact: EquationAssemblyArtifact,
+        processor_identity: EquationRecognitionProcessorIdentity,
+    ) -> EquationRecognitionRequest:
+        return cls(
+            request_id=_equation_recognition_request_id(
+                assembly_artifact.artifact_id,
+                processor_identity.identity_digest,
+            ),
+            assembly_artifact=assembly_artifact,
+            processor_identity=processor_identity,
+        )
+
+    def __post_init__(self) -> None:
+        if type(self.assembly_artifact) is not EquationAssemblyArtifact:
+            raise TypeError(
+                "assembly_artifact must be an EquationAssemblyArtifact"
+            )
+        if (
+            type(self.processor_identity)
+            is not EquationRecognitionProcessorIdentity
+        ):
+            raise TypeError(
+                "processor_identity must be an "
+                "EquationRecognitionProcessorIdentity"
+            )
+        expected = _equation_recognition_request_id(
+            self.assembly_artifact.artifact_id,
+            self.processor_identity.identity_digest,
+        )
+        if self.request_id != expected:
+            raise ValueError(
+                "equation recognition request ID is inconsistent"
+            )
+
+
+@dataclass(frozen=True)
 class EquationRecognitionProposal:
     proposal_id: str
     assembly_id: str
@@ -254,7 +481,15 @@ class EquationRecognitionProposal:
 
 
 @dataclass(frozen=True)
-class EquationRecognitionArtifact:
+class EquationRecognitionArtifact(
+    AbstractImmutableDataObject,
+    DataObjectActionResult,
+):
+    """Result token produced for one exact recognition request."""
+
+    CONTRACT_NAME: ClassVar[str] = "equation-recognition-artifact"
+    CONTRACT_VERSION: ClassVar[str] = EQUATION_ENRICHMENT_CONTRACT_VERSION
+
     artifact_id: str
     assembly_artifact_id: str
     processor_identity: EquationRecognitionProcessorIdentity
@@ -263,6 +498,15 @@ class EquationRecognitionArtifact:
     diagnostic_byte_size: int
     diagnostic_sha256: str
     contract_version: str = EQUATION_ENRICHMENT_CONTRACT_VERSION
+
+    @property
+    def request_id(self) -> str:
+        """Return the request identity bound by this result token."""
+
+        return _equation_recognition_request_id(
+            self.assembly_artifact_id,
+            self.processor_identity.identity_digest,
+        )
 
     def __post_init__(self) -> None:
         if self.contract_version != EQUATION_ENRICHMENT_CONTRACT_VERSION:
@@ -289,6 +533,23 @@ class EquationRecognitionArtifact:
         )
         if self.artifact_id != expected:
             raise ValueError("equation recognition artifact ID is inconsistent")
+
+
+class AbstractEquationRecognizer(
+    DataObjectActionizer[
+        EquationRecognitionRequest,
+        EquationRecognitionArtifact,
+    ],
+    ABC,
+):
+    """Vendor-neutral action boundary for equation recognition."""
+
+    __slots__ = ()
+
+    @property
+    @abstractmethod
+    def identity(self) -> EquationRecognitionProcessorIdentity:
+        """Return the exact processor identity targeted by requests."""
 
 
 @dataclass(frozen=True)
@@ -426,178 +687,20 @@ class DeterministicEquationAssembler:
         )
 
 
-class Pix2TexCliEquationRecognizer:
-    """Bounded external pix2tex adapter with explicit model identities."""
+class EquationRecognitionError(RuntimeError):
+    """Raised when a requested equation-recognition transition cannot run."""
 
-    def __init__(
-        self,
-        executable: Path,
-        *,
-        backend_version: str,
-        resources: tuple[tuple[str, Path], ...],
-        temperature: float = 0.01,
-        timeout_seconds: int = 900,
-    ) -> None:
-        self.executable = executable.expanduser().resolve()
-        if not self.executable.is_file() or not os.access(
-            self.executable, os.X_OK
-        ):
-            raise ValueError("pix2tex executable is not executable")
-        if timeout_seconds <= 0 or timeout_seconds > 3600:
-            raise ValueError("pix2tex timeout must be in (0, 3600]")
-        self.timeout_seconds = timeout_seconds
-        resource_values = tuple(
-            EquationRecognitionResource(
-                name=name,
-                path=str(path.expanduser().resolve()),
-                sha256=hashlib.sha256(
-                    path.expanduser().resolve().read_bytes()
-                ).hexdigest(),
-                byte_size=path.expanduser().resolve().stat().st_size,
-            )
-            for name, path in sorted(resources)
-        )
-        executable_content = self.executable.read_bytes()
-        self.identity = EquationRecognitionProcessorIdentity(
-            processor_name="pix2tex-cli-equation-recognizer",
-            processor_version="1",
-            backend_name="pix2tex",
-            backend_version=backend_version,
-            executable_sha256=hashlib.sha256(executable_content).hexdigest(),
-            executable_semantic_sha256=_executable_semantic_sha256(
-                executable_content
-            ),
-            resources=resource_values,
-            temperature=temperature,
-        )
 
-    def process(
-        self,
-        artifact: EquationAssemblyArtifact,
-    ) -> EquationRecognitionArtifact:
-        if self.executable.is_symlink() or not self.executable.is_file():
-            raise ValueError("pix2tex executable path became unsafe")
-        if (
-            hashlib.sha256(self.executable.read_bytes()).hexdigest()
-            != self.identity.executable_sha256
-        ):
-            raise ValueError("pix2tex executable changed after planning")
-        for resource in self.identity.resources:
-            path = Path(resource.path)
-            if path.is_symlink() or not path.is_file():
-                raise ValueError(
-                    f"pix2tex resource path became unsafe: {resource.name}"
-                )
-            content = path.read_bytes()
-            if (
-                len(content) != resource.byte_size
-                or hashlib.sha256(content).hexdigest() != resource.sha256
-            ):
-                raise ValueError(
-                    f"pix2tex resource changed after planning: {resource.name}"
-                )
-        selected = tuple(
-            assembly
-            for assembly in artifact.assemblies
-            if assembly.kind is EquationAssemblyKind.DISPLAY
-            and not assembly.rejected
-        )
-        latex_by_id: dict[str, str] = {}
-        exit_code = 0
-        diagnostic = b""
-        if selected:
-            exit_code, diagnostic, latex_by_id = self._invoke(selected)
-        proposals = tuple(
-            _recognition_proposal(
-                assembly,
-                latex=latex_by_id.get(assembly.assembly_id),
-                exit_code=exit_code,
-                processor_identity_digest=self.identity.identity_digest,
-            )
-            for assembly in artifact.assemblies
-        )
-        diagnostic_sha256 = hashlib.sha256(diagnostic).hexdigest()
-        artifact_id = stable_id(
-            "equation-recognition-artifact",
-            EQUATION_ENRICHMENT_CONTRACT_VERSION,
-            artifact.artifact_id,
-            self.identity.identity_digest,
-            tuple(item.proposal_id for item in proposals),
-            exit_code,
-            len(diagnostic),
-            diagnostic_sha256,
-        )
-        return EquationRecognitionArtifact(
-            artifact_id=artifact_id,
-            assembly_artifact_id=artifact.artifact_id,
-            processor_identity=self.identity,
-            proposals=proposals,
-            invocation_exit_code=exit_code,
-            diagnostic_byte_size=len(diagnostic),
-            diagnostic_sha256=diagnostic_sha256,
-        )
-
-    def _invoke(
-        self,
-        assemblies: tuple[EquationAssembly, ...],
-    ) -> tuple[int, bytes, dict[str, str]]:
-        with tempfile.TemporaryDirectory(prefix="koios-pix2tex-") as directory:
-            root = Path(directory)
-            paths: dict[Path, str] = {}
-            for index, assembly in enumerate(assemblies):
-                suffix = assembly.assembly_id.rsplit(":", 1)[-1]
-                path = root / f"{index:04d}-{suffix}.png"
-                path.write_bytes(assembly.rendered_region.content)
-                paths[path.resolve()] = assembly.assembly_id
-            stdout_path = root / "stdout.txt"
-            stderr_path = root / "stderr.txt"
-            environment = dict(os.environ)
-            environment["NO_ALBUMENTATIONS_UPDATE"] = "1"
-            command = [
-                str(self.executable),
-                "--no-cuda",
-                "--temperature",
-                str(self.identity.temperature),
-                *(str(path) for path in paths),
-            ]
-            with (
-                stdout_path.open("wb") as stdout,
-                stderr_path.open("wb") as stderr,
-            ):
-                process = subprocess.Popen(
-                    command,
-                    stdin=subprocess.DEVNULL,
-                    stdout=stdout,
-                    stderr=stderr,
-                    env=environment,
-                )
-                try:
-                    exit_code = process.wait(timeout=self.timeout_seconds)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
-                    exit_code = 124
-            if stdout_path.stat().st_size > _MAX_OUTPUT_BYTES:
-                raise ValueError("pix2tex output exceeds the limit")
-            if stderr_path.stat().st_size > _MAX_DIAGNOSTIC_BYTES:
-                raise ValueError("pix2tex diagnostics exceed the limit")
-            output = stdout_path.read_text(encoding="utf-8", errors="strict")
-            diagnostic = stderr_path.read_bytes()
-            results: dict[str, str] = {}
-            for line in output.splitlines():
-                name, separator, latex = line.partition(": ")
-                if not separator:
-                    continue
-                path = Path(name).resolve()
-                assembly_id = paths.get(path)
-                if assembly_id is None or assembly_id in results:
-                    raise ValueError(
-                        "pix2tex returned an unexpected image path"
-                    )
-                text = latex.strip()
-                if text:
-                    results[assembly_id] = text
-            return exit_code, diagnostic, results
+def _equation_recognition_request_id(
+    assembly_artifact_id: str,
+    processor_identity_digest: str,
+) -> str:
+    return stable_id(
+        "equation-recognition-request",
+        EquationRecognitionRequest.CONTRACT_VERSION,
+        assembly_artifact_id,
+        processor_identity_digest,
+    )
 
 
 def build_equation_index(
@@ -841,56 +944,16 @@ def _assembly_from_group(
     )
 
 
-def _recognition_proposal(
+def is_primary_equation_recognition_candidate(
     assembly: EquationAssembly,
-    *,
-    latex: str | None,
-    exit_code: int,
-    processor_identity_digest: str,
-) -> EquationRecognitionProposal:
-    warnings: list[str] = []
-    failure: str | None = None
-    mathml: str | None = None
-    if assembly.rejected or assembly.kind is EquationAssemblyKind.INLINE:
-        status = EquationRecognitionStatus.NOT_REQUESTED
-        warnings.append("recognition_not_requested_for_non_primary_shape")
-    elif exit_code != 0 or latex is None:
-        status = EquationRecognitionStatus.FAILED
-        warnings.append("pix2tex_failed")
-        failure = (
-            f"pix2tex exit code {exit_code}; no bounded proposal was retained"
+) -> bool:
+    return (
+        assembly.kind is EquationAssemblyKind.DISPLAY
+        and not assembly.rejected
+        and all(
+            status is EquationEvidenceStatus.PROPOSED
+            for status in assembly.detector_evidence_statuses
         )
-    else:
-        status = EquationRecognitionStatus.PROPOSED
-        warnings.append("recognition_confidence_unavailable")
-        if not _latex_is_well_formed(latex):
-            warnings.append("latex_structure_suspect")
-        try:
-            from latex2mathml.converter import convert
-
-            mathml = convert(latex)
-        except Exception:  # latex2mathml exposes multiple parser exceptions
-            warnings.append("mathml_conversion_unavailable")
-    proposal_id = stable_id(
-        "equation-recognition-proposal",
-        EQUATION_ENRICHMENT_CONTRACT_VERSION,
-        assembly.assembly_id,
-        status,
-        latex,
-        mathml,
-        tuple(warnings),
-        failure,
-        processor_identity_digest,
-    )
-    return EquationRecognitionProposal(
-        proposal_id=proposal_id,
-        assembly_id=assembly.assembly_id,
-        status=status,
-        latex=latex,
-        mathml=mathml,
-        warning_codes=tuple(warnings),
-        failure_message=failure,
-        processor_identity_digest=processor_identity_digest,
     )
 
 
@@ -992,13 +1055,6 @@ def _index_text(
             f"Following context:\n{assembly.following_context_text.strip()}"
         )
     return "\n\n".join(parts)
-
-
-def _executable_semantic_sha256(content: bytes) -> str:
-    if content.startswith(b"#!"):
-        _, separator, remainder = content.partition(b"\n")
-        content = b"#!python\n" + remainder if separator else b"#!python"
-    return hashlib.sha256(content).hexdigest()
 
 
 def _sanitize_native_text(value: str) -> tuple[str, int]:

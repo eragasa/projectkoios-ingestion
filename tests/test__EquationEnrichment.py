@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import shutil
+import sys
 from io import BytesIO
 from pathlib import Path, PurePosixPath
 
@@ -14,19 +16,36 @@ from projectkoios.ingestion import (
     EquationRecognitionStatus,
     PdfBatchItem,
     PdfBatchPlan,
-    Pix2TexCliEquationRecognizer,
     PyMuPdfExtractor,
     SourceDocument,
     build_equation_index,
 )
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
-from projectkoios.ingestion.equation_enrichment import _sanitize_native_text
-from projectkoios.ingestion.equation_enrichment_cli import main as enrich_batch
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.equation_enrichment import (
+    EquationRecognitionError,
+    EquationRecognitionRequest,
+    _sanitize_native_text,
+)
+from projectkoios.ingestion.integrations.pix2tex.recognizer import (
+    Pix2TexCliEquationRecognizer,
+)
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 
 pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
+_SCRIPT = Path(__file__).parents[1] / "scripts/equation_enrichment.py"
+_SPEC = importlib.util.spec_from_file_location(
+    "projectkoios_ingestion_equation_enrichment_script",
+    _SCRIPT,
+)
+assert _SPEC is not None and _SPEC.loader is not None
+_SCRIPT_MODULE = importlib.util.module_from_spec(_SPEC)
+sys.modules[_SPEC.name] = _SCRIPT_MODULE
+_SPEC.loader.exec_module(_SCRIPT_MODULE)
+enrich_batch = _SCRIPT_MODULE.main
 
 
 def _detection():
@@ -65,6 +84,14 @@ def _recognizer(tmp_path: Path, latex: str = r"E=mc^2"):
     )
 
 
+def _recognize(recognizer, assembly):
+    request = EquationRecognitionRequest.create(
+        assembly_artifact=assembly,
+        processor_identity=recognizer.identity,
+    )
+    return recognizer.action(request=request)
+
+
 def test__equation_enrichment__keeps_raw_sanitized_and_visual_layers(
     tmp_path: Path,
 ) -> None:
@@ -73,7 +100,7 @@ def test__equation_enrichment__keeps_raw_sanitized_and_visual_layers(
     assembly = DeterministicEquationAssembler(
         renderer=PyMuPdfRegionRenderer()
     ).assemble(detection, payload)
-    recognition = _recognizer(tmp_path).process(assembly)
+    recognition = _recognize(_recognizer(tmp_path), assembly)
     index = build_equation_index(assembly, recognition)
 
     assert len(assembly.assemblies) == 1
@@ -103,7 +130,9 @@ def test__equation_enrichment__malformed_latex_remains_auxiliary(
         renderer=PyMuPdfRegionRenderer()
     ).assemble(detection, payload)
 
-    recognition = _recognizer(tmp_path, latex=r"\frac{x{").process(assembly)
+    recognition = _recognize(
+        _recognizer(tmp_path, latex=r"\frac{x{"), assembly
+    )
     index = build_equation_index(assembly, recognition)
 
     assert "latex_structure_suspect" in recognition.proposals[0].warning_codes
@@ -119,9 +148,10 @@ def test__equation_enrichment__keeps_prose_like_latex_auxiliary(
         renderer=PyMuPdfRegionRenderer()
     ).assemble(detection, payload)
 
-    recognition = _recognizer(
-        tmp_path, latex=r"\mathrm{largest~eigenvalue}"
-    ).process(assembly)
+    recognition = _recognize(
+        _recognizer(tmp_path, latex=r"\mathrm{largest~eigenvalue}"),
+        assembly,
+    )
     index = build_equation_index(assembly, recognition)
 
     assert index.records[0].tier is EquationIndexTier.AUXILIARY
@@ -259,8 +289,8 @@ def test__equation_enrichment__resource_identity_changes_with_model(
     assembly = DeterministicEquationAssembler(
         renderer=PyMuPdfRegionRenderer()
     ).assemble(detection, payload)
-    with pytest.raises(ValueError, match="resource changed"):
-        first.process(assembly)
+    with pytest.raises(EquationRecognitionError, match="resource changed"):
+        _recognize(first, assembly)
 
     assert before != second.identity.identity_digest
     assert (

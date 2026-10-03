@@ -1279,11 +1279,14 @@ process-global sequence number.
 
 ## Ollama multimodal region proposals
 
-Contract version 1.0 provides an immutable bounded request/result contract and
-`OllamaMultimodalRequest` → `OllamaMultimodalRegionProcessor` →
-`OllamaMultimodalResult` directly implements the action-family bases for exact
-ordered `RenderedRegion` PNGs. Canonical `action(request=...)` owns processing;
-supported `process()` forwards to that single logic path.
+The request and result each own their immutable bounded contract name, version,
+construction, and validation. There is no aggregate multimodal contract class.
+`OllamaMultimodalRegionProcessingRequest` → `OllamaMultimodalRegionProcessor` →
+`OllamaMultimodalRegionProcessingResult` directly implements the action-family
+bases for exact ordered `RenderedRegion` PNGs. Canonical
+`action(request=...)` owns processing; supported `process()` forwards to that
+single logic path. Preflight and model-list operations return named immutable
+result objects rather than anonymous multi-value tuples.
 Selections and ordered results retain complete source/blob/page/region and PNG
 provenance. The fixed prompt/schema and configured local endpoint, Ollama
 runtime version, model name, expected manifest digest, options, limits, and

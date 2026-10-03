@@ -1,17 +1,41 @@
 # `ingestion.equations` schematic
 
 ```mermaid
-flowchart LR
-    Document["extracted document + source stream"]
-    Layout["page layout processor"]
-    Renderer["PageRegionRenderer"]
-    Detector["equation candidate detector"]
-    Result["equation detection result"]
-
-    Document --> Detector
-    Layout --> Detector
-    Renderer --> Detector
-    Detector --> Result
+classDiagram
+    class EquationDerivationTrace
+    class EquationDerivationTransition
+    class EquationDerivationTransitionStatus
+    EquationDerivationTrace "1" *-- "1..4096" EquationDerivationTransition
+    EquationDerivationTransition --> EquationDerivationTransitionStatus
 ```
 
-Concrete renderer selection remains outside equation detection.
+```mermaid
+classDiagram
+    class AbstractEquation
+    class AbstractEquationImage
+    class EquationPngImage
+    class EquationJpegImage
+    class EquationWebpImage
+    class EquationLatex
+    class EquationMathML
+    class EquationKatex
+    class EquationImage {
+        +from_bytes()
+    }
+
+    AbstractEquation <|-- AbstractEquationImage
+    AbstractEquation <|-- EquationLatex
+    AbstractEquation <|-- EquationMathML
+    AbstractEquation <|-- EquationKatex
+    AbstractEquationImage <|-- EquationPngImage
+    AbstractEquationImage <|-- EquationJpegImage
+    AbstractEquationImage <|-- EquationWebpImage
+    EquationImage ..> EquationPngImage
+    EquationImage ..> EquationJpegImage
+    EquationImage ..> EquationWebpImage
+    EquationKatex --> EquationLatex
+    EquationKatex --> EquationMathML
+```
+
+The convenience factory returns concrete nominal image values. It is neither a
+persisted representation nor a workflow token.

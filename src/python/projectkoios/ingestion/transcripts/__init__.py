@@ -1,0 +1,1 @@
+"""Nominal transcript document hierarchy."""

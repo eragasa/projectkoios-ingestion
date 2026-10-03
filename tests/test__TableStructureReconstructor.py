@@ -24,7 +24,9 @@ from projectkoios.ingestion import (
     TableStructureLimitError,
     TableStructureReconstructor,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.table_structure import (
     TableStructureRequest,
     TableStructureResult,

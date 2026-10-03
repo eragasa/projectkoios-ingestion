@@ -16,7 +16,6 @@ koios-ingest-pdf-batch = "projectkoios.ingestion.batch_cli:main"
 koios-plan-pdf-corpus = "projectkoios.ingestion.corpus_plan_cli:main"
 koios-validate-pdf-corpus = "projectkoios.ingestion.corpus_validation_cli:main"
 koios-detect-pdf-equations-batch = "projectkoios.ingestion.equation_batch_cli:main"
-koios-enrich-pdf-equations-batch = "projectkoios.ingestion.equation_enrichment_cli:main"
 koios-plan-pdf-transcripts-batch = "projectkoios.ingestion.transcript_plan_cli:main"
 koios-compose-pdf-transcripts-batch = "projectkoios.ingestion.transcript_batch_cli:main"
 
@@ -31,10 +30,13 @@ namespaces = true
 [project.optional-dependencies]
 pdf = ["PyMuPDF>=1.24"]
 mathml = ["latex2mathml>=3.81"]
-dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>=3.81"]
+dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>=3.81", "mongomock==4.3.0"]
+mongodb = ["pymongo==4.18.2"]
+workflow = ["SNAKES==0.9.33"]
 
 [tool.uv.sources]
 projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "233f36900b9b44c943ecc5e27f2968ad4bee97ad" }
+snakes = { git = "https://github.com/eragasa/projectkoios-snakes.git", rev = "72dbb1dbf0a91349faca21ceb660923cc442a8e9" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

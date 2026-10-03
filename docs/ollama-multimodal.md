@@ -2,8 +2,10 @@
 
 `OllamaMultimodalRegionProcessor` is the concrete ingestion-owned adapter for
 bounded, non-deterministic transcription of exact `RenderedRegion` PNG evidence.
-It does not select pages, extract PDFs, detect unresolved content, accept model
-output, proofread text, or publish artifacts. Application policy must perform
+Its implementation and public API live under
+`projectkoios.ingestion.integrations.ollama`. It does not select pages, extract
+PDFs, detect unresolved content,
+accept model output, proofread text, or publish artifacts. Application policy must perform
 those operations externally. A live invocation must be gated by the
 application's explicit `--apply` mode and explicit Ollama configuration; there
 is no hosted-provider, alternate-model, OCR, or other fallback.
@@ -42,20 +44,24 @@ renderer.render(
 region without changing its bytes or evidence:
 
 ```python
-from projectkoios.ingestion import (
+from projectkoios.ingestion.integrations.ollama.base import OllamaRequestOptions
+from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMultimodalConfiguration,
     OllamaMultimodalLimits,
-    OllamaMultimodalRegionProcessor,
-    OllamaMultimodalRequest,
     OllamaMultimodalSelection,
-    OllamaRequestOptions,
+)
+from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base import (
+    OllamaMultimodalRegionProcessor,
+)
+from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.request import (
+    OllamaMultimodalRegionProcessingRequest,
 )
 
 selections = tuple(
     OllamaMultimodalSelection.from_rendered_region(region)
     for region in rendered_regions
 )
-request = OllamaMultimodalRequest.create(selections)
+request = OllamaMultimodalRegionProcessingRequest.create(selections)
 processor = OllamaMultimodalRegionProcessor(
     configuration=OllamaMultimodalConfiguration(
         endpoint="http://127.0.0.1:11434",
@@ -97,6 +103,21 @@ A pre-call lookup key is available as
 `build_ollama_multimodal_cache_key(request, processor.identity())`. Store only a
 result whose `cacheable` is true; every failed, partial, stale, malformed, or
 postflight-mismatched invocation is explicitly non-cacheable.
+
+## Contract ownership and versions
+
+There is no aggregate `OllamaMultimodalContract`. The request builds and
+validates its prompt and identity; the result constructs and validates complete
+or failed coverage; identity classes own their identity rules; and the region
+processor owns HTTP/chat parsing and response bounds. Compound operation
+outcomes such as preflight and model-list verification are immutable named
+result objects, not positional result tuples.
+
+Contract names and versions are class members of their owning objects. They
+participate in stable identities, and the publication result records its
+contract version. Existing identity namespaces remain unchanged. A durable
+shape change requires a new owner version and explicit migration rather than
+silently replacing the meaning of an older artifact.
 
 ## Local transport and model verification
 
@@ -153,7 +174,7 @@ review remains outside this adapter.
 Tests inject the structural `OllamaTransport` request seam:
 
 ```python
-class FakeTransport:
+class MockTransport:
     def request(
         self,
         *,

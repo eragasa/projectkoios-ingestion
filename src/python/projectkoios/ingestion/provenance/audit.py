@@ -11,7 +11,7 @@ from projectkoios.base import (
     DataObjectActionResult,
 )
 from projectkoios.ingestion.clean_transcript import CleanTranscript
-from projectkoios.ingestion.equations import EquationDetectionResult
+from projectkoios.ingestion.equations.detection import EquationDetectionResult
 from projectkoios.ingestion.figures import FigureDetectionResult
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult

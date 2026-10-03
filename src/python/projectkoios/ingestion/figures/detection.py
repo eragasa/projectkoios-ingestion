@@ -302,6 +302,15 @@ def _plan_candidates(
         )
         visuals: list[_Visual] = []
         for artifact in evidence.embedded_artifacts:
+            box = artifact.source_bounding_box
+            if (
+                box[2] - box[0]
+                < configuration.minimum_embedded_dimension_points
+                or box[3] - box[1]
+                < configuration.minimum_embedded_dimension_points
+                or _box_area(box) < configuration.minimum_embedded_area_points
+            ):
+                continue
             caption, distance = _nearest_caption(
                 artifact.source_bounding_box, captions, configuration
             )

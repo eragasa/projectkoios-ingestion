@@ -14,9 +14,11 @@ from projectkoios.ingestion.models import (
     Metadata,
     SourceDocument,
 )
-from projectkoios.ingestion.pdf.extractor import (
-    PdfExtractionConfiguration,
+from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
+)
+from projectkoios.ingestion.pdf.extraction.contracts import (
+    PdfExtractionConfiguration,
 )
 from projectkoios.ingestion.serialization import serialize_contract
 

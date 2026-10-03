@@ -1,13 +1,28 @@
 # `projectkoios.ingestion.pdf.adapters` implementation
 
-The package initially contains only `pymupdf.py`. Its initializer may expose the
-concrete adapter within the adapter namespace but contains no behavior. No
-abstract adapter base, registry, protocol, factory, compatibility alias, or
-wrapper is introduced.
+The target source hierarchy contains a concrete `pymupdf` package rather than a
+single mixed backend module:
 
-`PyMuPdfRegionRenderer` nominally inherits `PdfRegionRenderer`, which nominally
-inherits `PageRegionRenderer`. Only composition roots and integration tests
-import or construct the concrete adapter; neutral root packages do not export
-it. Every backend-specific import, object, coordinate transformation, raster
-geometry calculation, render call, and encoding operation remains inside the
-concrete adapter module.
+```text
+adapters/
+  __init__.py          # namespace only
+  errors.py            # shared optional-adapter dependency error
+  pymupdf/
+    __init__.py        # namespace only
+    extraction.py      # PyMuPdfExtractor
+    rendering.py       # PyMuPdfRegionRenderer
+```
+
+Initializers contain no behavior, registry, factory, compatibility wrapper, or
+export-all list. Composition roots import concrete implementations from their
+defining modules.
+
+Both concrete implementations use the shared typed dependency error and own
+PyMuPDF loading and backend translation for their respective operation.
+Backend-neutral validation,
+resource policy, requests, results, and deterministic block actions remain in
+`pdf.extraction`, `pdf.renderer`, and `pdf.preflight`.
+
+The migration preserves current public behavior before removing any established
+facade. A facade change requires a separate explicit review; moving internal
+composition imports does not itself authorize a public API break.

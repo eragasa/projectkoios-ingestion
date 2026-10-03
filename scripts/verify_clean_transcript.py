@@ -100,7 +100,7 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
         CleanTranscriptRequest,
         DeterministicCleanTranscriptProjector,
     )
-    from projectkoios.ingestion.equations import (
+    from projectkoios.ingestion.equations.detection import (
         DeterministicEquationCandidateDetector,
     )
     from projectkoios.ingestion.figures import (
@@ -109,6 +109,9 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     from projectkoios.ingestion.layout import DeterministicLayoutProcessor
     from projectkoios.ingestion.models import SourceDocument
     from projectkoios.ingestion.pdf import PyMuPdfExtractor
+    from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+        PyMuPdfRegionRenderer,
+    )
     from projectkoios.ingestion.provenance import (
         DerivationAuditInput,
         DerivationAuditValidator,
@@ -143,18 +146,21 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
     structure = DeterministicArticleStructureAnalyzer().analyze(document)
-    equations = DeterministicEquationCandidateDetector().detect_with_layout(
+    renderer = PyMuPdfRegionRenderer()
+    equations = DeterministicEquationCandidateDetector(
+        region_renderer=renderer
+    ).detect_with_layout(
         document, BytesIO(payload), layouts
     )
-    table_detection = DeterministicTableCandidateDetector().detect_with_layout(
-        document, BytesIO(payload), layouts
-    )
+    table_detection = DeterministicTableCandidateDetector(
+        region_renderer=renderer
+    ).detect_with_layout(document, BytesIO(payload), layouts)
     tables = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    figures = DeterministicFigureCandidateDetector().detect_with_layout(
-        document, BytesIO(payload), layouts
-    )
+    figures = DeterministicFigureCandidateDetector(
+        region_renderer=renderer
+    ).detect_with_layout(document, BytesIO(payload), layouts)
     transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,

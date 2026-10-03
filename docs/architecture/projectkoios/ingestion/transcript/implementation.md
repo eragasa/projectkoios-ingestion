@@ -1,15 +1,23 @@
 # `projectkoios.ingestion.transcript` implementation
 
-The package initializer defines the transcript-derived namespace without
-re-exporting child classes. Canonical selection classes are owned lower in the
-source hierarchy and intentionally surfaced only by their local facade and the
-root `projectkoios.ingestion` facade.
+The package initializer defines the transcript-owned namespace without
+re-exporting child classes. Canonical implementations are imported from their
+defining child modules and surfaced through an established root facade only
+when that public API is separately intentional.
 
 ```mermaid
 flowchart TD
     Init["transcript/__init__.py"] --> Namespace["ownership namespace"]
+    Namespace --> Batch["batch package"]
     Namespace --> Evidence["evidence package"]
     Evidence --> Selection["selection package"]
 ```
 
-No compatibility alias for `transcript_evidence_selection` is retained.
+`transcript.batch` owns composition, planning, and publication for transcript
+runs. `transcript.evidence` owns transcript-derived evidence operations. Neither
+package owns PDF backend implementation, source routing, rights policy, Search,
+or indexing.
+
+No compatibility alias is added inside namespace-only package initializers.
+Any established root API retained during a source move remains explicit and is
+reviewed separately from internal ownership.

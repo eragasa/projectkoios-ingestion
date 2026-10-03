@@ -7,7 +7,7 @@ from enum import Enum, StrEnum
 from itertools import islice
 
 from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
-from projectkoios.ingestion.equations import EquationCandidate
+from projectkoios.ingestion.equations.detection import EquationCandidate
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import Metadata, WarningSeverity
 from projectkoios.ingestion.pdf.models import RenderedRegion

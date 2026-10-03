@@ -27,7 +27,9 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion import (
     TranscriptionInput as DeprecatedRootInput,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.protocols import (
     StructuredTranscriptionComposer as DeprecatedComposerProtocol,
 )

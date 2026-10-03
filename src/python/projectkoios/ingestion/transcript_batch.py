@@ -25,13 +25,15 @@ from projectkoios.ingestion.equation_batch_cli import (
     _resolve_items,
     _ResolvedItem,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     DeterministicEquationCandidateDetector,
 )
 from projectkoios.ingestion.figures import DeterministicFigureCandidateDetector
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import DeterministicLayoutProcessor
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,

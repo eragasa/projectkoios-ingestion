@@ -32,8 +32,8 @@ from projectkoios.ingestion.pdf.models import (
 from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
 
 FIGURE_CONTRACT_VERSION = "1.0"
-FIGURE_DETECTOR_VERSION = "1"
-FIGURE_INSPECTOR_VERSION = "1"
+FIGURE_DETECTOR_VERSION = "2"
+FIGURE_INSPECTOR_VERSION = "3"
 _MAX_SOURCE_BYTES = 1_000_000_000
 _MAX_PAGES = 512
 _MAX_INPUT_BLOCKS = 16_384
@@ -140,6 +140,8 @@ class FigureDetectionConfiguration:
     association_distance_points: float = 96.0
     drawing_group_gap_points: float = 24.0
     render_padding_points: float = 6.0
+    minimum_embedded_dimension_points: float = 1.0
+    minimum_embedded_area_points: float = 4.0
     minimum_drawing_dimension_points: float = 4.0
     minimum_drawing_area_points: float = 64.0
     maximum_legend_characters: int = 512
@@ -198,6 +200,8 @@ class FigureDetectionConfiguration:
             ("association_distance_points", 720.0),
             ("drawing_group_gap_points", 144.0),
             ("render_padding_points", 72.0),
+            ("minimum_embedded_dimension_points", 144.0),
+            ("minimum_embedded_area_points", 20_736.0),
             ("minimum_drawing_dimension_points", 144.0),
             ("minimum_drawing_area_points", 20_736.0),
         ):

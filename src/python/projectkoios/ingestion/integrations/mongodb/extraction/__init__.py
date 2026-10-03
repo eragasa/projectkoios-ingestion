@@ -1,0 +1,1 @@
+"""MongoDB extraction-projection namespace."""

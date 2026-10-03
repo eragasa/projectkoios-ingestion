@@ -34,7 +34,9 @@ from projectkoios.ingestion import (
     PyMuPdfExtractor,
     SourceDocument,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,

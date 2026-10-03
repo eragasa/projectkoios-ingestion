@@ -49,10 +49,21 @@ jobs:
           tests/test__ReferenceClaimCandidate.py
 
       - name: Lint all Python
-        run: .venv/bin/python -m ruff check src/python tests
+        run: >-
+          .venv/bin/python -m ruff check
+          src/python
+          workflow
+          cpn
+          scripts
+          tests
 
       - name: Type-check all production source
-        run: .venv/bin/python -m mypy src/python
+        run: >-
+          .venv/bin/python -m mypy
+          src/python
+          workflow
+          cpn
+          scripts
 
       - name: Run full test suite
         run: .venv/bin/python -m pytest -q

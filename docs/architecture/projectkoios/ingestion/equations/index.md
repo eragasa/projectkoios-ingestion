@@ -1,5 +1,6 @@
 # `projectkoios.ingestion.equations`
 
-This module owns equation candidate contracts and deterministic detection. It
-consumes an injected neutral page renderer for selected evidence regions and
-does not select, import, or construct a concrete PDF backend.
+This package owns nominal equation representations, exact format-specific image
+values, representation provenance links, and deterministic candidate detection.
+Detection lives in `equations.detection`; image formats and the closed factory
+live under `equations.image`. Namespace initializers do not re-export classes.

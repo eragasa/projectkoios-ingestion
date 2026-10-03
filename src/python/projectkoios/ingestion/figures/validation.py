@@ -24,6 +24,7 @@ from projectkoios.ingestion.figures.contracts import (
     _decimal,
     _identity_fields,
     _near_box,
+    _optional_block_box,
     _require_tuple,
     _source_label,
     _union_boxes,
@@ -114,8 +115,17 @@ def validate_input_parts(
             or evidence.coordinate_system != page.coordinate_system
         ):
             raise ValueError("figure page evidence is stale or inconsistent")
+        unlocated_images = tuple(
+            block
+            for block in page.blocks
+            if block.kind == "image" and _optional_block_box(block) is None
+        )
+        if any(not block.warning_ids for block in unlocated_images):
+            raise ValueError("unlocated figure image lacks extraction warning")
         expected_image_ids = tuple(
-            block.block_id for block in page.blocks if block.kind == "image"
+            block.block_id
+            for block in page.blocks
+            if block.kind == "image" and _optional_block_box(block) is not None
         )
         if (
             tuple(

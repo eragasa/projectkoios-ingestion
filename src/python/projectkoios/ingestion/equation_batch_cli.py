@@ -19,11 +19,13 @@ from projectkoios.ingestion.cli import (
 from projectkoios.ingestion.equation_retrieval import (
     EquationRetrievalArtifact,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.detection import (
     DeterministicEquationCandidateDetector,
     EquationDetectionResult,
 )
-from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
+    PyMuPdfRegionRenderer,
+)
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,

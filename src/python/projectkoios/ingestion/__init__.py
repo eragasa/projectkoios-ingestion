@@ -61,11 +61,17 @@ from projectkoios.ingestion.corpus import (
     validate_pdf_extraction,
 )
 from projectkoios.ingestion.documents import (
+    AbstractArticle,
+    AbstractDocument,
+    AbstractTextbook,
     ExtractedArticle,
     ExtractedTextbook,
 )
+from projectkoios.ingestion.documents.block.base import AbstractDocumentBlock
+from projectkoios.ingestion.documents.page.base import AbstractDocumentPage
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,
+    AbstractEquationRecognizer,
     DeterministicEquationAssembler,
     EquationAssembly,
     EquationAssemblyArtifact,
@@ -74,11 +80,12 @@ from projectkoios.ingestion.equation_enrichment import (
     EquationIndexRecord,
     EquationIndexTier,
     EquationRecognitionArtifact,
+    EquationRecognitionError,
     EquationRecognitionProcessorIdentity,
     EquationRecognitionProposal,
+    EquationRecognitionRequest,
     EquationRecognitionResource,
     EquationRecognitionStatus,
-    Pix2TexCliEquationRecognizer,
     build_equation_index,
 )
 from projectkoios.ingestion.equation_retrieval import (
@@ -111,7 +118,8 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionWarning,
     build_equation_transcription_cache_key,
 )
-from projectkoios.ingestion.equations import (
+from projectkoios.ingestion.equations.base import AbstractEquation
+from projectkoios.ingestion.equations.detection import (
     EQUATION_CONTRACT_VERSION,
     EQUATION_DETECTOR_VERSION,
     DeterministicEquationCandidateDetector,
@@ -125,6 +133,17 @@ from projectkoios.ingestion.equations import (
     EquationDetectionResult,
     EquationEvidenceStatus,
 )
+from projectkoios.ingestion.equations.image.base import AbstractEquationImage
+from projectkoios.ingestion.equations.image.factory import (
+    EquationImage,
+    EquationImageFormatError,
+)
+from projectkoios.ingestion.equations.image.jpeg import EquationJpegImage
+from projectkoios.ingestion.equations.image.png import EquationPngImage
+from projectkoios.ingestion.equations.image.webp import EquationWebpImage
+from projectkoios.ingestion.equations.katex import EquationKatex
+from projectkoios.ingestion.equations.latex import EquationLatex
+from projectkoios.ingestion.equations.mathml import EquationMathML
 from projectkoios.ingestion.figure_relevance import (
     FIGURE_RELEVANCE_CONFIGURATION_VERSION,
     FIGURE_RELEVANCE_CONTRACT_VERSION,
@@ -166,6 +185,9 @@ from projectkoios.ingestion.figures import (
     FigurePageEvidence,
     FigureTextAssociation,
     PyMuPdfFigureInspector,
+)
+from projectkoios.ingestion.integrations.pix2tex.recognizer import (
+    Pix2TexCliEquationRecognizer,
 )
 from projectkoios.ingestion.layout import (
     LAYOUT_CONTRACT_VERSION,
@@ -218,44 +240,6 @@ from projectkoios.ingestion.ocr import (
     OCRWarning,
     build_ocr_cache_key,
 )
-from projectkoios.ingestion.ollama_multimodal import (
-    OLLAMA_MULTIMODAL_CONTRACT_VERSION,
-    OLLAMA_MULTIMODAL_PROCESSOR_VERSION,
-    OLLAMA_MULTIMODAL_PROMPT_VERSION,
-    LoopbackOllamaHttpTransport,
-    OllamaHttpResponse,
-    OllamaMetadataResponseIdentity,
-    OllamaMetadataStage,
-    OllamaModelVerification,
-    OllamaModelVerificationStatus,
-    OllamaMultimodalConfiguration,
-    OllamaMultimodalConfigurationError,
-    OllamaMultimodalDeterminism,
-    OllamaMultimodalEvidenceStatus,
-    OllamaMultimodalFailure,
-    OllamaMultimodalFailureKind,
-    OllamaMultimodalLimitError,
-    OllamaMultimodalLimits,
-    OllamaMultimodalProcessorIdentity,
-    OllamaMultimodalProposal,
-    OllamaMultimodalRegionProcessor,
-    OllamaMultimodalRequest,
-    OllamaMultimodalResult,
-    OllamaMultimodalResultStatus,
-    OllamaMultimodalSelection,
-    OllamaMultimodalSelectionResult,
-    OllamaMultimodalSelectionStatus,
-    OllamaMultimodalTaskKind,
-    OllamaMultimodalWarning,
-    OllamaPromptRecord,
-    OllamaRawResponseIdentity,
-    OllamaRequestOptions,
-    OllamaTransport,
-    OllamaTransportError,
-    OllamaTransportFailureKind,
-    build_ollama_multimodal_cache_key,
-    normalize_ollama_endpoint,
-)
 from projectkoios.ingestion.pdf import (
     DEFAULT_MAXIMUM_PDF_PAGES,
     PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION,
@@ -281,7 +265,6 @@ from projectkoios.ingestion.pdf import (
     PdfRegionRenderer,
     PdfRegionRenderLimitError,
     PdfSourceIntegrityError,
-    PyMuPdfExtractor,
     RegionColorMode,
     RegionRenderConfiguration,
     RenderedRegion,
@@ -290,6 +273,9 @@ from projectkoios.ingestion.pdf import (
     extract_pdf_bytes_artifacts,
     prepare_pdf_bytes_extraction,
     read_pdf_extraction_transcript,
+)
+from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
+    PyMuPdfExtractor,
 )
 from projectkoios.ingestion.processing import (
     PROCESSING_CONFIGURATION_VERSION,
@@ -515,6 +501,13 @@ from projectkoios.ingestion.transcription import (
     TranscriptionStatus,
     build_transcription_cache_key,
 )
+from projectkoios.ingestion.transcripts.base import AbstractTranscript
+from projectkoios.ingestion.transcripts.block.base import (
+    AbstractTranscriptBlock,
+)
+from projectkoios.ingestion.transcripts.page.base import (
+    AbstractTranscriptPage,
+)
 
 __all__ = [
     "CLEAN_TRANSCRIPT_PROCESSOR_VERSION",
@@ -538,9 +531,6 @@ __all__ = [
     "LAYOUT_CONTRACT_VERSION",
     "OCR_CONTRACT_VERSION",
     "OCR_RECONCILIATION_CONTRACT_VERSION",
-    "OLLAMA_MULTIMODAL_CONTRACT_VERSION",
-    "OLLAMA_MULTIMODAL_PROCESSOR_VERSION",
-    "OLLAMA_MULTIMODAL_PROMPT_VERSION",
     "PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION",
     "PROCESSING_CONFIGURATION_VERSION",
     "PROCESSING_CONTRACT_VERSION",
@@ -576,6 +566,14 @@ __all__ = [
     "TRANSCRIPTION_CONTRACT_VERSION",
     "TRANSCRIPTION_NORMALIZATION_METHOD",
     "EXTRACTION_CACHE_FORMAT_VERSION",
+    "AbstractArticle",
+    "AbstractDocument",
+    "AbstractDocumentBlock",
+    "AbstractDocumentPage",
+    "AbstractTextbook",
+    "AbstractTranscript",
+    "AbstractTranscriptBlock",
+    "AbstractTranscriptPage",
     "ArticleIngester",
     "ArticleStructureAnalyzer",
     "ArticleStructureConfiguration",
@@ -596,6 +594,9 @@ __all__ = [
     "CodeRepositoryIndexer",
     "CodeRepositoryIngester",
     "DerivationAuditError",
+    "AbstractEquation",
+    "AbstractEquationImage",
+    "AbstractEquationRecognizer",
     "DerivationAuditFinding",
     "DerivationAuditFindingCode",
     "DerivationAuditInput",
@@ -634,12 +635,21 @@ __all__ = [
     "EquationDetectionLimitError",
     "EquationDetectionResult",
     "EquationEvidenceStatus",
+    "EquationImage",
+    "EquationImageFormatError",
     "EquationIndexArtifact",
     "EquationIndexRecord",
     "EquationIndexTier",
+    "EquationJpegImage",
+    "EquationKatex",
+    "EquationLatex",
+    "EquationMathML",
+    "EquationPngImage",
     "EquationRecognitionArtifact",
+    "EquationRecognitionError",
     "EquationRecognitionProcessorIdentity",
     "EquationRecognitionProposal",
+    "EquationRecognitionRequest",
     "EquationRecognitionResource",
     "EquationRecognitionStatus",
     "EquationRetrievalArtifact",
@@ -665,6 +675,7 @@ __all__ = [
     "EquationTranscriptionStatus",
     "EquationTranscriptionSymbol",
     "EquationTranscriptionWarning",
+    "EquationWebpImage",
     "ExtractionCache",
     "ExtractionCacheCorruptionError",
     "ExtractionCacheError",
@@ -707,37 +718,6 @@ __all__ = [
     "IngestionStatus",
     "IngestionWarning",
     "LayoutAnalysisLimitError",
-    "LoopbackOllamaHttpTransport",
-    "OllamaHttpResponse",
-    "OllamaMetadataResponseIdentity",
-    "OllamaMetadataStage",
-    "OllamaModelVerification",
-    "OllamaModelVerificationStatus",
-    "OllamaMultimodalConfiguration",
-    "OllamaMultimodalConfigurationError",
-    "OllamaMultimodalDeterminism",
-    "OllamaMultimodalEvidenceStatus",
-    "OllamaMultimodalFailure",
-    "OllamaMultimodalFailureKind",
-    "OllamaMultimodalLimitError",
-    "OllamaMultimodalLimits",
-    "OllamaMultimodalProcessorIdentity",
-    "OllamaMultimodalProposal",
-    "OllamaMultimodalRegionProcessor",
-    "OllamaMultimodalRequest",
-    "OllamaMultimodalResult",
-    "OllamaMultimodalResultStatus",
-    "OllamaMultimodalSelection",
-    "OllamaMultimodalSelectionResult",
-    "OllamaMultimodalSelectionStatus",
-    "OllamaMultimodalTaskKind",
-    "OllamaMultimodalWarning",
-    "OllamaPromptRecord",
-    "OllamaRawResponseIdentity",
-    "OllamaRequestOptions",
-    "OllamaTransport",
-    "OllamaTransportError",
-    "OllamaTransportFailureKind",
     "LayoutBlockReference",
     "LayoutConfiguration",
     "LayoutExclusion",
@@ -943,13 +923,11 @@ __all__ = [
     "build_figure_relevance_cache_key",
     "build_ocr_cache_key",
     "build_pdf_extraction_artifacts",
-    "build_ollama_multimodal_cache_key",
     "build_reference_evidence",
     "build_transcript_batch_plan",
     "build_transcription_cache_key",
     "load_durable_plan",
     "load_pdf_corpus_plans",
-    "normalize_ollama_endpoint",
     "prepare_pdf_bytes_extraction",
     "prepare_pdf_corpus",
     "publish_durable_plan",
