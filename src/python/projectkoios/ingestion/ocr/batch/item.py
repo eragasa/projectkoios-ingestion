@@ -11,7 +11,7 @@ from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_MAX_PAGES_PER_ITEM = 256
+_MAX_PAGES_PER_ITEM = 1_024
 _MAX_PATH_CHARACTERS = 4_096
 
 

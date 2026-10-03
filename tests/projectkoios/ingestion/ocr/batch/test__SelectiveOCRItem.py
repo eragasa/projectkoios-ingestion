@@ -32,3 +32,14 @@ def test__selective_ocr_item__requires_ordered_unique_pages() -> None:
             output_directory=PurePosixPath("ocr/fixture"),
             pages=(SelectiveOCRPage(3), SelectiveOCRPage(1)),
         )
+
+
+def test__selective_ocr_item__supports_one_bounded_scanned_document() -> None:
+    item = SelectiveOCRItem(
+        source=_source(),
+        extraction_sha256="b" * 64,
+        output_directory=PurePosixPath("ocr/scanned"),
+        pages=tuple(SelectiveOCRPage(index) for index in range(370)),
+    )
+
+    assert len(item.pages) == 370
