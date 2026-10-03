@@ -502,6 +502,7 @@ def _validate_result(result: ExtractionResult) -> None:
         raise ValueError("document warning IDs must match result warnings")
 
     object_ids = [document.document_id]
+    resolvable_warning_object_ids = {document.document_id}
     referenced_warning_ids: set[str] = set()
     expected_document = ExtractedDocument.create(
         source=source,
@@ -517,6 +518,7 @@ def _validate_result(result: ExtractionResult) -> None:
         referenced_warning_ids.update(page.warning_ids)
         for block in page.blocks:
             object_ids.append(block.block_id)
+            resolvable_warning_object_ids.add(block.block_id)
             referenced_warning_ids.update(block.warning_ids)
             expected_block = ExtractedBlock.create(
                 kind=block.kind,
@@ -540,9 +542,12 @@ def _validate_result(result: ExtractionResult) -> None:
                     raise ValueError(
                         "block span page label does not match its page"
                     )
+                if span.source_object_id is not None:
+                    resolvable_warning_object_ids.add(span.source_object_id)
 
     for entry in document.table_of_contents:
         object_ids.append(entry.entry_id)
+        resolvable_warning_object_ids.add(entry.entry_id)
         expected_entry = TableOfContentsEntry.create(
             source=source,
             level=entry.level,
@@ -567,7 +572,7 @@ def _validate_result(result: ExtractionResult) -> None:
         )
         if warning.warning_id != expected_warning.warning_id:
             raise ValueError("warning ID is invalid")
-        if not set(warning.object_ids).issubset(set(object_ids)):
+        if not set(warning.object_ids).issubset(resolvable_warning_object_ids):
             raise ValueError("warning refers to an unknown extracted object")
         for span in warning.source_spans:
             _validate_span_page(span, source, page_by_index)

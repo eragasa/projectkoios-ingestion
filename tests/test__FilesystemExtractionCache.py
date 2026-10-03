@@ -22,8 +22,10 @@ from projectkoios.ingestion import (
     FilesystemExtractionCache,
     IngestionManifest,
     IngestionStatus,
+    IngestionWarning,
     SourceDocument,
     SourceSpan,
+    WarningSeverity,
     build_extraction_cache_key,
 )
 from projectkoios.ingestion.identity import (
@@ -85,6 +87,72 @@ def _result(
     return ExtractionResult(document=document, manifest=manifest)
 
 
+def _result_with_source_object_warning(
+    *,
+    warning_object_id: str = "page:0:block:0",
+) -> ExtractionResult:
+    source = SourceDocument.from_bytes(
+        b"cache warning fixture",
+        source_id="article:cache-warning-fixture",
+        media_type="application/pdf",
+        locator="warning-fixture.pdf",
+    )
+    span = SourceSpan(
+        source_id=source.source_id,
+        source_blob_id=source.blob_id,
+        page_index=0,
+        printed_page_label="1",
+        source_object_id="page:0:block:0",
+        bounding_box=None,
+    )
+    warning = IngestionWarning.create(
+        code="pdf.invalid_block_geometry",
+        severity=WarningSeverity.WARNING,
+        message="Invalid geometry was retained without a bounding box",
+        object_ids=(warning_object_id,),
+        source_spans=(span,),
+        evidence=(("geometry_reason", "outside_page"),),
+    )
+    block = ExtractedBlock.create(
+        kind="text",
+        source_spans=(span,),
+        extraction_method="fixture",
+        confidence=1.0,
+        text="Retained evidence",
+        warning_ids=(warning.warning_id,),
+    )
+    page = ExtractedPage(
+        page_index=0,
+        width=612.0,
+        height=792.0,
+        blocks=(block,),
+        printed_page_label="1",
+        warning_ids=(warning.warning_id,),
+        coordinate_system="fixture-points",
+    )
+    document = ExtractedDocument.create(
+        source=source,
+        pages=(page,),
+        warning_ids=(warning.warning_id,),
+    )
+    manifest = IngestionManifest.create(
+        source=source,
+        extractor_name="fixture",
+        extractor_version="1+backend.1",
+        configuration_digest=stable_id("configuration", "warning"),
+        object_ids=(document.document_id, block.block_id),
+        warning_ids=(warning.warning_id,),
+        status=IngestionStatus.COMPLETED,
+        started_at="2026-01-01T00:00:00Z",
+        completed_at="2026-01-01T00:00:01Z",
+    )
+    return ExtractionResult(
+        document=document,
+        manifest=manifest,
+        warnings=(warning,),
+    )
+
+
 def _entry_path(root: Path, cache_key: str) -> Path:
     key_hash = sha256_digest(cache_key.encode())
     return (
@@ -131,6 +199,36 @@ def test__filesystem_cache__deterministic_round_trip(tmp_path: Path) -> None:
     assert (
         envelope["identity"]["source_blob_id"] == result.document.source.blob_id
     )
+
+
+def test__filesystem_cache__round_trips_source_object_warning_target(
+    tmp_path: Path,
+) -> None:
+    result = _result_with_source_object_warning()
+    cache = FilesystemExtractionCache(tmp_path / "cache")
+
+    cache.put(result.manifest.cache_key, result)
+
+    assert cache.get(result.manifest.cache_key) == result
+    assert result.manifest.object_ids == (
+        result.document.document_id,
+        result.document.pages[0].blocks[0].block_id,
+    )
+
+
+def test__filesystem_cache__rejects_unknown_warning_target(
+    tmp_path: Path,
+) -> None:
+    result = _result_with_source_object_warning(
+        warning_object_id="page:0:block:missing"
+    )
+    root = tmp_path / "cache"
+    cache = FilesystemExtractionCache(root)
+
+    with pytest.raises(ValueError, match="unknown extracted object"):
+        cache.put(result.manifest.cache_key, result)
+
+    assert not root.exists()
 
 
 def test__filesystem_cache__round_trips_page_rotation_evidence(
