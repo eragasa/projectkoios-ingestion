@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
-from projectkoios.ingestion.equation_enrichment import (
-    EquationAssemblyArtifact,
+from projectkoios.ingestion.equations.assembly.result import (
+    EquationAssemblyResult,
+)
+from projectkoios.ingestion.equations.derivation.recognition.failure import (
+    EquationRecognitionDerivationFailure,
+)
+from projectkoios.ingestion.equations.derivation.recognition.result import (
+    EquationRecognitionDerivationResult,
+)
+from projectkoios.ingestion.equations.recognition.artifact import (
     EquationRecognitionArtifact,
+)
+from projectkoios.ingestion.equations.recognition.processor.identity import (
     EquationRecognitionProcessorIdentity,
+)
+from projectkoios.ingestion.equations.recognition.request import (
     EquationRecognitionRequest,
 )
 from snakes.nets import (  # type: ignore[import-untyped]
@@ -20,34 +30,35 @@ from snakes.nets import (  # type: ignore[import-untyped]
 )
 from snakes.typing import Instance  # type: ignore[import-untyped]
 
-from workflow.equation_recognition import plan_equation_recognition
+from workflow.equation_recognition import (
+    plan_equation_recognition,
+    record_equation_recognition_derivation,
+)
+
+EquationRecognitionFailureToken = EquationRecognitionDerivationFailure
 
 
 class EquationRecognitionCpnError(RuntimeError):
     """Raised when the bounded equation-recognition net is inconsistent."""
 
 
-@dataclass(frozen=True, slots=True)
-class EquationRecognitionFailureToken:
-    """CPN token routed after an equation-recognition exception."""
-
-    request_id: str
-    message: str
-
-    def __post_init__(self) -> None:
-        if not self.request_id or not self.message:
-            raise ValueError("recognition failure token is incomplete")
-        if len(self.message) > 1_024:
-            raise ValueError("recognition failure token exceeds its bound")
-
-
 def _recognition_request(
-    assembly: EquationAssemblyArtifact,
+    assembly: EquationAssemblyResult,
     processor: EquationRecognitionProcessorIdentity,
 ) -> EquationRecognitionRequest:
     return plan_equation_recognition(
         assembly=assembly,
         processor=processor,
+    )
+
+
+def _recognition_derivation(
+    request: EquationRecognitionRequest,
+    result: EquationRecognitionArtifact,
+) -> EquationRecognitionDerivationResult:
+    return record_equation_recognition_derivation(
+        request=request,
+        result=result,
     )
 
 
@@ -68,24 +79,25 @@ def _fire_exactly_one(net: PetriNet, transition_name: str) -> None:
 
 
 def build_equation_recognition_net(
-    assembly: EquationAssemblyArtifact,
+    assembly: EquationAssemblyResult,
     processor: EquationRecognitionProcessorIdentity,
 ) -> object:
     """Build the bounded net without executing an external effect."""
 
-    if type(assembly) is not EquationAssemblyArtifact:
-        raise TypeError("assembly must be an EquationAssemblyArtifact")
+    if type(assembly) is not EquationAssemblyResult:
+        raise TypeError("assembly must be an EquationAssemblyResult")
     if type(processor) is not EquationRecognitionProcessorIdentity:
         raise TypeError(
             "processor must be an EquationRecognitionProcessorIdentity"
         )
     net = PetriNet("equation-recognition")
     net.globals["recognition_request"] = _recognition_request
+    net.globals["recognition_derivation"] = _recognition_derivation
     net.add_place(
         Place(
             "assembly_ready",
             [assembly],
-            Instance(EquationAssemblyArtifact),
+            Instance(EquationAssemblyResult),
         )
     )
     net.add_place(
@@ -107,19 +119,19 @@ def build_equation_recognition_net(
     net.add_place(
         Place(
             "external_failures",
-            check=Instance(EquationRecognitionFailureToken),
+            check=Instance(EquationRecognitionDerivationFailure),
         )
     )
     net.add_place(
         Place(
             "recognition_complete",
-            check=Instance(EquationRecognitionArtifact),
+            check=Instance(EquationRecognitionDerivationResult),
         )
     )
     net.add_place(
         Place(
             "recognition_failed",
-            check=Instance(EquationRecognitionFailureToken),
+            check=Instance(EquationRecognitionDerivationFailure),
         )
     )
 
@@ -155,13 +167,13 @@ def build_equation_recognition_net(
     net.add_output(
         "recognition_complete",
         "record_recognition_result",
-        Expression("result"),
+        Expression("recognition_derivation(request, result)"),
     )
 
     net.add_transition(
         Transition(
             "record_recognition_failure",
-            Expression("request.request_id == failure.request_id"),
+            Expression("request.request_id == failure.request.request_id"),
         )
     )
     net.add_input(
@@ -203,8 +215,8 @@ def project_equation_recognition_request(
 def record_equation_recognition_result(
     net: object,
     result: EquationRecognitionArtifact,
-) -> EquationRecognitionArtifact:
-    """Correlate one externally supplied result through the net."""
+) -> EquationRecognitionDerivationResult:
+    """Correlate one externally supplied result and derive its trace."""
 
     if type(result) is not EquationRecognitionArtifact:
         raise TypeError("result must be an EquationRecognitionArtifact")
@@ -212,21 +224,27 @@ def record_equation_recognition_result(
     actual.place("external_results").add(result)
     _fire_exactly_one(actual, "record_recognition_result")
     completed = tuple(actual.place("recognition_complete"))
-    if completed != (result,):
+    if (
+        len(completed) != 1
+        or type(completed[0]) is not EquationRecognitionDerivationResult
+        or completed[0].recognition != result
+    ):
         raise EquationRecognitionCpnError(
             "CPN did not correlate the recognition result"
         )
-    return result
+    return completed[0]
 
 
 def record_equation_recognition_failure(
     net: object,
-    failure: EquationRecognitionFailureToken,
-) -> EquationRecognitionFailureToken:
-    """Correlate one workflow-supplied failure token through the net."""
+    failure: EquationRecognitionDerivationFailure,
+) -> EquationRecognitionDerivationFailure:
+    """Correlate one workflow-derived exceptional failure through the net."""
 
-    if type(failure) is not EquationRecognitionFailureToken:
-        raise TypeError("failure must be an EquationRecognitionFailureToken")
+    if type(failure) is not EquationRecognitionDerivationFailure:
+        raise TypeError(
+            "failure must be an EquationRecognitionDerivationFailure"
+        )
     actual = _net(net)
     actual.place("external_failures").add(failure)
     _fire_exactly_one(actual, "record_recognition_failure")

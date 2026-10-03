@@ -8,16 +8,18 @@ import pytest
 from projectkoios.ingestion import (
     DeterministicEquationAssembler,
     DeterministicEquationCandidateDetector,
-    EquationAssemblyArtifact,
+    EquationAssemblyResult,
     EquationEvidenceStatus,
     EquationRecognitionStatus,
     PyMuPdfExtractor,
     SourceDocument,
 )
-from projectkoios.ingestion.equation_enrichment import (
-    EQUATION_ENRICHMENT_CONTRACT_VERSION,
+from projectkoios.ingestion.equations.assembly.identity import (
+    EQUATION_ASSEMBLY_CONTRACT_VERSION,
+    equation_assembly_id,
+)
+from projectkoios.ingestion.equations.recognition.request import (
     EquationRecognitionRequest,
-    _assembly_id,
 )
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
@@ -32,7 +34,7 @@ pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parents[4] / "fixtures" / "pdf"
 
 
-def _assembly(payload: bytes) -> EquationAssemblyArtifact:
+def _assembly(payload: bytes) -> EquationAssemblyResult:
     source = SourceDocument.from_bytes(
         payload,
         source_id="article:equation:ambiguous-recognition-gate",
@@ -48,13 +50,13 @@ def _assembly(payload: bytes) -> EquationAssemblyArtifact:
     ).assemble(detection, payload)
 
 
-def _ambiguous_assembly(payload: bytes) -> EquationAssemblyArtifact:
+def _ambiguous_assembly(payload: bytes) -> EquationAssemblyResult:
     artifact = _assembly(payload)
     original = artifact.assemblies[0]
     statuses = (EquationEvidenceStatus.AMBIGUOUS,) * len(
         original.detector_evidence_statuses
     )
-    assembly_id = _assembly_id(
+    assembly_id = equation_assembly_id(
         original.detection_result_id,
         original.candidate_ids,
         statuses,
@@ -70,7 +72,7 @@ def _ambiguous_assembly(payload: bytes) -> EquationAssemblyArtifact:
     )
     artifact_id = stable_id(
         "equation-assembly-artifact",
-        EQUATION_ENRICHMENT_CONTRACT_VERSION,
+        EQUATION_ASSEMBLY_CONTRACT_VERSION,
         artifact.source_id,
         artifact.source_content_hash,
         artifact.document_id,

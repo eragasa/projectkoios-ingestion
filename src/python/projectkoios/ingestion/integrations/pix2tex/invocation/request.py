@@ -7,7 +7,7 @@ from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base import AbstractImmutableDataObject
-from projectkoios.ingestion.equation_enrichment import EquationAssembly
+from projectkoios.ingestion.equations.assembly.model import EquationAssembly
 
 
 @dataclass(frozen=True, slots=True)

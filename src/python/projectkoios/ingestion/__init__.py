@@ -69,25 +69,6 @@ from projectkoios.ingestion.documents import (
 )
 from projectkoios.ingestion.documents.block.base import AbstractDocumentBlock
 from projectkoios.ingestion.documents.page.base import AbstractDocumentPage
-from projectkoios.ingestion.equation_enrichment import (
-    EQUATION_ENRICHMENT_CONTRACT_VERSION,
-    AbstractEquationRecognizer,
-    DeterministicEquationAssembler,
-    EquationAssembly,
-    EquationAssemblyArtifact,
-    EquationAssemblyKind,
-    EquationIndexArtifact,
-    EquationIndexRecord,
-    EquationIndexTier,
-    EquationRecognitionArtifact,
-    EquationRecognitionError,
-    EquationRecognitionProcessorIdentity,
-    EquationRecognitionProposal,
-    EquationRecognitionRequest,
-    EquationRecognitionResource,
-    EquationRecognitionStatus,
-    build_equation_index,
-)
 from projectkoios.ingestion.equation_retrieval import (
     EQUATION_RETRIEVAL_CONTRACT_VERSION,
     EquationRetrievalArtifact,
@@ -118,6 +99,17 @@ from projectkoios.ingestion.equation_transcription import (
     EquationTranscriptionWarning,
     build_equation_transcription_cache_key,
 )
+from projectkoios.ingestion.equations.assembly.assembler import (
+    DeterministicEquationAssembler,
+)
+from projectkoios.ingestion.equations.assembly.identity import (
+    EQUATION_ASSEMBLY_CONTRACT_VERSION,
+)
+from projectkoios.ingestion.equations.assembly.kind import EquationAssemblyKind
+from projectkoios.ingestion.equations.assembly.model import EquationAssembly
+from projectkoios.ingestion.equations.assembly.result import (
+    EquationAssemblyResult,
+)
 from projectkoios.ingestion.equations.base import AbstractEquation
 from projectkoios.ingestion.equations.detection import (
     EQUATION_CONTRACT_VERSION,
@@ -141,9 +133,42 @@ from projectkoios.ingestion.equations.image.factory import (
 from projectkoios.ingestion.equations.image.jpeg import EquationJpegImage
 from projectkoios.ingestion.equations.image.png import EquationPngImage
 from projectkoios.ingestion.equations.image.webp import EquationWebpImage
+from projectkoios.ingestion.equations.index.artifact import (
+    EquationIndexArtifact,
+)
+from projectkoios.ingestion.equations.index.builder import build_equation_index
+from projectkoios.ingestion.equations.index.identity import (
+    EQUATION_INDEX_CONTRACT_VERSION,
+)
+from projectkoios.ingestion.equations.index.record import EquationIndexRecord
+from projectkoios.ingestion.equations.index.tier import EquationIndexTier
 from projectkoios.ingestion.equations.katex import EquationKatex
 from projectkoios.ingestion.equations.latex import EquationLatex
 from projectkoios.ingestion.equations.mathml import EquationMathML
+from projectkoios.ingestion.equations.recognition.artifact import (
+    EquationRecognitionArtifact,
+)
+from projectkoios.ingestion.equations.recognition.base import (
+    AbstractEquationRecognizer,
+)
+from projectkoios.ingestion.equations.recognition.error import (
+    EquationRecognitionError,
+)
+from projectkoios.ingestion.equations.recognition.processor.identity import (
+    EquationRecognitionProcessorIdentity,
+)
+from projectkoios.ingestion.equations.recognition.proposal import (
+    EquationRecognitionProposal,
+)
+from projectkoios.ingestion.equations.recognition.request import (
+    EquationRecognitionRequest,
+)
+from projectkoios.ingestion.equations.recognition.resource import (
+    EquationRecognitionResource,
+)
+from projectkoios.ingestion.equations.recognition.status import (
+    EquationRecognitionStatus,
+)
 from projectkoios.ingestion.figure_relevance import (
     FIGURE_RELEVANCE_CONFIGURATION_VERSION,
     FIGURE_RELEVANCE_CONTRACT_VERSION,
@@ -515,9 +540,10 @@ __all__ = [
     "DERIVATION_AUDIT_CONTRACT_VERSION",
     "DERIVATION_AUDIT_PROCESSOR_VERSION",
     "DEFAULT_MAXIMUM_PDF_PAGES",
+    "EQUATION_ASSEMBLY_CONTRACT_VERSION",
     "EQUATION_CONTRACT_VERSION",
     "EQUATION_DETECTOR_VERSION",
-    "EQUATION_ENRICHMENT_CONTRACT_VERSION",
+    "EQUATION_INDEX_CONTRACT_VERSION",
     "EQUATION_RETRIEVAL_CONTRACT_VERSION",
     "EQUATION_TRANSCRIPTION_CONFIGURATION_VERSION",
     "EQUATION_TRANSCRIPTION_CONTRACT_VERSION",
@@ -623,7 +649,7 @@ __all__ = [
     "ExtractedPage",
     "ExtractedTextbook",
     "EquationAssembly",
-    "EquationAssemblyArtifact",
+    "EquationAssemblyResult",
     "EquationAssemblyKind",
     "EquationCandidate",
     "EquationCandidateDetector",
