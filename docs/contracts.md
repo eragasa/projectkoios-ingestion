@@ -1085,6 +1085,34 @@ subprocess/session boundary is not an operating-system sandbox and does not cap
 native-process memory; callers admitting untrusted PNG or traineddata bytes must
 supply deployment-level sandboxing and resource controls.
 
+## Selective OCR batch publication
+
+`SelectiveOCRPlan` is a versioned immutable authorization boundary. Each
+`SelectiveOCRItem` owns one exact `PdfBatchItem`, the SHA-256 of its validated
+native `extraction.json`, a safe relative output directory, and a non-empty
+strictly ordered tuple of `SelectiveOCRPage` values. Item, per-item-page, and
+aggregate-page counts are hard bounded. Source IDs, source paths, ingestion
+directories, output directories, and page indices must be unique in their
+applicable scope.
+
+`koios-run-selective-ocr` is a composition CLI rather than an OCR domain owner.
+It requires explicit non-symlink source, ingestion, and output roots and exact
+local Tesseract executable/traineddata paths. Default execution is a nonmutating
+dry run and does not invoke OCR. Explicit apply replays the exact extraction,
+compares its typed document against the stored native artifact, renders one
+selected full page at a time, builds an `OCRRequest` retaining any nonempty
+native blocks as coexistence references, and invokes `TesseractOCRProcessor`.
+
+Each `SelectiveOCRPublication` binds the exact source and extraction hashes,
+selected page, and complete `OCRResult`, then is independently written as
+create-once newline JSON with private file and directory modes. Existing
+evidence is never recomputed or overwritten: its plan linkage, complete
+request, processor/resource identity, cache key, and
+selection/image links must match the newly verified inputs. This page-local
+publication makes interrupted plans resumable. Native and OCR text remain
+separate evidence; the batch performs no reconciliation, replacement-text
+composition, Search operation, embedding, or index publication.
+
 ## Bounded JIT processing coordination
 
 Processing contract version 1.0, coordinator version 1, and configuration

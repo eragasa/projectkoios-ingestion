@@ -89,7 +89,8 @@ separately authorized stage produced and validated them. It is not a completed
 RAG corpus.
 
 The repository already contains bounded owner capabilities for later stages,
-including `TesseractOCRProcessor`, deterministic OCR reconciliation, equation
+including `TesseractOCRProcessor`, dry-run-first selective OCR batch
+publication, deterministic OCR reconciliation, equation
 detection and transcription contracts, `Pix2TexCliEquationRecognizer`, equation
 batch commands, structured and clean transcript composition, derivation audit,
 and `OllamaMultimodalRegionProcessor`. Their existence is distinct from having
@@ -105,5 +106,7 @@ Future corpus stages should remain separate and explicitly authorized:
    contract.
 
 Those stages require their own immutable plans, resource identities,
-publication rules, replay checks, and acceptance criteria. They are outside the
-native-text planner and validator.
+publication rules, replay checks, and acceptance criteria. The repository now
+provides those mechanics for selective local OCR, but selecting a plan and
+executing it remain separately authorized operations outside the native-text
+planner and validator.
