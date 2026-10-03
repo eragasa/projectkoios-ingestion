@@ -3,7 +3,7 @@ from __future__ import annotations
 import inspect
 
 from projectkoios.base import DataObjectActionizer
-from projectkoios.ingestion.equation_enrichment import (
+from projectkoios.ingestion.equations.recognition.base import (
     AbstractEquationRecognizer,
 )
 

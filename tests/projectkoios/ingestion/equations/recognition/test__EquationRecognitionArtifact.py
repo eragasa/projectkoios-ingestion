@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.base import AbstractImmutableDataObject
-from projectkoios.ingestion.equation_enrichment import (
+from projectkoios.ingestion.equations.recognition.artifact import (
     EquationRecognitionArtifact,
 )
 

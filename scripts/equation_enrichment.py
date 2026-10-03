@@ -15,11 +15,13 @@ from projectkoios.ingestion.cli import (
     _publish_artifacts,
 )
 from projectkoios.ingestion.equation_batch_cli import _derive, _resolve_items
-from projectkoios.ingestion.equation_enrichment import (
+from projectkoios.ingestion.equations.assembly.assembler import (
     DeterministicEquationAssembler,
-    EquationIndexTier,
+)
+from projectkoios.ingestion.equations.index.builder import build_equation_index
+from projectkoios.ingestion.equations.index.tier import EquationIndexTier
+from projectkoios.ingestion.equations.recognition.error import (
     EquationRecognitionError,
-    build_equation_index,
 )
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,

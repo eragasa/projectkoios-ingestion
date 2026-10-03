@@ -20,6 +20,22 @@ Detection now belongs to `ingestion.equations.detection`. It depends on the
 nominal `PageRegionRenderer` boundary. The deterministic detector requires a
 renderer from its composition root and has no concrete adapter default.
 
+Assembly belongs to `ingestion.equations.assembly`. The deterministic assembler
+returns `EquationAssemblyResult`; the former `EquationAssemblyArtifact` name is
+removed. The result retains the existing serialized fields and
+`equation-assembly-artifact` stable identity namespace during migration.
+Recognition request/result contracts belong to `ingestion.equations.recognition`,
+while complete success and failure traces belong to
+`ingestion.equations.derivation.recognition`.
+
+Compact retrieval records belong to `ingestion.equations.index`. Recognition
+checkpoint transitions belong to `ingestion.equations.recognition.checkpoint`,
+and create-once recognition/index file inspection belongs to
+`ingestion.equations.publication`. The former flat
+`projectkoios.ingestion.equation_enrichment` module no longer exists. The
+`scripts.equation_enrichment` composition command remains an operational CLI,
+not a domain owner.
+
 Detector behavior version 2 retains the fixed per-block inline ambiguity bound.
 When a text block contains more inline-shaped matches than that bound, the
 exact source block remains prose, no partial candidate subset is promoted, and
