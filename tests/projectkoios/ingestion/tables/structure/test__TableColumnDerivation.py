@@ -1,3 +1,4 @@
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
@@ -11,4 +12,5 @@ def test__table_column_derivation__is_immutable_owned_state() -> None:
         "projectkoios.ingestion.tables.structure.column_derivation"
     )
     assert issubclass(TableColumnDerivation, AbstractTableStructureDataObject)
+    assert issubclass(TableColumnDerivation, AbstractDerivation)
     assert TableColumnDerivation.CONTRACT_NAME == "table-column-derivation"

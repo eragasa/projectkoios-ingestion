@@ -13,9 +13,6 @@ from projectkoios.ingestion.tables.structure.constants import (
 from projectkoios.ingestion.tables.structure.derivation import (
     TableStructureDerivation,
 )
-from projectkoios.ingestion.tables.structure.materialization import (
-    TableStructureMaterialization,
-)
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
@@ -64,16 +61,9 @@ class DeterministicTableStructureReconstructor(
             )
             for candidate in request.detection_result.candidates
         )
-        materialization = TableStructureMaterialization.create(
-            structures=tuple(item.structure for item in derivations),
-            warning_specifications=tuple(
-                item.warning_specifications for item in derivations
-            ),
-        )
-        return TableStructureResult.create(
+        return TableStructureResult.from_derivations(
             structure_input=structure_input,
-            structures=materialization.structures,
-            warnings=materialization.warnings,
+            derivations=derivations,
             processor_name=self.name,
             processor_version=self.version,
         )

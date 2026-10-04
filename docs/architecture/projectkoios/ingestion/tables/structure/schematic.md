@@ -15,10 +15,7 @@ DeterministicTableStructureReconstructor
              └── TableStructureDerivation
                          │
                          ▼
-             TableStructureMaterialization
-                         │
-                         ▼
-             TableStructureResult
+             TableStructureResult.from_derivations
              ├── TableStructureValidation
              │   ├── TableColumnValidation
              │   ├── TableRowValidation

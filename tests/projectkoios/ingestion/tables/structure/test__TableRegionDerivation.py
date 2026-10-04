@@ -1,3 +1,4 @@
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
@@ -11,4 +12,5 @@ def test__table_region_derivation__is_immutable_owned_state() -> None:
         "projectkoios.ingestion.tables.structure.region_derivation"
     )
     assert issubclass(TableRegionDerivation, AbstractTableStructureDataObject)
+    assert issubclass(TableRegionDerivation, AbstractDerivation)
     assert TableRegionDerivation.CONTRACT_NAME == "table-region-derivation"

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractValidation
 from projectkoios.ingestion.tables.contracts import (
     TableAssociationRole,
     TableCandidate,
@@ -19,7 +20,9 @@ from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 
 @dataclass(frozen=True)
-class TableContinuationValidation(AbstractTableStructureDataObject):
+class TableContinuationValidation(
+    AbstractTableStructureDataObject, AbstractValidation
+):
     """Record successful validation of cross-page continuation evidence."""
 
     CONTRACT_NAME: ClassVar[str] = "table-continuation-validation"

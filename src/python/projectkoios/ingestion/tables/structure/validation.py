@@ -6,6 +6,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar
 
+from projectkoios.ingestion.base import AbstractValidation
 from projectkoios.ingestion.models import (
     IngestionWarning,
 )
@@ -37,7 +38,9 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
-class TableStructureValidation(AbstractTableStructureDataObject):
+class TableStructureValidation(
+    AbstractTableStructureDataObject, AbstractValidation
+):
     """Record successful validation of one table-structure result."""
 
     CONTRACT_NAME: ClassVar[str] = "table-structure-validation"

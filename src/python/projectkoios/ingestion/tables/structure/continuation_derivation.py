@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.tables.contracts import (
     TableAssociationRole,
     TableCandidate,
@@ -30,7 +31,9 @@ from projectkoios.ingestion.tables.structure.request import (
 
 
 @dataclass(frozen=True)
-class TableContinuationDerivation(AbstractTableStructureDataObject):
+class TableContinuationDerivation(
+    AbstractTableStructureDataObject, AbstractDerivation
+):
     """Represent all continuation proposals for one table candidate."""
 
     CONTRACT_NAME: ClassVar[str] = "table-continuation-derivation"

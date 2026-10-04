@@ -25,3 +25,15 @@ class AbstractIdentity(AbstractImmutableDataObject, ABC):
     """Nominal root for immutable ingestion identity records."""
 
     __slots__ = ()
+
+
+class AbstractDerivation(AbstractImmutableDataObject, ABC):
+    """Nominal root for immutable evidence-derived records."""
+
+    __slots__ = ()
+
+
+class AbstractValidation(AbstractImmutableDataObject, ABC):
+    """Nominal root for immutable contract-validation records."""
+
+    __slots__ = ()

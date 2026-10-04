@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.models import Metadata
 from projectkoios.ingestion.tables.contracts import (
     TableCandidate,
@@ -34,7 +35,7 @@ from projectkoios.ingestion.tables.structure.source_record import (
 
 
 @dataclass(frozen=True)
-class TableCellDerivation(AbstractTableStructureDataObject):
+class TableCellDerivation(AbstractTableStructureDataObject, AbstractDerivation):
     """Represent the deterministic output of one cell-derivation step."""
 
     CONTRACT_NAME: ClassVar[str] = "table-cell-derivation"

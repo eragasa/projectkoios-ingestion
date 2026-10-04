@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.models import Metadata
 from projectkoios.ingestion.tables.contracts import (
     TableBoundaryKind,
@@ -44,7 +45,9 @@ from projectkoios.ingestion.tables.structure.warning_specification import (
 
 
 @dataclass(frozen=True)
-class TableStructureDerivation(AbstractTableStructureDataObject):
+class TableStructureDerivation(
+    AbstractTableStructureDataObject, AbstractDerivation
+):
     """Represent the complete deterministic derivation of one candidate."""
 
     CONTRACT_NAME: ClassVar[str] = "table-structure-derivation"

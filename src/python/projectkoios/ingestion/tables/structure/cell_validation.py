@@ -6,6 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractValidation
 from projectkoios.ingestion.models import ExtractedBlock
 from projectkoios.ingestion.tables.contracts import TableRegionEvidence
 from projectkoios.ingestion.tables.structure.base import (
@@ -20,7 +21,7 @@ from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 
 @dataclass(frozen=True)
-class TableCellValidation(AbstractTableStructureDataObject):
+class TableCellValidation(AbstractTableStructureDataObject, AbstractValidation):
     """Record successful cross-object validation of derived cells."""
 
     CONTRACT_NAME: ClassVar[str] = "table-cell-validation"

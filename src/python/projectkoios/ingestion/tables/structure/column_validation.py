@@ -6,6 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractValidation
 from projectkoios.ingestion.tables.contracts import TableRegionEvidence
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
@@ -17,7 +18,9 @@ from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 
 @dataclass(frozen=True)
-class TableColumnValidation(AbstractTableStructureDataObject):
+class TableColumnValidation(
+    AbstractTableStructureDataObject, AbstractValidation
+):
     """Record successful cross-object validation of derived columns."""
 
     CONTRACT_NAME: ClassVar[str] = "table-column-validation"
