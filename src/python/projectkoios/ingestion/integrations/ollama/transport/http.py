@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from projectkoios.ingestion.integrations.ollama.base import (
     OllamaHttpResponse,
     OllamaMultimodalConfigurationError,
+    OllamaTransport,
     OllamaTransportError,
     OllamaTransportFailureKind,
 )
@@ -14,7 +15,7 @@ from projectkoios.ingestion.integrations.ollama.base import (
 _READ_CHUNK_BYTES = 65_536
 
 
-class LoopbackOllamaHttpTransport:
+class LoopbackOllamaHttpTransport(OllamaTransport):
     """Direct local HTTP transport with no proxy, redirect, or auth support."""
 
     def request(

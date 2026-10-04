@@ -12,6 +12,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.integrations.ollama.base import (
     OllamaHttpResponse,
     OllamaRequestOptions,
+    OllamaTransport,
     OllamaTransportError,
     OllamaTransportFailureKind,
 )
@@ -153,7 +154,7 @@ def _chat_response(content: str, **extra: object) -> OllamaHttpResponse:
     return _json_response(value)
 
 
-class MockTransport:
+class MockTransport(OllamaTransport):
     def __init__(
         self,
         request: OllamaMultimodalRegionProcessingRequest,

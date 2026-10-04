@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Protocol
 
 OLLAMA_BACKEND_NAME = "ollama"
 
@@ -49,9 +49,12 @@ class OllamaHttpResponse:
             raise TypeError("body must be immutable bytes")
 
 
-class OllamaTransport(Protocol):
-    """Injectable bounded request seam for Ollama transports."""
+class OllamaTransport(ABC):
+    """Nominal bounded request boundary for Ollama transports."""
 
+    __slots__ = ()
+
+    @abstractmethod
     def request(
         self,
         *,
