@@ -3,6 +3,7 @@ from typing import BinaryIO
 
 import pytest
 from projectkoios.ingestion import (
+    ArticleStructureAnalyzer,
     ExtractedBlock,
     ExtractedDocument,
     ExtractedPage,
@@ -17,6 +18,7 @@ from projectkoios.ingestion import (
     StructureAnalysis,
     StructureKind,
     StructureNode,
+    TextbookStructureAnalyzer,
 )
 
 PDF_BYTES = b"generated PDF fixture"
@@ -91,7 +93,7 @@ class FakeExtractor(SourceExtractor):
         return make_extraction(source)
 
 
-class ChapterAnalyzer:
+class ChapterAnalyzer(ArticleStructureAnalyzer, TextbookStructureAnalyzer):
     def analyze(self, document: ExtractedDocument) -> StructureAnalysis:
         span = document.pages[0].blocks[0].source_spans[0]
         chapter = StructureNode.create(

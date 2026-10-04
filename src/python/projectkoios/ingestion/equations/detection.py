@@ -5,11 +5,12 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
-from typing import BinaryIO, Protocol
+from typing import BinaryIO
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 from projectkoios.ingestion.models import (
@@ -64,12 +65,6 @@ _STRONG_MATH = frozenset("∑∫√∂∇∞∏")
 _GREEK_RANGE = re.compile(r"[Α-Ͽ]")
 _VARIABLE_TOKEN = re.compile(r"(?<!\w)[A-Za-zΑ-ω](?!\w)")
 _LATEX_COMMAND = re.compile(r"\\[A-Za-z]{2,}")
-
-
-class _PageLayoutProcessor(Protocol):
-    def analyze(
-        self, document: ExtractedDocument
-    ) -> tuple[PageLayoutResult, ...]: ...
 
 
 class EquationDetectionLimitError(ValueError):
@@ -549,7 +544,7 @@ class DeterministicEquationCandidateDetector(EquationCandidateDetector):
         self,
         configuration: EquationDetectionConfiguration | None = None,
         *,
-        layout_processor: _PageLayoutProcessor | None = None,
+        layout_processor: PageLayoutProcessor | None = None,
         region_renderer: PageRegionRenderer,
     ) -> None:
         self.configuration = configuration or EquationDetectionConfiguration()

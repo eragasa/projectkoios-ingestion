@@ -12,6 +12,7 @@ from typing import Any, BinaryIO, Protocol, cast
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 from projectkoios.ingestion.models import (
@@ -63,12 +64,6 @@ _TABLE_TITLE = re.compile(
 _CONTINUED = re.compile(r"\bcontinued\b", re.IGNORECASE)
 _CAPTION = re.compile(r"^\s*Caption\s*[:.]", re.IGNORECASE)
 _NOTE = re.compile(r"^\s*(?:Note|Notes|Source)\s*[:.]", re.IGNORECASE)
-
-
-class _PageLayoutProcessor(Protocol):
-    def analyze(
-        self, document: ExtractedDocument
-    ) -> tuple[PageLayoutResult, ...]: ...
 
 
 class _TableRuleInspector(Protocol):
@@ -949,7 +944,7 @@ class DeterministicTableCandidateDetector(TableCandidateDetector):
         self,
         configuration: TableDetectionConfiguration | None = None,
         *,
-        layout_processor: _PageLayoutProcessor | None = None,
+        layout_processor: PageLayoutProcessor | None = None,
         region_renderer: PageRegionRenderer,
         rule_inspector: _TableRuleInspector | None = None,
     ) -> None:
