@@ -51,7 +51,8 @@ closed as unsuitable for unattended corpus execution.
 | 026 | `026.select_recognition_independent_equation_evidence.py` | Classify every prepared equation assembly from detector and assembly evidence only, retaining all candidate media without reading recognition output. |
 | 027 | `027.build_recognition_independent_reading_transcripts.py` | Compose and validate the three-book reading collection directly from workflow 026, proving semantic equivalence to the prior collection without reading recognition output. |
 | 028 | `028.build_recognition_independent_corpus_coverage.py` | Rebuild and validate nine-document coverage with workflow 027, then supersede the prior three-book and corpus roots after semantic equivalence passes. |
-| 029 | `029.run_bounded_ollama_multimodal_canary.py` | Plan and, only with `--apply`, run one create-once loopback Ollama transcription canary over an exact retained figure. The completed result remains automated, unreviewed, unaccepted, chunk-ineligible, and publication-ineligible. |
+| 029 | `029.run_bounded_ollama_multimodal_canary.py` | Plan and, only with `--apply`, run one create-once loopback Ollama transcription canary over an exact retained figure. The completed result remains nondeterministic, automated, unreviewed, unaccepted, chunk-ineligible, and publication-ineligible. |
+| 030 | `030.audit_bounded_ollama_multimodal_canary.py` | Replay the fixed canary bytes without model execution and audit coverage of the three visible labels. This validates one retained output, not deterministic Ollama behavior or corpus suitability. |
 
 Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
@@ -59,7 +60,8 @@ references, publish replacement text, connect to live databases, perform Search
 indexing, or transmit private evidence externally. Workflow 029 is restricted to
 an exact loopback endpoint, model version, manifest digest, and one retained
 selection. Its create-once result prevents replay from invoking the model again;
-expansion to any additional evidence requires separate operator authorization.
+it does not make Ollama deterministic, and a fresh invocation may differ.
+Expansion to any additional evidence requires separate operator authorization.
 
 ## Workflow modules
 
