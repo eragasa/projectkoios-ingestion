@@ -177,6 +177,20 @@ references because native reconciliation additionally requires exact layout
 evidence. It never rerenders, invokes OCR, composes replacement text, or calls
 Search.
 
+A private 13-page operational pilot validated this boundary across nine
+documents. Seven pages retained OCR text and six remained completed blank.
+Apply created 13 private page publications and replay verified all 13 without
+changing their hashes, sizes, or modification times. The results contain 112
+OCR-only proposed items, no native segments or matches, and no reconciliation
+warnings. Every proposal preserves its linked OCR line text and order exactly.
+
+These results are provenance evidence, not accepted text. A read-only quality
+review found 31 lines below 0.60 backend confidence and visible mathematical,
+layout-order, and low-signal OCR errors. The proposals remain unaccepted and
+chunk-ineligible, and broader empty-page reconciliation is deferred. This
+pilot does not validate the mixed native/OCR path; that path requires a future
+plan contract carrying exact layout evidence.
+
 ## Operational boundary
 
 The adapter uses a bounded, no-shell POSIX subprocess with timeout and output

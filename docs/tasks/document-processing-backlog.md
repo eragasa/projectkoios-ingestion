@@ -324,6 +324,24 @@ round-trip, hash-locked inputs, low-confidence OCR-only evidence, completed
 blank evidence, dry-run, explicit create, private publication, exact replay,
 and stale OCR rejection.
 
+A private 13-page operational pilot across nine documents completed after the
+implementation merged. Its hash-locked plan selected seven OCR-text pages and
+six OCR-blank pages, all with empty native text. Apply created 13 private
+publications; exact replay reported 13 unchanged publications and preserved
+every artifact hash, size, and modification time. The publications contain 112
+OCR-only proposed items, zero native segments, zero matches, and zero
+reconciliation warnings. All six blank pages remained empty.
+
+The quality review found exact OCR-line text and order preservation, but it did
+not accept the proposals: 31 of 112 lines had backend confidence below 0.60,
+and equation-heavy pages retained mathematical corruption and multi-column
+ordering errors. The pilot therefore validates deterministic OCR-only
+publication and replay, not mixed native/OCR reconciliation, proofreading, or
+text promotion. Broader empty-page reconciliation is intentionally deferred;
+all proposals remain unaccepted and chunk-ineligible. Any mixed-native pilot
+requires a later plan version that binds exact layout evidence and separate
+authorization.
+
 ## Structural tasks
 
 ### ING-STRUCTURE-01 — Article structure analyzer (implemented)
