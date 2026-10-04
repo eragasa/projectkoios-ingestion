@@ -11,7 +11,10 @@ belong to [`integrations`](integrations/index.md). The backend-neutral
 decompositions and persist bounded processing checkpoints without leaking
 backend query objects. Backend-neutral OCR evidence belongs to
 [`ocr`](ocr/index.md), while deterministic native/OCR stream
-comparison belongs to [`reconciliation`](reconciliation/index.md). The
+comparison belongs to [`reconciliation`](reconciliation/index.md). Deterministic
+structured composition belongs to [`transcription`](transcription/index.md),
+whose marker-only subpackages own requests, derivations, items, omissions,
+results, validation records, and cache identity. The
 [`page_projection`](page_projection/index.md) module validates owner reading
 artifacts and exposes immutable citation-aligned text-only pages without
 exposing equations or media. This package does not own cross-repository routing,
