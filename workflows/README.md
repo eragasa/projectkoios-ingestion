@@ -53,6 +53,7 @@ closed as unsuitable for unattended corpus execution.
 | 028 | `028.build_recognition_independent_corpus_coverage.py` | Rebuild and validate nine-document coverage with workflow 027, then supersede the prior three-book and corpus roots after semantic equivalence passes. |
 | 029 | `029.run_bounded_ollama_multimodal_canary.py` | Plan and, only with `--apply`, run one create-once loopback Ollama transcription canary over an exact retained figure. The completed result remains nondeterministic, automated, unreviewed, unaccepted, chunk-ineligible, and publication-ineligible. |
 | 030 | `030.audit_bounded_ollama_multimodal_canary.py` | Replay the fixed canary bytes without model execution and audit coverage of the three visible labels. This validates one retained output, not deterministic Ollama behavior or corpus suitability. |
+| 031 | `031.plan_replicated_ollama_multimodal_canary.py` | Freeze three evidence classes and two independent invocation slots per sample for observed-variability analysis. This stage performs no model execution and grants no execution authorization. |
 
 Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
@@ -62,6 +63,8 @@ an exact loopback endpoint, model version, manifest digest, and one retained
 selection. Its create-once result prevents replay from invoking the model again;
 it does not make Ollama deterministic, and a fresh invocation may differ.
 Expansion to any additional evidence requires separate operator authorization.
+Workflow 031 is plan-only: its six invocation records remain `not_requested`
+until that separate authorization is given.
 
 ## Workflow modules
 
