@@ -119,12 +119,13 @@ def test__pix2tex__does_not_run_for_ambiguous_detector_evidence(
     assert hash(request)
     assert hash(result)
     assert result.request_id == request.request_id
-    assert recognizer.identity.processor_version == "3"
+    assert recognizer.identity.processor_version == "4"
     assert not marker.exists()
     assert len(result.proposals) == 1
     assert result.proposals[0].status is EquationRecognitionStatus.NOT_REQUESTED
     assert result.proposals[0].warning_codes == (
         "recognition_not_requested_for_non_primary_evidence",
+        "recognition_ineligible:detector_evidence_not_proposed",
     )
 
 
