@@ -56,6 +56,9 @@ from projectkoios.ingestion.integrations.pix2tex.invocation.request import (
 from projectkoios.ingestion.integrations.pix2tex.invocation.result import (
     Pix2TexInvocationResult,
 )
+from projectkoios.ingestion.integrations.pix2tex.output_policy import (
+    pix2tex_output_quality_warning_codes,
+)
 from projectkoios.ingestion.integrations.pix2tex.policy import (
     is_pix2tex_primary_recognition_candidate,
     pix2tex_primary_recognition_ineligibility_reasons,
@@ -106,7 +109,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         executable_content = self.executable.read_bytes()
         self._identity = EquationRecognitionProcessorIdentity(
             processor_name="pix2tex-cli-equation-recognizer",
-            processor_version="4",
+            processor_version="5",
             backend_name="pix2tex",
             backend_version=backend_version,
             executable_sha256=hashlib.sha256(executable_content).hexdigest(),
@@ -357,8 +360,14 @@ def _recognition_proposal(
             source_ids=(equation_image.equation_id,),
             latex=latex,
         )
+        quality_warnings = pix2tex_output_quality_warning_codes(
+            latex,
+            assembly.sanitized_native_text,
+            assembly.source_labels,
+        )
         if not _latex_is_well_formed(latex):
             warnings.append("latex_structure_suspect")
+        warnings.extend(quality_warnings)
         try:
             import latex2mathml
             from latex2mathml.converter import convert
@@ -410,17 +419,14 @@ def _latex_is_well_formed(value: str) -> bool:
         or len(value) > Pix2TexCliEquationRecognizer.MAX_LATEX_CHARACTERS
     ):
         return False
-    depth = 0
-    for character in value:
-        if character == "{":
-            depth += 1
-        elif character == "}":
-            depth -= 1
-            if depth < 0:
-                return False
-    if depth != 0:
-        return False
-    return value.count(r"\begin{") == value.count(r"\end{")
+    structural_warnings = {
+        "latex_brace_mismatch",
+        "latex_left_right_delimiter_mismatch",
+        "latex_environment_mismatch",
+    }
+    return structural_warnings.isdisjoint(
+        pix2tex_output_quality_warning_codes(value, "")
+    )
 
 
 def _executable_semantic_sha256(content: bytes) -> str:
