@@ -55,6 +55,16 @@ even identical outputs would not prove deterministic behavior. The plan ID is
 Planning performed no model execution, and executing those slots requires
 separate authorization.
 
+Workflow 032 reconstructs every planned request from the retained preparation
+artifacts and publishes a create-once request manifest. The manifest ID is
+`reference-ollama-multimodal-replicated-canary-request-manifest:sha256:d42f5c37ce6ffe4262bce5b5e3eec4bd8f6d233a175d01b98c11643c41d96fe3`.
+Dry-run replay leaves all six slots `not_requested` and performs zero model
+calls. Execution is gated by `--apply` plus the complete matching plan ID.
+Each replicate has a separate create-once result path, bypasses cross-replicate
+result reuse, retains failures without automatic retries, and remains
+automated, unreviewed, unaccepted, chunk-text-ineligible, and
+publication-ineligible.
+
 ## Composition
 
 Render only the exact externally selected page or region. The renderer's public
