@@ -90,8 +90,8 @@ RAG corpus.
 
 The repository already contains bounded owner capabilities for later stages,
 including `TesseractOCRProcessor`, dry-run-first selective OCR batch
-publication, deterministic OCR reconciliation, equation
-detection and transcription contracts, `Pix2TexCliEquationRecognizer`, equation
+publication, deterministic OCR reconciliation, equation detection, assembly,
+and recognition contracts, `Pix2TexCliEquationRecognizer`, equation
 batch commands, structured and clean transcript composition, derivation audit,
 and `OllamaMultimodalRegionProcessor`. Their existence is distinct from having
 run them over a corpus.

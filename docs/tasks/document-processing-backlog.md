@@ -414,43 +414,18 @@ text, prose rejection, absent geometry, rotated rendering, stale layouts,
 pre-render candidate limits, stable identity, and immutability; full fixture and
 static-analysis suites pass.
 
-### ING-EQUATION-02 — Equation transcription processor (implemented)
+### ING-EQUATION-02 — Engine-neutral transcription proposal contracts (retired)
 
-The engine-neutral `EquationTranscriptionProcessor` boundary accepts a bounded,
-ordered `EquationTranscriptionRequest` over exact equation candidates. A
-selection retains the complete validated source `RenderedRegion`; callers can
-request LaTeX, MathML, or both in explicit order. Implementations return one
-completed, partial, or failed selection result with typed failures and linked
-warnings rather than raising away selection-local backend outcomes.
+The unused engine-neutral transcription proposal contracts were retired after
+the operational assembly and recognition pipeline in `ING-EQUATION-04` became
+authoritative. No processor implemented the former boundary, no operational
+artifact used it, and no repository consumed its public types. Retaining its
+parallel request, result, failure, confidence, cache, and protocol vocabulary
+would duplicate the implemented recognition model.
 
-Every proposal is explicitly unaccepted. It retains its exact candidate and
-rendered-region identities, format, output text, optional method-described
-confidence, processor/backend/configuration provenance, warnings, and ordered
-non-overlapping output substrings. Symbol confidence coverage is complete,
-partial, or unavailable. Every assessed score below the configured threshold is
-`low_confidence`; missing confidence is `unassessed`; both require warning links.
-A completed selection requires every requested format and complete assessed
-symbol coverage. Partial or failed selections require typed failure and warning
-evidence.
-
-Processor/backend versions, configuration version and digest, immutable model
-or vocabulary resource identities, requested formats, exact candidate/image
-identities, and all resource limits enter the derived cache key. The contract
-hard-bounds selections, unique source images, image bytes/pixels, formats,
-proposal/symbol text and counts, warnings, resources, aggregate output, identity
-size, and retained result size. It defines cache identity but does not add
-transcription results to `ExtractionCache` or select a concrete recognition
-engine.
-
-**Depends on:** `ING-EQUATION-01`, `ING-CACHE-01`.
-
-**Validation:** focused tests cover LaTeX and MathML proposals, exact retained
-PNG evidence, low-confidence marking, unavailable-confidence partial output,
-typed failure, cache invalidation by processor/resource/configuration/image,
-exact output ranges, image containment and bounds, stable identity,
-immutability, and runtime protocol annotations. Proposals make no proofread,
-semantic-correctness, scientific-validation, publication, or human-acceptance
-claim.
+Symbol-level confidence and multiple explicitly requested output formats remain
+deferred until a concrete backend requires them. They must not be restored as
+speculative compatibility contracts.
 
 ### ING-EQUATION-03 — Batch equation retrieval projection (implemented)
 
@@ -470,7 +445,7 @@ claim.
 
 `python -m scripts.equation_enrichment` is dry-run by default and publishes separate immutable `assembly.json`, `recognition.json`, `index.json`, and `derivation.json` layers through one named publication request only on explicit apply. It treats the stochastic backend's first bounded output as an immutable derived-cache observation. Replay rederives the deterministic assembly and verifies all stored source, processor, assembly, recognition, index, and derivation links without claiming deterministic model recomputation. Validated three-file publications remain recognized as legacy evidence and are never silently rewritten.
 
-**Depends on:** `ING-EQUATION-01`, `ING-EQUATION-02`, `ING-EQUATION-03`, `ING-REGION-01`.
+**Depends on:** `ING-EQUATION-01`, `ING-EQUATION-03`, `ING-REGION-01`.
 
 **Validation:** focused tests cover layer separation, exact raw preservation, control-character sanitization, rendered evidence, LaTeX and MathML proposals, unavailable confidence, malformed/prose-like demotion, model-resource invalidation, dry-run/apply/cache replay, and primary/auxiliary/rejected partitioning. The seven-article operational run validates all four layers against exact PDF and extraction identities.
 

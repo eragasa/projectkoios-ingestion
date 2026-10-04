@@ -226,12 +226,13 @@ text while their crop is explicitly block-scoped. Weak candidates and missing
 geometry remain warnings; no detected characters are interpreted as correct
 mathematics.
 
-An application may pass selected candidates to an
-`EquationTranscriptionProcessor`. The request retains each exact candidate and
-PNG; the adapter returns ordered LaTeX and/or MathML proposals with explicit
-processor/backend/model identity, substring confidence coverage, warnings, and
-typed failure evidence. Low-confidence and unassessed substrings are marked and
-warning-linked. The boundary executes no default engine and publishes no file.
+The operational equation-recognition path assembles compatible display
+candidates without changing their native evidence, then binds one exact
+assembly artifact and processor identity in an `EquationRecognitionRequest`.
+The bounded Pix2Tex adapter returns unaccepted LaTeX and optional derived MathML
+proposals with exact processor, resource, invocation, warning, and failure
+evidence. Recognition remains outside the indexing critical path and publishes
+only through the explicit equation-enrichment workflow.
 
 Table-candidate detection is another explicit derived stage. Its default lazy
 rule inspector retains bounded axis-aligned PDF drawing segments and ignored
@@ -531,7 +532,6 @@ The architecture depends on small protocols:
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
-- `EquationTranscriptionProcessor` proposes bounded LaTeX/MathML evidence;
 - `TableCandidateDetector` proposes bounded rendered table evidence;
 - `StructuredTranscriptionComposer` composes exact typed evidence without
   choosing a destination;
@@ -585,10 +585,10 @@ backend errors, and invalid TSV. Reconciliation adds object-linked warnings for
 incomplete OCR, inherited layout uncertainty, skipped comparisons, ambiguous
 matches, text disagreements, and conservatively appended OCR-only order.
 Equation detection adds warnings for weak candidates, missing geometry, and
-ambiguous inline offset mapping. Equation transcription adds selection-local
-warnings for low or unavailable confidence and typed rejected-input, resource,
-availability, backend, format, invalid-output, and incomplete-output failures.
-Table detection warns ambiguous or prose-like candidates, possible merged-cell
+ambiguous inline offset mapping. Equation recognition retains unavailable-
+confidence warning codes, bounded invocation diagnostics, and explicit failed
+or not-requested outcomes without promoting proposals to accepted text. Table
+detection warns ambiguous or prose-like candidates, possible merged-cell
 rows, and mixed rule evidence. Deferred figure processors may add their own
 source-backed warnings when implemented.
 

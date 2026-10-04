@@ -4,11 +4,6 @@ from collections.abc import Iterable
 from typing import BinaryIO, Protocol
 
 from projectkoios.chunking import TextChunk
-from projectkoios.ingestion.equation_transcription import (
-    EquationTranscriptionProcessorIdentity,
-    EquationTranscriptionRequest,
-    EquationTranscriptionResult,
-)
 from projectkoios.ingestion.equations.detection import EquationDetectionResult
 from projectkoios.ingestion.figure_relevance import (
     FigureRelevanceProcessorIdentity,
@@ -101,21 +96,6 @@ class EquationCandidateDetector(Protocol):
         document: ExtractedDocument,
         content: BinaryIO,
     ) -> EquationDetectionResult: ...
-
-
-class EquationTranscriptionProcessor(Protocol):
-    """Injected image-to-LaTeX/MathML proposal boundary."""
-
-    name: str
-    version: str
-
-    def identity_for(
-        self, request: EquationTranscriptionRequest
-    ) -> EquationTranscriptionProcessorIdentity: ...
-
-    def process(
-        self, request: EquationTranscriptionRequest
-    ) -> EquationTranscriptionResult: ...
 
 
 class FigureRelevanceProcessor(Protocol):
