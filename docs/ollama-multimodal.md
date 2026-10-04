@@ -14,6 +14,30 @@ Every proposal and result is permanently marked `automated_unreviewed` and
 `nondeterministic`. Output is a text proposal, never an accepted transcription,
 proofread result, source fact, or publication-ready artifact.
 
+## Bounded operational canary
+
+`workflows/029.run_bounded_ollama_multimodal_canary.py` is the maintained
+operational entry point. Without `--apply` it only verifies and publishes the
+exact one-selection plan and evidence. With `--apply` it permits one loopback
+invocation bound to the configured Ollama version, model name, manifest digest,
+rendered-region identity, request identity, and cache identity. Its result is
+create-once: later runs validate and report the retained result without calling
+the model again.
+
+The canary stores private artifacts under
+`/Users/eugene/projects/projectkoios/artifacts/reference-ollama-multimodal-canary-v1`.
+The bounded run completed with one proposal and no adapter warning:
+
+- plan `reference-ollama-multimodal-canary-plan:sha256:108176c48bce9e1850613e66c35f81ce229b600fb52af5339663b1fb9648f153`;
+- result `ollama-multimodal-result:sha256:9bb2269177d5d67c5fa12d71dc633b27e5eefce0917f0aff6b84c95e2aac58e8`;
+- summary `reference-ollama-multimodal-canary-summary:sha256:8abf47e2caa37f0c6c8cdff7e97d198a22fb29706c46266c89a224b473ed3a85`.
+
+Completion and absence of adapter warnings do not establish transcription
+quality. The workflow does not modify a reading transcript, accept proposed
+text, make the text chunk-eligible, publish it, or trigger additional
+selections. Expansion beyond the frozen selection requires separate
+authorization.
+
 ## Composition
 
 Render only the exact externally selected page or region. The renderer's public
