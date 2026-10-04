@@ -70,6 +70,13 @@ in the selection inventory. A recognizer failure therefore no longer removes
 primary visual evidence, and recognizer output quality no longer determines
 whether a region is represented.
 
+The three-book preparation now also has a recognition-independent equation
+selection inventory,
+`reference-equation-evidence-selection-inventory:sha256:1ce4f8c68241e3dee14085c3673405f06ba321e7938e955db1a75a1cd1734a00`.
+It classifies all 5,360 assemblies directly from detector and assembly evidence:
+1,906 are selected primary evidence and 3,454 remain retained auxiliary evidence.
+It does not read recognition results and retains no recognized text.
+
 The same deterministic correction was applied to `doc-01` through `doc-05`.
 The authoritative nine-document coverage inventory is
 `reference-reading-corpus-coverage:sha256:3b282c2dbaf6af5708e51780d86d8353227ca032541acce37d82777d30c047ad`.
