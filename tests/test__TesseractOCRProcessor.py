@@ -15,16 +15,7 @@ from projectkoios.ingestion import (
     TESSERACT_ADAPTER_VERSION,
     ExtractedBlock,
     ExtractedPage,
-    OCRConfiguration,
-    OCRFailureKind,
-    OCROutputMode,
-    OCRPageImage,
     OCRProcessor,
-    OCRRequest,
-    OCRResourceIdentityKind,
-    OCRResultStatus,
-    OCRSelection,
-    OCRSelectionStatus,
     RegionRenderConfiguration,
     RenderedRegion,
     SourceDocument,
@@ -33,8 +24,19 @@ from projectkoios.ingestion import (
     TesseractAdapterConfigurationError,
     TesseractLanguageBinding,
     TesseractOCRProcessor,
-    build_ocr_cache_key,
 )
+from projectkoios.ingestion.ocr.cache_key import build_ocr_cache_key
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.failure_kind import OCRFailureKind
+from projectkoios.ingestion.ocr.output_mode import OCROutputMode
+from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.resource_identity_kind import (
+    OCRResourceIdentityKind,
+)
+from projectkoios.ingestion.ocr.result_status import OCRResultStatus
+from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
 
 FIXTURE = Path("tests/fixtures/ocr/synthetic-text.png")
 FIXTURE_SHA256 = (

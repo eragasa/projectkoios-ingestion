@@ -21,15 +21,13 @@ from projectkoios.ingestion.models import (
     Metadata,
     SourceDocument,
 )
-from projectkoios.ingestion.ocr.contract.contracts import OCRResult
+from projectkoios.ingestion.ocr.result import OCRResult
 from projectkoios.ingestion.processing import ProcessingResult
 from projectkoios.ingestion.provenance.common import (
     _artifact_id,
     _object_id,
 )
-from projectkoios.ingestion.reconciliation.deterministic import (
-    OCRReconciliationResult,
-)
+from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult

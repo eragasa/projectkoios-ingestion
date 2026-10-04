@@ -25,16 +25,14 @@ from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
 from projectkoios.ingestion.ocr.batch.publication import (
     SelectiveOCRPublication,
 )
-from projectkoios.ingestion.ocr.contract.contracts import (
-    OCRConfiguration,
-    OCROutputMode,
-    OCRPageImage,
-    OCRProcessorIdentity,
-    OCRRequest,
-    OCRResult,
-    OCRSelection,
-    build_ocr_cache_key,
-)
+from projectkoios.ingestion.ocr.cache_key import build_ocr_cache_key
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.output_mode import OCROutputMode
+from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.selection import OCRSelection
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )

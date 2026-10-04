@@ -14,9 +14,7 @@ from projectkoios.ingestion.ocr.reconciliation.batch.item import (
 from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,
 )
-from projectkoios.ingestion.reconciliation.deterministic import (
-    OCRReconciliationResult,
-)
+from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 

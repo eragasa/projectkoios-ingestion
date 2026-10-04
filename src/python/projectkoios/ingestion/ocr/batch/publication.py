@@ -10,8 +10,8 @@ from projectkoios.ingestion.base import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
-from projectkoios.ingestion.ocr.contract.contracts import OCRResult
-from projectkoios.ingestion.ocr.contract.serialization import (
+from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.serialization import (
     deserialize_ocr_result,
 )
 

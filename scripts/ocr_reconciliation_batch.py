@@ -31,8 +31,10 @@ from projectkoios.ingestion.ocr.reconciliation.batch.plan import (
 from projectkoios.ingestion.ocr.reconciliation.batch.publication import (
     SelectiveOCRReconciliationPublication,
 )
-from projectkoios.ingestion.reconciliation.deterministic import (
+from projectkoios.ingestion.reconciliation.reconciler import (
     DeterministicOCRReconciler,
+)
+from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
 )
 from projectkoios.ingestion.serialization import (
