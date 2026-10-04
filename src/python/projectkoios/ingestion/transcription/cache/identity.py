@@ -21,6 +21,7 @@ class TranscriptionCacheIdentity(
     input_id: str
     processor_name: str
     processor_version: str
+    configuration_identity: tuple[object, ...]
     contract_version: str = AbstractTranscriptionDataObject.CONTRACT_VERSION
 
     @classmethod
@@ -37,7 +38,7 @@ class TranscriptionCacheIdentity(
             raise TypeError(
                 "transcription_input must be StructuredTranscriptionRequest"
             )
-        cls._identity_fields(processor_name, processor_version)
+        cls.validate_identity_fields(processor_name, processor_version)
         return cls(
             cache_key=stable_id(
                 "structured-transcription-cache",
@@ -51,12 +52,29 @@ class TranscriptionCacheIdentity(
             input_id=transcription_input.input_id,
             processor_name=processor_name,
             processor_version=processor_version,
+            configuration_identity=transcription_input.configuration.identity_parts(),
         )
 
     def __post_init__(self) -> None:
-        self._identity_fields(
+        if self.contract_version != self.CONTRACT_VERSION:
+            raise ValueError("unsupported transcription cache identity version")
+        self.validate_identity_fields(
             self.cache_key,
             self.input_id,
             self.processor_name,
             self.processor_version,
         )
+        self.validate_tuple(
+            "transcription configuration identity", self.configuration_identity
+        )
+        expected = stable_id(
+            "structured-transcription-cache",
+            self.CONTRACT_VERSION,
+            self.CONFIGURATION_VERSION,
+            self.input_id,
+            self.processor_name,
+            self.processor_version,
+            self.configuration_identity,
+        )
+        if self.cache_key != expected:
+            raise ValueError("transcription cache identity is inconsistent")

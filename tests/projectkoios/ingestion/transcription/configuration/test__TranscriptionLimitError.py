@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.configuration.error import (
     TranscriptionLimitError,
 )
 

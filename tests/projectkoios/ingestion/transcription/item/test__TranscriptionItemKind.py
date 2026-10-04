@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
+from projectkoios.ingestion.transcription.item.kind import TranscriptionItemKind
 
 
 def test__transcription_item_kind__names_retained_item_roles() -> None:

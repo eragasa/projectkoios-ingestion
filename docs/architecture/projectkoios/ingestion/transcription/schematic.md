@@ -21,6 +21,11 @@ exact extracted document + complete typed evidence
           StructuredTranscriptionResult
                          │
           TranscriptionResultValidation
+             ┌───────────┼───────────┐
+             ▼           ▼           ▼
+ source validations  omission     configured
+                     coverage       limits
+             └───────────┬───────────┘
                          ▼
               proposed evidence only
 ```

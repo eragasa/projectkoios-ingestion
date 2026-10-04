@@ -15,20 +15,19 @@ from projectkoios.ingestion.transcription.base import (
 from projectkoios.ingestion.transcription.cache.identity import (
     TranscriptionCacheIdentity,
 )
-from projectkoios.ingestion.transcription.evidence.status import (
-    TranscriptionEvidenceStatus,
-)
 from projectkoios.ingestion.transcription.item.item import TranscriptionItem
 from projectkoios.ingestion.transcription.omission.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.order.status import (
-    TranscriptionOrderStatus,
-)
 from projectkoios.ingestion.transcription.request.request import (
     StructuredTranscriptionRequest,
 )
-from projectkoios.ingestion.transcription.status import TranscriptionStatus
+from projectkoios.ingestion.transcription.result.status import (
+    TranscriptionStatus,
+)
+from projectkoios.ingestion.transcription.result.validation import (
+    TranscriptionResultValidation,
+)
 
 
 @dataclass(frozen=True)
@@ -64,10 +63,8 @@ class StructuredTranscriptionResult(
             processor_name=processor_name,
             processor_version=processor_version,
         ).cache_key
-        status = StructuredTranscriptionResult._result_status(
-            items, omissions, warnings
-        )
-        result_id = StructuredTranscriptionResult._result_id(
+        status = TranscriptionStatus.determine(items, omissions, warnings)
+        result_id = StructuredTranscriptionResult.identity_for(
             transcription_input.input_id,
             items,
             omissions,
@@ -92,17 +89,17 @@ class StructuredTranscriptionResult(
         )
 
     def __post_init__(self) -> None:
-        from projectkoios.ingestion.transcription.result.validation import (
-            TranscriptionResultValidation,
-        )
-
         if (
             self.contract_version
             != AbstractTranscriptionDataObject.CONTRACT_VERSION
         ):
             raise ValueError("unsupported structured transcription version")
-        TranscriptionResultValidation.create(self)
-        expected = StructuredTranscriptionResult._result_id(
+        validation = self.validation
+        if validation.result_id != self.result_id:
+            raise ValueError(
+                "structured transcription validation is inconsistent"
+            )
+        expected = StructuredTranscriptionResult.identity_for(
             self.transcription_input.input_id,
             self.items,
             self.omissions,
@@ -117,6 +114,21 @@ class StructuredTranscriptionResult(
             raise ValueError(
                 "structured transcription result ID is inconsistent"
             )
+
+    @property
+    def validation(self) -> TranscriptionResultValidation:
+        return TranscriptionResultValidation.validate(
+            result_id=self.result_id,
+            transcription_input=self.transcription_input,
+            items=self.items,
+            omissions=self.omissions,
+            warnings=self.warnings,
+            status=self.status,
+            processor_name=self.processor_name,
+            processor_version=self.processor_version,
+            configuration_digest=self.configuration_digest,
+            cache_key=self.cache_key,
+        )
 
     @property
     def request(self) -> StructuredTranscriptionRequest:
@@ -134,27 +146,9 @@ class StructuredTranscriptionResult(
     def actionizer_version(self) -> str:
         return self.processor_version
 
-    @staticmethod
-    def _result_status(
-        items: tuple[TranscriptionItem, ...],
-        omissions: tuple[TranscriptionOmission, ...],
-        warnings: tuple[IngestionWarning, ...],
-    ) -> TranscriptionStatus:
-        if (
-            omissions
-            or warnings
-            or any(
-                item.evidence_status is TranscriptionEvidenceStatus.AMBIGUOUS
-                or item.order_status
-                is TranscriptionOrderStatus.UNCERTAIN_SOURCE_ORDER
-                for item in items
-            )
-        ):
-            return TranscriptionStatus.PROPOSED_WITH_UNCERTAINTY
-        return TranscriptionStatus.PROPOSED
-
-    @staticmethod
-    def _result_id(
+    @classmethod
+    def identity_for(
+        cls,
         input_id: str,
         items: tuple[TranscriptionItem, ...],
         omissions: tuple[TranscriptionOmission, ...],

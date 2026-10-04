@@ -14,7 +14,7 @@ from projectkoios.ingestion.models import (
     Metadata,
     SourceSpan,
 )
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.configuration.error import (
     TranscriptionLimitError,
 )
 
@@ -46,17 +46,15 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
     MAX_EVIDENCE_ENTRIES: ClassVar[int] = 256
     MAX_EVIDENCE_CHARACTERS: ClassVar[int] = 1_000_000
 
-    @staticmethod
-    def _normalize_text(source_texts: tuple[str, ...]) -> str:
-        return AbstractTranscriptionDataObject.WHITESPACE.sub(
-            " ", "\n".join(source_texts)
-        ).strip()
+    @classmethod
+    def normalize_text(cls, source_texts: tuple[str, ...]) -> str:
+        return cls.WHITESPACE.sub(" ", "\n".join(source_texts)).strip()
 
-    @staticmethod
-    def _validate_exact_source_spans(
-        spans: tuple[SourceSpan, ...], document: ExtractedDocument
+    @classmethod
+    def validate_exact_source_spans(
+        cls, spans: tuple[SourceSpan, ...], document: ExtractedDocument
     ) -> None:
-        AbstractTranscriptionDataObject._validate_spans(spans)
+        cls.validate_source_spans(spans)
         page_by_index = {page.page_index: page for page in document.pages}
         for span in spans:
             if span.source_id != document.source.source_id or (
@@ -83,8 +81,9 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
                         "transcription span exceeds its source page"
                     )
 
-    @staticmethod
-    def _deduplicate_warnings(
+    @classmethod
+    def deduplicate_warnings(
+        cls,
         warnings: tuple[IngestionWarning, ...],
     ) -> tuple[IngestionWarning, ...]:
         result: list[IngestionWarning] = []
@@ -95,82 +94,78 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
                 result.append(warning)
         return tuple(result)
 
-    @staticmethod
-    def _deduplicate_spans(
+    @classmethod
+    def deduplicate_spans(
+        cls,
         spans: tuple[SourceSpan, ...],
     ) -> tuple[SourceSpan, ...]:
         result: list[SourceSpan] = []
         seen: set[tuple[object, ...]] = set()
         for span in spans:
-            identity = AbstractTranscriptionDataObject._span_parts(span)
+            identity = cls.source_span_identity_parts(span)
             if identity not in seen:
                 seen.add(identity)
                 result.append(span)
         return tuple(result)
 
-    @staticmethod
-    def _deduplicate_strings(values: tuple[str, ...]) -> tuple[str, ...]:
+    @classmethod
+    def deduplicate_strings(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         return tuple(dict.fromkeys(values))
 
-    @staticmethod
-    def _span_parts(span: SourceSpan) -> tuple[object, ...]:
+    @classmethod
+    def source_span_identity_parts(cls, span: SourceSpan) -> tuple[object, ...]:
         return span.identity_parts() + (span.printed_page_label,)
 
-    @staticmethod
-    def _validate_spans(spans: tuple[SourceSpan, ...]) -> None:
-        AbstractTranscriptionDataObject._require_tuple("source spans", spans)
+    @classmethod
+    def validate_source_spans(cls, spans: tuple[SourceSpan, ...]) -> None:
+        cls.validate_tuple("source spans", spans)
         if any(not isinstance(span, SourceSpan) for span in spans):
             raise TypeError("source spans contain an unsupported value")
         identities = tuple(
-            AbstractTranscriptionDataObject._span_parts(span) for span in spans
+            cls.source_span_identity_parts(span) for span in spans
         )
         if len(set(identities)) != len(identities):
             raise ValueError("source spans must be unique")
 
-    @staticmethod
-    def _validate_metadata(value: Metadata) -> None:
-        AbstractTranscriptionDataObject._require_tuple("metadata", value)
-        if len(value) > AbstractTranscriptionDataObject.MAX_EVIDENCE_ENTRIES:
+    @classmethod
+    def validate_metadata(cls, value: Metadata) -> None:
+        cls.validate_tuple("metadata", value)
+        if len(value) > cls.MAX_EVIDENCE_ENTRIES:
             raise TranscriptionLimitError("too many metadata entries")
         total = 0
         for entry in value:
             if not isinstance(entry, tuple) or len(entry) != 2:
                 raise TypeError("metadata must contain immutable pairs")
             key, item = entry
-            AbstractTranscriptionDataObject._bounded_string(
-                "metadata key", key, nonempty=True
-            )
-            AbstractTranscriptionDataObject._bounded_string(
-                "metadata value", item
-            )
+            cls.validate_bounded_string("metadata key", key, nonempty=True)
+            cls.validate_bounded_string("metadata value", item)
             total += len(key) + len(item)
-        if total > AbstractTranscriptionDataObject.MAX_EVIDENCE_CHARACTERS:
+        if total > cls.MAX_EVIDENCE_CHARACTERS:
             raise TranscriptionLimitError("metadata exceeds its hard limit")
 
-    @staticmethod
-    def _identity_fields(*values: str) -> None:
+    @classmethod
+    def validate_identity_fields(cls, *values: str) -> None:
         for value in values:
-            AbstractTranscriptionDataObject._bounded_string(
-                "identity field", value, nonempty=True
-            )
+            cls.validate_bounded_string("identity field", value, nonempty=True)
 
-    @staticmethod
-    def _unique_strings(name: str, values: tuple[str, ...]) -> None:
-        AbstractTranscriptionDataObject._require_tuple(name, values)
+    @classmethod
+    def validate_unique_strings(
+        cls, name: str, values: tuple[str, ...]
+    ) -> None:
+        cls.validate_tuple(name, values)
         for value in values:
-            AbstractTranscriptionDataObject._bounded_string(
-                name, value, nonempty=True
-            )
+            cls.validate_bounded_string(name, value, nonempty=True)
         if len(set(values)) != len(values):
             raise ValueError(f"{name} must be unique")
 
-    @staticmethod
-    def _require_tuple(name: str, value: object) -> None:
+    @classmethod
+    def validate_tuple(cls, name: str, value: object) -> None:
         if not isinstance(value, tuple):
             raise TypeError(f"{name} must be an immutable tuple")
 
-    @staticmethod
-    def _bounded_string(
+    @classmethod
+    def validate_bounded_string(
+        cls,
         name: str,
         value: object,
         *,
@@ -178,7 +173,7 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
         limit: int | None = None,
     ) -> None:
         if limit is None:
-            limit = AbstractTranscriptionDataObject.MAX_IDENTITY_CHARACTERS
+            limit = cls.MAX_IDENTITY_CHARACTERS
         if not isinstance(value, str):
             raise TypeError(f"{name} must be a string")
         if nonempty and not value:
@@ -190,18 +185,18 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
         except UnicodeEncodeError as error:
             raise ValueError(f"{name} must be valid UTF-8") from error
 
-    @staticmethod
-    def _positive_integer(name: str, value: object) -> None:
+    @classmethod
+    def validate_positive_integer(cls, name: str, value: object) -> None:
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValueError(f"{name} must be a positive integer")
 
-    @staticmethod
-    def _nonnegative_integer(name: str, value: object) -> None:
+    @classmethod
+    def validate_nonnegative_integer(cls, name: str, value: object) -> None:
         if isinstance(value, bool) or not isinstance(value, int) or value < 0:
             raise ValueError(f"{name} must be a non-negative integer")
 
-    @staticmethod
-    def _unit_float(name: str, value: object) -> float:
+    @classmethod
+    def validate_unit_float(cls, name: str, value: object) -> float:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise TypeError(f"{name} must be numeric")
         result = float(value)
@@ -209,8 +204,8 @@ class AbstractTranscriptionDataObject(AbstractImmutableDataObject):
             raise ValueError(f"{name} must be finite and within [0, 1]")
         return 0.0 if result == 0.0 else result
 
-    @staticmethod
-    def _validate_retained_size(value: object, limit: int) -> None:
+    @classmethod
+    def validate_retained_size(cls, value: object, limit: int) -> None:
         total = 0
         stack = [value]
         seen: set[int] = set()

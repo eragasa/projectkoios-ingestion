@@ -8,15 +8,10 @@ from projectkoios.ingestion.equations.detection import (
     EquationDetectionResult,
 )
 from projectkoios.ingestion.figures import (
-    EmbeddedFigureArtifact,
     FigureDetectionResult,
 )
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.models import (
-    ExtractedBlock,
-    ExtractedDocument,
-)
-from projectkoios.ingestion.pdf.models import RenderedRegion
+from projectkoios.ingestion.models import ExtractedDocument
 from projectkoios.ingestion.structure import (
     StructureAnalysis,
 )
@@ -27,11 +22,17 @@ from projectkoios.ingestion.transcription.base import (
 from projectkoios.ingestion.transcription.configuration.configuration import (  # noqa: E501
     TranscriptionConfiguration,
 )
-from projectkoios.ingestion.transcription.derivation.transcription import (
-    TranscriptionDerivation,
-)
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.configuration.error import (
     TranscriptionLimitError,
+)
+from projectkoios.ingestion.transcription.derivation.table import (
+    TableTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.request.artifact_inventory import (
+    TranscriptionInputArtifactInventory,
+)
+from projectkoios.ingestion.transcription.request.block_validation import (
+    TranscriptionBlockValidation,
 )
 
 
@@ -39,15 +40,17 @@ from projectkoios.ingestion.transcription.limit_error import (
 class TranscriptionRequestValidation(
     AbstractValidation, AbstractTranscriptionDataObject
 ):
-    document_id: str
-    validated_block_count: int
-    validated_node_count: int
-    validated_typed_object_count: int
-    validated_artifact_bytes: int
+    document: ExtractedDocument
+    structure_analysis: StructureAnalysis
+    equation_detection_result: EquationDetectionResult
+    table_structure_result: TableStructureResult
+    figure_detection_result: FigureDetectionResult
+    configuration: TranscriptionConfiguration
+    artifact_inventory: TranscriptionInputArtifactInventory
     contract_version: str = AbstractTranscriptionDataObject.CONTRACT_VERSION
 
     @classmethod
-    def create(
+    def validate(
         cls,
         document: ExtractedDocument,
         structure_analysis: StructureAnalysis,
@@ -56,45 +59,64 @@ class TranscriptionRequestValidation(
         figure_detection_result: FigureDetectionResult,
         configuration: TranscriptionConfiguration,
     ) -> TranscriptionRequestValidation:
-        cls._validate_input_parts(
-            document,
-            structure_analysis,
-            equation_detection_result,
-            table_structure_result,
-            figure_detection_result,
-            configuration,
-        )
-        table_detection = (
-            table_structure_result.structure_input.detection_result
-        )
         return cls(
-            document_id=document.document_id,
-            validated_block_count=sum(
-                len(page.blocks) for page in document.pages
-            ),
-            validated_node_count=len(structure_analysis.nodes),
-            validated_typed_object_count=(
-                len(equation_detection_result.candidates)
-                + len(table_detection.candidates)
-                + len(table_structure_result.structures)
-                + len(figure_detection_result.candidates)
-            ),
-            validated_artifact_bytes=cls._input_artifact_bytes(
+            document=document,
+            structure_analysis=structure_analysis,
+            equation_detection_result=equation_detection_result,
+            table_structure_result=table_structure_result,
+            figure_detection_result=figure_detection_result,
+            configuration=configuration,
+            artifact_inventory=TranscriptionInputArtifactInventory.derive(
                 equation_detection_result,
                 table_structure_result,
                 figure_detection_result,
             ),
         )
 
-    @staticmethod
-    def _validate_input_parts(
-        document: ExtractedDocument,
-        structure_analysis: StructureAnalysis,
-        equation_detection_result: EquationDetectionResult,
-        table_structure_result: TableStructureResult,
-        figure_detection_result: FigureDetectionResult,
-        configuration: TranscriptionConfiguration,
-    ) -> None:
+    @property
+    def validated_block_count(self) -> int:
+        return sum(len(page.blocks) for page in self.document.pages)
+
+    @property
+    def validated_node_count(self) -> int:
+        return len(self.structure_analysis.nodes)
+
+    @property
+    def validated_typed_object_count(self) -> int:
+        return (
+            len(self.equation_detection_result.candidates)
+            + len(
+                self.table_structure_result.structure_input.detection_result.candidates
+            )
+            + len(self.table_structure_result.structures)
+            + len(self.figure_detection_result.candidates)
+        )
+
+    @property
+    def validated_artifact_bytes(self) -> int:
+        return self.artifact_inventory.total_bytes
+
+    def __post_init__(self) -> None:
+        if self.contract_version != self.CONTRACT_VERSION:
+            raise ValueError(
+                "unsupported transcription request validation version"
+            )
+        document = self.document
+        structure_analysis = self.structure_analysis
+        equation_detection_result = self.equation_detection_result
+        table_structure_result = self.table_structure_result
+        figure_detection_result = self.figure_detection_result
+        configuration = self.configuration
+        artifact_inventory = self.artifact_inventory
+        expected_artifact_inventory = (
+            TranscriptionInputArtifactInventory.derive(
+                equation_detection_result,
+                table_structure_result,
+                figure_detection_result,
+            )
+        )
+        if artifact_inventory != expected_artifact_inventory:
+            raise ValueError("input artifact inventory is inconsistent")
         if not isinstance(document, ExtractedDocument):
             raise TypeError("document must be ExtractedDocument")
         if document.document_id != stable_id(
@@ -131,23 +153,19 @@ class TranscriptionRequestValidation(
         for page in document.pages:
             if not math.isfinite(page.width) or not math.isfinite(page.height):
                 raise ValueError("document page dimensions must be finite")
-            AbstractTranscriptionDataObject._unit_float(
+            AbstractTranscriptionDataObject.validate_unit_float(
                 "page extraction quality", page.extraction_quality
             )
             for block in page.blocks:
-                if (
-                    block.block_id
-                    != TranscriptionRequestValidation._expected_block_id(block)
-                ):
-                    raise ValueError("document block identity is stale")
-                AbstractTranscriptionDataObject._unit_float(
+                TranscriptionBlockValidation(block)
+                AbstractTranscriptionDataObject.validate_unit_float(
                     "block confidence", block.confidence
                 )
-                AbstractTranscriptionDataObject._validate_exact_source_spans(
+                AbstractTranscriptionDataObject.validate_exact_source_spans(
                     block.source_spans, document
                 )
                 if block.text is not None:
-                    AbstractTranscriptionDataObject._bounded_string(
+                    AbstractTranscriptionDataObject.validate_bounded_string(
                         "source text",
                         block.text,
                         limit=configuration.max_text_characters_per_item,
@@ -195,13 +213,13 @@ class TranscriptionRequestValidation(
         for node in structure_analysis.nodes:
             if not set(node.source_block_ids).issubset(block_ids):
                 raise ValueError("structure node source blocks are stale")
-            AbstractTranscriptionDataObject._validate_exact_source_spans(
+            AbstractTranscriptionDataObject.validate_exact_source_spans(
                 node.source_spans, document
             )
         for equation_candidate in equation_detection_result.candidates:
             if equation_candidate.source_block_id not in block_ids:
                 raise ValueError("equation candidate source block is stale")
-            AbstractTranscriptionDataObject._validate_exact_source_spans(
+            AbstractTranscriptionDataObject.validate_exact_source_spans(
                 equation_candidate.source_spans, document
             )
         table_candidate_by_id = {
@@ -212,14 +230,22 @@ class TranscriptionRequestValidation(
             table_candidate = table_candidate_by_id.get(structure.candidate_id)
             if table_candidate is None:
                 raise ValueError("table structure candidate is stale")
-            table_block_ids, table_spans = (
-                TranscriptionDerivation._table_projection(
-                    structure, table_candidate
-                )
+            page_index = min(
+                region.page_index for region in table_candidate.regions
             )
+            table_derivation = TableTranscriptionDerivation.derive(
+                structure,
+                table_candidate,
+                {
+                    page.page_index: page.printed_page_label
+                    for page in document.pages
+                }[page_index],
+            )
+            table_block_ids = table_derivation.source_block_ids
+            table_spans = table_derivation.source_spans
             if not set(table_block_ids).issubset(block_ids):
                 raise ValueError("table structure source blocks are stale")
-            AbstractTranscriptionDataObject._validate_exact_source_spans(
+            AbstractTranscriptionDataObject.validate_exact_source_spans(
                 table_spans, document
             )
         for figure_candidate in figure_detection_result.candidates:
@@ -233,19 +259,15 @@ class TranscriptionRequestValidation(
             }
             if not candidate_blocks.issubset(block_ids):
                 raise ValueError("figure candidate source blocks are stale")
-            AbstractTranscriptionDataObject._validate_exact_source_spans(
+            AbstractTranscriptionDataObject.validate_exact_source_spans(
                 figure_candidate.source_spans, document
             )
-        artifact_bytes = TranscriptionRequestValidation._input_artifact_bytes(
-            equation_detection_result,
-            table_structure_result,
-            figure_detection_result,
-        )
+        artifact_bytes = artifact_inventory.total_bytes
         if artifact_bytes > configuration.max_input_artifact_bytes:
             raise TranscriptionLimitError(
                 "input artifacts exceed max_input_artifact_bytes"
             )
-        AbstractTranscriptionDataObject._validate_retained_size(
+        AbstractTranscriptionDataObject.validate_retained_size(
             (
                 document,
                 structure_analysis,
@@ -255,57 +277,4 @@ class TranscriptionRequestValidation(
                 configuration,
             ),
             configuration.max_result_bytes,
-        )
-
-    @staticmethod
-    def _expected_block_id(block: ExtractedBlock) -> str:
-        has_source_local_evidence = any(
-            span.source_object_id is not None
-            or span.bounding_box is not None
-            or span.start_offset is not None
-            for span in block.source_spans
-        )
-        fallback_payload = (
-            None
-            if has_source_local_evidence
-            else (block.text, block.asset_id, block.asset_mask_id)
-        )
-        return stable_id(
-            "block",
-            block.kind,
-            tuple(span.identity_parts() for span in block.source_spans),
-            fallback_payload,
-        )
-
-    @staticmethod
-    def _input_artifact_bytes(
-        equation_result: EquationDetectionResult,
-        table_result: TableStructureResult,
-        figure_result: FigureDetectionResult,
-    ) -> int:
-        rendered: dict[str, RenderedRegion] = {}
-        embedded: dict[str, EmbeddedFigureArtifact] = {}
-        for equation_candidate in equation_result.candidates:
-            rendered[equation_candidate.rendered_region.region_id] = (
-                equation_candidate.rendered_region
-            )
-        for (
-            table_candidate
-        ) in table_result.structure_input.detection_result.candidates:
-            for region in table_candidate.regions:
-                rendered[region.rendered_region.region_id] = (
-                    region.rendered_region
-                )
-        for page in figure_result.detection_input.page_evidence:
-            for artifact in page.embedded_artifacts:
-                embedded[artifact.artifact_id] = artifact
-        for figure_candidate in figure_result.candidates:
-            for component in figure_candidate.components:
-                if component.rendered_region is not None:
-                    rendered[component.rendered_region.region_id] = (
-                        component.rendered_region
-                    )
-        return sum(region.byte_length for region in rendered.values()) + sum(
-            artifact.byte_length + (artifact.mask_byte_length or 0)
-            for artifact in embedded.values()
         )

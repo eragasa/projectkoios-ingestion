@@ -11,18 +11,42 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
+from projectkoios.ingestion.transcription.derivation.equation import (
+    EquationTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.figure import (
+    FigureTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.page import (
+    PageTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.raw_block import (
+    RawBlockTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.structure import (
+    StructureTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.structure_disposition import (  # noqa: E501
+    TranscriptionStructureDisposition,
+)
+from projectkoios.ingestion.transcription.derivation.table import (
+    TableTranscriptionDerivation,
+)
 from projectkoios.ingestion.transcription.derivation.transcription import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.item.item import TranscriptionItem
-from projectkoios.ingestion.transcription.item_kind import (
-    TranscriptionItemKind,
+from projectkoios.ingestion.transcription.evidence.warning_derivation import (
+    TranscriptionWarningDerivation,
 )
+from projectkoios.ingestion.transcription.item.item import TranscriptionItem
 from projectkoios.ingestion.transcription.omission.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.omission.reason import (
     TranscriptionOmissionReason,
+)
+from projectkoios.ingestion.transcription.order.derivation import (
+    TranscriptionOrderDerivation,
 )
 from projectkoios.ingestion.transcription.order.status import (
     TranscriptionOrderStatus,
@@ -32,9 +56,6 @@ from projectkoios.ingestion.transcription.request.request import (
 )
 from projectkoios.ingestion.transcription.result.result import (
     StructuredTranscriptionResult,
-)
-from projectkoios.ingestion.transcription.source.object_kind import (
-    TranscriptionSourceObjectKind,
 )
 
 
@@ -46,28 +67,6 @@ class DeterministicStructuredTranscriptionComposer(
     """Compose exact evidence into a destination-independent proposal."""
 
     __slots__ = ()
-
-    _page_anchor_draft = staticmethod(
-        TranscriptionDerivation._page_anchor_draft
-    )
-    _structure_draft = staticmethod(TranscriptionDerivation._structure_draft)
-    _raw_block_draft = staticmethod(TranscriptionDerivation._raw_block_draft)
-    _item_kind_for_node = staticmethod(
-        TranscriptionDerivation._item_kind_for_node
-    )
-    _draft_order_key = staticmethod(TranscriptionDerivation._draft_order_key)
-    _draft_order_status = staticmethod(
-        TranscriptionDerivation._draft_order_status
-    )
-    _draft_warning = staticmethod(TranscriptionDerivation._draft_warning)
-    _table_projection = staticmethod(TranscriptionDerivation._table_projection)
-    _figure_projection = staticmethod(
-        TranscriptionDerivation._figure_projection
-    )
-    _equation_status = staticmethod(TranscriptionDerivation._equation_status)
-    _table_status = staticmethod(TranscriptionDerivation._table_status)
-    _figure_status = staticmethod(TranscriptionDerivation._figure_status)
-    _structure_status = staticmethod(TranscriptionDerivation._structure_status)
 
     name = "deterministic-structured-transcription-composer"
     version = AbstractTranscriptionDataObject.COMPOSER_VERSION
@@ -98,18 +97,59 @@ class DeterministicStructuredTranscriptionComposer(
         claimed: dict[str, list[str]] = {}
 
         for page in document.pages:
-            drafts.append(self._page_anchor_draft(document, page))
+            drafts.append(PageTranscriptionDerivation.derive(document, page))
 
-        typed_drafts = (
-            self._equation_drafts(transcription_input)
-            + self._table_drafts(transcription_input)
-            + self._figure_drafts(transcription_input)
-        )
+        page_by_index = {page.page_index: page for page in document.pages}
+        equation_drafts = [
+            EquationTranscriptionDerivation.derive(
+                candidate,
+                page_by_index[
+                    candidate.source_spans[0].page_index
+                ].printed_page_label,
+            )
+            for candidate in (
+                transcription_input.equation_detection_result.candidates
+            )
+        ]
+        table_result = transcription_input.table_structure_result
+        table_candidate_by_id = {
+            candidate.candidate_id: candidate
+            for candidate in (
+                table_result.structure_input.detection_result.candidates
+            )
+        }
+        table_drafts = [
+            TableTranscriptionDerivation.derive(
+                structure,
+                table_candidate_by_id[structure.candidate_id],
+                page_by_index[
+                    min(
+                        region.page_index
+                        for region in table_candidate_by_id[
+                            structure.candidate_id
+                        ].regions
+                    )
+                ].printed_page_label,
+            )
+            for structure in table_result.structures
+        ]
+        figure_drafts = [
+            FigureTranscriptionDerivation.derive(
+                candidate,
+                page_by_index[candidate.page_index].printed_page_label,
+            )
+            for candidate in (
+                transcription_input.figure_detection_result.candidates
+            )
+        ]
+        typed_drafts = equation_drafts + table_drafts + figure_drafts
         typed_draft_ids = tuple(draft.item_id for draft in typed_drafts)
         typed_item_ids = set(typed_draft_ids)
-        for draft, item_id in zip(typed_drafts, typed_draft_ids, strict=True):
-            drafts.append(draft)
-            for block_id in draft.source_block_ids:
+        for typed_draft, item_id in zip(
+            typed_drafts, typed_draft_ids, strict=True
+        ):
+            drafts.append(typed_draft)
+            for block_id in typed_draft.source_block_ids:
                 claimed.setdefault(block_id, []).append(item_id)
 
         for block_id, item_ids in claimed.items():
@@ -138,8 +178,8 @@ class DeterministicStructuredTranscriptionComposer(
             ),
         )
         for node in nodes:
-            item_kind = self._item_kind_for_node(node)
-            if item_kind is None:
+            disposition = TranscriptionStructureDisposition.derive(node)
+            if disposition.item_kind is None:
                 continue
             available: list[ExtractedBlock] = []
             for block_id in node.source_block_ids:
@@ -176,14 +216,11 @@ class DeterministicStructuredTranscriptionComposer(
                 else:
                     available.append(block)
             if available:
-                draft = self._structure_draft(
-                    node,
-                    tuple(available),
-                    item_kind,
-                    page_label_by_index,
+                structure_draft = StructureTranscriptionDerivation.derive(
+                    node, tuple(available), page_label_by_index
                 )
-                drafts.append(draft)
-                item_id = draft.item_id
+                drafts.append(structure_draft)
+                item_id = structure_draft.item_id
                 for block in available:
                     claimed.setdefault(block.block_id, []).append(item_id)
 
@@ -192,11 +229,13 @@ class DeterministicStructuredTranscriptionComposer(
                 if block.block_id in claimed:
                     continue
                 if block.text is not None:
-                    draft = self._raw_block_draft(
+                    raw_block_draft = RawBlockTranscriptionDerivation.derive(
                         page.page_index, page.printed_page_label, block
                     )
-                    drafts.append(draft)
-                    claimed.setdefault(block.block_id, []).append(draft.item_id)
+                    drafts.append(raw_block_draft)
+                    claimed.setdefault(block.block_id, []).append(
+                        raw_block_draft.item_id
+                    )
                 else:
                     omissions.append(
                         TranscriptionOmission.create(
@@ -209,38 +248,54 @@ class DeterministicStructuredTranscriptionComposer(
                         )
                     )
 
+        order_derivation_by_item_id = {
+            draft.item_id: TranscriptionOrderDerivation.derive(
+                draft, block_position
+            )
+            for draft in drafts
+        }
         drafts.sort(
-            key=lambda draft: self._draft_order_key(draft, block_position)
+            key=lambda draft: (
+                order_derivation_by_item_id[draft.item_id].order_key
+            )
         )
         items: list[TranscriptionItem] = []
-        for order_index, draft in enumerate(drafts):
-            order_status = self._draft_order_status(draft)
+        for order_index, ordered_draft in enumerate(drafts):
+            order_status = order_derivation_by_item_id[
+                ordered_draft.item_id
+            ].order_status
             item_warnings: list[IngestionWarning] = []
-            for code in draft.warning_codes:
-                item_warnings.append(self._draft_warning(draft, code))
+            for code in ordered_draft.warning_codes:
+                item_warnings.append(
+                    TranscriptionWarningDerivation.derive(
+                        ordered_draft, code
+                    ).warning
+                )
             if order_status is TranscriptionOrderStatus.UNCERTAIN_SOURCE_ORDER:
                 item_warnings.append(
-                    self._draft_warning(draft, "transcription.order_uncertain")
+                    TranscriptionWarningDerivation.derive(
+                        ordered_draft, "transcription.order_uncertain"
+                    ).warning
                 )
             warnings.extend(item_warnings)
             items.append(
                 TranscriptionItem.create(
-                    item_kind=draft.item_kind,
-                    source_object_kind=draft.source_object_kind,
-                    source_object_id=draft.source_object_id,
-                    page_index=draft.page_index,
-                    printed_page_label=draft.printed_page_label,
+                    item_kind=ordered_draft.item_kind,
+                    source_object_kind=ordered_draft.source_object_kind,
+                    source_object_id=ordered_draft.source_object_id,
+                    page_index=ordered_draft.page_index,
+                    printed_page_label=ordered_draft.printed_page_label,
                     order_index=order_index,
                     order_status=order_status,
-                    evidence_status=draft.evidence_status,
-                    confidence=draft.confidence,
-                    source_block_ids=draft.source_block_ids,
-                    source_spans=draft.source_spans,
-                    source_texts=draft.source_texts,
+                    evidence_status=ordered_draft.evidence_status,
+                    confidence=ordered_draft.confidence,
+                    source_block_ids=ordered_draft.source_block_ids,
+                    source_spans=ordered_draft.source_spans,
+                    source_texts=ordered_draft.source_texts,
                     warning_ids=tuple(
                         warning.warning_id for warning in item_warnings
                     ),
-                    evidence=draft.evidence,
+                    evidence=ordered_draft.evidence,
                 )
             )
 
@@ -248,127 +303,10 @@ class DeterministicStructuredTranscriptionComposer(
             transcription_input=transcription_input,
             items=tuple(items),
             omissions=tuple(omissions),
-            warnings=AbstractTranscriptionDataObject._deduplicate_warnings(
+            warnings=AbstractTranscriptionDataObject.deduplicate_warnings(
                 tuple(warnings)
             ),
             processor_name=self.name,
             processor_version=self.version,
         )
         return result
-
-    @staticmethod
-    def _equation_drafts(
-        transcription_input: StructuredTranscriptionRequest,
-    ) -> list[TranscriptionDerivation]:
-        document = transcription_input.document
-        page_by_index = {page.page_index: page for page in document.pages}
-        result: list[TranscriptionDerivation] = []
-        for (
-            candidate
-        ) in transcription_input.equation_detection_result.candidates:
-            page_index = candidate.source_spans[0].page_index
-            result.append(
-                TranscriptionDerivation(
-                    item_kind=TranscriptionItemKind.EQUATION,
-                    source_object_kind=(
-                        TranscriptionSourceObjectKind.EQUATION_CANDIDATE
-                    ),
-                    source_object_id=candidate.candidate_id,
-                    page_index=page_index,
-                    printed_page_label=page_by_index[
-                        page_index
-                    ].printed_page_label,
-                    source_block_ids=(candidate.source_block_id,),
-                    source_spans=candidate.source_spans,
-                    source_texts=(candidate.raw_text,),
-                    evidence_status=TranscriptionDerivation._equation_status(
-                        candidate
-                    ),
-                    confidence=candidate.confidence,
-                    structure_reading_order=None,
-                    evidence=(("candidate_kind", candidate.kind.value),),
-                )
-            )
-        return result
-
-    @staticmethod
-    def _table_drafts(
-        transcription_input: StructuredTranscriptionRequest,
-    ) -> list[TranscriptionDerivation]:
-        document = transcription_input.document
-        page_by_index = {page.page_index: page for page in document.pages}
-        structure_result = transcription_input.table_structure_result
-        detection = structure_result.structure_input.detection_result
-        candidate_by_id = {
-            candidate.candidate_id: candidate
-            for candidate in detection.candidates
-        }
-        result: list[TranscriptionDerivation] = []
-        for structure in structure_result.structures:
-            candidate = candidate_by_id[structure.candidate_id]
-            block_ids, spans = TranscriptionDerivation._table_projection(
-                structure, candidate
-            )
-            page_index = min(region.page_index for region in candidate.regions)
-            result.append(
-                TranscriptionDerivation(
-                    item_kind=TranscriptionItemKind.TABLE,
-                    source_object_kind=TranscriptionSourceObjectKind.TABLE_STRUCTURE,
-                    source_object_id=structure.structure_id,
-                    page_index=page_index,
-                    printed_page_label=page_by_index[
-                        page_index
-                    ].printed_page_label,
-                    source_block_ids=block_ids,
-                    source_spans=spans,
-                    source_texts=(),
-                    evidence_status=TranscriptionDerivation._table_status(
-                        structure
-                    ),
-                    confidence=structure.confidence,
-                    structure_reading_order=None,
-                    evidence=(("candidate_id", candidate.candidate_id),),
-                )
-            )
-        return result
-
-    @staticmethod
-    def _figure_drafts(
-        transcription_input: StructuredTranscriptionRequest,
-    ) -> list[TranscriptionDerivation]:
-        document = transcription_input.document
-        page_by_index = {page.page_index: page for page in document.pages}
-        result: list[TranscriptionDerivation] = []
-        for candidate in transcription_input.figure_detection_result.candidates:
-            block_ids, spans = TranscriptionDerivation._figure_projection(
-                candidate
-            )
-            result.append(
-                TranscriptionDerivation(
-                    item_kind=TranscriptionItemKind.FIGURE,
-                    source_object_kind=TranscriptionSourceObjectKind.FIGURE_CANDIDATE,
-                    source_object_id=candidate.candidate_id,
-                    page_index=candidate.page_index,
-                    printed_page_label=page_by_index[
-                        candidate.page_index
-                    ].printed_page_label,
-                    source_block_ids=block_ids,
-                    source_spans=spans,
-                    source_texts=(),
-                    evidence_status=TranscriptionDerivation._figure_status(
-                        candidate
-                    ),
-                    confidence=candidate.confidence,
-                    structure_reading_order=None,
-                    evidence=(
-                        ("component_count", str(len(candidate.components))),
-                    ),
-                )
-            )
-        return result
-
-    def compose(
-        self, transcription_input: StructuredTranscriptionRequest
-    ) -> StructuredTranscriptionResult:
-        """Compose one request through the canonical action path."""
-        return self.action(request=transcription_input)

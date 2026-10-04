@@ -56,19 +56,11 @@ class StructuredTranscriptionRequest(
         configuration: TranscriptionConfiguration | None = None,
     ) -> StructuredTranscriptionRequest:
         actual = configuration or TranscriptionConfiguration()
-        TranscriptionRequestValidation.create(
-            document,
-            structure_analysis,
-            equation_detection_result,
-            table_structure_result,
-            figure_detection_result,
-            actual,
-        )
         document_evidence_id = (
-            StructuredTranscriptionRequest._document_evidence_id(document)
+            StructuredTranscriptionRequest.document_evidence_identity(document)
         )
         return cls(
-            input_id=StructuredTranscriptionRequest._input_id(
+            input_id=StructuredTranscriptionRequest.identity_for(
                 document_evidence_id,
                 document,
                 structure_analysis,
@@ -92,25 +84,22 @@ class StructuredTranscriptionRequest(
             != AbstractTranscriptionDataObject.CONTRACT_VERSION
         ):
             raise ValueError("unsupported transcription input version")
-        TranscriptionRequestValidation.create(
-            self.document,
-            self.structure_analysis,
-            self.equation_detection_result,
-            self.table_structure_result,
-            self.figure_detection_result,
-            self.configuration,
-        )
-        AbstractTranscriptionDataObject._identity_fields(
+        validation = self.validation
+        if validation.document is not self.document:
+            raise ValueError("transcription request validation is inconsistent")
+        AbstractTranscriptionDataObject.validate_identity_fields(
             self.document_evidence_id
         )
         expected_document_evidence_id = (
-            StructuredTranscriptionRequest._document_evidence_id(self.document)
+            StructuredTranscriptionRequest.document_evidence_identity(
+                self.document
+            )
         )
         if self.document_evidence_id != expected_document_evidence_id:
             raise ValueError(
                 "transcription document evidence ID is inconsistent"
             )
-        expected = StructuredTranscriptionRequest._input_id(
+        expected = StructuredTranscriptionRequest.identity_for(
             self.document_evidence_id,
             self.document,
             self.structure_analysis,
@@ -126,12 +115,24 @@ class StructuredTranscriptionRequest(
     def request_id(self) -> str:
         return self.input_id
 
-    @staticmethod
-    def _document_evidence_id(document: ExtractedDocument) -> str:
+    @property
+    def validation(self) -> TranscriptionRequestValidation:
+        return TranscriptionRequestValidation.validate(
+            self.document,
+            self.structure_analysis,
+            self.equation_detection_result,
+            self.table_structure_result,
+            self.figure_detection_result,
+            self.configuration,
+        )
+
+    @classmethod
+    def document_evidence_identity(cls, document: ExtractedDocument) -> str:
         return stable_id("structured-transcription-document-evidence", document)
 
-    @staticmethod
-    def _input_id(
+    @classmethod
+    def identity_for(
+        cls,
         document_evidence_id: str,
         document: ExtractedDocument,
         structure_analysis: StructureAnalysis,

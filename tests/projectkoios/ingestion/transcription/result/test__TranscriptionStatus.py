@@ -1,4 +1,6 @@
-from projectkoios.ingestion.transcription.status import TranscriptionStatus
+from projectkoios.ingestion.transcription.result.status import (
+    TranscriptionStatus,
+)
 
 
 def test__transcription_status__never_implies_acceptance() -> None:

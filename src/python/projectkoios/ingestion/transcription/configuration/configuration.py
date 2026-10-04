@@ -6,7 +6,7 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.configuration.error import (
     TranscriptionLimitError,
 )
 
@@ -86,7 +86,9 @@ class TranscriptionConfiguration(AbstractTranscriptionDataObject):
             ),
         ):
             value = getattr(self, name)
-            AbstractTranscriptionDataObject._positive_integer(name, value)
+            AbstractTranscriptionDataObject.validate_positive_integer(
+                name, value
+            )
             if value > hard_limit:
                 raise TranscriptionLimitError(
                     f"{name} exceeds its implementation maximum ({hard_limit})"

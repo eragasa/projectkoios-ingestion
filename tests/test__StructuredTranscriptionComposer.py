@@ -37,19 +37,19 @@ from projectkoios.ingestion.transcription.composition.composer import (
 from projectkoios.ingestion.transcription.configuration.configuration import (
     TranscriptionConfiguration,
 )
+from projectkoios.ingestion.transcription.configuration.error import (
+    TranscriptionLimitError,
+)
 from projectkoios.ingestion.transcription.evidence.status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item_kind import (
+from projectkoios.ingestion.transcription.item.kind import (
     TranscriptionItemKind,
-)
-from projectkoios.ingestion.transcription.limit_error import (
-    TranscriptionLimitError,
 )
 from projectkoios.ingestion.transcription.omission.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.omission.reason import (
     TranscriptionOmissionReason,
 )
 from projectkoios.ingestion.transcription.order.status import (
@@ -61,10 +61,12 @@ from projectkoios.ingestion.transcription.request.request import (
 from projectkoios.ingestion.transcription.result.result import (
     StructuredTranscriptionResult,
 )
+from projectkoios.ingestion.transcription.result.status import (
+    TranscriptionStatus,
+)
 from projectkoios.ingestion.transcription.source.object_kind import (
     TranscriptionSourceObjectKind,
 )
-from projectkoios.ingestion.transcription.status import TranscriptionStatus
 
 pytest.importorskip("pymupdf")
 
@@ -482,7 +484,9 @@ def test__structured_transcription__uses_action_family_base_objects() -> None:
     assert expected.request is request
     assert expected.request_id == request.request_id
     assert DeterministicStructuredTranscriptionComposer is actionizer.__class__
-    assert actionizer.compose(request) == expected
+    assert request.validation.document is request.document
+    assert expected.validation.result_id == expected.result_id
+    assert expected.validation.object_validation.items == expected.items
 
 
 def test__structured_transcription__preserves_golden_identity_and_bytes() -> (

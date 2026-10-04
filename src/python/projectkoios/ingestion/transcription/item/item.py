@@ -13,7 +13,7 @@ from projectkoios.ingestion.transcription.base import (
 from projectkoios.ingestion.transcription.evidence.status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item_kind import (
+from projectkoios.ingestion.transcription.item.kind import (
     TranscriptionItemKind,
 )
 from projectkoios.ingestion.transcription.order.status import (
@@ -65,7 +65,7 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
         evidence: Metadata = (),
     ) -> TranscriptionItem:
         normalized_text = (
-            AbstractTranscriptionDataObject._normalize_text(source_texts)
+            AbstractTranscriptionDataObject.normalize_text(source_texts)
             if source_texts
             else None
         )
@@ -75,7 +75,7 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
             else None
         )
         return cls(
-            item_id=TranscriptionItem._item_id(
+            item_id=TranscriptionItem.identity_for(
                 item_kind,
                 source_object_kind,
                 source_object_id,
@@ -119,15 +119,17 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
             self.source_object_kind, TranscriptionSourceObjectKind
         ):
             raise TypeError("transcription source-object kind is unsupported")
-        AbstractTranscriptionDataObject._identity_fields(self.source_object_id)
-        AbstractTranscriptionDataObject._nonnegative_integer(
+        AbstractTranscriptionDataObject.validate_identity_fields(
+            self.source_object_id
+        )
+        AbstractTranscriptionDataObject.validate_nonnegative_integer(
             "item page index", self.page_index
         )
-        AbstractTranscriptionDataObject._nonnegative_integer(
+        AbstractTranscriptionDataObject.validate_nonnegative_integer(
             "item order index", self.order_index
         )
         if self.printed_page_label is not None:
-            AbstractTranscriptionDataObject._bounded_string(
+            AbstractTranscriptionDataObject.validate_bounded_string(
                 "printed page label", self.printed_page_label
             )
         if not isinstance(self.order_status, TranscriptionOrderStatus):
@@ -138,19 +140,19 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
             object.__setattr__(
                 self,
                 "confidence",
-                AbstractTranscriptionDataObject._unit_float(
+                AbstractTranscriptionDataObject.validate_unit_float(
                     "item confidence", self.confidence
                 ),
             )
-        AbstractTranscriptionDataObject._unique_strings(
+        AbstractTranscriptionDataObject.validate_unique_strings(
             "item source block IDs", self.source_block_ids
         )
-        AbstractTranscriptionDataObject._validate_spans(self.source_spans)
-        AbstractTranscriptionDataObject._require_tuple(
+        AbstractTranscriptionDataObject.validate_source_spans(self.source_spans)
+        AbstractTranscriptionDataObject.validate_tuple(
             "source texts", self.source_texts
         )
         for text in self.source_texts:
-            AbstractTranscriptionDataObject._bounded_string(
+            AbstractTranscriptionDataObject.validate_bounded_string(
                 "source text",
                 text,
                 limit=AbstractTranscriptionDataObject.MAX_TEXT_CHARACTERS_PER_ITEM,
@@ -165,13 +167,13 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
                 )
             if (
                 self.normalized_text
-                != AbstractTranscriptionDataObject._normalize_text(
+                != AbstractTranscriptionDataObject.normalize_text(
                     self.source_texts
                 )
             ):
                 raise ValueError("normalized text is inconsistent")
             assert self.normalized_text is not None
-            AbstractTranscriptionDataObject._bounded_string(
+            AbstractTranscriptionDataObject.validate_bounded_string(
                 "normalized text",
                 self.normalized_text,
                 limit=AbstractTranscriptionDataObject.MAX_TEXT_CHARACTERS_PER_ITEM,
@@ -181,11 +183,11 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
             or self.normalization_method is not None
         ):
             raise ValueError("text-free item cannot contain normalized text")
-        AbstractTranscriptionDataObject._unique_strings(
+        AbstractTranscriptionDataObject.validate_unique_strings(
             "item warning IDs", self.warning_ids
         )
-        AbstractTranscriptionDataObject._validate_metadata(self.evidence)
-        expected = TranscriptionItem._item_id(
+        AbstractTranscriptionDataObject.validate_metadata(self.evidence)
+        expected = TranscriptionItem.identity_for(
             self.item_kind,
             self.source_object_kind,
             self.source_object_id,
@@ -202,8 +204,9 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
         if self.item_id != expected:
             raise ValueError("transcription item ID is inconsistent")
 
-    @staticmethod
-    def _item_id(
+    @classmethod
+    def identity_for(
+        cls,
         item_kind: TranscriptionItemKind,
         source_object_kind: TranscriptionSourceObjectKind,
         source_object_id: str,
@@ -225,7 +228,7 @@ class TranscriptionItem(AbstractTranscriptionDataObject):
             page_index,
             source_block_ids,
             tuple(
-                AbstractTranscriptionDataObject._span_parts(span)
+                AbstractTranscriptionDataObject.source_span_identity_parts(span)
                 for span in source_spans
             ),
             normalized_text,
