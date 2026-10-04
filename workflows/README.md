@@ -48,6 +48,7 @@ closed as unsuitable for unattended corpus execution.
 | 023 | `023.recompose_legacy_reference_equation_evidence.py` | Correct `doc-01`–`doc-05`, retain every selected equation-region reference, and discard historical recognized equation text. |
 | 024 | `024.build_reference_reading_corpus_coverage_v2.py` | Validate and reconcile the authoritative nine-document reading corpus after legacy recomposition. |
 | 025 | `025.validate_reference_reading_corpus_coverage.py` | Recheck all nine transcripts, equation review gates, evidence hashes, unique identities, media, totals, and private permissions. |
+| 026 | `026.select_recognition_independent_equation_evidence.py` | Classify every prepared equation assembly from detector and assembly evidence only, retaining all candidate media without reading recognition output. |
 
 Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
