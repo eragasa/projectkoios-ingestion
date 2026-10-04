@@ -75,7 +75,12 @@ selection inventory,
 `reference-equation-evidence-selection-inventory:sha256:1ce4f8c68241e3dee14085c3673405f06ba321e7938e955db1a75a1cd1734a00`.
 It classifies all 5,360 assemblies directly from detector and assembly evidence:
 1,906 are selected primary evidence and 3,454 remain retained auxiliary evidence.
-It does not read recognition results and retains no recognized text.
+It does not read recognition results and retains no recognized text. The
+resulting transcript collection is
+`reference-reading-transcript-collection:sha256:5e2da983eedbacc90943feb167ace26b349a252c49284dc97f8bc03e4ccc148f`.
+It covers the same 2,031 pages, 1,906 equations, 947 figures, and 872 tables as
+the previous collection. Its semantic comparison passed with validation
+`reference-reading-transcript-validation:sha256:ae4c6994643543ca8522f6cb7fdb91657b38b01429c5dc0a24e62ff8c3ea646a`.
 
 The same deterministic correction was applied to `doc-01` through `doc-05`.
 The authoritative nine-document coverage inventory is
