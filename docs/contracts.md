@@ -9,11 +9,11 @@ deterministic article-structure analysis, deterministic PyMuPDF cold extraction,
 deterministic page-layout analysis, bounded PDF
 region-rendering, bounded OCR request/result contracts, the bounded
 Tesseract OCR adapter, deterministic native-text/OCR reconciliation, bounded
-equation-candidate detection, engine-neutral equation-transcription contracts,
+equation-candidate detection, equation assembly and recognition contracts,
 bounded table-candidate detection, deterministic table-structure
 reconstruction, bounded figure-candidate detection, engine-neutral figure-
-relevance contracts, bounded JIT processing coordination, deterministic
-structured-transcription proposals, deterministic derivation auditing, and the
+relevance contracts, deterministic structured-transcription proposals,
+deterministic derivation auditing, and the
 Proposed deterministic reference-evidence projection are implemented and
 exported. `RoughChunk`
 remains planned until implemented, tested, and
@@ -1090,99 +1090,9 @@ requires an exact layout result, which this plan does not yet bind. Blank OCR
 results remain completed empty reconciliation evidence. OCR-only proposed text
 remains an unaccepted proposal and is not a replacement-text publication.
 
-## Bounded JIT processing coordination
-
-Processing contract version 1.0, coordinator version 1, and configuration
-version 1 define destination-neutral bounded coordination. A
-`ProcessingSelection` retains one exact `ExtractedDocument` and at least one of:
-
-- ordered exact source spans;
-- inclusive physical page ranges;
-- inclusive printed-page ranges whose endpoints resolve uniquely;
-- ordered structure node IDs from an exact same-source `StructureAnalysis`; or
-- an explicit union of those selectors.
-
-Selection construction rejects wrong blobs, missing pages, stale printed labels,
-out-of-page geometry, unknown source objects, stale structure nodes, and stale
-node block links. Physical and printed ranges resolve to source order. The
-selection identity binds the exact source blob, selector form, selected pages,
-selected nodes, and structure-analysis identity. Textbook-specific filenames,
-destination selectors, and implicit whole-document selection are not valid
-selectors.
-
-`ProcessingRequest` → `BoundedProcessingCoordinator` → `ProcessingResult`
-directly implements the action-family bases. Canonical `action(request=...)`
-owns coordination; supported `process()` forwards to that single logic path.
-
-`ProcessingRequest` contains a non-empty ordered tuple of unique selections and
-a complete immutable `ProcessingConfiguration`. It resolves each selection to
-one `ProcessingWorkItem`. A work item exposes only:
-
-- explicitly selected full `ExtractedPage` objects;
-- exact selected, page-block, and selected-node source spans;
-- exact selected `StructureNode` objects; and
-- source-backed input object IDs.
-
-It does not expose the complete `ExtractedDocument` or source bytes to the
-processor. The injected processor may already hold application-supplied source
-access, but it is responsible for honoring the work-item boundary and must not
-dereference `SourceDocument.locator` as implicit authorization for whole-source
-work.
-
-`ProcessingProcessor` exposes `identity_for(work_item)` and
-`process(work_item)`. `ProcessingProcessorIdentity` records processor/backend
-names and versions, the processor's complete configuration digest, and ordered
-immutable SHA-256 or explicit model/prompt/resource identities. Identity
-resolution must succeed and agree with the processor's declared name/version
-before invocation; otherwise coordination fails rather than inventing
-provenance.
-
-A processor returns a `ProcessingInvocationResult`. Completed output has no
-failures and may be empty for a successfully processed blank selection. Partial
-output has both retained `ProcessingDerivedArtifact` values and typed failures.
-Failed output has typed failures and no artifacts. Artifacts retain immutable
-bytes, media type, SHA-256, exact input object IDs/source spans, and evidence.
-Warnings and failures remain work-item-local and source-backed. Output referring
-to another source, unselected object, or span outside the selected page/region
-becomes an `output_invalid` failure instead of being published.
-
-`ProcessingSelectionResult` preserves every ordered `ProcessingAttempt`, the
-resolved work item, processor identity, cache key, final status, and whether
-retryable failure exhausted its attempt bound. The coordinator retries only a
-fully failed invocation for which every failure is retryable. It never retries
-or attempts to merge partial output automatically. Non-retryable failures stop
-that selection without stopping later selections. A processor may raise
-`ProcessingProcessorError` for typed expected failure; unexpected exceptions
-become generic non-retryable `processor_error` evidence without retaining raw
-exception text.
-
-`ProcessingResult` preserves one ordered selection result per request selection.
-Its execution status is `completed` when all final invocations complete,
-`failed` when all fail, and `partial` for every mixed or partial outcome. These
-statuses report execution only; they do not assert semantic correctness,
-scientific validation, publication suitability, or human acceptance.
-
-`build_derived_processing_cache_key` covers the processing contract and
-coordinator versions, exact resolved work item, complete coordination
-configuration, processor/backend versions, processor configuration digest, and
-ordered immutable resource identities. An optional `DerivedProcessingCache`
-may return or store only exact completed or partial selection results. Failed
-results are never stored. Cache entries with a wrong key, work item, processor
-identity, configuration limits, or failed status are rejected. This derived
-cache is distinct from raw `ExtractionCache`; no derived cache implementation or
-storage location is selected by the package.
-
-Configuration hard-bounds selection/range/span/node/object counts, attempts,
-artifacts and bytes, warnings, failures, messages, evidence, resources, and
-retained result size. Requests built from iterables stop after one item beyond
-the configured selection bound. Output that exceeds configured limits becomes a
-typed non-retryable resource-limit failure. The coordinator chooses no model,
-engine, source loader, sandbox, cache persistence, or destination writer and
-writes no files.
-
 ## Derivation audit
 
-Derivation-audit contract version 1.0 and processor version 3 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, JIT-processing, structured-transcription, and clean-transcript results. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
+Derivation-audit report contract version 1.0, action contract version 2.0, and processor version 4 validate one exact source byte string, its `ExtractionResult`, and bounded tuples of supplied OCR, OCR-reconciliation, page-layout, structure, equation, table-detection, table-structure, figure, structured-transcription, and clean-transcript results. The report contract remains version 1.0 because its schema is unchanged and is consumed by the reference-evidence boundary; the action contract identifies removal of the unused generic-processing input layer. Optional layers may be absent, but every dependency embedded or referenced by a supplied downstream layer must also be supplied and must equal the registered upstream artifact.
 
 `DerivationAuditRequest` identifies one exact `DerivationAuditInput`, including
 the source-byte digest and length, extraction manifest, ordered layer names, and

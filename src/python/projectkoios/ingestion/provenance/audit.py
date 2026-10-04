@@ -22,7 +22,6 @@ from projectkoios.ingestion.models import (
     SourceDocument,
 )
 from projectkoios.ingestion.ocr.result import OCRResult
-from projectkoios.ingestion.processing import ProcessingResult
 from projectkoios.ingestion.provenance.common import (
     _artifact_id,
     _object_id,
@@ -36,10 +35,10 @@ from projectkoios.ingestion.transcription.structured_result import (
 )
 
 DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"
-DERIVATION_AUDIT_PROCESSOR_VERSION = "3"
-DERIVATION_AUDIT_ACTION_CONTRACT_VERSION = "1.0"
+DERIVATION_AUDIT_PROCESSOR_VERSION = "4"
+DERIVATION_AUDIT_ACTION_CONTRACT_VERSION = "2.0"
 DERIVATION_AUDIT_ACTIONIZER_NAME = "deterministic-derivation-audit-actionizer"
-DERIVATION_AUDIT_ACTIONIZER_VERSION = "1"
+DERIVATION_AUDIT_ACTIONIZER_VERSION = "2"
 _MAX_ARTIFACTS_PER_LAYER = 4_096
 _MAX_FINDINGS = 8_192
 _MAX_VISITED_OBJECTS = 250_000
@@ -150,7 +149,6 @@ class DerivationAuditInput:
     table_detection_results: tuple[TableDetectionResult, ...] = ()
     table_structure_results: tuple[TableStructureResult, ...] = ()
     figure_results: tuple[FigureDetectionResult, ...] = ()
-    processing_results: tuple[ProcessingResult, ...] = ()
     transcription_results: tuple[StructuredTranscriptionResult, ...] = ()
     clean_transcripts: tuple[CleanTranscript, ...] = ()
     contract_version: str = DERIVATION_AUDIT_CONTRACT_VERSION
@@ -295,7 +293,6 @@ _LAYER_TYPES: dict[str, type[object]] = {
     "table_detection_results": TableDetectionResult,
     "table_structure_results": TableStructureResult,
     "figure_results": FigureDetectionResult,
-    "processing_results": ProcessingResult,
     "transcription_results": StructuredTranscriptionResult,
     "clean_transcripts": CleanTranscript,
 }
@@ -308,7 +305,6 @@ _LAYER_FIELDS = (
     "table_detection_results",
     "table_structure_results",
     "figure_results",
-    "processing_results",
     "transcription_results",
     "clean_transcripts",
 )
@@ -444,7 +440,6 @@ class _Registry:
     table_detections: dict[str, TableDetectionResult]
     table_structures: dict[str, TableStructureResult]
     figures: dict[str, FigureDetectionResult]
-    processing: dict[str, ProcessingResult]
     transcriptions: dict[str, StructuredTranscriptionResult]
     clean_transcripts: dict[str, CleanTranscript]
 
@@ -579,11 +574,6 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
             figures=self._index(
                 audit_input.figure_results, "result_id", "figure_results"
             ),
-            processing=self._index(
-                audit_input.processing_results,
-                "result_id",
-                "processing_results",
-            ),
             transcriptions=self._index(
                 audit_input.transcription_results,
                 "result_id",
@@ -607,7 +597,6 @@ class _AuditState(_DomainAuditWalker, _ContractAuditWalker):
         self._audit_equation_references()
         self._audit_table_references()
         self._audit_figure_references()
-        self._audit_processing_references()
         self._audit_transcription_references()
         self._audit_clean_transcript_references()
         self._walk(self.extraction, "extraction_result")

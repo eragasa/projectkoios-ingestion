@@ -37,11 +37,6 @@ assemble requests, retain returned observations, and deterministically project
 those observations. They must not claim that a stochastic backend can be
 recomputed byte-for-byte.
 
-The generic `BoundedProcessingCoordinator` is also outside the deterministic
-component family: it coordinates isolated work items and preserves processor
-failures and cache identity, while the injected `ProcessingProcessor` determines
-the actual derivation.
-
 ## Component Architecture
 
 - [Page layout](layout/index.md) establishes conservative page-local order.

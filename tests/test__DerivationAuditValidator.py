@@ -61,19 +61,6 @@ from projectkoios.ingestion.pdf import PYMUPDF_COORDINATE_SYSTEM
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.processing import (
-    BoundedProcessingCoordinator,
-    ProcessingDerivedArtifact,
-    ProcessingInvocationResult,
-    ProcessingPhysicalPageRange,
-    ProcessingProcessorIdentity,
-    ProcessingRequest,
-    ProcessingResourceIdentity,
-    ProcessingResourceIdentityKind,
-    ProcessingSelection,
-    ProcessingStatus,
-    ProcessingWorkItem,
-)
 from projectkoios.ingestion.provenance import (
     DerivationAuditError,
     DerivationAuditFindingCode,
@@ -153,48 +140,6 @@ def _fixture() -> tuple[bytes, ExtractionResult, PageLayoutResult]:
 
 def _codes(report) -> set[DerivationAuditFindingCode]:
     return {finding.code for finding in report.findings}
-
-
-class _AuditProcessor:
-    name = "fixture-audit-processor"
-    version = "1"
-
-    def identity_for(
-        self, _work_item: ProcessingWorkItem
-    ) -> ProcessingProcessorIdentity:
-        return ProcessingProcessorIdentity(
-            processor_name=self.name,
-            processor_version=self.version,
-            backend_name="fixture-backend",
-            backend_version="1",
-            configuration_digest="fixture-audit-processor-v1",
-            resources=(
-                ProcessingResourceIdentity(
-                    resource_name="fixture-model",
-                    identity_kind=ProcessingResourceIdentityKind.EXPLICIT,
-                    resource_identity="fixture-model-v1",
-                ),
-            ),
-        )
-
-    def process(
-        self, work_item: ProcessingWorkItem
-    ) -> ProcessingInvocationResult:
-        identity = self.identity_for(work_item)
-        artifact = ProcessingDerivedArtifact.create(
-            work_item=work_item,
-            artifact_kind="fixture-derived-evidence",
-            media_type="application/octet-stream",
-            content=b"derived evidence",
-            input_object_ids=work_item.input_object_ids,
-            source_spans=work_item.source_spans,
-        )
-        return ProcessingInvocationResult.create(
-            work_item=work_item,
-            processor_identity=identity,
-            status=ProcessingStatus.COMPLETED,
-            artifacts=(artifact,),
-        )
 
 
 @dataclass(frozen=True)
@@ -775,32 +720,6 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
 
     assert report.status is DerivationAuditStatus.PASSED, report.findings
     assert report.findings == ()
-
-
-def test__derivation_audit__accepts_bounded_processing_provenance() -> None:
-    content, extraction, _layout = _fixture()
-    selection = ProcessingSelection.create(
-        document=extraction.document,
-        physical_page_ranges=(
-            ProcessingPhysicalPageRange.create(
-                start_page_index=0,
-                end_page_index=0,
-            ),
-        ),
-    )
-    processing = BoundedProcessingCoordinator(_AuditProcessor()).process(
-        ProcessingRequest.create(selections=(selection,))
-    )
-
-    report = DerivationAuditValidator().audit(
-        DerivationAuditInput(
-            source_content=content,
-            extraction_result=extraction,
-            processing_results=(processing,),
-        )
-    )
-
-    assert report.status is DerivationAuditStatus.PASSED, report.findings
 
 
 def test__derivation_audit__rejects_wrong_source_blob() -> None:

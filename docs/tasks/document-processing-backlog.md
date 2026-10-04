@@ -601,49 +601,16 @@ validation, publication selection, or human acceptance.
 
 ## Composition tasks
 
-### ING-JIT-01 — Bounded processing coordinator (implemented)
+### ING-JIT-01 — Generic bounded processing coordinator (retired)
 
-`ProcessingSelection` accepts exact source spans, inclusive physical or uniquely
-resolved printed-page ranges, exact structure node IDs, or an explicit union.
-Wrong blobs, stale page labels/objects/nodes, missing pages, and out-of-page
-geometry fail closed. `ProcessingRequest` resolves each ordered selection to a
-`ProcessingWorkItem` containing only selected full pages, spans, nodes, and
-source-backed object IDs; it passes neither the complete extracted document nor
-source bytes to the injected `ProcessingProcessor`.
+The generic bounded processing coordinator was retired because no production
+processor implemented its work-item protocol, no workflow invoked it, and no
+managed artifact retained its result contracts. Concrete OCR, equation,
+multimodal, figure-relevance, transcription, and cleanup stages own their exact
+request, result, identity, failure, and resource boundaries instead.
 
-Completed, partial, and failed invocations retain immutable derived artifacts,
-warnings, typed failures, and source-bounded provenance. The coordinator keeps
-one result per ordered selection and preserves every attempt. It retries only
-fully failed invocations whose failures are all retryable, up to the configured
-bound. Partial output is retained without automatic retry or merging;
-non-retryable selection failures do not prevent later selections from running.
-Unexpected exceptions become generic non-retryable failure evidence without raw
-exception text.
-
-Derived cache identity binds the exact resolved evidence, processing contract
-and coordinator versions, every coordination limit, processor/backend versions,
-processor configuration digest, and ordered immutable resources. An optional
-`DerivedProcessingCache` may reuse only exact completed or partial selection
-results. Failed results are never stored, stale cache entries fail closed, and
-no derived result is added to raw `ExtractionCache`.
-
-Configuration hard-bounds selections, ranges, pages, spans, nodes, object IDs,
-attempts, artifacts/bytes, warnings, failures, messages, evidence, resources,
-and retained result size. Iterable requests stop after one item beyond the
-configured selection bound. The coordinator chooses no engine, model, source
-loader, cache persistence, execution sandbox, or destination writer.
-
-**Depends on:** `ING-CACHE-01` and at least one bounded processor.
-
-**Validation:** focused tests cover physical, printed, region, structure-node,
-and union selection resolution; absence of unselected pages in processor work
-items; ordered completed/partial/failed aggregation; retry success and
-exhaustion; no partial/non-retryable retry; completed cache reuse; failed-result
-cache exclusion; complete derived cache invalidation; per-selection and
-aggregate typed output resource limits; rejection of unselected output
-provenance and stale source blobs; bounded iterables; deterministic identity,
-immutability, stale IDs, and runtime
-processor/cache protocol typing.
+Future processors must introduce concrete owner contracts when required rather
+than restore a speculative generic artifact, retry, or cache envelope.
 
 ### ING-TRANSCRIPT-01 — Structured transcription proposal (implemented)
 
@@ -704,10 +671,10 @@ Dense PDF drawing streams use separate backend-observation and retained-evidence
 
 ### ING-PROVENANCE-01 — Derivation audit validator (implemented)
 
-`DerivationAuditValidator` validates one exact source byte string and its raw extraction together with explicitly supplied OCR, reconciliation, layout, structure, equation, table-detection, table-structure, figure, bounded-processing, structured-transcription, and clean-transcript artifacts. Optional layers remain optional, but every dependency retained or referenced by a supplied downstream layer must be registered and byte-for-byte/dataclass-equal to its upstream artifact.
+`DerivationAuditValidator` validates one exact source byte string and its raw extraction together with explicitly supplied OCR, reconciliation, layout, structure, equation, table-detection, table-structure, figure, structured-transcription, and clean-transcript artifacts. Optional layers remain optional, but every dependency retained or referenced by a supplied downstream layer must be registered and byte-for-byte/dataclass-equal to its upstream artifact.
 
-The bounded graph walk rechecks source bytes, manifests, intrinsic stable-ID contracts, exact source/blob/hash lineage, pages, printed labels, source geometry, rendered and derived content hashes, processor/backend/configuration/contract identities, and transitive block/node/candidate/region/work-item/transcription/clean-projection references. Clean records and exclusions must exactly reproduce root blocks; page memberships/order and consolidated text are independently checked. It returns immutable stable findings and a stable pass/fail report; fail-closed helpers raise `DerivationAuditError` without repairing evidence.
+The bounded graph walk rechecks source bytes, manifests, intrinsic stable-ID contracts, exact source/blob/hash lineage, pages, printed labels, source geometry, rendered and derived content hashes, processor/backend/configuration/contract identities, and transitive block/node/candidate/region/transcription/clean-projection references. Clean records and exclusions must exactly reproduce root blocks; page memberships/order and consolidated text are independently checked. It returns immutable stable findings and a stable pass/fail report; fail-closed helpers raise `DerivationAuditError` without repairing evidence.
 
-**Depends on:** `ING-JIT-01`, `ING-TRANSCRIPT-01`.
+**Depends on:** `ING-TRANSCRIPT-01`.
 
-**Validation:** focused tests cover deterministic passing reports, complete equation/table/figure transcription pipelines, OCR and reconciliation evidence, bounded JIT processing, exact source-byte mismatch, wrong source blobs, orphan derived references, unregistered transitive dependencies, out-of-page regions, missing processor versions, fail-closed report enforcement, and public exports. Audit success remains software-provenance consistency rather than semantic, mathematical, scientific, publication, lifecycle, or human acceptance.
+**Validation:** focused tests cover deterministic passing reports, complete equation/table/figure transcription pipelines, OCR and reconciliation evidence, exact source-byte mismatch, wrong source blobs, orphan derived references, unregistered transitive dependencies, out-of-page regions, missing processor versions, fail-closed report enforcement, and public exports. Audit success remains software-provenance consistency rather than semantic, mathematical, scientific, publication, lifecycle, or human acceptance.

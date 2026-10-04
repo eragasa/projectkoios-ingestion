@@ -274,41 +274,17 @@ any as source fact or acceptance. Ordered completed, partial, and failed
 outcomes preserve every input selection, warnings, and typed failures. The
 boundary runs no default model and suppresses no candidate.
 
-For generic JIT composition, `BoundedProcessingCoordinator` resolves each exact
-`ProcessingSelection` to a `ProcessingWorkItem` containing only selected full
-pages, source spans, structure nodes, and input object IDs. It does not pass the
-complete document or source bytes to `ProcessingProcessor`. The processor
-returns bounded immutable artifacts plus warnings and typed failures. Fully
-failed, wholly retryable invocations may be retried within the configured
-attempt bound; partial output is retained without automatic retry or merge.
-Every attempt remains inspectable, and non-retryable selection failure does not
-prevent later selections from running.
-
-An optional `DerivedProcessingCache` may reuse exact completed or partial
-selection results. Failed results are never written. Cache keys bind the exact
-resolved selection, all coordination limits, processor/backend/configuration
-identity, and ordered immutable resources. The coordinator supplies no cache
-implementation and does not mix derived results into raw `ExtractionCache`.
-
-The ingestion package defines and coordinates the request and result contracts.
-It does not choose when retrieval should trigger the request, which model to
-run, or where a projected artifact should be written.
-
-JIT cache identity includes exact logical/blob/image and ordered selection
-evidence, contract version, processor/backend versions, and the complete
-processor configuration. The OCR boundary additionally includes native-text
-coexistence references, ordered canonical semantic language tags, output mode,
-every resource limit, and the exact backend language-resource names and
+Each concrete derived stage owns its request, result, processor identity,
+resource bounds, failures, and cache boundary. The OCR boundary includes native-
+text coexistence references, ordered canonical semantic language tags, output
+mode, every resource limit, and the exact backend language-resource names and
 immutable identities selected for those tags. The Tesseract adapter also folds
 its timeout, capture/resource limits, page segmentation mode, and engine mode
 into its effective processor version, while the normalized backend report and
 executable bytes have separate hashes in backend identity. A processor,
 backend, adapter setting, language mapping, or resource change invalidates its
-derived result without invalidating raw extraction. Equation-transcription
-cache identity likewise includes its contract/configuration versions, exact
-candidate image, requested formats and limits, processor/backend versions, and
-model/resource identities. Derived OCR, reconciliation, and equation-
-transcription storage remain deferred and are not added to the raw
+derived result without invalidating raw extraction. Derived OCR and
+reconciliation storage remain deferred and are not added to the raw
 `ExtractionCache`. Table-candidate identity likewise includes exact document,
 layout, vector-rule, renderer, detector, and configuration evidence; table
 candidates are also excluded from the raw cache. Table-structure identity binds
@@ -526,9 +502,6 @@ The architecture depends on small protocols:
 - `DocumentProcessor` derives enriched content while preserving provenance;
 - `ChunkProducer` converts structured content into source-backed chunks;
 - `ExtractionCache` retrieves and stores versioned extraction results;
-- `ProcessingProcessor` derives artifacts from one exact bounded work item;
-- `DerivedProcessingCache` optionally stores non-failed derived selection
-  results;
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
@@ -540,9 +513,7 @@ The architecture depends on small protocols:
 
 Concrete implementations depend inward on these contracts. Optional PDF,
 OCR, or model dependencies must not be imported merely by importing the base
-package. The generic coordinator catches selection-local processor failures but
-requires truthful processor identity resolution; it supplies no engine, source-
-byte loader, filesystem cache, or execution sandbox.
+package.
 
 ## Dependency Rules
 
