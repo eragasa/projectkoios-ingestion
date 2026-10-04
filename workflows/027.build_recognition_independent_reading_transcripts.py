@@ -10,6 +10,7 @@ from pathlib import Path
 from reading_transcript_equation_evidence import (
     ReadingTranscriptEquationEvidence,
 )
+from reading_transcript_page import ReadingTranscriptPage
 
 PREPARATION = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
@@ -67,20 +68,6 @@ def json_once(path: Path, value: object) -> tuple[str, str, int]:
         + b"\n"
     )
     return create_once(path, content), digest(content), len(content)
-
-
-def evidence_position(value: dict[str, object]) -> tuple[float, float]:
-    boxes = [
-        span["bounding_box"]
-        for span in value.get("source_spans", [])
-        if span.get("bounding_box") is not None
-    ]
-    if not boxes:
-        return (float("inf"), float("inf"))
-    return (
-        min(float(box[1]) for box in boxes),
-        min(float(box[0]) for box in boxes),
-    )
 
 
 def main() -> None:
@@ -295,90 +282,19 @@ def main() -> None:
         for page_index in range(pages):
             native_page = native["pages"][page_index]
             composed_page = composed["pages"][page_index]
-            native_text = native_page["text"]
-            native_payload = native_text.encode()
-            if (
-                digest(native_payload) != native_page["text_sha256"]
-                or len(native_payload) != native_page["text_utf8_byte_length"]
-            ):
-                raise RuntimeError(
-                    f"{name} page {page_index}: native text differs"
-                )
-            native_bytes_total += len(native_payload)
-            chosen = composed_page["chosen_source"]
-            selected_counts[chosen] += 1
-            if chosen == "native":
-                if composed_page["text"] != native_text:
-                    raise RuntimeError(
-                        f"{name} page {page_index}: native selection differs"
-                    )
-                selected_ocr = None
-                reading_selection = "native_text"
-            elif chosen == "ocr":
-                payload = composed_page["text"].encode()
-                if (
-                    digest(payload) != composed_page["text_sha256"]
-                    or len(payload) != composed_page["text_utf8_byte_length"]
-                ):
-                    raise RuntimeError(
-                        f"{name} page {page_index}: selected OCR differs"
-                    )
-                selected_ocr_bytes_total += len(payload)
-                selected_ocr = {
-                    "composition_id": composed_page["composition_id"],
-                    "text": composed_page["text"],
-                    "text_sha256": composed_page["text_sha256"],
-                    "text_utf8_byte_length": composed_page[
-                        "text_utf8_byte_length"
-                    ],
-                    "automated": True,
-                    "accepted": False,
-                }
-                reading_selection = "selected_ocr_text"
-            else:
-                raise RuntimeError(
-                    f"{name} page {page_index}: unsupported text source"
-                )
-            visual_evidence = sorted(
-                page_visuals[page_index],
-                key=lambda value: (
-                    *evidence_position(value),
-                    str(value["evidence_type"]),
-                    str(value.get("assembly_id", value.get("candidate_id"))),
-                ),
+            page = ReadingTranscriptPage.compose(
+                book=name,
+                source_sha256=source_sha256,
+                page_index=page_index,
+                native_page=native_page,
+                composed_page=composed_page,
+                visual_evidence=page_visuals[page_index],
             )
-            for order, value in enumerate(visual_evidence):
-                value["visual_order"] = order
-            visual_count += len(visual_evidence)
-            page_body = {
-                "contract_version": "1.0",
-                "book": name,
-                "source_sha256": source_sha256,
-                "page_index": page_index,
-                "physical_page": page_index + 1,
-                "printed_page_label": composed_page["printed_page_label"],
-                "text_evidence": {
-                    "native_text": {
-                        "page_id": native_page["page_id"],
-                        "text": native_text,
-                        "text_sha256": native_page["text_sha256"],
-                        "text_utf8_byte_length": native_page[
-                            "text_utf8_byte_length"
-                        ],
-                    },
-                    "selected_ocr_text": selected_ocr,
-                    "reading_selection": reading_selection,
-                    "chunking_status": "not_requested",
-                },
-                "visual_evidence": visual_evidence,
-            }
-            page = {
-                **page_body,
-                "reading_page_id": identity(
-                    "reference-reading-transcript-page", page_body
-                ),
-            }
-            lines.append(canonical(page))
+            selected_counts[page.selected_source] += 1
+            native_bytes_total += page.native_text_utf8_bytes
+            selected_ocr_bytes_total += page.selected_ocr_text_utf8_bytes
+            visual_count += page.visual_evidence_count
+            lines.append(page.canonical_bytes)
         if selected_counts != Counter(book["chosen_source_counts"]):
             raise RuntimeError(f"{name}: selected source counts differ")
         content = b"\n".join(lines) + b"\n"
