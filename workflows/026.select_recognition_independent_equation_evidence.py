@@ -9,6 +9,8 @@ import stat
 from collections import Counter
 from pathlib import Path, PurePosixPath
 
+from equation_evidence_selection import EquationEvidenceSelection
+
 DEFAULT_ROOT = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
 )
@@ -171,11 +173,6 @@ def select(root: Path) -> dict[str, object]:
                         f"equation assembly repeated: {assembly_id}"
                     )
                 assembly_ids.add(assembly_id)
-                reasons: list[str] = []
-                if assembly["kind"] != "display":
-                    reasons.append("assembly_kind_not_display")
-                if assembly["rejected"]:
-                    reasons.append("assembly_rejected")
                 assembly_candidates = []
                 evidence_members = []
                 for candidate_id in assembly["candidate_ids"]:
@@ -213,17 +210,14 @@ def select(root: Path) -> dict[str, object]:
                                 "bytes": member["bytes"],
                             }
                         )
-                if any(
-                    item["evidence_status"] != "proposed"
-                    for item in assembly_candidates
-                ):
-                    reasons.append("detector_evidence_not_proposed")
-                if assembly["rejected"]:
-                    disposition = "retained_rejected_equation_evidence"
-                elif reasons:
-                    disposition = "retained_auxiliary_equation_evidence"
-                else:
-                    disposition = "selected_primary_equation_evidence"
+                selection = EquationEvidenceSelection.from_assembly_evidence(
+                    kind=assembly["kind"],
+                    rejected=assembly["rejected"],
+                    detector_evidence_statuses=tuple(
+                        item["evidence_status"] for item in assembly_candidates
+                    ),
+                )
+                disposition = selection.disposition
                 expected_quality_disposition = {
                     "selected_primary_equation_evidence": "proposed_primary_recognition",
                     "retained_auxiliary_equation_evidence": "retained_non_primary",
@@ -277,14 +271,16 @@ def select(root: Path) -> dict[str, object]:
                         "quality_inventory_id"
                     ],
                     "disposition": disposition,
-                    "ineligibility_reasons": reasons,
+                    "ineligibility_reasons": list(
+                        selection.ineligibility_reasons
+                    ),
                     "candidate_evidence_members": evidence_members,
                     "assembly_rendered_member": rendered_member,
-                    "review_status": "unreviewed",
-                    "accepted": False,
-                    "review_required": True,
-                    "chunk_text_eligible": False,
-                    "recognized_text_retained": False,
+                    "review_status": selection.review_status,
+                    "accepted": selection.accepted,
+                    "review_required": selection.review_required,
+                    "chunk_text_eligible": selection.chunk_text_eligible,
+                    "recognized_text_retained": selection.recognized_text_retained,
                 }
                 records.append(record)
                 disposition_counts[disposition] += 1
@@ -324,7 +320,7 @@ def select(root: Path) -> dict[str, object]:
 
     body = {
         "contract_version": "1.0",
-        "policy_version": "recognition-independent-equation-evidence-selection-1",
+        "policy_version": EquationEvidenceSelection.POLICY_VERSION,
         "preparation_plan_id": plan["plan_id"],
         "preparation_plan_sha256": digest(plan_bytes),
         "quality_summary_id": summary["quality_summary_id"],

@@ -56,3 +56,9 @@ Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
 references, publish replacement text, connect to live databases, perform Search
 indexing, or transmit private evidence externally.
+
+## Workflow modules
+
+`equation_evidence_selection.py` owns the path-free, recognition-independent
+classification used by workflow 026. It remains here until the working workflow
+boundary is stable enough to promote into `src/`.
