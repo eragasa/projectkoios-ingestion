@@ -668,10 +668,13 @@ projectkoios/ingestion/
         quality.py
 ```
 
-This remains a direction rather than an exhaustive module inventory. Package
-initializers are small explicit facades; operation and contract implementation
-lives in named modules. Existing supported imports remain explicit compatibility
-exports during bounded migrations. New public exports require tested behavior
+This remains a direction rather than an exhaustive module inventory.
+Established public compatibility packages use small explicit initializer
+facades, while ownership packages such as `tables.structure` use namespace-only
+initializers and require imports from the concrete owner module. Operation and
+contract implementation lives in named modules. Compatibility exports remain
+only where the owning migration explicitly retains them; they are not a default
+requirement for bounded migrations. New public exports require tested behavior
 and documented contracts.
 
 ## Testing Strategy

@@ -15,7 +15,6 @@ from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicTableCandidateDetector,
-    DeterministicTableStructureReconstructor,
     PyMuPdfExtractor,
 )
 from projectkoios.ingestion import (
@@ -91,6 +90,9 @@ from projectkoios.ingestion.reconciliation.request import (
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
+from projectkoios.ingestion.tables.structure.reconstructor import (
+    DeterministicTableStructureReconstructor,
+)
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,

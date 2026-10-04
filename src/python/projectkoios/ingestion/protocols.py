@@ -36,8 +36,8 @@ from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
-from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
+from projectkoios.ingestion.tables.structure.result import TableStructureResult
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
 )

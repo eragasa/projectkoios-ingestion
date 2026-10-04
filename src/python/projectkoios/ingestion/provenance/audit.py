@@ -29,8 +29,8 @@ from projectkoios.ingestion.provenance.common import (
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
-from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
+from projectkoios.ingestion.tables.structure.result import TableStructureResult
 from projectkoios.ingestion.transcription import StructuredTranscriptionResult
 
 DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"

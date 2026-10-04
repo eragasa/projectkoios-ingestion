@@ -1,0 +1,1 @@
+"""Table-structure ownership namespace."""

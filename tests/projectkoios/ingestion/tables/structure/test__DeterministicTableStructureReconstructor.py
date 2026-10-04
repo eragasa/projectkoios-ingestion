@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 from pathlib import Path
@@ -13,24 +14,32 @@ from projectkoios.base import (
 )
 from projectkoios.ingestion import (
     DeterministicTableCandidateDetector,
-    DeterministicTableStructureReconstructor,
     PyMuPdfExtractor,
     SourceDocument,
     TableCandidateDetector,
-    TableCellRole,
-    TableStructureConfiguration,
-    TableStructureEvidenceStatus,
-    TableStructureInput,
-    TableStructureLimitError,
     TableStructureReconstructor,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.table_structure import (
-    TableStructureRequest,
-    TableStructureResult,
+from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
+from projectkoios.ingestion.tables.structure.configuration import (
+    TableStructureConfiguration,
 )
+from projectkoios.ingestion.tables.structure.evidence_status import (
+    TableStructureEvidenceStatus,
+)
+from projectkoios.ingestion.tables.structure.limit_error import (
+    TableStructureLimitError,
+)
+from projectkoios.ingestion.tables.structure.reconstructor import (
+    DeterministicTableStructureReconstructor,
+)
+from projectkoios.ingestion.tables.structure.request import (
+    TableStructureRequest,
+)
+from projectkoios.ingestion.tables.structure.result import TableStructureResult
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -118,15 +127,17 @@ def _detect(payload: bytes, suffix: str):
 
 
 def test__table_structure__uses_action_family_base_objects() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
     detection = _detect(fixture.read_bytes(), "action-family")
     request = TableStructureRequest.create(detection_result=detection)
     actionizer = DeterministicTableStructureReconstructor()
 
     result = actionizer.action(request=request)
 
-    assert TableStructureInput is TableStructureRequest
     assert isinstance(request, DataObjectActionRequest)
+    assert actionizer.__class__.__module__ == (
+        "projectkoios.ingestion.tables.structure.reconstructor"
+    )
     assert isinstance(actionizer, DataObjectActionizer)
     assert isinstance(result, DataObjectActionResult)
     assert isinstance(result, TableStructureResult)
@@ -141,7 +152,7 @@ def test__table_structure__uses_action_family_base_objects() -> None:
 
 
 def test__table_structure__reconstructs_maintained_ruled_fixture() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
     detection = _detect(fixture.read_bytes(), "fixture")
     reconstructor: TableStructureReconstructor = (
         DeterministicTableStructureReconstructor()
@@ -276,7 +287,7 @@ def test__table_structure__keeps_explicit_multi_page_rows_separate() -> None:
 
 
 def test__table_structure__identity_is_stable_and_configuration_bound() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
     detection = _detect(fixture.read_bytes(), "identity")
 
     first = DeterministicTableStructureReconstructor().reconstruct(detection)
@@ -297,10 +308,33 @@ def test__table_structure__identity_is_stable_and_configuration_bound() -> None:
     )
 
 
+def test__table_structure__retains_golden_identity_and_serialization() -> None:
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
+    result = DeterministicTableStructureReconstructor().reconstruct(
+        _detect(fixture.read_bytes(), "baseline")
+    )
+
+    assert result.request_id == (
+        "table-structure-input:sha256:"
+        "62b5c344de78a62f879eb2e96560d5eeafb3377938da48a083bacc3d80905e25"
+    )
+    assert result.result_id == (
+        "table-structure-result:sha256:"
+        "4ba738e8fb3a56b4b6d299805f5447ca747821593987ae416536878f3c8d29c1"
+    )
+    assert tuple(item.structure_id for item in result.structures) == (
+        "table-structure:sha256:"
+        "d7a255bde57caa74e5ad34eb197fa5ca3fec2f00d1146921e7af8fd2a565b983",
+    )
+    assert hashlib.sha256(serialize_contract(result).encode()).hexdigest() == (
+        "c197689edf506ed989a40ccc7d908d33887f871e41b88ed1099be58c77c3f182"
+    )
+
+
 def test__table_structure__enforces_resource_bound_before_reconstruction() -> (
     None
 ):
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
     detection = _detect(fixture.read_bytes(), "limit")
     reconstructor = DeterministicTableStructureReconstructor(
         TableStructureConfiguration(max_cells=3)
@@ -313,7 +347,7 @@ def test__table_structure__enforces_resource_bound_before_reconstruction() -> (
 def test__table_structure__contracts_are_immutable_and_reject_stale_ids() -> (
     None
 ):
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+    fixture = Path("tests/fixtures") / "pdf" / "tables.pdf"
     result = DeterministicTableStructureReconstructor().reconstruct(
         _detect(fixture.read_bytes(), "immutable")
     )
