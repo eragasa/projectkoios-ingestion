@@ -7,6 +7,10 @@ import os
 from collections import Counter
 from pathlib import Path
 
+from reading_transcript_equation_evidence import (
+    ReadingTranscriptEquationEvidence,
+)
+
 PREPARATION = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
 )
@@ -264,22 +268,12 @@ def main() -> None:
                 raise RuntimeError(
                     f"{name}: selected assembly has no quality evidence"
                 )
-            if (
-                record["candidate_ids"] != assembly["candidate_ids"]
-                or record["review_status"] != "unreviewed"
-                or record["accepted"] is not False
-                or record["review_required"] is not True
-                or record["chunk_text_eligible"] is not False
-                or record["recognized_text_retained"] is not False
-            ):
-                raise RuntimeError(
-                    f"{name}: selected equation semantics differ"
-                )
+            equation = ReadingTranscriptEquationEvidence.from_selected_evidence(
+                selection_record=record,
+                assembly_evidence=assembly,
+                selection_inventory_id=selection_id,
+            )
             rendered = record["assembly_rendered_member"]
-            if rendered is None:
-                raise RuntimeError(
-                    f"{name}: selected assembly image is missing"
-                )
             path = rendered["path"]
             content = exact(PREPARATION / path)
             if (
@@ -287,25 +281,7 @@ def main() -> None:
                 or digest(content) != rendered["sha256"]
             ):
                 raise RuntimeError(f"{name}: selected assembly image differs")
-            item = {
-                "evidence_type": "equation",
-                "assembly_id": record["assembly_id"],
-                "candidate_ids": assembly["candidate_ids"],
-                "selection_disposition": record["disposition"],
-                "selection_inventory_id": selection_id,
-                "recognition_status": "not_requested",
-                "native_text_evidence": assembly["sanitized_native_text"],
-                "source_labels": assembly["source_labels"],
-                "source_spans": assembly["source_spans"],
-                "rendered_members": [rendered],
-                "recognized_latex": None,
-                "recognized_mathml": None,
-                "automated": True,
-                "review_status": "unreviewed",
-                "accepted": False,
-                "review_required": True,
-                "chunk_text_eligible": False,
-            }
+            item = equation.to_record()
             page_visuals[int(record["page_index"])].append(item)
             visual_ids.add(record["assembly_id"])
             rendered_paths.add(path)
