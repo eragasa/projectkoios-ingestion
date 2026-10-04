@@ -10,6 +10,9 @@ from pathlib import Path
 from reading_transcript_equation_evidence import (
     ReadingTranscriptEquationEvidence,
 )
+from reading_transcript_figure_evidence import (
+    ReadingTranscriptFigureEvidence,
+)
 from reading_transcript_page import ReadingTranscriptPage
 
 PREPARATION = Path(
@@ -188,22 +191,16 @@ def main() -> None:
                         }
                     )
                     rendered_paths.add(path)
-                page_index = int(figure["source_spans"][0]["page_index"])
-                item = {
-                    "evidence_type": "figure",
-                    "candidate_id": figure["candidate_id"],
-                    "evidence_status": figure["evidence_status"],
-                    "confidence": figure["confidence"],
-                    "source_label": figure["source_label"],
-                    "source_spans": figure["source_spans"],
-                    "associations": figure["associations"],
-                    "rendered_members": evidence_members,
-                    "automated": True,
-                    "accepted": False,
-                    "review_required": True,
-                }
-                page_visuals[page_index].append(item)
-                visual_ids.add(figure["candidate_id"])
+                figure_record = (
+                    ReadingTranscriptFigureEvidence.from_quality_evidence(
+                        figure_evidence=figure,
+                        rendered_members=evidence_members,
+                    )
+                )
+                page_visuals[figure_record.page_index].append(
+                    figure_record.to_record()
+                )
+                visual_ids.add(figure_record.candidate_id)
                 figure_count += 1
             for table in quality["tables"]:
                 by_page: dict[int, list[dict[str, object]]] = {}
