@@ -14,6 +14,7 @@ from typing import Any, BinaryIO, Protocol, cast
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 from projectkoios.ingestion.models import (
@@ -91,12 +92,6 @@ class FigureAssociationRole(StrEnum):
     CAPTION = "caption"
     SUBFIGURE_LABEL = "subfigure_label"
     LEGEND = "legend"
-
-
-class _PageLayoutProcessor(Protocol):
-    def analyze(
-        self, document: ExtractedDocument
-    ) -> tuple[PageLayoutResult, ...]: ...
 
 
 class _FigureInspector(Protocol):
@@ -1145,7 +1140,7 @@ class DeterministicFigureCandidateDetector(FigureCandidateDetector):
         self,
         configuration: FigureDetectionConfiguration | None = None,
         *,
-        layout_processor: _PageLayoutProcessor | None = None,
+        layout_processor: PageLayoutProcessor | None = None,
         region_renderer: PageRegionRenderer,
         figure_inspector: _FigureInspector | None = None,
     ) -> None:
