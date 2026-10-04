@@ -3,7 +3,7 @@
 ```text
 OllamaMultimodalRegionProcessor
 ├── shared transport values → integrations/ollama/base.py
-├── transport protocol → integrations/ollama/base.py
+├── transport abstract base → integrations/ollama/base.py
 ├── loopback HTTP transport → integrations/ollama/transport/http.py
 ├── shared multimodal values → integrations/ollama/multimodal/base.py
 ├── selection identity → integrations/ollama/multimodal/selection/identity.py
