@@ -17,9 +17,11 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
 from projectkoios.ingestion.structure import StructureKind
-from projectkoios.ingestion.transcription import (
-    StructuredTranscriptionResult,
+from projectkoios.ingestion.transcription.item_kind import (
     TranscriptionItemKind,
+)
+from projectkoios.ingestion.transcription.result.result import (
+    StructuredTranscriptionResult,
 )
 from projectkoios.ingestion.transcripts.base import AbstractTranscript
 from projectkoios.ingestion.transcripts.block.base import (

@@ -26,7 +26,9 @@ from projectkoios.ingestion.provenance.audit import (
     DerivationAuditInput,
     _Registry,
 )
-from projectkoios.ingestion.transcription import TranscriptionSourceObjectKind
+from projectkoios.ingestion.transcription.source.object_kind import (
+    TranscriptionSourceObjectKind,
+)
 
 
 class _DomainAuditWalker:

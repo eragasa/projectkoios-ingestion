@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import FrozenInstanceError, replace
 from functools import cache
 from io import BytesIO
@@ -19,38 +20,51 @@ from projectkoios.ingestion import (
     SourceDocument,
     StructureAnalysis,
 )
-from projectkoios.ingestion import (
-    DeterministicStructuredTranscriptionComposer as DeprecatedRootComposer,
-)
-from projectkoios.ingestion import (
-    TranscriptionInput as DeprecatedRootInput,
-)
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.protocols import (
-    StructuredTranscriptionComposer as DeprecatedComposerProtocol,
-)
+from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.tables.structure.reconstructor import (
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription import (
-    DeterministicStructuredTranscriptionComposer,
-    StructuredTranscriptionRequest,
-    StructuredTranscriptionResult,
-    TranscriptionConfiguration,
-    TranscriptionEvidenceStatus,
-    TranscriptionInput,
-    TranscriptionItemKind,
-    TranscriptionLimitError,
-    TranscriptionOmission,
-    TranscriptionOmissionReason,
-    TranscriptionOrderStatus,
-    TranscriptionSourceObjectKind,
-    TranscriptionStatus,
-    build_transcription_cache_key,
+from projectkoios.ingestion.transcription.cache.identity import (
+    TranscriptionCacheIdentity,
 )
+from projectkoios.ingestion.transcription.composition.composer import (
+    DeterministicStructuredTranscriptionComposer,
+)
+from projectkoios.ingestion.transcription.configuration.configuration import (
+    TranscriptionConfiguration,
+)
+from projectkoios.ingestion.transcription.evidence.status import (
+    TranscriptionEvidenceStatus,
+)
+from projectkoios.ingestion.transcription.item_kind import (
+    TranscriptionItemKind,
+)
+from projectkoios.ingestion.transcription.limit_error import (
+    TranscriptionLimitError,
+)
+from projectkoios.ingestion.transcription.omission.omission import (
+    TranscriptionOmission,
+)
+from projectkoios.ingestion.transcription.omission_reason import (
+    TranscriptionOmissionReason,
+)
+from projectkoios.ingestion.transcription.order.status import (
+    TranscriptionOrderStatus,
+)
+from projectkoios.ingestion.transcription.request.request import (
+    StructuredTranscriptionRequest,
+)
+from projectkoios.ingestion.transcription.result.result import (
+    StructuredTranscriptionResult,
+)
+from projectkoios.ingestion.transcription.source.object_kind import (
+    TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.status import TranscriptionStatus
 
 pytest.importorskip("pymupdf")
 
@@ -348,16 +362,22 @@ def test__structured_transcription__cache_identity_covers_all_inputs() -> None:
         replace_input(table_structure_result=changed_tables),
         replace_input(figure_detection_result=changed_figures),
     )
-    baseline = build_transcription_cache_key(first_input)
+    baseline = TranscriptionCacheIdentity.create(first_input).cache_key
 
     assert first_input.document_evidence_id.startswith(
         "structured-transcription-document-evidence:sha256:"
     )
     keys = {
         baseline,
-        *(build_transcription_cache_key(value) for value in changed_inputs),
-        build_transcription_cache_key(changed_configuration),
-        build_transcription_cache_key(first_input, processor_version="2"),
+        *(
+            TranscriptionCacheIdentity.create(value).cache_key
+            for value in changed_inputs
+        ),
+        TranscriptionCacheIdentity.create(changed_configuration).cache_key,
+        TranscriptionCacheIdentity.create(
+            first_input,
+            processor_version="2",
+        ).cache_key,
     }
     assert len(keys) == 7
 
@@ -461,12 +481,32 @@ def test__structured_transcription__uses_action_family_base_objects() -> None:
     assert actionizer.action(request=request) == expected
     assert expected.request is request
     assert expected.request_id == request.request_id
-    assert TranscriptionInput is StructuredTranscriptionRequest
-    assert DeprecatedRootInput is StructuredTranscriptionRequest
     assert DeterministicStructuredTranscriptionComposer is actionizer.__class__
-    assert DeprecatedRootComposer is actionizer.__class__
-    assert DeprecatedComposerProtocol is actionizer.__class__
     assert actionizer.compose(request) == expected
+
+
+def test__structured_transcription__preserves_golden_identity_and_bytes() -> (
+    None
+):
+    _payload, request, result = _pipeline("born-digital-text")
+
+    assert request.input_id == (
+        "structured-transcription-input:sha256:"
+        "b5e4354b306d5255eba51b7a1efea11ce0bb4ae776374bb0889f8788f587bef3"
+    )
+    assert result.result_id == (
+        "structured-transcription-result:sha256:"
+        "f7982a0bbb7f3c4bbcd8ec13282e21f52b523ea21b45070f85a0a0976591aded"
+    )
+    assert result.cache_key == (
+        "structured-transcription-cache:sha256:"
+        "00a8ee5d8f354c6f73a4d028974d6a8a3af6804745e42279c1097282307e91b0"
+    )
+    assert hashlib.sha256(
+        serialize_contract(result).encode("utf-8")
+    ).hexdigest() == (
+        "a445d788ef02eb761792358d874cd321616035e5523be4c54f45fc05885834b3"
+    )
 
 
 def test__structured_transcription__is_deterministic_and_immutable() -> None:

@@ -123,8 +123,10 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     from projectkoios.ingestion.tables.structure.reconstructor import (
         DeterministicTableStructureReconstructor,
     )
-    from projectkoios.ingestion.transcription import (
+    from projectkoios.ingestion.transcription.composition.composer import (
         DeterministicStructuredTranscriptionComposer,
+    )
+    from projectkoios.ingestion.transcription.request.request import (
         StructuredTranscriptionRequest,
     )
 
@@ -149,9 +151,7 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     renderer = PyMuPdfRegionRenderer()
     equations = DeterministicEquationCandidateDetector(
         region_renderer=renderer
-    ).detect_with_layout(
-        document, BytesIO(payload), layouts
-    )
+    ).detect_with_layout(document, BytesIO(payload), layouts)
     table_detection = DeterministicTableCandidateDetector(
         region_renderer=renderer
     ).detect_with_layout(document, BytesIO(payload), layouts)

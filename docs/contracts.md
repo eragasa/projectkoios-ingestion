@@ -606,9 +606,9 @@ upstream result ID, the logical and exact blob identities, and complete
 configuration.
 
 `DeterministicStructuredTranscriptionComposer.action()` emits an ordered tuple
-of immutable `TranscriptionItem` values. `TranscriptionInput` is a deprecated
-exact alias to `StructuredTranscriptionRequest`; supported `compose()` forwards
-to `action()` with no separate logic.
+of immutable `TranscriptionItem` values. The concrete
+`StructuredTranscriptionRequest` is the only supported input boundary;
+`compose()` forwards to `action()` with no separate logic.
 
 The result contains:
 
@@ -653,12 +653,19 @@ status asserts proofread accuracy, semantic correctness, scientific validation,
 publication suitability, or human acceptance. The contract contains no citekey,
 vault path, Obsidian syntax, reading status, or scientific-acceptance field.
 
-`build_transcription_cache_key` binds the exact input, contract/configuration
+`TranscriptionCacheIdentity` binds the exact input, contract/configuration
 versions, composer name/version, normalization method, and every resource limit.
-It defines derived identity only; the composer writes no files and stores no
-result in raw `ExtractionCache`. Configuration hard-bounds raw blocks, structure
-nodes, typed objects, items, omissions, warnings, source spans, per-item and
-total text, exact input artifact bytes, and retained result size.
+It is an immutable nominal identity only; the composer writes no files and
+stores no result in raw `ExtractionCache`. Configuration hard-bounds raw blocks,
+structure nodes, typed objects, items, omissions, warnings, source spans,
+per-item and total text, exact input artifact bytes, and retained result size.
+
+Structured-transcription implementations live in marker-only ownership
+subpackages for configuration, request, derivation, item, omission, result,
+composition, cache, evidence, order, and source-object roles. Request and result
+validation are concrete immutable validation records. No stateless contract
+utility, compatibility alias, package facade, or ingestion-root export owns a
+second behavior path.
 
 ## Automated clean transcript projection
 

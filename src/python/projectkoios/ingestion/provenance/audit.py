@@ -31,7 +31,9 @@ from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription import StructuredTranscriptionResult
+from projectkoios.ingestion.transcription.result.result import (
+    StructuredTranscriptionResult,
+)
 
 DERIVATION_AUDIT_CONTRACT_VERSION = "1.0"
 DERIVATION_AUDIT_PROCESSOR_VERSION = "3"

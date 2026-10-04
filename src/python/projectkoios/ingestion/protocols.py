@@ -38,9 +38,6 @@ from projectkoios.ingestion.reconciliation.request import (
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription import (
-    DeterministicStructuredTranscriptionComposer,
-)
 
 
 class ChunkIndexWriter(Protocol):
@@ -197,7 +194,6 @@ class DerivedProcessingCache(Protocol):
 
 
 # Deprecated exact type alias; remove only in an authorized later release.
-StructuredTranscriptionComposer = DeterministicStructuredTranscriptionComposer
 
 
 class ExtractionCache(Protocol):
