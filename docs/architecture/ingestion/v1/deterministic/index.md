@@ -88,10 +88,6 @@ class DeterministicProcessor(PdfProcessor):
 - **`PdfProcessingResult`** — planned immutable aggregate retaining exact raw
   extraction and every requested derived result, warning, omission, failure,
   and processor/configuration identity.
-- **`ProcessingProcessor`** — existing v0 bounded-work-item adapter; it remains
-  narrower than the proposed top-level `Processor` and is not implicitly
-  renamed.
-
 Current implementation references:
 
 - [v0 ingestion architecture](../../v0/architecture.md)

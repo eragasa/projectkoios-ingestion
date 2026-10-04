@@ -21,12 +21,6 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
 from projectkoios.ingestion.ocr.request import OCRRequest
 from projectkoios.ingestion.ocr.result import OCRResult
-from projectkoios.ingestion.processing import (
-    ProcessingInvocationResult,
-    ProcessingProcessorIdentity,
-    ProcessingSelectionResult,
-    ProcessingWorkItem,
-)
 from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
 )
@@ -144,36 +138,6 @@ class TableStructureReconstructor(Protocol):
     def reconstruct(
         self, detection_result: TableDetectionResult
     ) -> TableStructureResult: ...
-
-
-class ProcessingProcessor(Protocol):
-    """Injected processor over one exact bounded processing work item."""
-
-    name: str
-    version: str
-
-    def identity_for(
-        self, work_item: ProcessingWorkItem
-    ) -> ProcessingProcessorIdentity: ...
-
-    def process(
-        self, work_item: ProcessingWorkItem
-    ) -> ProcessingInvocationResult: ...
-
-
-class DerivedProcessingCache(Protocol):
-    """Optional cache for non-failed derived selection results."""
-
-    def get(self, cache_key: str) -> ProcessingSelectionResult | None: ...
-
-    def put(
-        self,
-        cache_key: str,
-        result: ProcessingSelectionResult,
-    ) -> None: ...
-
-
-# Deprecated exact type alias; remove only in an authorized later release.
 
 
 class ExtractionCache(Protocol):
