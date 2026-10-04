@@ -62,7 +62,8 @@ indexing, or transmit private evidence externally.
 `equation_evidence_selection.py` owns the path-free, recognition-independent
 classification used by workflow 026. `reading_transcript_equation_evidence.py`
 owns projection of one selected assembly into an equation record, while
-`reading_transcript_figure_evidence.py` owns projection of one retained figure.
-`reading_transcript_page.py` owns text-source separation, visual ordering, and
-page identity for workflow 027. These modules remain here until the working
-workflow boundaries are stable enough to promote into `src/`.
+`reading_transcript_figure_evidence.py` and
+`reading_transcript_table_evidence.py` own figure and page-specific table
+projection. `reading_transcript_page.py` owns text-source separation, visual
+ordering, and page identity for workflow 027. These modules remain here until
+the working workflow boundaries are stable enough to promote into `src/`.
