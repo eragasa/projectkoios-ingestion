@@ -45,6 +45,16 @@ text, make the text chunk-eligible, publish it, or trigger additional
 selections. Expansion beyond the frozen selection requires separate
 authorization.
 
+Workflow 031 freezes a replicated-canary plan at
+`/Users/eugene/projects/projectkoios/artifacts/reference-ollama-multimodal-replicated-canary-v1`.
+It contains one labeled figure, one text-heavy figure, and one structured table,
+with two independent invocation slots per sample. The six slots exist to
+observe differences between retained outputs, not to establish determinism;
+even identical outputs would not prove deterministic behavior. The plan ID is
+`reference-ollama-multimodal-replicated-canary-plan:sha256:9d7d0a9dd2702a59caa98edb149b605bdf47ce1958e2b8266ea631d447538554`.
+Planning performed no model execution, and executing those slots requires
+separate authorization.
+
 ## Composition
 
 Render only the exact externally selected page or region. The renderer's public
