@@ -207,7 +207,6 @@ def test__preflight__owns_aggregate_unique_allocation_limits() -> None:
 
 
 def test__renderer_contract__has_canonical_nominal_public_bases() -> None:
-    import projectkoios.ingestion.protocols as protocols
     from projectkoios.ingestion.pdf import (
         PageRegionRenderer as PdfPackagePageRegionRenderer,
     )
@@ -217,7 +216,6 @@ def test__renderer_contract__has_canonical_nominal_public_bases() -> None:
 
     assert PdfPackagePageRegionRenderer is PageRegionRenderer
     assert PdfPackageRegionRenderer is PdfRegionRenderer
-    assert not hasattr(protocols, "PageRegionRenderer")
     assert inspect.isabstract(PageRegionRenderer)
     assert inspect.isabstract(PdfRegionRenderer)
     assert issubclass(PdfRegionRenderer, PageRegionRenderer)

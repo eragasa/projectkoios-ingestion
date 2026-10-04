@@ -41,9 +41,10 @@ from projectkoios.ingestion.pdf.extraction.text import (
     BlockTextRequest,
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
+from projectkoios.ingestion.source_extractor import SourceExtractor
 
 
-class PyMuPdfExtractor:
+class PyMuPdfExtractor(SourceExtractor):
     """Deterministic cold PDF extraction through a lazy optional adapter."""
 
     name = "pymupdf"

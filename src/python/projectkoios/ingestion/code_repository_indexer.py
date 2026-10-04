@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from projectkoios.ingestion.chunk_index_writer import ChunkIndexWriter
 from projectkoios.ingestion.code_repository_ingester import (
     CodeRepositoryIngester,
 )
-from projectkoios.ingestion.protocols import ChunkIndexWriter
 from projectkoios.repositories.code import CodeRepository
 
 

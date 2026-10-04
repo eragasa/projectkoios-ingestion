@@ -5,6 +5,7 @@ import math
 import os
 import secrets
 import stat
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, NoReturn, cast
@@ -99,7 +100,25 @@ class ExtractionCacheSafetyError(ExtractionCacheError):
     """Raised for unsafe files or links in cache-managed paths."""
 
 
-class FilesystemExtractionCache:
+class ExtractionCache(ABC):
+    """Read and create exact extraction-result cache entries."""
+
+    __slots__ = ()
+
+    @abstractmethod
+    def get(self, cache_key: str) -> ExtractionResult | None:
+        """Return a validated cache hit or ``None``."""
+
+    @abstractmethod
+    def put(
+        self,
+        cache_key: str,
+        result: ExtractionResult,
+    ) -> None:
+        """Publish one validated cache entry create-once."""
+
+
+class FilesystemExtractionCache(ExtractionCache):
     """Content-addressed JSON cache rooted at a caller-supplied directory.
 
     Entries are atomically published without replacing an existing path after
@@ -1021,6 +1040,7 @@ def _metadata(value: object, name: str) -> tuple[tuple[str, str], ...]:
 
 __all__ = [
     "EXTRACTION_CACHE_FORMAT_VERSION",
+    "ExtractionCache",
     "ExtractionCacheCorruptionError",
     "ExtractionCacheError",
     "ExtractionCacheSafetyError",

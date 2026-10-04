@@ -21,8 +21,8 @@ extraction is immutable evidence; derived output is append-only.
 
 ### ING-CACHE-01 — Filesystem extraction cache (implemented)
 
-`FilesystemExtractionCache` implements the existing `ExtractionCache` protocol
-with canonical JSON envelopes below an injected root. Its deterministic key
+`FilesystemExtractionCache` implements the nominal `ExtractionCache` abstract
+base with canonical JSON envelopes below an injected root. Its deterministic key
 includes cache format and extraction contract versions, logical and exact blob
 source identity, extractor/installed-backend identity, and the normalized
 configuration digest. The versioned, hash-sharded path is derived from a SHA-256
@@ -63,8 +63,8 @@ and static-analysis suites.
 ### ING-REGION-01 — Bounded PDF region renderer (implemented)
 
 Immutable `PageRegionSelection`, `RegionRenderConfiguration`, and
-`RenderedRegion` contracts are exported with the `PageRegionRenderer` protocol.
-`PyMuPdfRegionRenderer` lazily loads PyMuPDF and returns in-memory,
+`RenderedRegion` contracts are exported with the `PageRegionRenderer` abstract
+base. `PyMuPdfRegionRenderer` lazily loads PyMuPDF and returns in-memory,
 destination-independent PNG bytes for a required non-empty ordered selection.
 A selection explicitly chooses either a full physical page or one strict
 positive-area bounding box in the declared unrotated crop-box point coordinate
@@ -197,7 +197,7 @@ source/image/selection evidence, native block references, language/output
 choices, every behavior/resource limit, processor/backend name and version, and
 ordered language-resource names plus immutable digests or explicit
 version identities. It defines only the cache identity boundary; it does not
-extend `ExtractionCache`. `OCRProcessor` is an injected protocol whose
+extend `ExtractionCache`. `OCRProcessor` is an injected abstract base whose
 `identity_for` method exposes that descriptor before execution. No engine, adapter,
 executable, model, output format, destination, storage, or native/OCR
 reconciliation policy is selected or invoked by this task.
@@ -399,8 +399,8 @@ configuration, and processor identities enter stable result identity.
 Configuration hard-bounds pages, input/text blocks, source spans, text,
 candidates, inline candidates per block, warnings, candidate text, retained
 result size, aggregate rendered PNG bytes/pixels, render padding, and the
-ambiguity threshold. Detection and region rendering remain injected protocols.
-The current cold contract exposes text PDF
+ambiguity threshold. Detection and region rendering remain injected abstract
+boundaries. The current cold contract exposes text PDF
 object locators and geometry but not font metrics or drawing-command objects, so
 this detector does not invent that unavailable evidence. It makes no symbol
 interpretation, transcription-quality, scientific-validation, or human-
@@ -517,7 +517,8 @@ nothing to the raw extraction cache.
 provenance and text, unruled/header ambiguity, merged-column spans, explicit
 multi-page continuation with retained repeated headers, deterministic and
 configuration-bound identity, pre-reconstruction resource rejection,
-immutability, stale identity rejection, and protocol typing. Markdown rendering,
+immutability, stale identity rejection, and nominal abstract-base inheritance.
+Markdown rendering,
 semantic correction, proofread accuracy, scientific validation, publication
 suitability, and human acceptance are outside this task.
 
@@ -555,12 +556,12 @@ rendering, source-bounded crops, explicit legends, multi-component subfigures,
 captionless ambiguity, table-rule rejection, wrong-source and stale-layout
 rejection, pre-render embedded, drawing-group, and association-work limits,
 aggregate render limits, deterministic configuration-bound identity,
-immutability, stale IDs, and protocol typing.
+immutability, stale IDs, and nominal abstract-base inheritance.
 Figure relevance, pixel semantics, Markdown rendering, proofread accuracy,
 scientific validation, publication suitability, and human acceptance are
 outside this task.
 
-### ING-FIGURE-02 — Figure relevance proposal protocol (implemented)
+### ING-FIGURE-02 — Figure relevance proposal boundary (implemented)
 
 The engine-neutral `FigureRelevanceProcessor` accepts an exact nonblank review
 question and ordered selections that each retain a complete
@@ -595,7 +596,8 @@ selections, optional confidence, completed/partial/failed outcomes, stale-input
 and other typed failures, warnings, complete cache invalidation, unknown
 evidence rejection, selection coverage/order, question/rationale/artifact
 bounds, deterministic
-identity, immutability, stale IDs, and runtime protocol typing. Relevance remains
+identity, immutability, stale IDs, and nominal abstract-base inheritance.
+Relevance remains
 a question-specific proposal, not source fact, pixel interpretation, scientific
 validation, publication selection, or human acceptance.
 
@@ -655,7 +657,7 @@ complete page anchors, equation/table/figure links, typed replacement omissions,
 explicit uncertain ordering and raw fallback warnings, complete cache
 invalidation, cross-source rejection, artifact/output limits, source-local
 identity, deterministic reruns, immutability, stale IDs, public exports, and
-runtime protocol typing.
+nominal abstract-base inheritance.
 
 ### ING-TRANSCRIPT-02 — Automated clean transcript batch (implemented)
 

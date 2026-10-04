@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import math
 import re
+from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
@@ -1117,7 +1118,24 @@ class PyMuPdfFigureInspector:
         return inspect_pdf_figures(self, document, content, configuration)
 
 
-class DeterministicFigureCandidateDetector:
+class FigureCandidateDetector(ABC):
+    """Detect figure candidates through a concrete processor."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> FigureDetectionResult:
+        """Detect bounded figure evidence from exact source bytes."""
+
+
+class DeterministicFigureCandidateDetector(FigureCandidateDetector):
     """Detect source-backed figures without semantic interpretation."""
 
     name = "deterministic-figure-candidate-detector"
@@ -1678,6 +1696,7 @@ __all__ = [
     "FigureArtifactKind",
     "FigureAssociationRole",
     "FigureCandidate",
+    "FigureCandidateDetector",
     "FigureComponent",
     "FigureDetectionConfiguration",
     "FigureDetectionInput",

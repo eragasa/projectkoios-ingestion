@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 from pathlib import Path
@@ -405,11 +406,11 @@ def test__figure_relevance__contracts_are_immutable_and_reject_stale_ids() -> (
         replace(result, result_id="figure-relevance-result:sha256:" + "0" * 64)
 
 
-def test__figure_relevance__processor_protocol_is_engine_neutral() -> None:
-    selection = _selection(suffix="protocol")
+def test__figure_relevance__abstract_processor_is_engine_neutral() -> None:
+    selection = _selection(suffix="abstract-processor")
     request = _request(selection)
 
-    class StaticProcessor:
+    class StaticProcessor(FigureRelevanceProcessor):
         name = "static-figure-relevance"
         version = "1"
 
@@ -437,5 +438,6 @@ def test__figure_relevance__processor_protocol_is_engine_neutral() -> None:
     processor: FigureRelevanceProcessor = StaticProcessor()
     result = processor.process(request)
 
+    assert inspect.isabstract(FigureRelevanceProcessor)
     assert result.processor_identity == processor.identity_for(request)
     assert result.selection_results[0].proposal is not None

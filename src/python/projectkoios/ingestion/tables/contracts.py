@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, BinaryIO, Protocol, cast
@@ -921,7 +922,24 @@ class PyMuPdfTableRuleInspector:
         return inspect_pdf_table_rules(self, document, content, configuration)
 
 
-class DeterministicTableCandidateDetector:
+class TableCandidateDetector(ABC):
+    """Detect table candidates through a concrete processor."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> TableDetectionResult:
+        """Detect bounded table evidence from exact source bytes."""
+
+
+class DeterministicTableCandidateDetector(TableCandidateDetector):
     """Detect bounded table evidence without performing cell extraction."""
 
     name = "deterministic-table-candidate-detector"
@@ -1653,6 +1671,7 @@ __all__ = [
     "TableAssociationRole",
     "TableBoundaryKind",
     "TableCandidate",
+    "TableCandidateDetector",
     "TableDetectionConfiguration",
     "TableDetectionInput",
     "TableDetectionLimitError",

@@ -13,6 +13,9 @@ from projectkoios.ingestion.tables.structure.constants import (
 from projectkoios.ingestion.tables.structure.derivation import (
     TableStructureDerivation,
 )
+from projectkoios.ingestion.tables.structure.reconstruction import (
+    TableStructureReconstructor,
+)
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
@@ -20,7 +23,8 @@ from projectkoios.ingestion.tables.structure.result import TableStructureResult
 
 
 class DeterministicTableStructureReconstructor(
-    DataObjectActionizer[TableStructureRequest, TableStructureResult]
+    DataObjectActionizer[TableStructureRequest, TableStructureResult],
+    TableStructureReconstructor,
 ):
     """Propose bounded rows, columns, cells, spans, and continuations."""
 

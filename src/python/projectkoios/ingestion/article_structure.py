@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 from projectkoios.ingestion.models import (
@@ -21,7 +22,6 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
-from projectkoios.ingestion.protocols import PageLayoutProcessor
 from projectkoios.ingestion.structure import (
     StructureAnalysis,
     StructureEvidenceStatus,

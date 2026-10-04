@@ -17,6 +17,7 @@ from projectkoios.ingestion.layout.contracts import (
     LayoutGroupHypothesis,
     LayoutGroupKind,
     LayoutPageKind,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 
@@ -35,5 +36,6 @@ __all__ = [
     "LayoutGroupHypothesis",
     "LayoutGroupKind",
     "LayoutPageKind",
+    "PageLayoutProcessor",
     "PageLayoutResult",
 ]

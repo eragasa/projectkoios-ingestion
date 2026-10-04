@@ -461,9 +461,9 @@ stores no derived result in raw `ExtractionCache`.
 
 ## Figure relevance proposals
 
-Figure-relevance contract version 1.0 and configuration version 1 define an
-engine-neutral `FigureRelevanceProcessor`. An implementation exposes
-`identity_for(request)` and `process(request)`; the package selects no model,
+Figure-relevance contract version 1.0 and configuration version 1 define the
+engine-neutral `FigureRelevanceProcessor` abstract base. An implementation
+exposes `identity_for(request)` and `process(request)`; the package selects no model,
 service, prompt, executable, or output destination.
 
 A `FigureRelevanceSelection` retains one complete exact
@@ -517,8 +517,8 @@ result size. Dedicated upstream figure contracts continue to bound individual
 embedded and rendered artifacts; their bytes remain reachable but are excluded
 from general retained-size accounting to avoid double counting.
 
-The protocol performs no relevance acceptance, pixel interpretation, semantic
-correction, scientific validation, publication selection, destination
+The abstract boundary performs no relevance acceptance, pixel interpretation,
+semantic correction, scientific validation, publication selection, destination
 rendering, or human approval. It writes no files and stores no derived result.
 
 ## Structured transcription proposals

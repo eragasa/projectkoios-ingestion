@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields, is_dataclass, replace
 from enum import Enum, StrEnum
 from typing import BinaryIO, Protocol
@@ -521,7 +522,24 @@ class _ProvisionalCandidate:
     warning_code: str | None
 
 
-class DeterministicEquationCandidateDetector:
+class EquationCandidateDetector(ABC):
+    """Detect equation candidates through a concrete processor."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def detect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+    ) -> EquationDetectionResult:
+        """Detect bounded equation evidence from exact source bytes."""
+
+
+class DeterministicEquationCandidateDetector(EquationCandidateDetector):
     """Detect and render bounded equation-shaped source evidence."""
 
     name = "deterministic-equation-candidate-detector"

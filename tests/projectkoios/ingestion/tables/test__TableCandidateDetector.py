@@ -171,8 +171,10 @@ def _detect(
     ).detect(document, BytesIO(payload))
 
 
-def test__table_detector__detects_maintained_ruled_fixture() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "pdf" / "tables.pdf"
+def test__table_detector__detects_maintained_ruled_fixture(
+    pdf_fixture_directory: Path,
+) -> None:
+    fixture = pdf_fixture_directory / "tables.pdf"
     result = _detect(fixture.read_bytes(), "fixture")
 
     assert len(result.candidates) == 1
@@ -200,10 +202,11 @@ def test__table_detector__detects_maintained_ruled_fixture() -> None:
     )
 
 
-def test__table_detector__rejects_other_maintained_pdf_shapes() -> None:
-    fixture_directory = Path(__file__).parent / "fixtures" / "pdf"
+def test__table_detector__rejects_other_maintained_pdf_shapes(
+    pdf_fixture_directory: Path,
+) -> None:
     detected: dict[str, int] = {}
-    for fixture in sorted(fixture_directory.glob("*.pdf")):
+    for fixture in sorted(pdf_fixture_directory.glob("*.pdf")):
         result = _detect(fixture.read_bytes(), f"matrix-{fixture.stem}")
         detected[fixture.stem] = len(result.candidates)
 
@@ -424,7 +427,7 @@ def test__table_detector__enforces_rendered_aggregate_limit() -> None:
         )
 
 
-def test__table_detector__is_deterministic_immutable_and_protocol_typed() -> (
+def test__table_detector__is_deterministic_immutable_and_abstract_typed() -> (
     None
 ):
     payload = _pdf(({"title": "Table 10. Stable", "ruled": True},))

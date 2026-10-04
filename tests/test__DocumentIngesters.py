@@ -12,6 +12,7 @@ from projectkoios.ingestion import (
     PdfArticleIngester,
     PdfTextbookIngester,
     SourceDocument,
+    SourceExtractor,
     SourceSpan,
     StructureAnalysis,
     StructureKind,
@@ -73,7 +74,7 @@ def make_extraction(source: SourceDocument) -> ExtractionResult:
     return ExtractionResult(document=document, manifest=manifest)
 
 
-class FakeExtractor:
+class FakeExtractor(SourceExtractor):
     name = "fixture"
     version = "1.0"
 
