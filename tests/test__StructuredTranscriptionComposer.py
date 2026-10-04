@@ -11,7 +11,6 @@ from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicTableCandidateDetector,
-    DeterministicTableStructureReconstructor,
     EquationDetectionResult,
     ExtractedBlock,
     ExtractedDocument,
@@ -19,7 +18,6 @@ from projectkoios.ingestion import (
     PyMuPdfExtractor,
     SourceDocument,
     StructureAnalysis,
-    TableStructureResult,
 )
 from projectkoios.ingestion import (
     DeterministicStructuredTranscriptionComposer as DeprecatedRootComposer,
@@ -33,6 +31,10 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
 from projectkoios.ingestion.protocols import (
     StructuredTranscriptionComposer as DeprecatedComposerProtocol,
 )
+from projectkoios.ingestion.tables.structure.reconstructor import (
+    DeterministicTableStructureReconstructor,
+)
+from projectkoios.ingestion.tables.structure.result import TableStructureResult
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,

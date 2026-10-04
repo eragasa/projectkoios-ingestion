@@ -407,10 +407,13 @@ Table-structure contract version 1.0 is a derived proposal contract over one
 complete exact `TableDetectionResult`. `TableStructureRequest` binds that
 result, including candidate and detection warning links, to the complete
 immutable `TableStructureConfiguration`. `DeterministicTableStructureReconstructor.action()`
-returns a `TableStructureResult`; all three inherit the Project Koios
-action-family ABCs. `TableStructureInput`,
-`DeterministicTableStructureReconstructor`, and `reconstruct()` remain
-compatibility surfaces over the same objects and semantics. The operation
+returns a `TableStructureResult`; request and result implement the Project
+Koios action-family ABCs, and every immutable table-structure domain object
+inherits the ingestion immutable-data base. Each production class lives in its
+own named module under `tables/structure/`, whose initializer is a namespace
+marker. There is no compatibility request alias or root-package re-export;
+`DeterministicTableStructureReconstructor.reconstruct()` remains a convenience
+method over the same request/result semantics. The operation
 rejects candidate, region, association, row, column, cell, and predicted-grid
 counts above configured bounds before reconstruction. For every candidate it
 returns exactly one `TableStructure` containing:

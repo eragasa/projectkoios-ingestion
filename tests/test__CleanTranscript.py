@@ -27,7 +27,6 @@ from projectkoios.ingestion import (
     DeterministicFigureCandidateDetector,
     DeterministicLayoutProcessor,
     DeterministicTableCandidateDetector,
-    DeterministicTableStructureReconstructor,
     PageNumberMethod,
     PageNumberOutcome,
     PublisherFrontMatterKind,
@@ -36,6 +35,9 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
+)
+from projectkoios.ingestion.tables.structure.reconstructor import (
+    DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,

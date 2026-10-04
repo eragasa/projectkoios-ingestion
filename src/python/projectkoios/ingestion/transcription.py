@@ -38,12 +38,12 @@ from projectkoios.ingestion.structure import (
     StructureKind,
     StructureNode,
 )
-from projectkoios.ingestion.table_structure import (
-    TableStructure,
-    TableStructureEvidenceStatus,
-    TableStructureResult,
-)
 from projectkoios.ingestion.tables import TableCandidate
+from projectkoios.ingestion.tables.structure.evidence_status import (
+    TableStructureEvidenceStatus,
+)
+from projectkoios.ingestion.tables.structure.result import TableStructureResult
+from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 TRANSCRIPTION_CONTRACT_VERSION = "1.0"
 TRANSCRIPTION_COMPOSER_VERSION = "1"

@@ -46,10 +46,10 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
-from projectkoios.ingestion.table_structure import (
+from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
+from projectkoios.ingestion.tables.structure.reconstructor import (
     DeterministicTableStructureReconstructor,
 )
-from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
     StructuredTranscriptionRequest,

@@ -117,11 +117,11 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
         DerivationAuditValidator,
     )
     from projectkoios.ingestion.serialization import serialize_contract
-    from projectkoios.ingestion.table_structure import (
-        DeterministicTableStructureReconstructor,
-    )
     from projectkoios.ingestion.tables import (
         DeterministicTableCandidateDetector,
+    )
+    from projectkoios.ingestion.tables.structure.reconstructor import (
+        DeterministicTableStructureReconstructor,
     )
     from projectkoios.ingestion.transcription import (
         DeterministicStructuredTranscriptionComposer,
