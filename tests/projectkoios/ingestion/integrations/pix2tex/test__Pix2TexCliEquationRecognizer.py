@@ -119,7 +119,7 @@ def test__pix2tex__does_not_run_for_ambiguous_detector_evidence(
     assert hash(request)
     assert hash(result)
     assert result.request_id == request.request_id
-    assert recognizer.identity.processor_version == "4"
+    assert recognizer.identity.processor_version == "5"
     assert not marker.exists()
     assert len(result.proposals) == 1
     assert result.proposals[0].status is EquationRecognitionStatus.NOT_REQUESTED
@@ -169,6 +169,22 @@ def test__pix2tex__discards_stdout_before_parsing_nonzero_exit(
     assert all(
         proposal.warning_codes == ("pix2tex_failed",) for proposal in failed
     )
+
+
+def test__recognition_proposal__retains_output_quality_warnings() -> None:
+    artifact = _assembly((FIXTURES / "equations.pdf").read_bytes())
+    assembly = artifact.assemblies[0]
+
+    proposal = _recognition_proposal(
+        assembly,
+        latex=r"E=\left(m c^2",
+        exit_code=0,
+        processor_identity_digest=stable_id("test-processor", "quality"),
+    )
+
+    assert "latex_left_right_delimiter_mismatch" in proposal.warning_codes
+    assert proposal.status is EquationRecognitionStatus.PROPOSED
+    assert proposal.latex is not None
 
 
 def test__recognition_failure__drops_partial_latex() -> None:
