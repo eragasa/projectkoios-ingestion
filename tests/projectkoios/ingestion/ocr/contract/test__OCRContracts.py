@@ -40,7 +40,7 @@ from projectkoios.ingestion import (
     WarningSeverity,
     build_ocr_cache_key,
 )
-from projectkoios.ingestion.ocr import OCRTextOutput
+from projectkoios.ingestion.ocr.base import OCRTextOutput
 
 PROCESSOR = "synthetic-ocr-processor"
 PROCESSOR_VERSION = "1"

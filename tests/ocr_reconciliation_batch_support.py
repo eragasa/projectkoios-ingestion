@@ -1,12 +1,13 @@
+from __future__ import annotations
+
+import hashlib
 from pathlib import Path, PurePosixPath
 
 from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
-from projectkoios.ingestion.ocr.batch.publication import (
-    SelectiveOCRPublication,
-)
+from projectkoios.ingestion.ocr.batch.publication import SelectiveOCRPublication
 from projectkoios.ingestion.ocr.contract.contracts import (
     OCRConfiguration,
     OCRLanguageResourceIdentity,
@@ -19,20 +20,35 @@ from projectkoios.ingestion.ocr.contract.contracts import (
     OCRSelectionResult,
     OCRSelectionStatus,
 )
+from projectkoios.ingestion.ocr.reconciliation.batch.item import (
+    SelectiveOCRReconciliationItem,
+)
+from projectkoios.ingestion.ocr.reconciliation.batch.page import (
+    SelectiveOCRReconciliationPage,
+)
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
 )
-from projectkoios.ingestion.serialization import contract_dict
+from projectkoios.ingestion.reconciliation.deterministic import (
+    DeterministicOCRReconciler,
+    OCRReconciliationRequest,
+    OCRReconciliationResult,
+)
+from projectkoios.ingestion.serialization import serialize_contract
 
 
-def test__selective_ocr_publication__binds_plan_and_result() -> None:
-    source_content = b"%PDF-1.7\nselective OCR publication fixture\n"
+def reconciliation_fixture() -> tuple[
+    SelectiveOCRReconciliationItem,
+    SelectiveOCRReconciliationPage,
+    SelectiveOCRPublication,
+]:
+    source_content = b"%PDF-1.7\nselective reconciliation fixture\n"
     source = SourceDocument.from_bytes(
         source_content,
-        source_id="source:selective-ocr-publication",
+        source_id="source:selective-reconciliation",
         media_type="application/pdf",
-        locator="memory://selective-ocr.pdf",
+        locator="memory://selective-reconciliation.pdf",
     )
     region = RenderedRegion.create(
         source=source,
@@ -49,7 +65,7 @@ def test__selective_ocr_publication__binds_plan_and_result() -> None:
         height_pixels=22,
         processor_name="fixture-renderer",
         processor_version="1",
-        backend_name="fixture-backend",
+        backend_name="fixture-renderer-backend",
         backend_version="1",
     )
     selection = OCRSelection.create(OCRPageImage.from_rendered_region(region))
@@ -58,7 +74,7 @@ def test__selective_ocr_publication__binds_plan_and_result() -> None:
     identity = OCRProcessorIdentity(
         processor_name="fixture-ocr",
         processor_version="1",
-        backend_name="fixture-backend",
+        backend_name="fixture-ocr-backend",
         backend_version="1",
         language_resources=(
             OCRLanguageResourceIdentity(
@@ -83,29 +99,46 @@ def test__selective_ocr_publication__binds_plan_and_result() -> None:
         selection_results=(selection_result,),
         processor_identity=identity,
     )
-    item = SelectiveOCRItem(
-        source=PdfBatchItem(
-            source_id=source.source_id,
-            pdf_path=PurePosixPath("fixture.pdf"),
-            output_directory=PurePosixPath("native/fixture"),
-            sha256=source.content_hash,
-            byte_size=source.byte_length,
-        ),
+    source_item = PdfBatchItem(
+        source_id=source.source_id,
+        pdf_path=PurePosixPath("fixture.pdf"),
+        output_directory=PurePosixPath("native/fixture"),
+        sha256=source.content_hash,
+        byte_size=source.byte_length,
+        locator=source.locator,
+    )
+    ocr_item = SelectiveOCRItem(
+        source=source_item,
         extraction_sha256="d" * 64,
         output_directory=PurePosixPath("ocr/fixture"),
         pages=(SelectiveOCRPage(0),),
     )
-
-    publication = SelectiveOCRPublication.create(
-        item=item,
-        page=item.pages[0],
+    ocr_publication = SelectiveOCRPublication.create(
+        item=ocr_item,
+        page=ocr_item.pages[0],
         result=result,
     )
-
-    assert publication.result is result
-    assert publication.source_sha256 == source.content_hash
-    assert publication.extraction_sha256 == "d" * 64
-    assert (
-        SelectiveOCRPublication.from_dict(contract_dict(publication))
-        == publication
+    ocr_digest = hashlib.sha256(
+        (serialize_contract(ocr_publication) + "\n").encode()
+    ).hexdigest()
+    page = SelectiveOCRReconciliationPage(
+        page_index=0,
+        ocr_publication_sha256=ocr_digest,
     )
+    item = SelectiveOCRReconciliationItem(
+        source=source_item,
+        extraction_sha256=ocr_item.extraction_sha256,
+        ocr_directory=ocr_item.output_directory,
+        output_directory=PurePosixPath("reconciliation/fixture"),
+        pages=(page,),
+    )
+    return item, page, ocr_publication
+
+
+def reconciliation_result() -> OCRReconciliationResult:
+    _, _, ocr_publication = reconciliation_fixture()
+    request = OCRReconciliationRequest.create(
+        ocr_result=ocr_publication.result,
+        selection_index=0,
+    )
+    return DeterministicOCRReconciler().action(request=request)

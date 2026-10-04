@@ -302,6 +302,28 @@ index publication.
 OCR invocation, explicit create, native/OCR separation, create-once replay
 without reinvocation, and conflicting-result rejection.
 
+### ING-OCR-05 — Selective OCR reconciliation publication (implemented)
+
+`SelectiveOCRReconciliationPlan` binds each selected empty-native page to the
+exact source, extraction, and selective OCR publication hashes. The dry-run
+composition command performs no reconciliation. Explicit apply reconstructs and
+intrinsically validates the immutable OCR evidence, invokes the existing
+`DeterministicOCRReconciler`, and privately publishes one create-once
+`SelectiveOCRReconciliationPublication` per page. Replay freshly derives the
+same result and accepts only an exact existing publication.
+
+The batch rejects OCR selections with native-text references because those
+require an exact layout result not yet carried by this plan. It creates no
+replacement text and performs no rendering, OCR, transcript composition,
+Search, embedding, or index operation.
+
+**Depends on:** `ING-OCR-03`, `ING-OCR-04`.
+
+**Validation:** focused tests cover strict OCR reconstruction, typed plan
+round-trip, hash-locked inputs, low-confidence OCR-only evidence, completed
+blank evidence, dry-run, explicit create, private publication, exact replay,
+and stale OCR rejection.
+
 ## Structural tasks
 
 ### ING-STRUCTURE-01 — Article structure analyzer (implemented)

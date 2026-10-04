@@ -12,7 +12,7 @@ that commit; it never depends on a machine-local repository path.
 | Component | Source | Focused validation |
 |---|---|---|
 | `LayoutAnalysisRequest` → `DeterministicLayoutProcessor` → `LayoutAnalysisResult` | [`layout/actionizer.py`](../../../../../src/python/projectkoios/ingestion/layout/actionizer.py) | [`test__DeterministicLayoutProcessor.py`](../../../../../tests/test__DeterministicLayoutProcessor.py) |
-| `OCRReconciliationRequest` → `DeterministicOCRReconciler` → `OCRReconciliationResult` | [`reconciliation.py`](../../../../../src/python/projectkoios/ingestion/reconciliation.py) | [`test__OCRReconciliation.py`](../../../../../tests/test__OCRReconciliation.py) |
+| `OCRReconciliationRequest` → `DeterministicOCRReconciler` → `OCRReconciliationResult` | [`reconciliation/deterministic.py`](../../../../../src/python/projectkoios/ingestion/reconciliation/deterministic.py) | [`test__DeterministicOCRReconciliation.py`](../../../../../tests/projectkoios/ingestion/reconciliation/test__DeterministicOCRReconciliation.py) |
 | `DeterministicArticleStructureAnalyzer` | [`article_structure.py`](../../../../../src/python/projectkoios/ingestion/article_structure.py) | [`test__ArticleStructureAnalyzer.py`](../../../../../tests/test__ArticleStructureAnalyzer.py) |
 | `DeterministicEquationCandidateDetector` | [`equations/detection.py`](../../../../../src/python/projectkoios/ingestion/equations/detection.py) | [`test__EquationCandidateDetector.py`](../../../../../tests/test__EquationCandidateDetector.py) |
 | `DeterministicEquationAssembler` | [`equations/assembly/assembler.py`](../../../../../src/python/projectkoios/ingestion/equations/assembly/assembler.py) | [`test__EquationEnrichment.py`](../../../../../tests/test__EquationEnrichment.py) |

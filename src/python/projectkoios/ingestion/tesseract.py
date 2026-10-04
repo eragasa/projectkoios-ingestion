@@ -19,7 +19,7 @@ from typing import BinaryIO, TypedDict
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import WarningSeverity
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCRConfidence,
     OCRConfiguration,
     OCRContractLimitError,

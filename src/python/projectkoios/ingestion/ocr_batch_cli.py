@@ -25,7 +25,7 @@ from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
 from projectkoios.ingestion.ocr.batch.publication import (
     SelectiveOCRPublication,
 )
-from projectkoios.ingestion.ocr.contracts import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCRConfiguration,
     OCROutputMode,
     OCRPageImage,

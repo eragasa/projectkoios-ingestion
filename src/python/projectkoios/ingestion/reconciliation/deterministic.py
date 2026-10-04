@@ -22,7 +22,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
     WarningSeverity,
 )
-from projectkoios.ingestion.ocr import (
+from projectkoios.ingestion.ocr.contract.contracts import (
     OCRLine,
     OCRResult,
     OCRSelection,

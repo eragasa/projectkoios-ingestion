@@ -921,7 +921,7 @@ metadata is counted, while input PNG payload bytes are excluded because their
 per-image and aggregate byte limits are enforced separately.
 
 The OCR domain is an explicit package: `ocr/base.py` owns the nominal
-`OCRTextOutput` ABC, while `ocr/contracts.py` owns concrete evidence and action
+`OCRTextOutput` ABC, while `ocr/contract/contracts.py` owns concrete evidence and action
 contracts. `OCRToken` and `OCRLine` inherit that ABC, implement its stable
 `output_id` contract, and reuse its common source-linked output invariants.
 The package initializer preserves established `projectkoios.ingestion.ocr`
@@ -1102,9 +1102,9 @@ one JSON summary; PyMuPDF messages are configured to file descriptor 2 at CLI
 entry so native diagnostics remain on standard error. Default execution is a
 nonmutating dry run and does not invoke OCR. Explicit apply replays the exact
 extraction, compares its typed document against the stored native artifact,
-renders one selected full page at a time, and builds an `OCRRequest` retaining
-any nonempty
-native blocks as coexistence references, and invokes `TesseractOCRProcessor`.
+renders one selected full page at a time, builds an `OCRRequest` retaining any
+nonempty native blocks as coexistence references, and invokes
+`TesseractOCRProcessor`.
 
 Each `SelectiveOCRPublication` binds the exact source and extraction hashes,
 selected page, and complete `OCRResult`, then is independently written as
@@ -1115,6 +1115,31 @@ selection/image links must match the newly verified inputs. This page-local
 publication makes interrupted plans resumable. Native and OCR text remain
 separate evidence; the batch performs no reconciliation, replacement-text
 composition, Search operation, embedding, or index publication.
+
+## Selective OCR reconciliation batch publication
+
+`SelectiveOCRReconciliationPlan` hash-locks each authorized page to one source,
+native extraction, and exact `SelectiveOCRPublication`. It uses safe distinct
+relative OCR and reconciliation directories and retains bounded, strictly
+ordered page selections. The plan does not authorize OCR, rendering, transcript
+composition, replacement text, or Search effects.
+
+`python -m scripts.ocr_reconciliation_batch` is a repository-root composition
+command. It requires explicit non-symlink ingestion, OCR, and private output
+roots and is a nonmutating dry run by default. Explicit apply reconstructs and
+intrinsically validates the complete immutable OCR result, verifies all source,
+extraction, page, and publication hashes, invokes `DeterministicOCRReconciler`,
+and writes one private create-once
+`SelectiveOCRReconciliationPublication` per page. Existing publications must
+exactly match a freshly derived result and are never replaced, making the batch
+resumable.
+
+This first batch boundary is intentionally limited to selective OCR publications
+with no native-text references, matching empty-native-text plans. A page with
+native references fails closed because authoritative reconciliation also
+requires an exact layout result, which this plan does not yet bind. Blank OCR
+results remain completed empty reconciliation evidence. OCR-only proposed text
+remains an unaccepted proposal and is not a replacement-text publication.
 
 ## Bounded JIT processing coordination
 
