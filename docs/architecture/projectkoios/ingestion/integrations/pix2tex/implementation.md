@@ -53,10 +53,12 @@ Reading-transcript composition may proceed independently of recognition. It may
 retain native text, separately selected OCR evidence, figure and table evidence,
 and equation-region image references. It must not insert generated LaTeX or
 MathML into transcript text, infer replacement text, accept an equation, or
-make equation recognition chunk-text-eligible. The resulting deterministic
-three-book evidence collection is
-`reference-reading-transcript-collection:sha256:b962b470c8e55d5ea715afe1819c54c022107a4c5bf6f5906d745f6427062825`;
-its 1,906 equation records contain no recognized LaTeX or MathML.
+make equation recognition chunk-text-eligible. The earlier deterministic
+three-book evidence collection,
+`reference-reading-transcript-collection:sha256:b962b470c8e55d5ea715afe1819c54c022107a4c5bf6f5906d745f6427062825`,
+is superseded by the recognition-independent collection described below. Its
+1,906 equation records remain retained historical evidence with no recognized
+LaTeX or MathML.
 
 Legacy reading projections must apply the same independence rule. Recognition
 output quality is not an equation-region selection policy. In the retained
@@ -84,11 +86,14 @@ the previous collection. Its semantic comparison passed with validation
 
 The same deterministic correction was applied to `doc-01` through `doc-05`.
 The authoritative nine-document coverage inventory is
-`reference-reading-corpus-coverage:sha256:3b282c2dbaf6af5708e51780d86d8353227ca032541acce37d82777d30c047ad`.
-It covers 6,198 pages with 4,648 equation references, 2,256 figure references,
-and 872 table references. Its recognized-equation-text count is zero. Every
-equation reference remains unreviewed, unaccepted, review-required, and
-chunk-text-ineligible.
+`reference-reading-corpus-coverage:sha256:3b5f51b9bf48a9e0f02ffb0b4738316399768138589bfa299b6bf29bee2ebd80`,
+validated by
+`reference-reading-corpus-coverage-validation:sha256:374c79280da6727b1d6e9cbe7be9559c66428abb1bf386f64e7cf8257e949996`.
+It covers 6,198 pages with 4,648 unique equation references, 2,256 figure
+references, and 872 table references. Its recognized-equation-text count is
+zero. Every equation reference is explicitly unreviewed, unaccepted,
+review-required, and chunk-text-ineligible. The prior coverage inventory is
+retained with an immutable supersession marker.
 
 Reopening recognition requires a new processor identity and a new frozen,
 representative canary with output correctness reviewed independently of crop
