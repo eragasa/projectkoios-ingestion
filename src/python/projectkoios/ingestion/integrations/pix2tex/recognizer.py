@@ -28,9 +28,6 @@ from projectkoios.ingestion.equations.recognition.error import (
 from projectkoios.ingestion.equations.recognition.identity import (
     EQUATION_RECOGNITION_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.equations.recognition.policy import (
-    is_primary_equation_recognition_candidate,
-)
 from projectkoios.ingestion.equations.recognition.processor.identity import (
     EquationRecognitionProcessorIdentity,
 )
@@ -58,6 +55,10 @@ from projectkoios.ingestion.integrations.pix2tex.invocation.request import (
 )
 from projectkoios.ingestion.integrations.pix2tex.invocation.result import (
     Pix2TexInvocationResult,
+)
+from projectkoios.ingestion.integrations.pix2tex.policy import (
+    is_pix2tex_primary_recognition_candidate,
+    pix2tex_primary_recognition_ineligibility_reasons,
 )
 from projectkoios.ingestion.integrations.pix2tex.resource import (
     Pix2TexResourceBinding,
@@ -105,7 +106,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         executable_content = self.executable.read_bytes()
         self._identity = EquationRecognitionProcessorIdentity(
             processor_name="pix2tex-cli-equation-recognizer",
-            processor_version="3",
+            processor_version="4",
             backend_name="pix2tex",
             backend_version=backend_version,
             executable_sha256=hashlib.sha256(executable_content).hexdigest(),
@@ -175,7 +176,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         selected = tuple(
             assembly
             for assembly in artifact.assemblies
-            if is_primary_equation_recognition_candidate(assembly)
+            if is_pix2tex_primary_recognition_candidate(assembly)
         )
         invocation = Pix2TexInvocationResult(
             diagnostic=b"",
@@ -328,9 +329,16 @@ def _recognition_proposal(
     mathml_processor_version: str | None = None
     latex_equation: EquationLatex | None = None
     mathml_equation: EquationMathML | None = None
-    if not is_primary_equation_recognition_candidate(assembly):
+    ineligibility_reasons = (
+        pix2tex_primary_recognition_ineligibility_reasons(assembly)
+    )
+    if ineligibility_reasons:
         status = EquationRecognitionStatus.NOT_REQUESTED
         warnings.append("recognition_not_requested_for_non_primary_evidence")
+        warnings.extend(
+            f"recognition_ineligible:{reason}"
+            for reason in ineligibility_reasons
+        )
     elif exit_code != 0 or latex is None:
         status = EquationRecognitionStatus.FAILED
         warnings.append("pix2tex_failed")
