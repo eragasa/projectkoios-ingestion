@@ -105,11 +105,11 @@ The pilot is additive. Existing implementation areas remain:
 | Area | Implementation |
 |---|---|
 | Shared extraction models | [`models.py`](../../../../src/python/projectkoios/ingestion/models.py) |
-| Existing component protocols | [`protocols.py`](../../../../src/python/projectkoios/ingestion/protocols.py) |
+| Injected component boundaries | Nominal abstract bases in their owning domain modules |
 | PDF extraction and rendering | [`pdf/`](../../../../src/python/projectkoios/ingestion/pdf/) |
 | Article ingestion | [`articles/`](../../../../src/python/projectkoios/ingestion/articles/) |
 | Textbook ingestion | [`textbooks/`](../../../../src/python/projectkoios/ingestion/textbooks/) |
-| Bounded processing | [`processing.py`](../../../../src/python/projectkoios/ingestion/processing.py) |
+| Bounded processing | Retired; concrete processing stages own their request/result boundaries |
 | Deterministic derivations | [Deterministic implementation map](deterministic/implementation.md) |
 | Provenance audit | [`provenance/`](../../../../src/python/projectkoios/ingestion/provenance/) |
 | Batch entry points | [`batch_cli.py`](../../../../src/python/projectkoios/ingestion/batch_cli.py) and transcript batch modules |

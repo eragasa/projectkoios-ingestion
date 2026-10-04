@@ -82,7 +82,7 @@ spanning arrangements explicitly uncertain. The implemented bounded region
 adapter renders only explicit full-page or bounding-box selections to in-memory
 PNG evidence. Implemented OCR contracts bind explicit ordered selections to
 that exact evidence and define bounded token/line, status, warning, coordinate,
-and cache identities behind an injected protocol. The implemented
+and cache identities behind an injected nominal abstract base. The implemented
 `TesseractOCRProcessor` is a lazy, no-shell, per-selection POSIX subprocess
 adapter with exact traineddata identities. The separate
 `DeterministicOCRReconciler` consumes one exact OCR selection plus its verified
@@ -492,28 +492,27 @@ The ingestion package may return bytes, objects, iterators, manifests, or
 artifact descriptions. Writing them to a filesystem or vault requires an
 explicit consumer-provided writer.
 
-## Extension Protocols
+## Injected Abstract Boundaries
 
-The architecture depends on small protocols:
+The public ingestion injection points formerly centralized in `protocols.py`
+use nominal abstract base classes rather than structural protocols:
 
 - `SourceExtractor` converts a source into normalized extraction objects;
-- `StructuralAnalyzer` proposes a source-backed document hierarchy;
-- `ArticleStructureAnalyzer` specializes that boundary for articles;
-- `DocumentProcessor` derives enriched content while preserving provenance;
-- `ChunkProducer` converts structured content into source-backed chunks;
+- `PageLayoutProcessor` proposes source-backed page layout;
 - `ExtractionCache` retrieves and stores versioned extraction results;
 - `OCRProcessor` accepts bounded OCR requests and returns ordered results;
 - `OCRReconciler` proposes bounded native/OCR evidence relationships;
 - `EquationCandidateDetector` proposes bounded rendered equation evidence;
+- `FigureCandidateDetector` proposes bounded figure evidence;
+- `FigureRelevanceProcessor` proposes question-specific relevance evidence;
 - `TableCandidateDetector` proposes bounded rendered table evidence;
-- `StructuredTranscriptionComposer` composes exact typed evidence without
-  choosing a destination;
-- `ArtifactWriter` accepts destination-neutral artifacts;
+- `TableStructureReconstructor` proposes table structure; and
 - `ChunkIndexWriter` accepts chunk streams.
 
-Concrete implementations depend inward on these contracts. Optional PDF,
-OCR, or model dependencies must not be imported merely by importing the base
-package.
+Concrete implementations inherit their owned boundary explicitly. The former
+central `protocols.py` module is removed; each abstract base now lives with its
+own domain or integration owner. Optional PDF, OCR, or model dependencies must
+not be imported merely by importing an abstract boundary.
 
 ## Dependency Rules
 
@@ -614,7 +613,9 @@ The intended package shape is:
 ```text
 projectkoios/ingestion/
     models.py
-    protocols.py
+    source_extractor.py
+    chunk_index_writer.py
+    figure_relevance_processor.py
     layout/
         __init__.py
         actionizer.py

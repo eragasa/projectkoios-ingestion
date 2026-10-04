@@ -16,7 +16,7 @@ that commit; it never depends on a machine-local repository path.
 | `DeterministicArticleStructureAnalyzer` | [`article_structure.py`](../../../../../src/python/projectkoios/ingestion/article_structure.py) | [`test__ArticleStructureAnalyzer.py`](../../../../../tests/test__ArticleStructureAnalyzer.py) |
 | `DeterministicEquationCandidateDetector` | [`equations/detection.py`](../../../../../src/python/projectkoios/ingestion/equations/detection.py) | [`test__EquationCandidateDetector.py`](../../../../../tests/test__EquationCandidateDetector.py) |
 | `DeterministicEquationAssembler` | [`equations/assembly/assembler.py`](../../../../../src/python/projectkoios/ingestion/equations/assembly/assembler.py) | [`test__EquationEnrichment.py`](../../../../../tests/test__EquationEnrichment.py) |
-| `DeterministicTableCandidateDetector` | [`tables/contracts.py`](../../../../../src/python/projectkoios/ingestion/tables/contracts.py) | [`test__TableCandidateDetector.py`](../../../../../tests/test__TableCandidateDetector.py) |
+| `DeterministicTableCandidateDetector` | [`tables/contracts.py`](../../../../../src/python/projectkoios/ingestion/tables/contracts.py) | [`test__TableCandidateDetector.py`](../../../../../tests/projectkoios/ingestion/tables/test__TableCandidateDetector.py) |
 | `TableStructureRequest` → `DeterministicTableStructureReconstructor` → `TableStructureResult` | [`tables/structure/reconstructor.py`](../../../../../src/python/projectkoios/ingestion/tables/structure/reconstructor.py) | [`test__DeterministicTableStructureReconstructor.py`](../../../../../tests/projectkoios/ingestion/tables/structure/test__DeterministicTableStructureReconstructor.py) |
 | `DeterministicFigureCandidateDetector` | [`figures/contracts.py`](../../../../../src/python/projectkoios/ingestion/figures/contracts.py) | [`test__FigureCandidateDetector.py`](../../../../../tests/test__FigureCandidateDetector.py) |
 | `StructuredTranscriptionRequest` → `DeterministicStructuredTranscriptionComposer` → `StructuredTranscriptionResult` | [`transcription/composer.py`](../../../../../src/python/projectkoios/ingestion/transcription/composer.py) | [`test__StructuredTranscriptionComposer.py`](../../../../../tests/test__StructuredTranscriptionComposer.py) |
@@ -37,8 +37,8 @@ protocol alias is retained.
 
 ## Public Surface
 
-Applicable structural component protocols are declared in
-[`protocols.py`](../../../../../src/python/projectkoios/ingestion/protocols.py).
+Applicable injected component boundaries are nominal abstract bases declared
+by their owning domains; the former central `protocols.py` module is retired.
 Structured transcription uses its concrete request, actionizer, and result
 classes directly. New operation APIs are imported from their owning modules rather than added to
 the broad root facade. Existing figure, layout, provenance, and table-detection

@@ -12,12 +12,14 @@ from projectkoios.ingestion.articles import (
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cache import (
     EXTRACTION_CACHE_FORMAT_VERSION,
+    ExtractionCache,
     ExtractionCacheCorruptionError,
     ExtractionCacheError,
     ExtractionCacheSafetyError,
     FilesystemExtractionCache,
     build_extraction_cache_key,
 )
+from projectkoios.ingestion.chunk_index_writer import ChunkIndexWriter
 from projectkoios.ingestion.clean_transcript import (
     CLEAN_TRANSCRIPT_PROCESSOR_VERSION,
     ClassificationDisposition,
@@ -92,6 +94,7 @@ from projectkoios.ingestion.equations.detection import (
     EQUATION_DETECTOR_VERSION,
     DeterministicEquationCandidateDetector,
     EquationCandidate,
+    EquationCandidateDetector,
     EquationCandidateKind,
     EquationContextDirection,
     EquationContextReference,
@@ -167,6 +170,9 @@ from projectkoios.ingestion.figure_relevance import (
     FigureRelevanceWarning,
     build_figure_relevance_cache_key,
 )
+from projectkoios.ingestion.figure_relevance_processor import (
+    FigureRelevanceProcessor,
+)
 from projectkoios.ingestion.figures import (
     FIGURE_CONTRACT_VERSION,
     FIGURE_DETECTOR_VERSION,
@@ -176,6 +182,7 @@ from projectkoios.ingestion.figures import (
     FigureArtifactKind,
     FigureAssociationRole,
     FigureCandidate,
+    FigureCandidateDetector,
     FigureComponent,
     FigureDetectionConfiguration,
     FigureDetectionInput,
@@ -200,6 +207,7 @@ from projectkoios.ingestion.layout import (
     LayoutGroupHypothesis,
     LayoutGroupKind,
     LayoutPageKind,
+    PageLayoutProcessor,
     PageLayoutResult,
 )
 from projectkoios.ingestion.models import (
@@ -216,6 +224,7 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
+from projectkoios.ingestion.ocr.processor import OCRProcessor
 from projectkoios.ingestion.pdf import (
     DEFAULT_MAXIMUM_PDF_PAGES,
     PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION,
@@ -253,19 +262,6 @@ from projectkoios.ingestion.pdf import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
 )
-from projectkoios.ingestion.protocols import (
-    ChunkIndexWriter,
-    EquationCandidateDetector,
-    ExtractionCache,
-    FigureCandidateDetector,
-    FigureRelevanceProcessor,
-    OCRProcessor,
-    OCRReconciler,
-    PageLayoutProcessor,
-    SourceExtractor,
-    TableCandidateDetector,
-    TableStructureReconstructor,
-)
 from projectkoios.ingestion.provenance import (
     DERIVATION_AUDIT_CONTRACT_VERSION,
     DERIVATION_AUDIT_PROCESSOR_VERSION,
@@ -278,6 +274,7 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditStatus,
     DerivationAuditValidator,
 )
+from projectkoios.ingestion.reconciliation.base import OCRReconciler
 from projectkoios.ingestion.reference_claim_candidate import (
     REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID,
     REFERENCE_CLAIM_CANDIDATE_CONTRACT_VERSION,
@@ -334,6 +331,7 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.source_extractor import SourceExtractor
 from projectkoios.ingestion.structure import (
     STRUCTURE_CONTRACT_VERSION,
     StructureAnalysis,
@@ -350,6 +348,7 @@ from projectkoios.ingestion.tables import (
     TableAssociationRole,
     TableBoundaryKind,
     TableCandidate,
+    TableCandidateDetector,
     TableDetectionConfiguration,
     TableDetectionInput,
     TableDetectionLimitError,
@@ -360,6 +359,9 @@ from projectkoios.ingestion.tables import (
     TableRuleOrientation,
     TableRuleSegment,
     TableTextAssociation,
+)
+from projectkoios.ingestion.tables.structure.reconstruction import (
+    TableStructureReconstructor,
 )
 from projectkoios.ingestion.tesseract import (
     TESSERACT_ADAPTER_VERSION,

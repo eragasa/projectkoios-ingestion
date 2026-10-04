@@ -8,7 +8,7 @@ from projectkoios.ingestion.articles.base import (
 )
 from projectkoios.ingestion.documents import ExtractedArticle
 from projectkoios.ingestion.models import SourceDocument
-from projectkoios.ingestion.protocols import SourceExtractor
+from projectkoios.ingestion.source_extractor import SourceExtractor
 
 
 class PdfArticleIngester(ArticleIngester):

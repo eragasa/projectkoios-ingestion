@@ -1,22 +1,94 @@
+import inspect
 from dataclasses import FrozenInstanceError
 
 import pytest
 from projectkoios.ingestion import (
     CONTRACT_VERSION,
+    ChunkIndexWriter,
+    DeterministicEquationCandidateDetector,
+    DeterministicFigureCandidateDetector,
+    DeterministicLayoutProcessor,
+    DeterministicTableCandidateDetector,
+    EquationCandidateDetector,
     ExtractedBlock,
     ExtractedDocument,
     ExtractedPage,
+    ExtractionCache,
     ExtractionResult,
+    FigureCandidateDetector,
+    FigureRelevanceProcessor,
+    FilesystemExtractionCache,
     IngestionManifest,
     IngestionStatus,
     IngestionWarning,
+    OCRProcessor,
+    OCRReconciler,
+    PageLayoutProcessor,
+    PyMuPdfExtractor,
     SourceDocument,
+    SourceExtractor,
     SourceSpan,
+    TableCandidateDetector,
     TableOfContentsEntry,
+    TableStructureReconstructor,
+    TesseractOCRProcessor,
     WarningSeverity,
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.reconciliation.reconciler import (
+    DeterministicOCRReconciler,
+)
+from projectkoios.ingestion.tables.structure.reconstructor import (
+    DeterministicTableStructureReconstructor,
+)
+
+
+@pytest.mark.parametrize(
+    "boundary",
+    (
+        ChunkIndexWriter,
+        SourceExtractor,
+        PageLayoutProcessor,
+        OCRProcessor,
+        OCRReconciler,
+        EquationCandidateDetector,
+        FigureRelevanceProcessor,
+        FigureCandidateDetector,
+        TableCandidateDetector,
+        TableStructureReconstructor,
+        ExtractionCache,
+    ),
+)
+def test__injected_boundaries__are_nominal_abstract_classes(
+    boundary: type[object],
+) -> None:
+    assert inspect.isabstract(boundary)
+
+
+@pytest.mark.parametrize(
+    ("implementation", "boundary"),
+    (
+        (PyMuPdfExtractor, SourceExtractor),
+        (DeterministicLayoutProcessor, PageLayoutProcessor),
+        (TesseractOCRProcessor, OCRProcessor),
+        (DeterministicOCRReconciler, OCRReconciler),
+        (DeterministicEquationCandidateDetector, EquationCandidateDetector),
+        (DeterministicFigureCandidateDetector, FigureCandidateDetector),
+        (DeterministicTableCandidateDetector, TableCandidateDetector),
+        (
+            DeterministicTableStructureReconstructor,
+            TableStructureReconstructor,
+        ),
+        (FilesystemExtractionCache, ExtractionCache),
+    ),
+)
+def test__deterministic_processors__inherit_nominal_boundaries(
+    implementation: type[object],
+    boundary: type[object],
+) -> None:
+    assert issubclass(implementation, boundary)
+    assert not inspect.isabstract(implementation)
 
 
 def make_source(locator: str = "memory://textbook.pdf") -> SourceDocument:

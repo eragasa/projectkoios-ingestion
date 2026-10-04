@@ -30,7 +30,7 @@ export is added; facade removal requires a later compatibility migration.
 requests/results, and deterministic actions over normalized backend evidence.
 It does not import PyMuPDF, open documents, read backend dictionaries, render
 pages, or decide which adapter to use. `PyMuPdfExtractor` structurally satisfies
-the existing `SourceExtractor` protocol; no second extractor base is added.
+the existing `SourceExtractor` abstract base; no second extractor base is added.
 
 `pdf.adapters.pymupdf` owns core PDF extraction and rendering through PyMuPDF:
 dependency loading, document/page lifecycle, raw extraction-dictionary

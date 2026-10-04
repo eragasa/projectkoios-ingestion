@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import os
 import sys
 import textwrap
 import time
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-from typing import Protocol
 
 import pytest
 from projectkoios.base import DataObjectActionizer
@@ -259,7 +259,8 @@ def test__tesseract_configuration__is_bounded_and_immutable(
 
     assert TESSERACT_ADAPTER_VERSION == "1"
     assert processor.version.startswith("1+")
-    assert issubclass(OCRProcessor, Protocol)
+    assert inspect.isabstract(OCRProcessor)
+    assert issubclass(TesseractOCRProcessor, OCRProcessor)
     assert configuration.configuration_digest == (
         TesseractAdapterConfiguration(
             timeout_milliseconds=1_000,

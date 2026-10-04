@@ -29,6 +29,7 @@ from projectkoios.ingestion.ocr.language_resource_identity import (
 from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
 from projectkoios.ingestion.ocr.line import OCRLine
 from projectkoios.ingestion.ocr.output_mode import OCROutputMode
+from projectkoios.ingestion.ocr.processor import OCRProcessor
 from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
 from projectkoios.ingestion.ocr.request import OCRRequest
 from projectkoios.ingestion.ocr.resource_identity_kind import (
@@ -228,7 +229,9 @@ class _IdentityKeywords(TypedDict):
     backend_version: str
 
 
-class TesseractOCRProcessor(DataObjectActionizer[OCRRequest, OCRResult]):
+class TesseractOCRProcessor(
+    DataObjectActionizer[OCRRequest, OCRResult], OCRProcessor
+):
     """Bounded subprocess adapter for explicit Tesseract OCR selections."""
 
     name = "tesseract-ocr-adapter"

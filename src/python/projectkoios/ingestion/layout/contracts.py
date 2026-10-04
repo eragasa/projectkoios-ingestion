@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -1200,8 +1201,30 @@ class LayoutContract:
             raise TypeError(f"{name} must be an immutable tuple")
 
 
+class PageLayoutProcessor(ABC):
+    """Analyze deterministic page layout through a concrete processor."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def analyze(
+        self, document: ExtractedDocument
+    ) -> tuple[PageLayoutResult, ...]:
+        """Analyze every page in one extracted document."""
+
+    @abstractmethod
+    def analyze_page(
+        self, source: SourceDocument, page: ExtractedPage
+    ) -> PageLayoutResult:
+        """Analyze one exact extracted page."""
+
+
 class DeterministicLayoutProcessor(
-    DataObjectActionizer[LayoutAnalysisRequest, LayoutAnalysisResult]
+    DataObjectActionizer[LayoutAnalysisRequest, LayoutAnalysisResult],
+    PageLayoutProcessor,
 ):
     """Propose bounded page-local text order from transparent geometry only."""
 
@@ -1296,5 +1319,6 @@ __all__ = [
     "LayoutGroupHypothesis",
     "LayoutGroupKind",
     "LayoutPageKind",
+    "PageLayoutProcessor",
     "PageLayoutResult",
 ]

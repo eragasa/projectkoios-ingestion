@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import sys
 import zlib
 from dataclasses import FrozenInstanceError, replace
-from typing import Protocol
 
 import pytest
 from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
@@ -909,9 +909,9 @@ def test__ocr_page_images_require_immutable_complete_png_evidence() -> None:
         )
 
 
-def test__ocr_protocol__is_public_and_imports_no_engine() -> None:
+def test__ocr_abstract_processor__is_public_and_imports_no_engine() -> None:
     assert OCR_CONTRACT_VERSION == "1.0"
-    assert issubclass(OCRProcessor, Protocol)
+    assert inspect.isabstract(OCRProcessor)
     assert hasattr(OCRProcessor, "identity_for")
     assert not any(
         name.casefold().startswith(("tesseract", "pytesseract"))

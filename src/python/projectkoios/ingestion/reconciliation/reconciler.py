@@ -5,6 +5,7 @@ from __future__ import annotations
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.models import WarningSeverity
 from projectkoios.ingestion.reconciliation import _derivation as derivation
+from projectkoios.ingestion.reconciliation.base import OCRReconciler
 from projectkoios.ingestion.reconciliation.limit_error import (
     OCRReconciliationLimitError,
 )
@@ -18,7 +19,8 @@ from projectkoios.ingestion.reconciliation.warning import (
 
 
 class DeterministicOCRReconciler(
-    DataObjectActionizer[OCRReconciliationRequest, OCRReconciliationResult]
+    DataObjectActionizer[OCRReconciliationRequest, OCRReconciliationResult],
+    OCRReconciler,
 ):
     """Conservatively propose a merged stream without replacing evidence."""
 
