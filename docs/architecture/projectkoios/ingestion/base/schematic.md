@@ -4,8 +4,12 @@
 projectkoios.base.DataObject
 └── AbstractDataObject
     └── AbstractImmutableDataObject
-        └── AbstractIdentity
-            ├── OllamaMultimodalRegionProcessorIdentity
-            ├── OllamaMetadataResponseIdentity
-            └── OllamaRawResponseIdentity
+        ├── AbstractIdentity
+        │   ├── OllamaMultimodalRegionProcessorIdentity
+        │   ├── OllamaMetadataResponseIdentity
+        │   └── OllamaRawResponseIdentity
+        ├── AbstractDerivation
+        │   └── TableStructureDerivation records
+        └── AbstractValidation
+            └── TableStructureValidation records
 ```

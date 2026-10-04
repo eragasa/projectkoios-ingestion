@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.tables.contracts import (
     TableBoundaryKind,
     TableCandidate,
@@ -40,7 +41,9 @@ from projectkoios.ingestion.tables.structure.warning_specification import (
 
 
 @dataclass(frozen=True)
-class TableRegionDerivation(AbstractTableStructureDataObject):
+class TableRegionDerivation(
+    AbstractTableStructureDataObject, AbstractDerivation
+):
     """Represent deterministic rows, cells, and warnings for one region."""
 
     CONTRACT_NAME: ClassVar[str] = "table-region-derivation"

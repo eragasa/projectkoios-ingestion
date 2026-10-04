@@ -1,3 +1,4 @@
+from projectkoios.ingestion.base import AbstractValidation
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
@@ -11,4 +12,5 @@ def test__table_column_validation__is_immutable_owned_state() -> None:
         "projectkoios.ingestion.tables.structure.column_validation"
     )
     assert issubclass(TableColumnValidation, AbstractTableStructureDataObject)
+    assert issubclass(TableColumnValidation, AbstractValidation)
     assert TableColumnValidation.CONTRACT_NAME == "table-column-validation"

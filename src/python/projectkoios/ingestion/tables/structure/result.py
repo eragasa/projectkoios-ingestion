@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.models import IngestionWarning
+from projectkoios.ingestion.models import IngestionWarning, WarningSeverity
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
+)
+from projectkoios.ingestion.tables.structure.derivation import (
+    TableStructureDerivation,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
@@ -34,6 +37,31 @@ class TableStructureResult(
     processor_version: str
     configuration_digest: str
     contract_version: str = TABLE_STRUCTURE_CONTRACT_VERSION
+
+    @classmethod
+    def from_derivations(
+        cls,
+        *,
+        structure_input: TableStructureRequest,
+        derivations: tuple[TableStructureDerivation, ...],
+        processor_name: str,
+        processor_version: str,
+    ) -> TableStructureResult:
+        if not isinstance(derivations, tuple) or any(
+            not isinstance(item, TableStructureDerivation)
+            for item in derivations
+        ):
+            raise TypeError(
+                "table structure derivations must be an immutable tuple"
+            )
+        structures, warnings = cls._link_warnings(derivations)
+        return cls.create(
+            structure_input=structure_input,
+            structures=structures,
+            warnings=warnings,
+            processor_name=processor_name,
+            processor_version=processor_version,
+        )
 
     @classmethod
     def create(
@@ -79,6 +107,49 @@ class TableStructureResult(
             processor_version=processor_version,
             configuration_digest=digest,
         )
+
+    @staticmethod
+    def _link_warnings(
+        derivations: tuple[TableStructureDerivation, ...],
+    ) -> tuple[tuple[TableStructure, ...], tuple[IngestionWarning, ...]]:
+        warnings: list[IngestionWarning] = []
+        warning_ids_by_object: dict[str, list[str]] = {}
+        for derivation in derivations:
+            for specification in derivation.warning_specifications:
+                warning = IngestionWarning.create(
+                    code=specification.code,
+                    severity=WarningSeverity.WARNING,
+                    message=specification.message,
+                    object_ids=specification.object_ids,
+                    source_spans=specification.source_spans,
+                    evidence=specification.evidence,
+                )
+                warnings.append(warning)
+                for object_id in warning.object_ids:
+                    warning_ids_by_object.setdefault(object_id, []).append(
+                        warning.warning_id
+                    )
+        structures = tuple(
+            replace(
+                derivation.structure,
+                cells=tuple(
+                    replace(
+                        cell,
+                        warning_ids=tuple(
+                            warning_ids_by_object.get(cell.cell_id, ())
+                        ),
+                    )
+                    for cell in derivation.structure.cells
+                ),
+                warning_ids=tuple(
+                    warning_ids_by_object.get(
+                        derivation.structure.structure_id, ()
+                    )
+                ),
+            )
+            for derivation in derivations
+        )
+        return structures, tuple(warnings)
 
     def __post_init__(self) -> None:
         if self.contract_version != TABLE_STRUCTURE_CONTRACT_VERSION:

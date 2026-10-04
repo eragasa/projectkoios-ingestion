@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
+from projectkoios.ingestion.base import AbstractDerivation
 from projectkoios.ingestion.models import ExtractedBlock
 from projectkoios.ingestion.tables.contracts import (
     TableCandidate,
@@ -31,7 +32,9 @@ from projectkoios.ingestion.tables.structure.source_record import (
 
 
 @dataclass(frozen=True)
-class TableColumnDerivation(AbstractTableStructureDataObject):
+class TableColumnDerivation(
+    AbstractTableStructureDataObject, AbstractDerivation
+):
     """Represent region boundaries and normalized candidate columns."""
 
     CONTRACT_NAME: ClassVar[str] = "table-column-derivation"
