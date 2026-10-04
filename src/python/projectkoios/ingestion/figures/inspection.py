@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, BinaryIO, Protocol, cast
+from typing import Any, BinaryIO, cast
 
 from projectkoios.ingestion.figures.contracts import (
     FIGURE_INSPECTOR_VERSION,
@@ -11,6 +11,7 @@ from projectkoios.ingestion.figures.contracts import (
     FigureDetectionConfiguration,
     FigureDetectionLimitError,
     FigureDrawingEvidence,
+    FigureInspector,
     FigurePageEvidence,
     _box_has_area,
     _box_is_ordered,
@@ -27,19 +28,15 @@ from projectkoios.ingestion.models import (
 )
 
 
-class _InspectorIdentity(Protocol):
-    name: str
-    version: str
-
-
 class _PyMuPdfFigureInspector:
     """Lazily retain exact embedded bytes and bounded drawing locators."""
 
     name = "pymupdf-figure-inspector"
     version = FIGURE_INSPECTOR_VERSION
 
+    @staticmethod
     def inspect(
-        self: _InspectorIdentity,
+        inspector: FigureInspector,
         document: ExtractedDocument,
         content: BinaryIO,
         configuration: FigureDetectionConfiguration,
@@ -201,8 +198,8 @@ class _PyMuPdfFigureInspector:
                             mask_content=mask,
                             width_pixels=cast(int, width_pixels),
                             height_pixels=cast(int, height_pixels),
-                            processor_name=self.name,
-                            processor_version=self.version,
+                            processor_name=inspector.name,
+                            processor_version=inspector.version,
                             backend_name=backend_name,
                             backend_version=backend_version,
                         )
@@ -299,8 +296,8 @@ class _PyMuPdfFigureInspector:
                         embedded_artifacts=tuple(artifacts),
                         drawings=tuple(drawings),
                         ignored_drawing_count=ignored,
-                        processor_name=self.name,
-                        processor_version=self.version,
+                        processor_name=inspector.name,
+                        processor_version=inspector.version,
                         backend_name=backend_name,
                         backend_version=backend_version,
                     )
@@ -368,7 +365,7 @@ def _read_exact_payload(
 
 
 def inspect_pdf_figures(
-    inspector: _InspectorIdentity,
+    inspector: FigureInspector,
     document: ExtractedDocument,
     content: BinaryIO,
     configuration: FigureDetectionConfiguration,

@@ -7,7 +7,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, BinaryIO, Protocol, cast
+from typing import Any, BinaryIO, cast
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
@@ -64,18 +64,6 @@ _TABLE_TITLE = re.compile(
 _CONTINUED = re.compile(r"\bcontinued\b", re.IGNORECASE)
 _CAPTION = re.compile(r"^\s*Caption\s*[:.]", re.IGNORECASE)
 _NOTE = re.compile(r"^\s*(?:Note|Notes|Source)\s*[:.]", re.IGNORECASE)
-
-
-class _TableRuleInspector(Protocol):
-    name: str
-    version: str
-
-    def inspect(
-        self,
-        document: ExtractedDocument,
-        content: BinaryIO,
-        configuration: TableDetectionConfiguration,
-    ) -> tuple[TablePageRuleEvidence, ...]: ...
 
 
 class TableDetectionLimitError(ValueError):
@@ -898,7 +886,25 @@ class TableDetectionResult:
             raise ValueError("table detection-result ID is inconsistent")
 
 
-class PyMuPdfTableRuleInspector:
+class TableRuleInspector(ABC):
+    """Inspect source-backed table rules through a concrete adapter."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def inspect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+        configuration: TableDetectionConfiguration,
+    ) -> tuple[TablePageRuleEvidence, ...]:
+        """Return bounded page-local table-rule evidence."""
+
+
+class PyMuPdfTableRuleInspector(TableRuleInspector):
     """Inspect bounded vector drawing evidence from exact PDF bytes."""
 
     name = "pymupdf-table-rule-inspector"
@@ -946,7 +952,7 @@ class DeterministicTableCandidateDetector(TableCandidateDetector):
         *,
         layout_processor: PageLayoutProcessor | None = None,
         region_renderer: PageRegionRenderer,
-        rule_inspector: _TableRuleInspector | None = None,
+        rule_inspector: TableRuleInspector | None = None,
     ) -> None:
         self.configuration = configuration or TableDetectionConfiguration()
         self.layout_processor = (
@@ -1674,6 +1680,7 @@ __all__ = [
     "TableEvidenceStatus",
     "TablePageRuleEvidence",
     "TableRegionEvidence",
+    "TableRuleInspector",
     "TableRuleOrientation",
     "TableRuleSegment",
     "TableTextAssociation",

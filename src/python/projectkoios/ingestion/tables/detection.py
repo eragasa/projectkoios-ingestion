@@ -35,6 +35,7 @@ from projectkoios.ingestion.tables.contracts import (
     TableDetectionResult,
     TableEvidenceStatus,
     TableRegionEvidence,
+    TableRuleInspector,
     TableRuleOrientation,
     TableRuleSegment,
     TableTextAssociation,
@@ -42,7 +43,6 @@ from projectkoios.ingestion.tables.contracts import (
     _boxes_intersect,
     _expand_box,
     _padded_box,
-    _TableRuleInspector,
     _union_boxes,
     _validate_rendered_aggregate,
 )
@@ -54,7 +54,7 @@ class _DetectorContext(Protocol):
     version: str
     configuration: TableDetectionConfiguration
     region_renderer: PageRegionRenderer
-    rule_inspector: _TableRuleInspector
+    rule_inspector: TableRuleInspector
 
     @property
     def configuration_digest(self) -> str: ...

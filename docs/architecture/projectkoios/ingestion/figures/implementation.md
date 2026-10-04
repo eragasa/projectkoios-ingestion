@@ -1,10 +1,10 @@
 # `ingestion.figures` implementation
 
 The package exports its existing figure contracts and deterministic detector.
-Renderer-facing modules depend on the nominal `PageRegionRenderer`; they neither
-import nor instantiate `PyMuPdfRegionRenderer`. The domain-owned
-`PyMuPdfFigureInspector` remains in this package during the bounded PDF
-extraction correction.
+`FigureInspector` is the nominal inspection boundary, implemented by the
+package-owned `PyMuPdfFigureInspector`. Renderer-facing modules depend on the
+nominal `PageRegionRenderer`; they neither import nor instantiate
+`PyMuPdfRegionRenderer`.
 
 Figure-inspector behavior version 3 accepts an extracted image without geometry
 only when all of the following are true:

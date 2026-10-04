@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import BinaryIO, Protocol
+from typing import BinaryIO
 
 from projectkoios.ingestion.models import ExtractedDocument, SourceDocument
 from projectkoios.ingestion.tables.contracts import (
@@ -11,16 +11,12 @@ from projectkoios.ingestion.tables.contracts import (
     TableDetectionConfiguration,
     TableDetectionLimitError,
     TablePageRuleEvidence,
+    TableRuleInspector,
     TableRuleOrientation,
     TableRuleSegment,
     _nonnegative_float,
     _point_from_backend,
 )
-
-
-class _InspectorIdentity(Protocol):
-    name: str
-    version: str
 
 
 class _PyMuPdfTableRuleInspector:
@@ -29,8 +25,9 @@ class _PyMuPdfTableRuleInspector:
     name = "pymupdf-table-rule-inspector"
     version = TABLE_RULE_INSPECTOR_VERSION
 
+    @staticmethod
     def inspect(
-        self: _InspectorIdentity,
+        inspector: TableRuleInspector,
         document: ExtractedDocument,
         content: BinaryIO,
         configuration: TableDetectionConfiguration,
@@ -161,8 +158,8 @@ class _PyMuPdfTableRuleInspector:
                         rotation_degrees=extracted_page.rotation_degrees,
                         segments=tuple(segments),
                         ignored_drawing_item_count=ignored_item_count,
-                        processor_name=self.name,
-                        processor_version=self.version,
+                        processor_name=inspector.name,
+                        processor_version=inspector.version,
                         backend_name=backend_name,
                         backend_version=backend_version,
                     )
@@ -224,7 +221,7 @@ def _read_exact_payload(
 
 
 def inspect_pdf_table_rules(
-    inspector: _InspectorIdentity,
+    inspector: TableRuleInspector,
     document: ExtractedDocument,
     content: BinaryIO,
     configuration: TableDetectionConfiguration,

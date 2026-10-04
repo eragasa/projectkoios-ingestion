@@ -22,12 +22,12 @@ from projectkoios.ingestion.figures.contracts import (
     FigureDetectionResult,
     FigureDrawingEvidence,
     FigureEvidenceStatus,
+    FigureInspector,
     FigureTextAssociation,
     _axis_gap,
     _box_area,
     _boxes_within,
     _decimal,
-    _FigureInspector,
     _near_box,
     _optional_block_box,
     _padded_box,
@@ -60,7 +60,7 @@ class _DetectorContext(Protocol):
     version: str
     configuration: FigureDetectionConfiguration
     region_renderer: PageRegionRenderer
-    figure_inspector: _FigureInspector
+    figure_inspector: FigureInspector
 
     @property
     def configuration_digest(self) -> str: ...
