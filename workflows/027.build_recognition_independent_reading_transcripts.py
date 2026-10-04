@@ -14,6 +14,7 @@ from reading_transcript_figure_evidence import (
     ReadingTranscriptFigureEvidence,
 )
 from reading_transcript_page import ReadingTranscriptPage
+from reading_transcript_table_evidence import ReadingTranscriptTableEvidence
 
 PREPARATION = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
@@ -203,45 +204,35 @@ def main() -> None:
                 visual_ids.add(figure_record.candidate_id)
                 figure_count += 1
             for table in quality["tables"]:
-                by_page: dict[int, list[dict[str, object]]] = {}
+                evidence_members = []
                 for member_name in table["rendered_members"]:
                     path = str(
                         (chunk_root / member_name).relative_to(PREPARATION)
                     )
                     member = members[path]
-                    member_value = {
-                        "path": path,
-                        "sha256": member["sha256"],
-                        "bytes": member["bytes"],
-                        "region_evidence_id": member["region_evidence_id"],
-                    }
-                    by_page.setdefault(int(member["page_index"]), []).append(
-                        member_value
+                    evidence_members.append(
+                        {
+                            "path": path,
+                            "sha256": member["sha256"],
+                            "bytes": member["bytes"],
+                            "candidate_id": member["candidate_id"],
+                            "page_index": member["page_index"],
+                            "region_evidence_id": member["region_evidence_id"],
+                        }
                     )
                     rendered_paths.add(path)
                     table_region_count += 1
-                for page_index, evidence_members in sorted(by_page.items()):
-                    spans = [
-                        span
-                        for span in table["source_spans"]
-                        if int(span["page_index"]) == page_index
-                    ]
-                    item = {
-                        "evidence_type": "table",
-                        "candidate_id": table["candidate_id"],
-                        "evidence_status": table["evidence_status"],
-                        "confidence": table["confidence"],
-                        "boundary_kind": table["boundary_kind"],
-                        "source_label": table["source_label"],
-                        "source_spans": spans,
-                        "associations": table["associations"],
-                        "rendered_members": evidence_members,
-                        "automated": True,
-                        "accepted": False,
-                        "review_required": True,
-                    }
-                    page_visuals[page_index].append(item)
-                visual_ids.add(table["candidate_id"])
+                table_records = (
+                    ReadingTranscriptTableEvidence.from_quality_evidence(
+                        table_evidence=table,
+                        rendered_members=evidence_members,
+                    )
+                )
+                for table_record in table_records:
+                    page_visuals[table_record.page_index].append(
+                        table_record.to_record()
+                    )
+                visual_ids.add(table_records[0].candidate_id)
                 table_count += 1
 
         for record in selected_records:
