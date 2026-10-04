@@ -58,6 +58,26 @@ three-book evidence collection is
 `reference-reading-transcript-collection:sha256:b962b470c8e55d5ea715afe1819c54c022107a4c5bf6f5906d745f6427062825`;
 its 1,906 equation records contain no recognized LaTeX or MathML.
 
+Legacy reading projections must apply the same independence rule. Recognition
+output quality is not an equation-region selection policy. In the retained
+Neaman run, detection produced 1,821 candidates and 1,229 assemblies. The
+recognition request selected 457 primary-evidence regions, but the legacy
+reading projection retained only 46: 25 records promoted by the output-oriented
+index tier and 21 failed invocations. The corrected projection retains all 457
+selected region images and native source bindings, discards every historical
+LaTeX and MathML proposal, and leaves 771 auxiliary plus one rejected assembly
+in the selection inventory. A recognizer failure therefore no longer removes
+primary visual evidence, and recognizer output quality no longer determines
+whether a region is represented.
+
+The same deterministic correction was applied to `doc-01` through `doc-05`.
+The authoritative nine-document coverage inventory is
+`reference-reading-corpus-coverage:sha256:3b282c2dbaf6af5708e51780d86d8353227ca032541acce37d82777d30c047ad`.
+It covers 6,198 pages with 4,648 equation references, 2,256 figure references,
+and 872 table references. Its recognized-equation-text count is zero. Every
+equation reference remains unreviewed, unaccepted, review-required, and
+chunk-text-ineligible.
+
 Reopening recognition requires a new processor identity and a new frozen,
 representative canary with output correctness reviewed independently of crop
 quality. A replacement recognizer must demonstrate that semantic symbol errors
