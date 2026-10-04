@@ -28,44 +28,47 @@ from projectkoios.ingestion.tables.structure.reconstructor import (
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription.cache.identity import (
+from projectkoios.ingestion.transcription.artifact_inventory import (
+    TranscriptionInputArtifactInventory,
+)
+from projectkoios.ingestion.transcription.cache_identity import (
     TranscriptionCacheIdentity,
 )
-from projectkoios.ingestion.transcription.composition.composer import (
+from projectkoios.ingestion.transcription.composer import (
     DeterministicStructuredTranscriptionComposer,
 )
-from projectkoios.ingestion.transcription.configuration.configuration import (
+from projectkoios.ingestion.transcription.configuration import (
     TranscriptionConfiguration,
 )
-from projectkoios.ingestion.transcription.configuration.error import (
-    TranscriptionLimitError,
-)
-from projectkoios.ingestion.transcription.evidence.status import (
+from projectkoios.ingestion.transcription.evidence_status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item.kind import (
+from projectkoios.ingestion.transcription.item_kind import (
     TranscriptionItemKind,
 )
-from projectkoios.ingestion.transcription.omission.omission import (
+from projectkoios.ingestion.transcription.limit_error import (
+    TranscriptionLimitError,
+)
+from projectkoios.ingestion.transcription.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.omission.reason import (
+from projectkoios.ingestion.transcription.omission_reason import (
     TranscriptionOmissionReason,
 )
-from projectkoios.ingestion.transcription.order.status import (
+from projectkoios.ingestion.transcription.order_status import (
     TranscriptionOrderStatus,
 )
-from projectkoios.ingestion.transcription.request.request import (
-    StructuredTranscriptionRequest,
-)
-from projectkoios.ingestion.transcription.result.result import (
-    StructuredTranscriptionResult,
-)
-from projectkoios.ingestion.transcription.result.status import (
+from projectkoios.ingestion.transcription.result_status import (
     TranscriptionStatus,
 )
-from projectkoios.ingestion.transcription.source.object_kind import (
+from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.structured_request import (
+    StructuredTranscriptionRequest,
+)
+from projectkoios.ingestion.transcription.structured_result import (
+    StructuredTranscriptionResult,
 )
 
 pytest.importorskip("pymupdf")
@@ -294,6 +297,59 @@ def test__structured_transcription__makes_uncertain_order_explicit() -> None:
     assert result.status is TranscriptionStatus.PROPOSED_WITH_UNCERTAINTY
 
 
+def test__structured_transcription__derives_compact_artifact_inventory() -> (
+    None
+):
+    expected = {
+        "born-digital-text": (
+            "transcription-input-artifact-inventory:sha256:6bfb9fc30fe5012cb33ec86a2317323ebb00444d472ef028275256bed801c213",
+            0,
+            0,
+            0,
+        ),
+        "equations": (
+            "transcription-input-artifact-inventory:sha256:1649a798027e1738178789ae7dcc03ec13bf0250a605f99abe31b8300b75724a",
+            2070,
+            0,
+            2070,
+        ),
+        "tables": (
+            "transcription-input-artifact-inventory:sha256:9a39733c16069714edd4f7c0a1494b67943b74578d5080c9f28f46237a895a18",
+            9101,
+            0,
+            9101,
+        ),
+        "figures": (
+            "transcription-input-artifact-inventory:sha256:f853e305ae591b449dee1c089befe29f68066abdf53cf834cb8daf4ceccf9221",
+            0,
+            100,
+            100,
+        ),
+    }
+    inventories = {}
+    for fixture_name, expected_values in expected.items():
+        _payload, request, _result = _pipeline(fixture_name)
+        inventory = TranscriptionInputArtifactInventory.derive(
+            request.equation_detection_result,
+            request.table_structure_result,
+            request.figure_detection_result,
+        )
+        inventories[fixture_name] = inventory
+        assert (
+            inventory.inventory_id,
+            inventory.rendered_bytes,
+            inventory.embedded_bytes,
+            inventory.total_bytes,
+        ) == expected_values
+        assert inventory == TranscriptionInputArtifactInventory.derive(
+            request.equation_detection_result,
+            request.table_structure_result,
+            request.figure_detection_result,
+        )
+
+    assert len({value.inventory_id for value in inventories.values()}) == 4
+
+
 def test__structured_transcription__cache_identity_covers_all_inputs() -> None:
     _payload, first_input, _result = _pipeline("born-digital-text")
     structure = first_input.structure_analysis
@@ -484,9 +540,6 @@ def test__structured_transcription__uses_action_family_base_objects() -> None:
     assert expected.request is request
     assert expected.request_id == request.request_id
     assert DeterministicStructuredTranscriptionComposer is actionizer.__class__
-    assert request.validation.document is request.document
-    assert expected.validation.result_id == expected.result_id
-    assert expected.validation.object_validation.items == expected.items
 
 
 def test__structured_transcription__preserves_golden_identity_and_bytes() -> (

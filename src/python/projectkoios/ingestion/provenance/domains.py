@@ -26,7 +26,7 @@ from projectkoios.ingestion.provenance.audit import (
     DerivationAuditInput,
     _Registry,
 )
-from projectkoios.ingestion.transcription.source.object_kind import (
+from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
 )
 

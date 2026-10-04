@@ -1,6 +1,6 @@
 # Structured transcription implementation
 
-The action boundary is:
+The concrete action boundary is:
 
 ```text
 StructuredTranscriptionRequest
@@ -8,41 +8,45 @@ StructuredTranscriptionRequest
     → StructuredTranscriptionResult
 ```
 
-All three are concrete. No protocol alias, request alias, root re-export, or
-compatibility facade is retained.
+There is no protocol alias, request alias, root re-export, compatibility
+facade, or `compose()` wrapper.
 
 `AbstractTranscriptionDataObject` owns contract versions, hard bounds,
 normalization, primitive immutable-value checks, exact source-span validation,
-deduplication, and retained-size accounting. Concrete request, result, item,
-omission, derivation, validation, and cache-identity records inherit the
-nominal transcription role.
+deduplication, and retained-size accounting. Concrete records own domain
+behavior through `create()`, `derive()`, or `validate()` constructors.
 
-`TranscriptionRequestValidation` retains the exact request subjects used for
-same-document, provenance, geometry, bound, and exact-artifact checks. Source-
-specific immutable derivations own page, structure, raw-block, equation, table,
-and figure projection. `TranscriptionOrderDerivation` owns ordering evidence,
-and `TranscriptionWarningDerivation` owns canonical composition warnings.
-There are no free helper functions or private helper methods in the
-transcription package.
+`TranscriptionRequestValidation` is the single request trust-boundary
+validator. It checks same-document provenance, canonical block identities,
+source links, bounds, geometry, and exact artifact-byte accounting. Its result
+retains only stable source identities, bounded counts, the artifact inventory
+identity, and byte totals; it does not retain the request graph.
 
-`TranscriptionResultValidation` retains its subordinate warning, object, and
-limit validation records. Object validation retains per-item records from
-`source/validation/`, omission coverage from `omission/validation/`, and exact
-source coverage. Requests and results expose these records through concrete
-`validation` properties. The dependency direction is result to validation;
-validators do not import the completed result class. Validation establishes
-contract consistency only; it does not assert scientific correctness or human
-acceptance.
+`DeterministicStructuredTranscriptionComposer` invokes each source-specific
+derivation once, orders the resulting drafts, and creates immutable items,
+omissions, and warnings. Page-anchor identity is owned by
+`PageTranscriptionDerivation`. Structure disposition is derived once and passed
+to structure transcription. Native source evidence is never replaced.
 
-`TranscriptionCacheIdentity` is an immutable `AbstractIdentity`, not a free
-cache-key function. It binds the complete request, contract and configuration
-versions, and processor identity.
+`TranscriptionResultValidation` is the single result trust-boundary validator.
+It checks item, omission, warning, source, order, coverage, and limit relations
+directly. It does not recreate producer derivations and does not build a graph
+of subordinate validation records. Its result retains only the result and
+request identities, compact item/omission/warning set identities, and bounded
+counts. Validation establishes contract consistency, not scientific
+correctness or human acceptance.
 
-The former `transcription.py`, `StructuredTranscriptionContract`,
-`constants.py`, `TranscriptionInput`, and structured-transcription protocol
-alias and `compose()` wrapper have been removed. Item kind, omission reason,
-result status, and limit errors live under their noun owners. Package
-initializers are empty ownership markers and re-export nothing.
+`TranscriptionInputArtifactInventory` is an immutable compact derivation. It
+retains ordered rendered-region and embedded-artifact identities plus rendered,
+embedded, mask, and total byte counts. It deduplicates shared artifact evidence
+by canonical artifact identity and retains no equation, table, or figure result
+graphs.
 
-Golden verification preserves request, result, item, and cache identities plus
-canonical serialized result bytes.
+Concrete modules live directly under `transcription/`; only the related
+source-specific derivation family is grouped under `transcription/derivation/`.
+Package initializers are empty ownership markers and re-export nothing. There
+are no transcription free helper functions, private helper methods, static
+utility methods, local imports, or `TYPE_CHECKING` import escapes.
+
+Golden verification preserves request, result, item, cache, and serialized
+result identities.

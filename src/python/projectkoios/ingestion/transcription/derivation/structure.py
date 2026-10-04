@@ -10,7 +10,7 @@ from projectkoios.ingestion.transcription.derivation.structure_disposition impor
 from projectkoios.ingestion.transcription.derivation.transcription import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.source.object_kind import (
+from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
 )
 
@@ -23,8 +23,10 @@ class StructureTranscriptionDerivation(TranscriptionDerivation):
         node: StructureNode,
         blocks: tuple[ExtractedBlock, ...],
         page_label_by_index: dict[int, str | None],
+        disposition: TranscriptionStructureDisposition,
     ) -> StructureTranscriptionDerivation:
-        disposition = TranscriptionStructureDisposition.derive(node)
+        if disposition.node_id != node.node_id:
+            raise ValueError("structure disposition refers to another node")
         if disposition.item_kind is None:
             raise ValueError(
                 "structure node does not produce a transcription item"

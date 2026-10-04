@@ -11,10 +11,10 @@ from projectkoios.ingestion.structure import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.evidence.status import (
+from projectkoios.ingestion.transcription.evidence_status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item.kind import TranscriptionItemKind
+from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
 
 
 @dataclass(frozen=True)
@@ -28,7 +28,19 @@ class TranscriptionStructureDisposition(
 
     @classmethod
     def derive(cls, node: StructureNode) -> TranscriptionStructureDisposition:
-        if node.kind in (
+        item_kind = cls.item_kind_for(node.kind)
+        evidence_status = (
+            TranscriptionEvidenceStatus.AMBIGUOUS
+            if node.evidence_status is StructureEvidenceStatus.UNCERTAIN
+            else TranscriptionEvidenceStatus.PROPOSED
+        )
+        return cls(node.node_id, item_kind, evidence_status)
+
+    @classmethod
+    def item_kind_for(
+        cls, structure_kind: StructureKind
+    ) -> TranscriptionItemKind | None:
+        if structure_kind in (
             StructureKind.TITLE,
             StructureKind.PART,
             StructureKind.CHAPTER,
@@ -37,13 +49,13 @@ class TranscriptionStructureDisposition(
             StructureKind.APPENDIX,
         ):
             item_kind = TranscriptionItemKind.HEADING
-        elif node.kind is StructureKind.EQUATION:
+        elif structure_kind is StructureKind.EQUATION:
             item_kind = TranscriptionItemKind.EQUATION
-        elif node.kind is StructureKind.TABLE:
+        elif structure_kind is StructureKind.TABLE:
             item_kind = TranscriptionItemKind.TABLE
-        elif node.kind is StructureKind.FIGURE:
+        elif structure_kind is StructureKind.FIGURE:
             item_kind = TranscriptionItemKind.FIGURE
-        elif node.kind in (
+        elif structure_kind in (
             StructureKind.DOCUMENT,
             StructureKind.FRONT_MATTER,
             StructureKind.PROBLEM_SET,
@@ -53,12 +65,7 @@ class TranscriptionStructureDisposition(
             item_kind = None
         else:
             item_kind = TranscriptionItemKind.PROSE
-        evidence_status = (
-            TranscriptionEvidenceStatus.AMBIGUOUS
-            if node.evidence_status is StructureEvidenceStatus.UNCERTAIN
-            else TranscriptionEvidenceStatus.PROPOSED
-        )
-        return cls(node.node_id, item_kind, evidence_status)
+        return item_kind
 
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:

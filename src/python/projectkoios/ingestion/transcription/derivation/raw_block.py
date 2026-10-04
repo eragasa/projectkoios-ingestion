@@ -6,11 +6,11 @@ from projectkoios.ingestion.models import ExtractedBlock
 from projectkoios.ingestion.transcription.derivation.transcription import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.evidence.status import (
+from projectkoios.ingestion.transcription.evidence_status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item.kind import TranscriptionItemKind
-from projectkoios.ingestion.transcription.source.object_kind import (
+from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
+from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
 )
 

@@ -165,8 +165,44 @@ class IngestionWarning:
     def __post_init__(self) -> None:
         if not self.code:
             raise ValueError("warning code must be non-empty")
+        if not isinstance(self.severity, WarningSeverity):
+            raise TypeError("warning severity is unsupported")
         if not self.message:
             raise ValueError("warning message must be non-empty")
+        if not isinstance(self.object_ids, tuple) or any(
+            not isinstance(value, str) or not value for value in self.object_ids
+        ):
+            raise TypeError("warning object IDs must be non-empty strings")
+        if len(set(self.object_ids)) != len(self.object_ids):
+            raise ValueError("warning object IDs must be unique")
+        if not isinstance(self.source_spans, tuple) or any(
+            not isinstance(span, SourceSpan) for span in self.source_spans
+        ):
+            raise TypeError("warning source spans are unsupported")
+        span_identities = tuple(
+            span.identity_parts() for span in self.source_spans
+        )
+        if not isinstance(self.evidence, tuple) or any(
+            not isinstance(pair, tuple)
+            or len(pair) != 2
+            or any(not isinstance(value, str) for value in pair)
+            for pair in self.evidence
+        ):
+            raise TypeError("warning evidence must contain string pairs")
+        evidence_keys = tuple(key for key, _value in self.evidence)
+        if len(set(evidence_keys)) != len(evidence_keys):
+            raise ValueError("warning evidence keys must be unique")
+        if self.suggested_recovery is not None and not self.suggested_recovery:
+            raise ValueError("warning suggested recovery must be non-empty")
+        expected = stable_id(
+            "warning",
+            self.code,
+            self.object_ids,
+            span_identities,
+            self.evidence,
+        )
+        if self.warning_id != expected:
+            raise ValueError("warning ID is inconsistent")
 
 
 @dataclass(frozen=True)
@@ -241,9 +277,7 @@ class ExtractedBlock:
             raise ValueError("a block must contain text or an asset reference")
         if self.asset_media_type is not None and self.asset_id is None:
             raise ValueError("asset media type requires an asset reference")
-        if (self.asset_mask_id is None) != (
-            self.asset_mask_media_type is None
-        ):
+        if (self.asset_mask_id is None) != (self.asset_mask_media_type is None):
             raise ValueError(
                 "asset mask identity and media type must be set together"
             )

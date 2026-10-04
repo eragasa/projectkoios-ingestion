@@ -7,11 +7,11 @@ from projectkoios.ingestion.models import ExtractedDocument, ExtractedPage
 from projectkoios.ingestion.transcription.derivation.transcription import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.evidence.status import (
+from projectkoios.ingestion.transcription.evidence_status import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item.kind import TranscriptionItemKind
-from projectkoios.ingestion.transcription.source.object_kind import (
+from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
+from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
 )
 
@@ -25,12 +25,7 @@ class PageTranscriptionDerivation(TranscriptionDerivation):
         return cls(
             item_kind=TranscriptionItemKind.PAGE_ANCHOR,
             source_object_kind=TranscriptionSourceObjectKind.PAGE,
-            source_object_id=stable_id(
-                "transcription-page-anchor",
-                document.source.source_id,
-                document.source.blob_id,
-                page.page_index,
-            ),
+            source_object_id=cls.source_object_identity(document, page),
             page_index=page.page_index,
             printed_page_label=page.printed_page_label,
             source_block_ids=(),
@@ -40,4 +35,15 @@ class PageTranscriptionDerivation(TranscriptionDerivation):
             confidence=None,
             structure_reading_order=None,
             evidence=(("page_index", str(page.page_index)),),
+        )
+
+    @classmethod
+    def source_object_identity(
+        cls, document: ExtractedDocument, page: ExtractedPage
+    ) -> str:
+        return stable_id(
+            "transcription-page-anchor",
+            document.source.source_id,
+            document.source.blob_id,
+            page.page_index,
         )

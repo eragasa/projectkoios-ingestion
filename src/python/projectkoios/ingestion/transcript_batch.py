@@ -50,10 +50,10 @@ from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
 from projectkoios.ingestion.tables.structure.reconstructor import (
     DeterministicTableStructureReconstructor,
 )
-from projectkoios.ingestion.transcription.composition.composer import (
+from projectkoios.ingestion.transcription.composer import (
     DeterministicStructuredTranscriptionComposer,
 )
-from projectkoios.ingestion.transcription.request.request import (
+from projectkoios.ingestion.transcription.structured_request import (
     StructuredTranscriptionRequest,
 )
 

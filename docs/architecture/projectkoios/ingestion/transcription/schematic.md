@@ -11,7 +11,7 @@ exact extracted document + complete typed evidence
                          ▼
   DeterministicStructuredTranscriptionComposer
                          │
-              TranscriptionDerivation
+       source-specific derivations (once)
                          │
              ┌───────────┴───────────┐
              ▼                       ▼
@@ -21,14 +21,12 @@ exact extracted document + complete typed evidence
           StructuredTranscriptionResult
                          │
           TranscriptionResultValidation
-             ┌───────────┼───────────┐
-             ▼           ▼           ▼
- source validations  omission     configured
-                     coverage       limits
-             └───────────┬───────────┘
+       (links, coverage, warnings, order, limits)
+                         │
                          ▼
               proposed evidence only
 ```
 
-`TranscriptionCacheIdentity` derives from the exact request and processor
-identity. It does not publish or persist the result.
+`TranscriptionInputArtifactInventory` supplies compact input identity and byte
+accounting. `TranscriptionCacheIdentity` derives from the exact request and
+processor identity. Neither publishes or persists the result.
