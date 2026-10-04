@@ -23,21 +23,19 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     SourceDocument,
 )
-from projectkoios.ingestion.ocr.contract.contracts import (
-    OCRProcessorIdentity,
-    OCRRequest,
-    OCRResult,
-)
+from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.result import OCRResult
 from projectkoios.ingestion.processing import (
     ProcessingInvocationResult,
     ProcessingProcessorIdentity,
     ProcessingSelectionResult,
     ProcessingWorkItem,
 )
-from projectkoios.ingestion.reconciliation.deterministic import (
-    OCRReconciliationInput,
-    OCRReconciliationResult,
+from projectkoios.ingestion.reconciliation.request import (
+    OCRReconciliationRequest,
 )
+from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.table_structure import TableStructureResult
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.transcription import (
@@ -93,7 +91,7 @@ class OCRReconciler(Protocol):
     version: str
 
     def reconcile(
-        self, reconciliation_input: OCRReconciliationInput
+        self, reconciliation_input: OCRReconciliationRequest
     ) -> OCRReconciliationResult: ...
 
 

@@ -1,1 +1,0 @@
-"""OCR contract ownership namespace."""

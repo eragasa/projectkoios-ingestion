@@ -19,25 +19,27 @@ from typing import BinaryIO, TypedDict
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import WarningSeverity
-from projectkoios.ingestion.ocr.contract.contracts import (
-    OCRConfidence,
-    OCRConfiguration,
-    OCRContractLimitError,
-    OCRFailure,
-    OCRFailureKind,
+from projectkoios.ingestion.ocr.confidence import OCRConfidence
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.failure import OCRFailure
+from projectkoios.ingestion.ocr.failure_kind import OCRFailureKind
+from projectkoios.ingestion.ocr.language_resource_identity import (
     OCRLanguageResourceIdentity,
-    OCRLine,
-    OCROutputMode,
-    OCRProcessorIdentity,
-    OCRRequest,
-    OCRResourceIdentityKind,
-    OCRResult,
-    OCRSelection,
-    OCRSelectionResult,
-    OCRSelectionStatus,
-    OCRToken,
-    OCRWarning,
 )
+from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
+from projectkoios.ingestion.ocr.line import OCRLine
+from projectkoios.ingestion.ocr.output_mode import OCROutputMode
+from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.resource_identity_kind import (
+    OCRResourceIdentityKind,
+)
+from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
+from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.ocr.token import OCRToken
+from projectkoios.ingestion.ocr.warning import OCRWarning
 
 TESSERACT_ADAPTER_VERSION = "1"
 TESSERACT_BACKEND_NAME = "tesseract"

@@ -921,11 +921,14 @@ metadata is counted, while input PNG payload bytes are excluded because their
 per-image and aggregate byte limits are enforced separately.
 
 The OCR domain is an explicit package: `ocr/base.py` owns the nominal
-`OCRTextOutput` ABC, while `ocr/contract/contracts.py` owns concrete evidence and action
-contracts. `OCRToken` and `OCRLine` inherit that ABC, implement its stable
-`output_id` contract, and reuse its common source-linked output invariants.
-The package initializer preserves established `projectkoios.ingestion.ocr`
-imports without duplicating implementation.
+`OCRTextOutput` ABC, while each concrete evidence or action class lives in its
+own named module directly under `ocr/`. Immutable domain objects and identities
+inherit the corresponding ingestion package bases; requests and results also
+implement the Project Koios action-family bases. `OCRToken` and `OCRLine`
+inherit `OCRTextOutput`, implement its stable `output_id` contract, and reuse
+its common source-linked output invariants. Class-free private modules own
+bounded validation, geometry, identity, and primitive helpers. The package
+initializer is a namespace marker and re-exports nothing.
 
 `OCRToken` and `OCRLine` retain text, contiguous order, warning links, strict
 positive-area pixel boxes, and mapped source boxes. Confidence is optional. If
@@ -973,9 +976,10 @@ Markdown format, destination, publication, or native/OCR reconciliation policy.
 ABCs. Reconciliation contract version 1.0 consumes one exact
 `OCRSelectionResult` and, when its selection names native blocks, requires the
 exact `ExtractedPage` and `PageLayoutResult` from which those references came.
-`OCRReconciliationInput`, `DeterministicOCRReconciler`, and `reconcile()` remain
-compatibility surfaces over those same objects and semantics. Reconciliation
-rejects stale source,
+Each reconciliation class lives in its own named owner module;
+`DeterministicOCRReconciler.reconcile()` remains a convenience method over the
+same request/result semantics. The package initializer is a namespace marker,
+and there is no compatibility alias for the request. Reconciliation rejects stale source,
 blob, page, rotation, coordinate, dimension, raw-block, kind, or source-span
 evidence rather than guessing how to align it.
 

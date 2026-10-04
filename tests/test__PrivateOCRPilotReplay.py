@@ -11,18 +11,18 @@ from typing import cast
 
 import pytest
 from projectkoios.ingestion import (
-    OCRConfiguration,
-    OCRPageImage,
-    OCRRequest,
-    OCRResultStatus,
-    OCRSelection,
-    OCRSelectionStatus,
     PageRegionSelection,
     SourceDocument,
     TesseractAdapterConfiguration,
     TesseractLanguageBinding,
     TesseractOCRProcessor,
 )
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.result_status import OCRResultStatus
+from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )

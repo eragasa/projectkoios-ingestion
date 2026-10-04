@@ -7,18 +7,20 @@ from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.publication import (
     SelectiveOCRPublication,
 )
-from projectkoios.ingestion.ocr.contract.contracts import (
-    OCRConfiguration,
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.language_resource_identity import (
     OCRLanguageResourceIdentity,
-    OCRPageImage,
-    OCRProcessorIdentity,
-    OCRRequest,
-    OCRResourceIdentityKind,
-    OCRResult,
-    OCRSelection,
-    OCRSelectionResult,
-    OCRSelectionStatus,
 )
+from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.resource_identity_kind import (
+    OCRResourceIdentityKind,
+)
+from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
+from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,

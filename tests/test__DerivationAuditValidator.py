@@ -14,23 +14,8 @@ from projectkoios.ingestion import (
     DeterministicCleanTranscriptProjector,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
-    DeterministicOCRReconciler,
     DeterministicTableCandidateDetector,
     DeterministicTableStructureReconstructor,
-    OCRConfiguration,
-    OCRLanguageResourceIdentity,
-    OCRLine,
-    OCRPageImage,
-    OCRProcessorIdentity,
-    OCRReconciliationInput,
-    OCRReconciliationResult,
-    OCRRequest,
-    OCRResourceIdentityKind,
-    OCRResult,
-    OCRSelection,
-    OCRSelectionResult,
-    OCRSelectionStatus,
-    OCRToken,
     PyMuPdfExtractor,
 )
 from projectkoios.ingestion import (
@@ -57,6 +42,22 @@ from projectkoios.ingestion.models import (
     SourceDocument,
     SourceSpan,
 )
+from projectkoios.ingestion.ocr.configuration import OCRConfiguration
+from projectkoios.ingestion.ocr.language_resource_identity import (
+    OCRLanguageResourceIdentity,
+)
+from projectkoios.ingestion.ocr.line import OCRLine
+from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.resource_identity_kind import (
+    OCRResourceIdentityKind,
+)
+from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
+from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.ocr.token import OCRToken
 from projectkoios.ingestion.pdf import PYMUPDF_COORDINATE_SYSTEM
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
@@ -82,6 +83,13 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditStatus,
     DerivationAuditValidator,
 )
+from projectkoios.ingestion.reconciliation.reconciler import (
+    DeterministicOCRReconciler,
+)
+from projectkoios.ingestion.reconciliation.request import (
+    OCRReconciliationRequest,
+)
+from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.transcription import (
     DeterministicStructuredTranscriptionComposer,
@@ -734,7 +742,7 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
         )
         reconciliation_results = (
             DeterministicOCRReconciler().reconcile(
-                OCRReconciliationInput.create(
+                OCRReconciliationRequest.create(
                     ocr_result=ocr_results[0],
                     selection_index=0,
                     native_page=document.pages[
