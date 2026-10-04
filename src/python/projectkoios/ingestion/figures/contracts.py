@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, BinaryIO, Protocol, cast
+from typing import Any, BinaryIO, cast
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import (
@@ -92,18 +92,6 @@ class FigureAssociationRole(StrEnum):
     CAPTION = "caption"
     SUBFIGURE_LABEL = "subfigure_label"
     LEGEND = "legend"
-
-
-class _FigureInspector(Protocol):
-    name: str
-    version: str
-
-    def inspect(
-        self,
-        document: ExtractedDocument,
-        content: BinaryIO,
-        configuration: FigureDetectionConfiguration,
-    ) -> tuple[FigurePageEvidence, ...]: ...
 
 
 @dataclass(frozen=True)
@@ -1094,7 +1082,25 @@ class FigureDetectionResult:
             raise ValueError("figure detection-result ID is inconsistent")
 
 
-class PyMuPdfFigureInspector:
+class FigureInspector(ABC):
+    """Inspect source-backed figure evidence through a concrete adapter."""
+
+    __slots__ = ()
+
+    name: str
+    version: str
+
+    @abstractmethod
+    def inspect(
+        self,
+        document: ExtractedDocument,
+        content: BinaryIO,
+        configuration: FigureDetectionConfiguration,
+    ) -> tuple[FigurePageEvidence, ...]:
+        """Return bounded page-local figure evidence."""
+
+
+class PyMuPdfFigureInspector(FigureInspector):
     """Lazily retain exact embedded bytes and bounded drawing locators."""
 
     name = "pymupdf-figure-inspector"
@@ -1142,7 +1148,7 @@ class DeterministicFigureCandidateDetector(FigureCandidateDetector):
         *,
         layout_processor: PageLayoutProcessor | None = None,
         region_renderer: PageRegionRenderer,
-        figure_inspector: _FigureInspector | None = None,
+        figure_inspector: FigureInspector | None = None,
     ) -> None:
         self.configuration = configuration or FigureDetectionConfiguration()
         self.layout_processor = (
@@ -1699,6 +1705,7 @@ __all__ = [
     "FigureDetectionResult",
     "FigureDrawingEvidence",
     "FigureEvidenceStatus",
+    "FigureInspector",
     "FigurePageEvidence",
     "FigureTextAssociation",
     "PyMuPdfFigureInspector",
