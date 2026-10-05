@@ -79,7 +79,7 @@ class ExtractionProjectionInventoryActionizer(
                 disposition=(
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                 ),
-                failure_code="projection_collection_set_differs",
+                failure_code="projection_inventory_identity_differs",
                 actionizer_name=self.actionizer_name,
                 actionizer_version=self.actionizer_version,
             )
