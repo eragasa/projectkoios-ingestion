@@ -3,7 +3,8 @@
 [Implementation](implementation.md) ·
 [LLM harness design](llm-harness-design.md) · [Schematic](schematic.md)
 
-This module owns the nominal data-object hierarchy shared by ingestion domains.
+This package owns the nominal data-object hierarchy shared by ingestion domains
+and the Ingestion-local pure-projector framework pilot.
 
 ```text
 AbstractDataObject
@@ -11,8 +12,13 @@ AbstractDataObject
     ├── AbstractIdentity
     ├── AbstractDerivation
     └── AbstractValidation
+
+Projector
+├── ProjectionRequest[ProjectionSource, ProjectionConfiguration]
+└── ProjectionResult[ProjectionValue]
 ```
 
 Concrete identity, derivation, and validation records inherit their matching
-nominal base. The hierarchy does not add serialization, mutation, persistence,
-or external-effect behavior.
+nominal base. Concrete projectors follow the fixed stateless, authority-free,
+external-effect-free request-to-result pattern. The hierarchy does not add
+serialization, mutation, persistence, or external-effect behavior.
