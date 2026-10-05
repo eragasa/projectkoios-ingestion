@@ -11,8 +11,8 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     IngestionManifest,
 )
-from projectkoios.ingestion.storage.extraction.error import (
-    ExtractionPublicationError,
+from projectkoios.ingestion.storage.extraction.identity_conflict_error import (
+    ExtractionPublicationIdentityConflictError,
 )
 from projectkoios.ingestion.storage.extraction.publication.request import (
     ExtractionPublicationRequest,
@@ -113,7 +113,7 @@ def test__disk_extraction_publication_store__rejects_conflicting_document(
     )
 
     with pytest.raises(
-        ExtractionPublicationError,
+        ExtractionPublicationIdentityConflictError,
         match="manifest was already published differently",
     ):
         store.publish(

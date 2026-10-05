@@ -24,6 +24,9 @@ from projectkoios.ingestion.storage.extraction.base import (
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
+from projectkoios.ingestion.storage.extraction.identity_conflict_error import (
+    ExtractionPublicationIdentityConflictError,
+)
 from projectkoios.ingestion.storage.extraction.journal_publication.backend import (  # noqa: E501
     ValidatedExtractionJournalPublicationBackend,
 )
@@ -107,19 +110,18 @@ class DiskExtractionPublicationStore(
                 disposition=ExtractionActionDisposition.RETRY_SAME_REQUEST,
                 message="extraction journal is temporarily unavailable",
             ) from error
-        except ExtractionPublicationError as error:
-            message = str(error)
-            if "conflict" in message or "differently" in message:
-                code = "journal_publication_identity_conflict"
-                disposition = (
-                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
-                )
-            else:
-                code = "authoritative_journal_invalid"
-                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+        except ExtractionPublicationIdentityConflictError as error:
             raise ValidatedExtractionJournalPublicationBackendError(
-                code=code,
-                disposition=disposition,
+                code="journal_publication_identity_conflict",
+                disposition=(
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                ),
+                message="validated extraction journal publication failed",
+            ) from error
+        except ExtractionPublicationError as error:
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code="authoritative_journal_invalid",
+                disposition=ExtractionActionDisposition.STOP_INVALID_EVIDENCE,
                 message="validated extraction journal publication failed",
             ) from error
         if result.journal_sequence > len(records):
@@ -155,7 +157,7 @@ class DiskExtractionPublicationStore(
                     or record.document_id
                     != request.extraction.document.document_id
                 ):
-                    raise ExtractionPublicationError(
+                    raise ExtractionPublicationIdentityConflictError(
                         "publication request identity has conflicting content"
                     )
                 self._verify_payload(record)
@@ -165,7 +167,7 @@ class DiskExtractionPublicationStore(
                 and record.payload_sha256 != payload_sha256
                 for record in records
             ):
-                raise ExtractionPublicationError(
+                raise ExtractionPublicationIdentityConflictError(
                     "extraction manifest was already published differently"
                 )
             self._write_payload(payload_sha256, payload)

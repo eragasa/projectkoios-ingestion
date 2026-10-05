@@ -14,10 +14,10 @@ from projectkoios.ingestion.storage.extraction.actions.disposition import (
 from projectkoios.ingestion.storage.extraction.actions.status import (
     ExtractionActionStatus,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.collection import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
     ExtractionProjectionInventoryRequest,
 )
 

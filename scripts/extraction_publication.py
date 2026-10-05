@@ -88,9 +88,7 @@ def main() -> None:
     parser = _parser()
     arguments = parser.parse_args()
     try:
-        metadata = MongoExtractionConnectionMetadata.load(
-            arguments.connection
-        )
+        metadata = MongoExtractionConnectionMetadata.load(arguments.connection)
         source = _validate_source_plan(
             arguments.pdf,
             expected_sha256=arguments.expected_source_sha256,
@@ -136,6 +134,10 @@ def main() -> None:
             store = MongoExtractionPublicationStore(
                 database=client[metadata.database],
                 journal=journal,
+                projection_target=metadata.extraction_projection_target(),
+                default_write_authority_id=(
+                    "authority:extraction-publication-cli"
+                ),
             )
             result = store.publish(request=request)
         print(
@@ -143,8 +145,7 @@ def main() -> None:
                 {
                     "apply": True,
                     "block_count": sum(
-                        len(page.blocks)
-                        for page in extraction.document.pages
+                        len(page.blocks) for page in extraction.document.pages
                     ),
                     "database": metadata.database,
                     "document_id": result.document_id,

@@ -56,9 +56,7 @@ def main() -> None:
     parser = _parser()
     arguments = parser.parse_args()
     try:
-        metadata = MongoExtractionConnectionMetadata.load(
-            arguments.connection
-        )
+        metadata = MongoExtractionConnectionMetadata.load(arguments.connection)
         request = ExtractionProjectionRecoveryRequest.create(
             maximum_records=arguments.maximum_records,
         )
@@ -85,6 +83,10 @@ def main() -> None:
             store = MongoExtractionPublicationStore(
                 database=client[metadata.database],
                 journal=journal,
+                projection_target=metadata.extraction_projection_target(),
+                default_write_authority_id=(
+                    "authority:extraction-projection-recovery-cli"
+                ),
             )
             result = store.recover(request=request)
         print(

@@ -11,7 +11,8 @@ A **projector** is a pure deterministic transformation from complete immutable
 A projector never performs materialization, publication, inventory queries,
 authority checks, retries, mutable lookups, clock reads, randomness, or workflow
 orchestration. ``Projector.action`` is the fixed framework action;
-implementations provide only ``project``.
+implementations provide only ``project``. ``Projector`` is a constrained
+``ConfigurableDataObjectActionizer`` specialization.
 
 Failure taxonomy
 ----------------

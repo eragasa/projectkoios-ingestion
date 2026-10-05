@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any, ClassVar
 
+from projectkoios.ingestion.base.materializer.error import (
+    MaterializationContractError,
+)
+from projectkoios.ingestion.base.materializer.identity_error import (
+    MaterializationIdentityError,
+)
+from projectkoios.ingestion.base.pipeline.error import PipelineContractError
 from projectkoios.ingestion.base.projector.error import ProjectionContractError
 from projectkoios.ingestion.base.projector.identity_error import (
     ProjectionIdentityError,
@@ -11,8 +19,7 @@ from projectkoios.ingestion.base.projector.identity_error import (
 from projectkoios.ingestion.base.projector.payload_error import (
     ProjectionPayloadError,
 )
-from projectkoios.ingestion.base.projector.request import ProjectionRequest
-from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
@@ -31,23 +38,41 @@ from projectkoios.ingestion.storage.extraction.base import (
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
+from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
+    ExtractionProjectionMaterializationConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
+)
+from projectkoios.ingestion.storage.extraction.projection.collection import (
+    ExtractionProjectionCollection,
+)
 from projectkoios.ingestion.storage.extraction.projection.configuration import (
     ExtractionProjectionConfiguration,
 )
 from projectkoios.ingestion.storage.extraction.projection.evidence import (
     ExtractionPublicationEvidence,
 )
-from projectkoios.ingestion.storage.extraction.projection.projector import (
-    ExtractionProjectionProjector,
-)
-from projectkoios.ingestion.storage.extraction.projection_inventory.collection import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
+    ExtractionProjectionInventoryConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader import (  # noqa: E501
     ExtractionProjectionInventoryReader,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader_error import (  # noqa: E501
     ExtractionProjectionInventoryReaderError,
+)
+from projectkoios.ingestion.storage.extraction.projection_pipeline.configuration import (  # noqa: E501
+    ExtractionProjectionPipelineConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection_pipeline.pipeline import (  # noqa: E501
+    ExtractionProjectionMaterializationPipeline,
+)
+from projectkoios.ingestion.storage.extraction.projection_pipeline.request import (  # noqa: E501
+    ExtractionProjectionPipelineRequest,
 )
 from projectkoios.ingestion.storage.extraction.publication.record import (
     ExtractionPublicationRecord,
@@ -89,16 +114,29 @@ class MongoExtractionPublicationStore(
 ):
     """Idempotent MongoDB read projection backed by a disk journal."""
 
-    DOCUMENTS: ClassVar[str] = MongoExtractionProjectionMaterializer.DOCUMENTS
-    PAGES: ClassVar[str] = MongoExtractionProjectionMaterializer.PAGES
-    BLOCKS: ClassVar[str] = MongoExtractionProjectionMaterializer.BLOCKS
-    WARNINGS: ClassVar[str] = MongoExtractionProjectionMaterializer.WARNINGS
-    MANIFESTS: ClassVar[str] = MongoExtractionProjectionMaterializer.MANIFESTS
-    PROJECTOR: ClassVar[ExtractionProjectionProjector] = (
-        ExtractionProjectionProjector()
-    )
     PROJECTION_CONFIGURATION: ClassVar[ExtractionProjectionConfiguration] = (
         ExtractionProjectionConfiguration.v1()
+    )
+    MATERIALIZATION_CONFIGURATION: ClassVar[
+        ExtractionProjectionMaterializationConfiguration
+    ] = ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+    PIPELINE_CONFIGURATION: ClassVar[
+        ExtractionProjectionPipelineConfiguration
+    ] = ExtractionProjectionPipelineConfiguration.create(
+        projection_configuration=PROJECTION_CONFIGURATION,
+        materialization_configuration=MATERIALIZATION_CONFIGURATION,
+    )
+    INVENTORY_CONFIGURATION: ClassVar[
+        ExtractionProjectionInventoryConfiguration
+    ] = ExtractionProjectionInventoryConfiguration.mongodb_v1()
+    DOCUMENTS: ClassVar[str] = (
+        MATERIALIZATION_CONFIGURATION.documents_collection
+    )
+    PAGES: ClassVar[str] = MATERIALIZATION_CONFIGURATION.pages_collection
+    BLOCKS: ClassVar[str] = MATERIALIZATION_CONFIGURATION.blocks_collection
+    WARNINGS: ClassVar[str] = MATERIALIZATION_CONFIGURATION.warnings_collection
+    MANIFESTS: ClassVar[str] = (
+        MATERIALIZATION_CONFIGURATION.manifests_collection
     )
 
     def __init__(
@@ -106,24 +144,30 @@ class MongoExtractionPublicationStore(
         *,
         database: Database[MongoDocument],
         journal: DiskExtractionPublicationStore,
-        projection_reference: str | None = None,
+        projection_target: ExtractionProjectionTargetIdentity,
+        default_write_authority_id: str,
     ) -> None:
         if type(journal) is not DiskExtractionPublicationStore:
             raise TypeError("journal must be a DiskExtractionPublicationStore")
-        if projection_reference is not None and (
-            type(projection_reference) is not str or not projection_reference
+        if type(projection_target) is not ExtractionProjectionTargetIdentity:
+            raise TypeError("projection_target has the wrong contract")
+        if (
+            type(default_write_authority_id) is not str
+            or not default_write_authority_id
         ):
-            raise ValueError("projection_reference must be non-empty")
+            raise ValueError("default write authority must be non-empty")
         self.database = database
         self.journal = journal
+        self.projection_target = projection_target
+        self.default_write_authority_id = default_write_authority_id
         self.materializer = MongoExtractionProjectionMaterializer(
-            database=database
+            database=database,
+            configured_target=projection_target,
         )
-        self.projection_reference = projection_reference or stable_id(
-            "mongodb-extraction-projection",
-            "1.0",
-            database.name,
+        self.projection_pipeline = ExtractionProjectionMaterializationPipeline(
+            materializer=self.materializer,
         )
+        self.projection_reference = projection_target.target_id
         self._indexes_ready = False
 
     def publish(
@@ -136,7 +180,10 @@ class MongoExtractionPublicationStore(
         committed = self.journal.publish(request=request)
         records = self.journal.records()
         record = records[committed.journal_sequence - 1]
-        self._project_and_materialize(record)
+        self._apply_publication_record(
+            record,
+            authority_id=self.default_write_authority_id,
+        )
         return committed
 
     def recover(
@@ -156,7 +203,10 @@ class MongoExtractionPublicationStore(
                 "recovery journal exceeds the requested record bound"
             )
         for record in records:
-            self._project_and_materialize(record)
+            self._apply_publication_record(
+                record,
+                authority_id=self.default_write_authority_id,
+            )
         return ExtractionProjectionRecoveryResult(
             request_id=request.request_id,
             observed_records=len(records),
@@ -228,7 +278,10 @@ class MongoExtractionPublicationStore(
         projected = 0
         try:
             for selected in request.selected_records:
-                projected += self._project_and_materialize(selected)
+                projected += self._apply_publication_record(
+                    selected,
+                    authority_id=request.authority_id,
+                )
         except ExtractionPublicationError as error:
             cause = error.__cause__
             if isinstance(cause, PyMongoError) and not isinstance(
@@ -245,6 +298,17 @@ class MongoExtractionPublicationStore(
                 cause, MongoExtractionProjectionMaterializationError
             ):
                 code = cause.code
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            elif isinstance(cause, MaterializationIdentityError):
+                code = "materialization_identity_differs"
+                disposition = (
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                )
+            elif isinstance(cause, MaterializationContractError):
+                code = "materialization_contract_invalid"
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            elif isinstance(cause, PipelineContractError):
+                code = "projection_pipeline_contract_invalid"
                 disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
             elif isinstance(cause, ProjectionIdentityError):
                 code = "projection_identity_differs"
@@ -286,7 +350,8 @@ class MongoExtractionPublicationStore(
     ) -> tuple[ExtractionProjectionCollectionInventory, ...]:
         try:
             return self.read_inventory(
-                projection_reference=request.projection_reference,
+                target=self.projection_target,
+                configuration=self.INVENTORY_CONFIGURATION,
                 authority_id=request.authority_id,
             )
         except ExtractionProjectionInventoryReaderError as error:
@@ -299,12 +364,13 @@ class MongoExtractionPublicationStore(
     def read_inventory(
         self,
         *,
-        projection_reference: str,
+        target: ExtractionProjectionTargetIdentity,
+        configuration: ExtractionProjectionInventoryConfiguration,
         authority_id: str,
     ) -> tuple[ExtractionProjectionCollectionInventory, ...]:
-        """Return compact identity/publication digests for owned collections."""
+        """Return complete canonical-content digests for owned collections."""
 
-        if projection_reference != self.projection_reference:
+        if target != self.projection_target:
             raise ExtractionProjectionInventoryReaderError(
                 code="projection_reference_differs",
                 disposition=(
@@ -320,28 +386,22 @@ class MongoExtractionPublicationStore(
                 disposition=ExtractionActionDisposition.AUTHORITY_REQUIRED,
                 message="projection query authority is required",
             )
-        collections: list[ExtractionProjectionCollectionInventory] = []
-        for collection_name in sorted(
-            (
-                self.DOCUMENTS,
-                self.PAGES,
-                self.BLOCKS,
-                self.WARNINGS,
-                self.MANIFESTS,
+        if configuration != self.INVENTORY_CONFIGURATION:
+            raise ExtractionProjectionInventoryReaderError(
+                code="projection_inventory_configuration_differs",
+                disposition=(
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                ),
+                message="projection inventory configuration differs",
             )
-        ):
+        collections: list[ExtractionProjectionCollectionInventory] = []
+        for collection_name in configuration.collection_names:
             members: list[tuple[str, str]] = []
             try:
-                cursor = self.database[collection_name].find(
-                    {}, {"_id": 1, "publication_digest": 1}
-                )
+                cursor = self.database[collection_name].find({})
                 for document in cursor:
                     identity = document.get("_id")
-                    publication_digest = document.get("publication_digest")
-                    if (
-                        type(identity) is not str
-                        or type(publication_digest) is not str
-                    ):
+                    if type(identity) is not str or not identity:
                         raise ExtractionProjectionInventoryReaderError(
                             code="projection_inventory_document_invalid",
                             disposition=(
@@ -349,9 +409,21 @@ class MongoExtractionPublicationStore(
                             ),
                             message="projection inventory document is invalid",
                         )
-                    members.append((identity, publication_digest))
+                    try:
+                        content_sha256 = hashlib.sha256(
+                            canonical_json(document).encode("utf-8")
+                        ).hexdigest()
+                    except (TypeError, ValueError) as error:
+                        raise ExtractionProjectionInventoryReaderError(
+                            code="projection_inventory_document_invalid",
+                            disposition=(
+                                ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+                            ),
+                            message="projection inventory document is invalid",
+                        ) from error
+                    members.append((identity, content_sha256))
                     if len(members) > (
-                        ExtractionProjectionCollectionInventory.MAXIMUM_DOCUMENTS
+                        configuration.maximum_documents_per_collection
                     ):
                         raise ExtractionProjectionInventoryReaderError(
                             code="projection_inventory_limit_exceeded",
@@ -384,9 +456,11 @@ class MongoExtractionPublicationStore(
             collections.append(inventory)
         return tuple(collections)
 
-    def _project_and_materialize(
+    def _apply_publication_record(
         self,
         record: ExtractionPublicationRecord,
+        *,
+        authority_id: str,
     ) -> int:
         """Project and materialize one exact authoritative journal record.
 
@@ -394,6 +468,8 @@ class MongoExtractionPublicationStore(
         ----------
         record
             Validated journal record whose exact payload remains on disk.
+        authority_id
+            Exact authority identity presented to the materializer stage.
 
         Returns
         -------
@@ -408,9 +484,9 @@ class MongoExtractionPublicationStore(
 
         Notes
         -----
-        This adapter method composes separate responsibilities. The disk reader
-        supplies complete immutable evidence, the projector performs the pure
-        transformation, and the MongoDB materializer performs writes.
+        The adapter reads authoritative bytes and establishes index readiness.
+        The typed pipeline owns synchronous projector-to-materializer
+        composition without owning workflow scheduling, retries, or state.
         """
         payload = self.journal.payload(record)
         try:
@@ -418,33 +494,50 @@ class MongoExtractionPublicationStore(
                 record=record,
                 payload=payload,
             )
-            request = ProjectionRequest.create(
-                sources=(evidence,),
-                configuration=self.PROJECTION_CONFIGURATION,
+            pipeline_request = ExtractionProjectionPipelineRequest.create(
+                source=evidence,
+                target=self.projection_target,
+                configuration=self.PIPELINE_CONFIGURATION,
+                authority_id=authority_id,
             )
-            read_model = self.PROJECTOR.action(request=request).projection
-        except (TypeError, ValueError, ProjectionContractError) as error:
+        except (TypeError, ValueError) as error:
             raise ExtractionPublicationError(
-                "extraction publication projection evidence is invalid"
+                "extraction publication pipeline evidence is invalid"
             ) from error
 
-        # Index readiness remains an adapter concern and is intentionally not
-        # hidden inside either the pure projector or the document materializer.
+        # Index readiness is adapter setup rather than a pipeline stage. It has
+        # separate evidence and never changes the projected document values.
         self._ensure_indexes()
         try:
-            created_roots = self.materializer.materialize(read_model=read_model)
-        except MongoExtractionProjectionMaterializationError as error:
+            materialization = self.projection_pipeline.action(
+                request=pipeline_request
+            ).evidence
+        except (
+            PipelineContractError,
+            ProjectionContractError,
+            MaterializationContractError,
+            MongoExtractionProjectionMaterializationError,
+        ) as error:
             # Preserve PyMongo's typed cause for existing provider-action
             # disposition mapping while retaining the materializer's category.
             cause = error.__cause__
             if isinstance(cause, PyMongoError):
                 raise ExtractionPublicationError(str(error)) from cause
             raise ExtractionPublicationError(str(error)) from error
-        if created_roots not in (0, 1):
+        document_evidence = next(
+            item
+            for item in materialization.collections
+            if item.collection is ExtractionProjectionCollection.DOCUMENTS
+        )
+        if (
+            document_evidence.created_document_count
+            + document_evidence.unchanged_document_count
+            != 1
+        ):
             raise ExtractionPublicationError(
                 "single publication produced an invalid root-document count"
             )
-        return created_roots
+        return document_evidence.created_document_count
 
     def _ensure_indexes(self) -> None:
         if self._indexes_ready:

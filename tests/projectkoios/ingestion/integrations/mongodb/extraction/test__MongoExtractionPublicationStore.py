@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any, cast
 
 import mongomock
+from projectkoios.ingestion.base.inventory.request import InventoryRequest
+from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
@@ -26,11 +28,41 @@ from projectkoios.ingestion.storage.extraction.actions.disposition import (
 from projectkoios.ingestion.storage.extraction.actions.status import (
     ExtractionActionStatus,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.actionizer import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
+)
+from projectkoios.ingestion.storage.extraction.projection.configuration import (
+    ExtractionProjectionConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.evidence import (
+    ExtractionPublicationEvidence,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.actionizer import (  # noqa: E501
     ExtractionProjectionInventoryActionizer,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
+    ExtractionProjectionInventoryConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind import (  # noqa: E501
+    ExtractionProjectionEquivalenceKind,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.request import (  # noqa: E501
+    ExtractionProjectionInventoryEquivalenceRequest,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.verifier import (  # noqa: E501
+    ExtractionProjectionInventoryEquivalenceVerifier,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.expected import (  # noqa: E501
+    ExpectedExtractionProjectionInventory,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.inventory import (  # noqa: E501
+    ExtractionProjectorInventory,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
     ExtractionProjectionInventoryRequest,
+)
+from projectkoios.ingestion.storage.extraction.projection.projector import (
+    ExtractionProjectionProjector,
 )
 from projectkoios.ingestion.storage.extraction.publication.request import (
     ExtractionPublicationRequest,
@@ -93,16 +125,33 @@ def _extraction(suffix: str = "fixture") -> ExtractionResult:
     return ExtractionResult(document=document, manifest=manifest)
 
 
+def _store(
+    *,
+    database: Database[dict[str, Any]],
+    journal: DiskExtractionPublicationStore,
+) -> MongoExtractionPublicationStore:
+    target = ExtractionProjectionTargetIdentity.create(
+        deployment_id="local-test-mongodb",
+        environment="test",
+        database_name=database.name,
+        schema_id="extraction-read-model-v1",
+        projection_slot="extraction-publications",
+    )
+    return MongoExtractionPublicationStore(
+        database=database,
+        journal=journal,
+        projection_target=target,
+        default_write_authority_id="authority:test-extraction-write",
+    )
+
+
 def test__mongo_extraction_publication_store__rebuilds_from_disk(
     tmp_path: Path,
 ) -> None:
     client = mongomock.MongoClient()
     database = cast(Database[dict[str, Any]], client.projectkoios_test)
     journal = DiskExtractionPublicationStore(tmp_path / "journal")
-    store = MongoExtractionPublicationStore(
-        database=database,
-        journal=journal,
-    )
+    store = _store(database=database, journal=journal)
     extraction = _extraction()
 
     store.publish(
@@ -133,16 +182,13 @@ def test__mongo_extraction_publication_store__inventories_owned_collections(
     client = mongomock.MongoClient()
     database = cast(Database[dict[str, Any]], client.projectkoios_inventory)
     journal = DiskExtractionPublicationStore(tmp_path / "journal")
-    store = MongoExtractionPublicationStore(
-        database=database,
-        journal=journal,
-        projection_reference="projection:development-fixture",
-    )
+    store = _store(database=database, journal=journal)
     store.publish(
         request=ExtractionPublicationRequest.create(extraction=_extraction())
     )
     request = ExtractionProjectionInventoryRequest.create(
-        projection_reference=store.projection_reference,
+        target=store.projection_target,
+        configuration=ExtractionProjectionInventoryConfiguration.mongodb_v1(),
         authority_id="authority:development-query",
     )
     actionizer = ExtractionProjectionInventoryActionizer(reader=store)
@@ -165,18 +211,116 @@ def test__mongo_extraction_publication_store__inventories_owned_collections(
     )
 
 
+def test__mongo_inventory__matches_journal_derived_expected_content(
+    tmp_path: Path,
+) -> None:
+    client = mongomock.MongoClient()
+    database = cast(Database[dict[str, Any]], client.projectkoios_inventory)
+    journal = DiskExtractionPublicationStore(tmp_path / "journal")
+    store = _store(database=database, journal=journal)
+    store.publish(
+        request=ExtractionPublicationRequest.create(extraction=_extraction())
+    )
+    record = journal.records()[0]
+    source = ExtractionPublicationEvidence.create(
+        record=record,
+        payload=journal.payload(record),
+    )
+    projection = (
+        ExtractionProjectionProjector()
+        .action(
+            request=ProjectionRequest.create(
+                sources=(source,),
+                configuration=ExtractionProjectionConfiguration.v1(),
+            )
+        )
+        .projection
+    )
+    inventory_configuration = (
+        ExtractionProjectionInventoryConfiguration.mongodb_v1()
+    )
+    expected = ExpectedExtractionProjectionInventory.from_read_models(
+        read_models=(projection,),
+        target=store.projection_target,
+        configuration=inventory_configuration,
+    )
+    observed = (
+        ExtractionProjectorInventory(reader=store)
+        .action(
+            request=InventoryRequest.create(
+                target=store.projection_target,
+                configuration=inventory_configuration,
+                authority_id="authority:development-query",
+            )
+        )
+        .evidence
+    )
+    comparison = ExtractionProjectionInventoryEquivalenceVerifier().action(
+        request=ExtractionProjectionInventoryEquivalenceRequest.create(
+            kind=ExtractionProjectionEquivalenceKind.INDEPENDENT_REBUILD,
+            expected=expected,
+            observed=observed,
+        )
+    )
+
+    assert comparison.equivalent is True
+    assert comparison.disposition is ExtractionActionDisposition.CONTINUE
+
+
+def test__mongo_inventory__changes_after_any_stored_content_tamper(
+    tmp_path: Path,
+) -> None:
+    client = mongomock.MongoClient()
+    database = cast(Database[dict[str, Any]], client.projectkoios_inventory)
+    journal = DiskExtractionPublicationStore(tmp_path / "journal")
+    store = _store(database=database, journal=journal)
+    store.publish(
+        request=ExtractionPublicationRequest.create(extraction=_extraction())
+    )
+    request = ExtractionProjectionInventoryRequest.create(
+        target=store.projection_target,
+        configuration=ExtractionProjectionInventoryConfiguration.mongodb_v1(),
+        authority_id="authority:development-query",
+    )
+    actionizer = ExtractionProjectionInventoryActionizer(reader=store)
+    before = actionizer.action(request=request)
+
+    database[store.BLOCKS].update_one({}, {"$set": {"text": "tampered"}})
+    after = actionizer.action(request=request)
+
+    assert before.inventory_id != after.inventory_id
+    before_block = next(
+        item
+        for item in before.collections
+        if item.collection_name == store.BLOCKS
+    )
+    after_block = next(
+        item
+        for item in after.collections
+        if item.collection_name == store.BLOCKS
+    )
+    assert before_block.content_sha256 != after_block.content_sha256
+
+
 def test__mongo_extraction_publication_store__rejects_other_projection(
     tmp_path: Path,
 ) -> None:
     client = mongomock.MongoClient()
     database = cast(Database[dict[str, Any]], client.projectkoios_inventory)
-    store = MongoExtractionPublicationStore(
+    store = _store(
         database=database,
         journal=DiskExtractionPublicationStore(tmp_path / "journal"),
-        projection_reference="projection:development-fixture",
+    )
+    other_target = ExtractionProjectionTargetIdentity.create(
+        deployment_id="other-test-mongodb",
+        environment="test",
+        database_name=database.name,
+        schema_id="extraction-read-model-v1",
+        projection_slot="extraction-publications",
     )
     request = ExtractionProjectionInventoryRequest.create(
-        projection_reference="projection:other",
+        target=other_target,
+        configuration=ExtractionProjectionInventoryConfiguration.mongodb_v1(),
         authority_id="authority:development-query",
     )
 
@@ -209,11 +353,7 @@ def test__mongo_extraction_publication_store__recovers_exact_selection(
         )
     )
     records = journal.records()
-    store = MongoExtractionPublicationStore(
-        database=database,
-        journal=journal,
-        projection_reference="projection:recovery-fixture",
-    )
+    store = _store(database=database, journal=journal)
     request = SelectedExtractionProjectionRecoveryRequest.create(
         projection_reference=store.projection_reference,
         authority_id="authority:development-write",
@@ -247,11 +387,7 @@ def test__mongo_extraction_publication_store__fails_on_journal_drift(
         request=ExtractionPublicationRequest.create(extraction=_extraction())
     )
     records = journal.records()
-    store = MongoExtractionPublicationStore(
-        database=database,
-        journal=journal,
-        projection_reference="projection:recovery-fixture",
-    )
+    store = _store(database=database, journal=journal)
     request = SelectedExtractionProjectionRecoveryRequest.create(
         projection_reference=store.projection_reference,
         authority_id="authority:development-write",
@@ -287,11 +423,7 @@ def test__mongo_extraction_publication_store__requires_empty_target(
     publication = ExtractionPublicationRequest.create(extraction=_extraction())
     journal.publish(request=publication)
     records = journal.records()
-    store = MongoExtractionPublicationStore(
-        database=database,
-        journal=journal,
-        projection_reference="projection:recovery-fixture",
-    )
+    store = _store(database=database, journal=journal)
     store.publish(request=publication)
     request = SelectedExtractionProjectionRecoveryRequest.create(
         projection_reference=store.projection_reference,

@@ -5,7 +5,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import final
 
-from projectkoios.base import DataObjectActionizer
+from projectkoios.ingestion.base.actionizer.configurable import (
+    ConfigurableDataObjectActionizer,
+)
 from projectkoios.ingestion.base.projector.configuration import (
     AbstractProjectionConfiguration,
 )
@@ -29,7 +31,8 @@ class Projector[
     ConfigurationT: AbstractProjectionConfiguration,
     ProjectionT: AbstractProjectionValue,
 ](
-    DataObjectActionizer[
+    ConfigurableDataObjectActionizer[
+        ConfigurationT,
         ProjectionRequest[SourceT, ConfigurationT],
         ProjectionResult[ProjectionT],
     ],
@@ -108,14 +111,16 @@ class Projector[
             type(source) is not self.source_type for source in request.sources
         ):
             raise ProjectionContractError("projector source contract differs")
-        if type(request.configuration) is not self.configuration_type:
+        try:
+            configuration = self._require_configuration(request=request)
+        except TypeError as error:
             raise ProjectionContractError(
                 "projector configuration contract differs"
-            )
+            ) from error
         self._validate_identity()
         projection = self.project(
             sources=request.sources,
-            configuration=request.configuration,
+            configuration=configuration,
         )
         if type(projection) is not self.projection_type:
             raise ProjectionContractError("projector output contract differs")

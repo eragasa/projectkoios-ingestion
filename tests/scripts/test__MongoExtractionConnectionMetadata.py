@@ -22,6 +22,7 @@ def test__mongo_extraction_connection_metadata__loads_private_metadata(
                 "port": 27018,
                 "replica_set": "projectkoiosDevelopment",
                 "database": "projectkoios_ingestion_development",
+                "environment": "development",
                 "application_username": "projectkoios-ingestion",
                 "keychain_service": "projectkoios.mongodb.development",
                 "recovery_root": str(recovery_root),
@@ -36,6 +37,10 @@ def test__mongo_extraction_connection_metadata__loads_private_metadata(
     assert metadata.host == "127.0.0.1"
     assert metadata.port == 27018
     assert metadata.recovery_root == recovery_root.resolve()
+    target = metadata.extraction_projection_target()
+    assert target.deployment_id == "projectkoiosDevelopment"
+    assert target.environment == "development"
+    assert target.database_name == metadata.database
 
 
 def test__mongo_connection_metadata__rejects_symlink_traversal(

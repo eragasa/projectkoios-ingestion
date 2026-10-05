@@ -19,6 +19,7 @@ def test__extraction_projection_recovery__dry_run_is_non_mutating(
                 "port": 27018,
                 "replica_set": "projectkoiosDevelopment",
                 "database": "projectkoios_ingestion_development",
+                "environment": "development",
                 "application_username": "projectkoios-ingestion",
                 "keychain_service": "projectkoios.mongodb.development",
                 "recovery_root": str(recovery_root),

@@ -15,6 +15,9 @@ from typing import Any, ClassVar
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
+)
 from pymongo import MongoClient
 
 
@@ -23,14 +26,13 @@ class MongoExtractionConnectionMetadata:
     """Validated non-secret metadata for one local extraction projection."""
 
     MAX_METADATA_BYTES: ClassVar[int] = 65_536
-    NAME: ClassVar[re.Pattern[str]] = re.compile(
-        r"[A-Za-z0-9_.-]{1,128}"
-    )
+    NAME: ClassVar[re.Pattern[str]] = re.compile(r"[A-Za-z0-9_.-]{1,128}")
 
     host: str
     port: int
     replica_set: str
     database: str
+    environment: str
     application_username: str
     keychain_service: str
     recovery_root: Path
@@ -72,6 +74,9 @@ class MongoExtractionConnectionMetadata:
                 value.get("replica_set"), "replica set"
             ),
             database=cls._required_name(value.get("database"), "database"),
+            environment=cls._required_name(
+                value.get("environment"), "environment"
+            ),
             application_username=cls._required_name(
                 value.get("application_username"), "username"
             ),
@@ -79,6 +84,18 @@ class MongoExtractionConnectionMetadata:
                 value.get("keychain_service"), "Keychain service"
             ),
             recovery_root=Path(recovery_root).expanduser().resolve(),
+        )
+
+    def extraction_projection_target(
+        self,
+    ) -> ExtractionProjectionTargetIdentity:
+        """Return the explicit extraction read-projection target identity."""
+        return ExtractionProjectionTargetIdentity.create(
+            deployment_id=self.replica_set,
+            environment=self.environment,
+            database_name=self.database,
+            schema_id="extraction-read-model-v1",
+            projection_slot="authoritative-extraction-read-model",
         )
 
     @classmethod
@@ -95,9 +112,7 @@ def open_mongo_extraction_client(
     """Open an authenticated client without persisting its password."""
 
     if type(metadata) is not MongoExtractionConnectionMetadata:
-        raise TypeError(
-            "metadata must be MongoExtractionConnectionMetadata"
-        )
+        raise TypeError("metadata must be MongoExtractionConnectionMetadata")
     completed = subprocess.run(
         [
             "/usr/bin/security",
