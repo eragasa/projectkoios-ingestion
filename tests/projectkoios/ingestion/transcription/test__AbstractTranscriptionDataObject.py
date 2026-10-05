@@ -1,4 +1,4 @@
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )

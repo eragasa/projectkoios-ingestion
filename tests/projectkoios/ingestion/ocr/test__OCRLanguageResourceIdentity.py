@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRLanguageResourceIdentity."""
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.ocr.language_resource_identity import (
     OCRLanguageResourceIdentity,
 )

@@ -4,7 +4,7 @@ import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractDerivation
+from projectkoios.ingestion.base.derivation import AbstractDerivation
 from projectkoios.ingestion.models import SourceSpan
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,

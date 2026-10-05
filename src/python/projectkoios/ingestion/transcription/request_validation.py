@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractValidation
+from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.equations.detection import (
     EquationDetectionResult,
 )

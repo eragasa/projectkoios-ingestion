@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for TableCell."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.tables.structure.cell import TableCell
 
 

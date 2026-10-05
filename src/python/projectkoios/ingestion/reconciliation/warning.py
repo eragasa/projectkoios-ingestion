@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import Metadata, WarningSeverity
 from projectkoios.ingestion.reconciliation import _identity as identity
 from projectkoios.ingestion.reconciliation import _primitives as primitives

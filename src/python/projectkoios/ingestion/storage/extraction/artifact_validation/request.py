@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")

@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRNativeLineSegment."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.reconciliation.native_line_segment import (
     OCRNativeLineSegment,
 )

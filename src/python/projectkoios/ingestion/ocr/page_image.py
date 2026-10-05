@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr import _identity as identity
 from projectkoios.ingestion.ocr.constants import OCR_CONTRACT_VERSION
 from projectkoios.ingestion.pdf.models import RenderedRegion

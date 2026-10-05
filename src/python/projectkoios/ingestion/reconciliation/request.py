@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import ExtractedPage
 from projectkoios.ingestion.ocr.result import OCRResult

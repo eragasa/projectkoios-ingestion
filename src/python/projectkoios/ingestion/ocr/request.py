@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from itertools import islice
 
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr import _identity as identity
 from projectkoios.ingestion.ocr import _primitives as primitives
 from projectkoios.ingestion.ocr import _validation as validation

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from conftest import _DIGEST, _MODEL
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.model_list.model import (  # noqa: E501
     OllamaModelDescriptor,
 )

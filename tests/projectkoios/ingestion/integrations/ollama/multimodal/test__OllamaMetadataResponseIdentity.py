@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 from conftest import _processor, _request
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 
 
 def test__metadata_response_identity__is_an_abstract_identity() -> None:

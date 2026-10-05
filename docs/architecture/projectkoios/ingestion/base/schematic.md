@@ -12,4 +12,10 @@ projectkoios.base.DataObject
         │   └── TableStructureDerivation records
         └── AbstractValidation
             └── TableStructureValidation records
+
+projectkoios.base.DataObjectActionizer
+└── Projector[Source, Configuration, Projection]
+    ├── fixed final action(ProjectionRequest)
+    ├── stateless pure project(Source[], Configuration)
+    └── ProjectionResult
 ```

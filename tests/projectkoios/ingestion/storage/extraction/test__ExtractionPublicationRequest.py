@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.storage.extraction.publication.request import (
     ExtractionPublicationRequest,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.pix2tex.invocation.output import (
     Pix2TexInvocationOutput,
 )

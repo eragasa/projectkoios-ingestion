@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractValidation
+from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import IngestionWarning
 from projectkoios.ingestion.transcription.base import (

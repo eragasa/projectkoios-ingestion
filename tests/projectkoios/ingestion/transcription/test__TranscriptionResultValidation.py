@@ -1,6 +1,6 @@
 from dataclasses import fields
 
-from projectkoios.ingestion.base import AbstractValidation
+from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.transcription.result_validation import (
     TranscriptionResultValidation,
 )

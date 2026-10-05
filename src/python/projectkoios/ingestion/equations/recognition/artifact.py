@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.equations.recognition.identity import (
     EQUATION_RECOGNITION_CONTRACT_VERSION,
     equation_recognition_request_id,

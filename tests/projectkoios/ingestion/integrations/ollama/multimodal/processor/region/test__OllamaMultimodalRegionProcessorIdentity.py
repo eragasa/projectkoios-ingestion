@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 from conftest import _DIGEST, _processor, _request
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.integrations.ollama.base import OllamaRequestOptions
 
 

@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for TableContinuation."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.tables.structure.continuation import (
     TableContinuation,
 )

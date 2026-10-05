@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRToken."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr.token import OCRToken
 
 

@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 from conftest import _request
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 
 
 def test__selection_identity__owns_its_contract_version() -> None:

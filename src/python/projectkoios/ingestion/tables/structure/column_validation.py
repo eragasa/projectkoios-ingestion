@@ -6,7 +6,7 @@ import math
 from dataclasses import dataclass
 from typing import ClassVar
 
-from projectkoios.ingestion.base import AbstractValidation
+from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.tables.contracts import TableRegionEvidence
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,

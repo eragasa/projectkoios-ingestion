@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.ocr import _primitives as primitives
 from projectkoios.ingestion.ocr.resource_identity_kind import (
     OCRResourceIdentityKind,

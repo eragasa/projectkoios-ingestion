@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRNativeTextBlockReference."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr.native_text_block_reference import (
     OCRNativeTextBlockReference,
 )

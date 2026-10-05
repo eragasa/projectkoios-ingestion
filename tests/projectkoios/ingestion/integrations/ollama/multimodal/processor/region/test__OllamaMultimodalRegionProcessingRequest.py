@@ -3,7 +3,7 @@ from dataclasses import FrozenInstanceError, replace
 import pytest
 from conftest import _region, _request
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMultimodalSelection,
 )

@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRReconciledItem."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.reconciliation.item import OCRReconciledItem
 
 
