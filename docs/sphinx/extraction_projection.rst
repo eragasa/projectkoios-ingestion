@@ -120,6 +120,27 @@ Extraction projector-inventory API
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.reader
    :members:
 
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.expected
+   :members:
+
+Inventory equivalence API
+-------------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.mismatch
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.verifier
+   :members:
+
 MongoDB materialization API
 ---------------------------
 

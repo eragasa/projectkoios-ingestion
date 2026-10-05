@@ -9,6 +9,9 @@ from projectkoios.ingestion.base.projector.inventory.configuration import (
     AbstractProjectorInventoryConfiguration,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.storage.extraction.projection.collection import (
+    ExtractionProjectionCollection,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,65 +27,108 @@ class ExtractionProjectionInventoryConfiguration(
 
     configuration_id: str
     schema_id: str
-    collection_names: tuple[str, ...]
+    documents_collection: str
+    pages_collection: str
+    blocks_collection: str
+    warnings_collection: str
+    manifests_collection: str
     maximum_documents_per_collection: int
     contract_version: str = CONTRACT_VERSION
+
+    @property
+    def collection_names(self) -> tuple[str, ...]:
+        """Return physical collection names in canonical lexical order."""
+        return tuple(
+            sorted(
+                (
+                    self.documents_collection,
+                    self.pages_collection,
+                    self.blocks_collection,
+                    self.warnings_collection,
+                    self.manifests_collection,
+                )
+            )
+        )
 
     @classmethod
     def mongodb_v1(cls) -> ExtractionProjectionInventoryConfiguration:
         """Return the complete MongoDB extraction inventory configuration."""
-        names = tuple(
-            sorted(
-                (
-                    "extraction_blocks",
-                    "extraction_documents",
-                    "extraction_manifests",
-                    "extraction_pages",
-                    "extraction_warnings",
-                )
-            )
-        )
+        schema = "extraction-read-model-v1"
+        documents = "extraction_documents"
+        pages = "extraction_pages"
+        blocks = "extraction_blocks"
+        warnings = "extraction_warnings"
+        manifests = "extraction_manifests"
         maximum = 50_000_000
+        values = (
+            schema,
+            documents,
+            pages,
+            blocks,
+            warnings,
+            manifests,
+            maximum,
+        )
         return cls(
             configuration_id=stable_id(
                 "extraction-projection-inventory-configuration",
                 cls.CONTRACT_VERSION,
-                "extraction-read-model-v1",
-                names,
-                maximum,
+                values,
             ),
-            schema_id="extraction-read-model-v1",
-            collection_names=names,
+            schema_id=schema,
+            documents_collection=documents,
+            pages_collection=pages,
+            blocks_collection=blocks,
+            warnings_collection=warnings,
+            manifests_collection=manifests,
             maximum_documents_per_collection=maximum,
         )
+
+    def collection_name(
+        self,
+        collection: ExtractionProjectionCollection,
+    ) -> str:
+        """Map one logical projection collection to its physical name."""
+        return {
+            ExtractionProjectionCollection.DOCUMENTS: self.documents_collection,
+            ExtractionProjectionCollection.PAGES: self.pages_collection,
+            ExtractionProjectionCollection.BLOCKS: self.blocks_collection,
+            ExtractionProjectionCollection.WARNINGS: self.warnings_collection,
+            ExtractionProjectionCollection.MANIFESTS: self.manifests_collection,
+        }[collection]
 
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:
             raise ValueError("unsupported extraction inventory configuration")
-        if type(self.schema_id) is not str or not self.schema_id:
-            raise ValueError("inventory schema is invalid")
+        names = (
+            self.documents_collection,
+            self.pages_collection,
+            self.blocks_collection,
+            self.warnings_collection,
+            self.manifests_collection,
+        )
         if (
-            not isinstance(self.collection_names, tuple)
-            or self.collection_names
-            != tuple(sorted(set(self.collection_names)))
-            or any(
-                type(name) is not str or not name
-                for name in self.collection_names
-            )
+            type(self.schema_id) is not str
+            or not self.schema_id
+            or any(type(name) is not str or not name for name in names)
+            or len(set(names)) != len(names)
         ):
-            raise ValueError("inventory collection names are not canonical")
+            raise ValueError("inventory configuration is incomplete")
         if (
             isinstance(self.maximum_documents_per_collection, bool)
             or not isinstance(self.maximum_documents_per_collection, int)
             or self.maximum_documents_per_collection <= 0
         ):
             raise ValueError("inventory document bound is invalid")
+        values = (
+            self.schema_id,
+            *names,
+            self.maximum_documents_per_collection,
+        )
         expected = stable_id(
             "extraction-projection-inventory-configuration",
             self.CONTRACT_VERSION,
-            self.schema_id,
-            self.collection_names,
-            self.maximum_documents_per_collection,
+            values,
         )
         if self.configuration_id != expected:
             raise ValueError("inventory configuration ID is inconsistent")

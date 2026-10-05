@@ -37,6 +37,8 @@ The extraction read path uses the Projector terminology literally:
 | materialization target | `ExtractionProjectionTargetIdentity` | Explicit deployment, environment, database, schema, and projection slot |
 | projector inventory | `ExtractionProjectorInventory` | Read-only full-content observation of materialized target state |
 | inventory reader | `ExtractionProjectionInventoryReader` | Adapter port used by the projector inventory |
+| expected inventory | `ExpectedExtractionProjectionInventory` | Compact full-content evidence derived from immutable read models or a pre-replay snapshot |
+| equivalence verifier | `ExtractionProjectionInventoryEquivalenceVerifier` | Pure comparison of expected and independently observed inventory evidence |
 
 `ExtractionProjectionProjector` accepts no journal, database, authority, clock,
 retry policy, or mutable lookup. The source evidence verifies payload byte count
@@ -80,7 +82,10 @@ canonical JSON, and hashes sorted `(stable identity, canonical content digest)`
 pairs for each configured collection. Any stored-field change therefore changes
 the collection and aggregate inventory identities. Inventory remains an
 observation; a separate equivalence verifier must compare expected and observed
-evidence before equivalence can be claimed.
+evidence before equivalence can be claimed. Independent-rebuild requests bind
+journal-derived expected evidence to one observed target. Same-store replay
+requests additionally require materialization evidence proving zero creations
+and an unchanged count equal to the complete expected document count.
 
 ## Provider actions
 

@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Any, cast
 
 import mongomock
+from projectkoios.ingestion.base.inventory.request import InventoryRequest
+from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
@@ -29,14 +31,38 @@ from projectkoios.ingestion.storage.extraction.actions.status import (
 from projectkoios.ingestion.storage.extraction.materialization.target import (
     ExtractionProjectionTargetIdentity,
 )
+from projectkoios.ingestion.storage.extraction.projection.configuration import (
+    ExtractionProjectionConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.evidence import (
+    ExtractionPublicationEvidence,
+)
 from projectkoios.ingestion.storage.extraction.projection.inventory.actionizer import (  # noqa: E501
     ExtractionProjectionInventoryActionizer,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
     ExtractionProjectionInventoryConfiguration,
 )
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind import (  # noqa: E501
+    ExtractionProjectionEquivalenceKind,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.request import (  # noqa: E501
+    ExtractionProjectionInventoryEquivalenceRequest,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.verifier import (  # noqa: E501
+    ExtractionProjectionInventoryEquivalenceVerifier,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.expected import (  # noqa: E501
+    ExpectedExtractionProjectionInventory,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.inventory import (  # noqa: E501
+    ExtractionProjectorInventory,
+)
 from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
     ExtractionProjectionInventoryRequest,
+)
+from projectkoios.ingestion.storage.extraction.projection.projector import (
+    ExtractionProjectionProjector,
 )
 from projectkoios.ingestion.storage.extraction.publication.request import (
     ExtractionPublicationRequest,
@@ -183,6 +209,62 @@ def test__mongo_extraction_publication_store__inventories_owned_collections(
         (store.PAGES, 1),
         (store.WARNINGS, 0),
     )
+
+
+def test__mongo_inventory__matches_journal_derived_expected_content(
+    tmp_path: Path,
+) -> None:
+    client = mongomock.MongoClient()
+    database = cast(Database[dict[str, Any]], client.projectkoios_inventory)
+    journal = DiskExtractionPublicationStore(tmp_path / "journal")
+    store = _store(database=database, journal=journal)
+    store.publish(
+        request=ExtractionPublicationRequest.create(extraction=_extraction())
+    )
+    record = journal.records()[0]
+    source = ExtractionPublicationEvidence.create(
+        record=record,
+        payload=journal.payload(record),
+    )
+    projection = (
+        ExtractionProjectionProjector()
+        .action(
+            request=ProjectionRequest.create(
+                sources=(source,),
+                configuration=ExtractionProjectionConfiguration.v1(),
+            )
+        )
+        .projection
+    )
+    inventory_configuration = (
+        ExtractionProjectionInventoryConfiguration.mongodb_v1()
+    )
+    expected = ExpectedExtractionProjectionInventory.from_read_models(
+        read_models=(projection,),
+        target=store.projection_target,
+        configuration=inventory_configuration,
+    )
+    observed = (
+        ExtractionProjectorInventory(reader=store)
+        .action(
+            request=InventoryRequest.create(
+                target=store.projection_target,
+                configuration=inventory_configuration,
+                authority_id="authority:development-query",
+            )
+        )
+        .evidence
+    )
+    comparison = ExtractionProjectionInventoryEquivalenceVerifier().action(
+        request=ExtractionProjectionInventoryEquivalenceRequest.create(
+            kind=ExtractionProjectionEquivalenceKind.INDEPENDENT_REBUILD,
+            expected=expected,
+            observed=observed,
+        )
+    )
+
+    assert comparison.equivalent is True
+    assert comparison.disposition is ExtractionActionDisposition.CONTINUE
 
 
 def test__mongo_inventory__changes_after_any_stored_content_tamper(
