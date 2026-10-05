@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import ClassVar, cast
 
 import pytest
+from projectkoios.ingestion.base.actionizer.configurable import (
+    ConfigurableDataObjectActionizer,
+)
 from projectkoios.ingestion.base.projector.configuration import (
     AbstractProjectionConfiguration,
 )
@@ -151,6 +154,10 @@ def request() -> ProjectionRequest[
         sources=sources,
         configuration=TextProjectionConfiguration.create("\n"),
     )
+
+
+def test__projector__inherits_configurable_actionizer() -> None:
+    assert issubclass(Projector, ConfigurableDataObjectActionizer)
 
 
 def test__projector__specialized_errors_retain_contract_boundary() -> None:

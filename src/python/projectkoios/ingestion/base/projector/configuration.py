@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from abc import ABC
 
-from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
+from projectkoios.ingestion.base.actionizer.configuration import (
+    AbstractActionConfiguration,
+)
 
 
-class AbstractProjectionConfiguration(AbstractImmutableDataObject, ABC):
+class AbstractProjectionConfiguration(AbstractActionConfiguration, ABC):
     """Define complete immutable deterministic projector configuration.
 
     Attributes

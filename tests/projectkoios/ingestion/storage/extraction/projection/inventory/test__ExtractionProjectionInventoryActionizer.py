@@ -1,27 +1,61 @@
 from __future__ import annotations
 
 import pytest
+from projectkoios.ingestion.base.inventory.inventory import Inventory
+from projectkoios.ingestion.base.projector.inventory.inventory import (
+    ProjectorInventory,
+)
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
 from projectkoios.ingestion.storage.extraction.actions.status import (
     ExtractionActionStatus,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.actionizer import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.actionizer import (  # noqa: E501
     ExtractionProjectionInventoryActionizer,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.collection import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
+    ExtractionProjectionInventoryConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader import (  # noqa: E501
     ExtractionProjectionInventoryReader,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader_error import (  # noqa: E501
     ExtractionProjectionInventoryReaderError,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
     ExtractionProjectionInventoryRequest,
 )
+
+
+def _target() -> ExtractionProjectionTargetIdentity:
+    return ExtractionProjectionTargetIdentity.create(
+        deployment_id="fixture-mongodb",
+        environment="test",
+        database_name="fixture_database",
+        schema_id="extraction-read-model-v1",
+        projection_slot="extraction-publications",
+    )
+
+
+def _configuration() -> ExtractionProjectionInventoryConfiguration:
+    return ExtractionProjectionInventoryConfiguration.mongodb_v1()
+
+
+def _request(
+    authority_id: str = "authority:fixture",
+) -> ExtractionProjectionInventoryRequest:
+    return ExtractionProjectionInventoryRequest.create(
+        target=_target(),
+        configuration=_configuration(),
+        authority_id=authority_id,
+    )
 
 
 class InventoryReader(ExtractionProjectionInventoryReader):
@@ -34,10 +68,12 @@ class InventoryReader(ExtractionProjectionInventoryReader):
     def read_inventory(
         self,
         *,
-        projection_reference: str,
+        target: ExtractionProjectionTargetIdentity,
+        configuration: ExtractionProjectionInventoryConfiguration,
         authority_id: str,
     ) -> tuple[ExtractionProjectionCollectionInventory, ...]:
-        assert projection_reference == "projection:fixture"
+        assert target == _target()
+        assert configuration == _configuration()
         assert authority_id == "authority:fixture"
         if self.error is not None:
             raise self.error
@@ -50,11 +86,12 @@ class InventoryReader(ExtractionProjectionInventoryReader):
         )
 
 
+def test__projector_inventory__inherits_inventory_pattern() -> None:
+    assert issubclass(ProjectorInventory, Inventory)
+
+
 def test__projection_inventory_action__is_stable_and_compact() -> None:
-    request = ExtractionProjectionInventoryRequest.create(
-        projection_reference="projection:fixture",
-        authority_id="authority:fixture",
-    )
+    request = _request()
     actionizer = ExtractionProjectionInventoryActionizer(
         reader=InventoryReader()
     )
@@ -70,24 +107,15 @@ def test__projection_inventory_action__is_stable_and_compact() -> None:
 
 
 def test__projection_inventory_request__authority_is_not_idempotency() -> None:
-    first = ExtractionProjectionInventoryRequest.create(
-        projection_reference="projection:fixture",
-        authority_id="authority:fixture",
-    )
-    second = ExtractionProjectionInventoryRequest.create(
-        projection_reference="projection:fixture",
-        authority_id="authority:replacement",
-    )
+    first = _request()
+    second = _request("authority:replacement")
 
     assert first.request_id != second.request_id
     assert first.idempotency_key == second.idempotency_key
 
 
 def test__projection_inventory_action__preserves_query_disposition() -> None:
-    request = ExtractionProjectionInventoryRequest.create(
-        projection_reference="projection:fixture",
-        authority_id="authority:fixture",
-    )
+    request = _request()
     error = ExtractionProjectionInventoryReaderError(
         code="projection_temporarily_unavailable",
         disposition=ExtractionActionDisposition.RETRY_SAME_REQUEST,

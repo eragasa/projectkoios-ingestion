@@ -16,7 +16,7 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 @dataclass(frozen=True, slots=True)
 class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
-    """Count and privacy-safe digests without retaining projection documents."""
+    """Count and hash complete documents without retaining their graphs."""
 
     CONTRACT_VERSION: ClassVar[str] = "1.0"
     MAXIMUM_DOCUMENTS: ClassVar[int] = 50_000_000
@@ -25,7 +25,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
     collection_name: str
     document_count: int
     identity_sha256: str
-    publication_sha256: str
+    content_sha256: str
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -53,7 +53,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
         if len(identities) != len(set(identities)):
             raise ValueError("projection inventory identities must be unique")
         identity_sha256 = cls._digest(identities)
-        publication_sha256 = cls._digest(members)
+        content_sha256 = cls._digest(members)
         return cls(
             inventory_id=stable_id(
                 "extraction-projection-collection-inventory",
@@ -61,12 +61,12 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
                 collection_name,
                 len(members),
                 identity_sha256,
-                publication_sha256,
+                content_sha256,
             ),
             collection_name=collection_name,
             document_count=len(members),
             identity_sha256=identity_sha256,
-            publication_sha256=publication_sha256,
+            content_sha256=content_sha256,
         )
 
     def __post_init__(self) -> None:
@@ -84,7 +84,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
             or not 0 <= self.document_count <= self.MAXIMUM_DOCUMENTS
         ):
             raise ValueError("projection document count is out of bounds")
-        for value in (self.identity_sha256, self.publication_sha256):
+        for value in (self.identity_sha256, self.content_sha256):
             if type(value) is not str or not _SHA256.fullmatch(value):
                 raise ValueError("projection inventory digest is invalid")
         expected = stable_id(
@@ -93,7 +93,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
             self.collection_name,
             self.document_count,
             self.identity_sha256,
-            self.publication_sha256,
+            self.content_sha256,
         )
         if self.inventory_id != expected:
             raise ValueError("collection-inventory ID is inconsistent")

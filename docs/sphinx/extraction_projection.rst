@@ -19,10 +19,14 @@ Data flow
 
 #. A journal reader obtains one checksummed record and its exact payload bytes.
 #. ``ExtractionPublicationEvidence`` verifies byte count and SHA-256.
-#. ``ExtractionProjectionProjector`` validates canonical JSON and record/payload
-   identities, then derives logical read-model documents.
-#. ``MongoExtractionProjectionMaterializer`` writes the completed read model
-   create-once, with root completion documents last.
+#. ``ExtractionProjectionMaterializationPipeline`` invokes the pure
+   ``ExtractionProjectionProjector`` and receives a complete immutable read
+   model.
+#. The pipeline passes that value, an explicit target identity, physical
+   configuration, and authority identity to
+   ``MongoExtractionProjectionMaterializer``.
+#. The materializer writes create-once, with root completion documents last,
+   and returns exact per-collection created/unchanged evidence.
 #. A separate inventory reader observes materialized state.
 
 Digest meanings
@@ -36,9 +40,13 @@ Digest meanings
    marker. MongoDB create-once filters bind this value and ``_id``.
 
 ``ExtractionProjectionDocument.canonical_sha256``
-   SHA-256 of the final canonical document, including the content marker. This
-   supports future full-content inventory proof but is not itself a claim that
-   the current inventory reader proves equivalence.
+   SHA-256 of the final canonical document, including the content marker.
+
+``ExtractionProjectionCollectionInventory.content_sha256``
+   SHA-256 over stable identities paired with SHA-256 digests of every complete
+   observed canonical stored document. Any stored-field change alters the
+   collection and aggregate inventory identities. Matching inventory evidence
+   remains distinct from an explicit equivalence-verifier result.
 
 Pure projection API
 -------------------
@@ -59,6 +67,57 @@ Pure projection API
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.projector
+   :members:
+
+Extraction materialization API
+------------------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.target
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.configuration
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.collection_evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.materializer
+   :members:
+
+Extraction pipeline API
+-----------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.configuration
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.pipeline
+   :members:
+
+Extraction projector-inventory API
+----------------------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.configuration
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.collection
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.inventory
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.reader
    :members:
 
 MongoDB materialization API

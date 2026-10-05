@@ -5,6 +5,15 @@ from typing import Any, cast
 
 import mongomock
 import pytest
+from projectkoios.ingestion.base.materializer.identity_error import (
+    MaterializationIdentityError,
+)
+from projectkoios.ingestion.base.materializer.request import (
+    MaterializationRequest,
+)
+from projectkoios.ingestion.base.materializer.result import (
+    MaterializationResult,
+)
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
@@ -24,6 +33,15 @@ from projectkoios.ingestion.models import (
     IngestionStatus,
     SourceDocument,
     SourceSpan,
+)
+from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
+    ExtractionProjectionMaterializationConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+    ExtractionProjectionMaterializationEvidence,
+)
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
 )
 from projectkoios.ingestion.storage.extraction.projection.configuration import (
     ExtractionProjectionConfiguration,
@@ -111,6 +129,33 @@ def _read_model(
     return ExtractionProjectionProjector().action(request=request).projection
 
 
+def _target(
+    database: Database[dict[str, Any]],
+) -> ExtractionProjectionTargetIdentity:
+    return ExtractionProjectionTargetIdentity.create(
+        deployment_id="local-test-mongodb",
+        environment="test",
+        database_name=database.name,
+        schema_id="extraction-read-model-v1",
+        projection_slot="extraction-publications",
+    )
+
+
+def _materialize(
+    *,
+    materializer: MongoExtractionProjectionMaterializer,
+    read_model: ExtractionReadModel,
+    target: ExtractionProjectionTargetIdentity,
+) -> MaterializationResult[ExtractionProjectionMaterializationEvidence]:
+    request = MaterializationRequest.create(
+        projection=read_model,
+        target=target,
+        configuration=ExtractionProjectionMaterializationConfiguration.mongodb_v1(),
+        authority_id="authority:test-extraction-write",
+    )
+    return materializer.action(request=request)
+
+
 def test__mongo_materializer__creates_then_replays_exact_read_model(
     extraction_result: ExtractionResult,
     tmp_path: Path,
@@ -119,19 +164,34 @@ def test__mongo_materializer__creates_then_replays_exact_read_model(
         Database[dict[str, Any]],
         mongomock.MongoClient().projectkoios_materializer,
     )
-    materializer = MongoExtractionProjectionMaterializer(database=database)
+    target = _target(database)
+    materializer = MongoExtractionProjectionMaterializer(
+        database=database,
+        configured_target=target,
+    )
     read_model = _read_model(
         extraction=extraction_result,
         tmp_path=tmp_path,
     )
 
-    created = materializer.materialize(read_model=read_model)
-    replayed = materializer.materialize(read_model=read_model)
+    created = _materialize(
+        materializer=materializer,
+        read_model=read_model,
+        target=target,
+    ).evidence
+    replayed = _materialize(
+        materializer=materializer,
+        read_model=read_model,
+        target=target,
+    ).evidence
+    configuration = (
+        ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+    )
 
-    assert created == 1
-    assert replayed == 0
-    assert database[materializer.DOCUMENTS].count_documents({}) == 1
-    assert database[materializer.BLOCKS].count_documents({}) == 1
+    assert created.created_document_count == len(read_model.documents)
+    assert replayed.unchanged_document_count == len(read_model.documents)
+    assert database[configuration.documents_collection].count_documents({}) == 1
+    assert database[configuration.blocks_collection].count_documents({}) == 1
 
 
 def test__mongo_materializer__repairs_content_when_digest_marker_is_intact(
@@ -142,19 +202,33 @@ def test__mongo_materializer__repairs_content_when_digest_marker_is_intact(
         Database[dict[str, Any]],
         mongomock.MongoClient().projectkoios_materializer,
     )
-    materializer = MongoExtractionProjectionMaterializer(database=database)
+    target = _target(database)
+    materializer = MongoExtractionProjectionMaterializer(
+        database=database,
+        configured_target=target,
+    )
     read_model = _read_model(
         extraction=extraction_result,
         tmp_path=tmp_path,
     )
-    materializer.materialize(read_model=read_model)
-    database[materializer.BLOCKS].update_one({}, {"$set": {"text": "tampered"}})
-
-    materializer.materialize(read_model=read_model)
-
-    assert database[materializer.BLOCKS].find_one()["text"] == (
-        "Exact bounded text."
+    _materialize(
+        materializer=materializer,
+        read_model=read_model,
+        target=target,
     )
+    configuration = (
+        ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+    )
+    collection = configuration.blocks_collection
+    database[collection].update_one({}, {"$set": {"text": "tampered"}})
+
+    _materialize(
+        materializer=materializer,
+        read_model=read_model,
+        target=target,
+    )
+
+    assert database[collection].find_one()["text"] == "Exact bounded text."
 
 
 def test__mongo_materializer__rejects_unsupported_projection_schema(
@@ -165,7 +239,11 @@ def test__mongo_materializer__rejects_unsupported_projection_schema(
         Database[dict[str, Any]],
         mongomock.MongoClient().projectkoios_materializer,
     )
-    materializer = MongoExtractionProjectionMaterializer(database=database)
+    target = _target(database)
+    materializer = MongoExtractionProjectionMaterializer(
+        database=database,
+        configured_target=target,
+    )
     read_model = _read_model(
         extraction=extraction_result,
         tmp_path=tmp_path,
@@ -178,12 +256,15 @@ def test__mongo_materializer__rejects_unsupported_projection_schema(
     )
 
     with pytest.raises(
-        MongoExtractionProjectionMaterializationError,
-        match="does not support this schema",
-    ) as caught:
-        materializer.materialize(read_model=unsupported)
+        MaterializationIdentityError,
+        match="schema identities differ",
+    ):
+        _materialize(
+            materializer=materializer,
+            read_model=unsupported,
+            target=target,
+        )
 
-    assert caught.value.code == "projection_schema_unsupported"
     assert database.list_collection_names() == []
 
 
@@ -195,13 +276,25 @@ def test__mongo_materializer__rejects_changed_content_identity(
         Database[dict[str, Any]],
         mongomock.MongoClient().projectkoios_materializer,
     )
-    materializer = MongoExtractionProjectionMaterializer(database=database)
+    target = _target(database)
+    materializer = MongoExtractionProjectionMaterializer(
+        database=database,
+        configured_target=target,
+    )
     read_model = _read_model(
         extraction=extraction_result,
         tmp_path=tmp_path,
     )
-    materializer.materialize(read_model=read_model)
-    database[materializer.BLOCKS].update_one(
+    _materialize(
+        materializer=materializer,
+        read_model=read_model,
+        target=target,
+    )
+    configuration = (
+        ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+    )
+    collection = configuration.blocks_collection
+    database[collection].update_one(
         {},
         {"$set": {"projection_content_sha256": "0" * 64}},
     )
@@ -210,6 +303,10 @@ def test__mongo_materializer__rejects_changed_content_identity(
         MongoExtractionProjectionMaterializationError,
         match="conflicting content",
     ) as caught:
-        materializer.materialize(read_model=read_model)
+        _materialize(
+            materializer=materializer,
+            read_model=read_model,
+            target=target,
+        )
 
     assert caught.value.code == "projection_identity_conflict"

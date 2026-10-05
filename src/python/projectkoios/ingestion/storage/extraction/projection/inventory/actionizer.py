@@ -1,21 +1,31 @@
-"""Query-only actionizer for extraction projection inventories."""
+"""Provider actionizer for extraction projector inventories."""
 
 from __future__ import annotations
 
 from projectkoios.base import DataObjectActionizer
+from projectkoios.ingestion.base.inventory.identity_error import (
+    InventoryIdentityError,
+)
+from projectkoios.ingestion.base.inventory.request import InventoryRequest
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
+    ExtractionProjectionInventoryConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.inventory import (  # noqa: E501
+    ExtractionProjectorInventory,
+)
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader import (  # noqa: E501
     ExtractionProjectionInventoryReader,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.reader_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader_error import (  # noqa: E501
     ExtractionProjectionInventoryReaderError,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
     ExtractionProjectionInventoryRequest,
 )
-from projectkoios.ingestion.storage.extraction.projection_inventory.result import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.result import (  # noqa: E501
     ExtractionProjectionInventoryResult,
 )
 
@@ -26,41 +36,35 @@ class ExtractionProjectionInventoryActionizer(
         ExtractionProjectionInventoryResult,
     ]
 ):
-    """Return compact, deterministic evidence for every owned collection."""
+    """Map read-only inventory evidence and failures to provider outcomes."""
 
-    __slots__ = ("reader",)
+    __slots__ = ("inventory",)
 
     actionizer_name = "extraction-projection-inventory"
-    actionizer_version = "1"
+    actionizer_version = "2"
     collection_names = (
-        "extraction_blocks",
-        "extraction_documents",
-        "extraction_manifests",
-        "extraction_pages",
-        "extraction_warnings",
+        ExtractionProjectionInventoryConfiguration.mongodb_v1().collection_names
     )
 
     def __init__(self, *, reader: ExtractionProjectionInventoryReader) -> None:
-        if not isinstance(reader, ExtractionProjectionInventoryReader):
-            raise TypeError(
-                "reader must be an ExtractionProjectionInventoryReader"
-            )
-        self.reader = reader
+        self.inventory = ExtractionProjectorInventory(reader=reader)
 
     def action(
         self,
         *,
         request: ExtractionProjectionInventoryRequest,
     ) -> ExtractionProjectionInventoryResult:
-        if not isinstance(request, ExtractionProjectionInventoryRequest):
+        if type(request) is not ExtractionProjectionInventoryRequest:
             raise TypeError(
                 "request must be an ExtractionProjectionInventoryRequest"
             )
+        generic = InventoryRequest.create(
+            target=request.target,
+            configuration=request.configuration,
+            authority_id=request.authority_id,
+        )
         try:
-            collections = self.reader.read_inventory(
-                projection_reference=request.projection_reference,
-                authority_id=request.authority_id,
-            )
+            evidence = self.inventory.action(request=generic).evidence
         except ExtractionProjectionInventoryReaderError as error:
             return ExtractionProjectionInventoryResult.failed(
                 request=request,
@@ -69,8 +73,7 @@ class ExtractionProjectionInventoryActionizer(
                 actionizer_name=self.actionizer_name,
                 actionizer_version=self.actionizer_version,
             )
-        names = tuple(item.collection_name for item in collections)
-        if names != self.collection_names:
+        except InventoryIdentityError:
             return ExtractionProjectionInventoryResult.failed(
                 request=request,
                 disposition=(
@@ -82,7 +85,7 @@ class ExtractionProjectionInventoryActionizer(
             )
         return ExtractionProjectionInventoryResult.completed(
             request=request,
-            collections=collections,
+            collections=evidence.collections,
             actionizer_name=self.actionizer_name,
             actionizer_version=self.actionizer_version,
         )

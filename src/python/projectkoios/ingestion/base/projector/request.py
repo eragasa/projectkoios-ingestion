@@ -6,7 +6,9 @@ import re
 from dataclasses import dataclass
 from typing import ClassVar
 
-from projectkoios.base import DataObjectActionRequest
+from projectkoios.ingestion.base.actionizer.request import (
+    ConfigurableDataObjectActionRequest,
+)
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.base.projector.configuration import (
     AbstractProjectionConfiguration,
@@ -23,7 +25,10 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 class ProjectionRequest[
     SourceT: AbstractProjectionSource,
     ConfigurationT: AbstractProjectionConfiguration,
-](AbstractImmutableDataObject, DataObjectActionRequest):
+](
+    AbstractImmutableDataObject,
+    ConfigurableDataObjectActionRequest[ConfigurationT],
+):
     """Carry canonical evidence and complete deterministic configuration.
 
     Parameters

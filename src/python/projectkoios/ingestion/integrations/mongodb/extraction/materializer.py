@@ -1,4 +1,4 @@
-"""Effectful MongoDB materializer for pure extraction read models."""
+"""MongoDB materializer for immutable extraction read models."""
 
 from __future__ import annotations
 
@@ -7,8 +7,29 @@ from typing import Any, ClassVar
 
 from bson import BSON
 from bson.errors import InvalidDocument
+from projectkoios.ingestion.base.materializer.identity import (
+    MaterializerIdentity,
+)
+from projectkoios.ingestion.base.materializer.identity_error import (
+    MaterializationIdentityError,
+)
 from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
     MongoExtractionProjectionMaterializationError,
+)
+from projectkoios.ingestion.storage.extraction.materialization.collection_evidence import (  # noqa: E501
+    ExtractionProjectionMaterializationCollectionEvidence,
+)
+from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
+    ExtractionProjectionMaterializationConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+    ExtractionProjectionMaterializationEvidence,
+)
+from projectkoios.ingestion.storage.extraction.materialization.materializer import (  # noqa: E501
+    AbstractExtractionProjectionMaterializer,
+)
+from projectkoios.ingestion.storage.extraction.materialization.target import (
+    ExtractionProjectionTargetIdentity,
 )
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
@@ -22,36 +43,49 @@ from pymongo.errors import DuplicateKeyError, PyMongoError
 MongoDocument = dict[str, Any]
 
 
-class MongoExtractionProjectionMaterializer:
-    """Materialize canonical extraction read-model documents in MongoDB.
+class MongoExtractionProjectionMaterializer(
+    AbstractExtractionProjectionMaterializer
+):
+    """Apply canonical extraction read models to one MongoDB target.
 
     Parameters
     ----------
     database
-        Explicit MongoDB database target supplied by the adapter owner.
+        Explicit MongoDB database capability used for writes.
+    configured_target
+        Exact deployment/database/schema/slot identity represented by that
+        capability.
 
     Notes
     -----
     This class performs only effectful materialization. It does not read the
-    authoritative journal, choose records, project payloads, authorize access,
+    authoritative journal, select records, project payloads, grant authority,
     create indexes, inventory target state, or retry failures.
     """
 
-    DOCUMENTS: ClassVar[str] = "extraction_documents"
-    PAGES: ClassVar[str] = "extraction_pages"
-    BLOCKS: ClassVar[str] = "extraction_blocks"
-    WARNINGS: ClassVar[str] = "extraction_warnings"
-    MANIFESTS: ClassVar[str] = "extraction_manifests"
-    MAX_DOCUMENT_BYTES: ClassVar[int] = 15_000_000
-    SUPPORTED_SCHEMA_ID: ClassVar[str] = "extraction-read-model-v1"
+    __slots__ = ("database", "configured_target")
 
-    _COLLECTIONS: ClassVar[dict[ExtractionProjectionCollection, str]] = {
-        ExtractionProjectionCollection.DOCUMENTS: DOCUMENTS,
-        ExtractionProjectionCollection.PAGES: PAGES,
-        ExtractionProjectionCollection.BLOCKS: BLOCKS,
-        ExtractionProjectionCollection.WARNINGS: WARNINGS,
-        ExtractionProjectionCollection.MANIFESTS: MANIFESTS,
-    }
+    AUTHORITY_REQUIREMENT: ClassVar[str] = "extraction_projection_write"
+    authority_requirement = AUTHORITY_REQUIREMENT
+    projection_type = ExtractionReadModel
+    target_type = ExtractionProjectionTargetIdentity
+    configuration_type = ExtractionProjectionMaterializationConfiguration
+    evidence_type = ExtractionProjectionMaterializationEvidence
+    identity = MaterializerIdentity.create(
+        name="mongodb-extraction-projection-materializer",
+        version="1.0",
+        projection_contract=ExtractionReadModel.CONTRACT_NAME,
+        target_contract=ExtractionProjectionTargetIdentity.CONTRACT_NAME,
+        configuration_contract=(
+            ExtractionProjectionMaterializationConfiguration.CONTRACT_NAME
+        ),
+        evidence_contract=(
+            ExtractionProjectionMaterializationEvidence.CONTRACT_NAME
+        ),
+        schema_id="extraction-read-model-v1",
+        authority_requirement=AUTHORITY_REQUIREMENT,
+    )
+
     _ORDER: ClassVar[dict[ExtractionProjectionCollection, int]] = {
         ExtractionProjectionCollection.BLOCKS: 0,
         ExtractionProjectionCollection.PAGES: 1,
@@ -60,51 +94,71 @@ class MongoExtractionProjectionMaterializer:
         ExtractionProjectionCollection.DOCUMENTS: 4,
     }
 
-    def __init__(self, *, database: Database[MongoDocument]) -> None:
+    def __init__(
+        self,
+        *,
+        database: Database[MongoDocument],
+        configured_target: ExtractionProjectionTargetIdentity,
+    ) -> None:
+        if type(configured_target) is not ExtractionProjectionTargetIdentity:
+            raise TypeError("configured_target has the wrong contract")
+        if database.name != configured_target.database_name:
+            raise MaterializationIdentityError(
+                "configured target database differs from the capability"
+            )
         self.database = database
+        self.configured_target = configured_target
 
-    def materialize(self, *, read_model: ExtractionReadModel) -> int:
-        """Write one pure read model using create-once semantics.
+    def materialize(
+        self,
+        *,
+        projection: ExtractionReadModel,
+        target: ExtractionProjectionTargetIdentity,
+        configuration: ExtractionProjectionMaterializationConfiguration,
+        authority_id: str,
+    ) -> ExtractionProjectionMaterializationEvidence:
+        """Write one read model using create-once semantics.
 
         Parameters
         ----------
-        read_model
-            Complete immutable value produced by the extraction projector.
+        projection
+            Complete immutable extraction read model.
+        target
+            Exact target identity bound by the request.
+        configuration
+            Complete physical collection mapping and BSON byte bound.
+        authority_id
+            Exact authority identity bound by the request.
 
         Returns
         -------
-        int
-            Number of newly created root completion documents. Exact replay
-            returns zero.
+        ExtractionProjectionMaterializationEvidence
+            Per-collection and aggregate created/unchanged counts.
 
         Raises
         ------
-        TypeError
-            If ``read_model`` has the wrong concrete type.
+        MaterializationIdentityError
+            If the requested target differs from the configured capability.
         MongoExtractionProjectionMaterializationError
             If BSON encoding, document bounds, identity consistency, or the
             database write fails.
 
         Notes
         -----
-        The materializer rejects unsupported schema identities before opening
-        a collection. Child collections are then written before manifests and
-        root completion documents. Consumers can ignore interrupted projection
-        by requiring ``publication_state=complete`` on the root document.
+        The read model's canonical sort order exists for identity stability.
+        Materialization uses dependency order so root completion documents are
+        never visible before their child documents.
         """
-        if type(read_model) is not ExtractionReadModel:
-            raise TypeError("read_model must be an ExtractionReadModel")
-        if read_model.schema_id != self.SUPPORTED_SCHEMA_ID:
-            raise MongoExtractionProjectionMaterializationError(
-                code="projection_schema_unsupported",
-                message="MongoDB materializer does not support this schema",
+        if target != self.configured_target:
+            raise MaterializationIdentityError(
+                "requested target differs from the configured target"
             )
-        created_roots = 0
-        # The read model's canonical sort order exists for identity stability.
-        # Materialization uses a separate dependency order so the root
-        # completion marker is never visible before its children.
+        collections = self._collections(configuration)
+        outcomes = {
+            collection: [0, 0] for collection in ExtractionProjectionCollection
+        }
         ordered = sorted(
-            read_model.documents,
+            projection.documents,
             key=lambda document: (
                 self._ORDER[document.collection],
                 document.document_id,
@@ -124,13 +178,51 @@ class MongoExtractionProjectionMaterializer:
                     message="projected document is not an object",
                 )
             created = self._replace_create_once(
-                collection_name=self._COLLECTIONS[projected.collection],
+                collection_name=collections[projected.collection],
                 value=value,
                 content_sha256=projected.content_sha256,
+                maximum_document_bytes=configuration.maximum_document_bytes,
             )
-            if projected.collection is ExtractionProjectionCollection.DOCUMENTS:
-                created_roots += int(created)
-        return created_roots
+            outcomes[projected.collection][0 if created else 1] += 1
+
+        collection_evidence = tuple(
+            ExtractionProjectionMaterializationCollectionEvidence.create(
+                collection=collection,
+                created_document_count=outcomes[collection][0],
+                unchanged_document_count=outcomes[collection][1],
+            )
+            for collection in ExtractionProjectionCollection
+        )
+        return ExtractionProjectionMaterializationEvidence.create(
+            projection_id=projection.projection_id,
+            target_id=target.target_id,
+            configuration_id=configuration.configuration_id,
+            authority_id=authority_id,
+            projected_document_count=len(projection.documents),
+            collections=collection_evidence,
+        )
+
+    @staticmethod
+    def _collections(
+        configuration: ExtractionProjectionMaterializationConfiguration,
+    ) -> dict[ExtractionProjectionCollection, str]:
+        return {
+            ExtractionProjectionCollection.DOCUMENTS: (
+                configuration.documents_collection
+            ),
+            ExtractionProjectionCollection.PAGES: (
+                configuration.pages_collection
+            ),
+            ExtractionProjectionCollection.BLOCKS: (
+                configuration.blocks_collection
+            ),
+            ExtractionProjectionCollection.WARNINGS: (
+                configuration.warnings_collection
+            ),
+            ExtractionProjectionCollection.MANIFESTS: (
+                configuration.manifests_collection
+            ),
+        }
 
     def _replace_create_once(
         self,
@@ -138,6 +230,7 @@ class MongoExtractionProjectionMaterializer:
         collection_name: str,
         value: MongoDocument,
         content_sha256: str,
+        maximum_document_bytes: int,
     ) -> bool:
         """Replace exact prior content or create one new document.
 
@@ -147,7 +240,7 @@ class MongoExtractionProjectionMaterializer:
         """
         try:
             encoded = BSON.encode(value)
-            if len(encoded) > self.MAX_DOCUMENT_BYTES:
+            if len(encoded) > maximum_document_bytes:
                 raise MongoExtractionProjectionMaterializationError(
                     code="projection_document_too_large",
                     message="MongoDB projection document is too large",

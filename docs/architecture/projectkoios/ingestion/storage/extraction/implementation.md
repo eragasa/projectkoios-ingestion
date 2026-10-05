@@ -33,7 +33,10 @@ The extraction read path uses the Projector terminology literally:
 | projection value | `ExtractionReadModel` | Canonical backend-neutral documents for five logical collections |
 | projection member | `ExtractionProjectionDocument` | One immutable canonical JSON document with full content evidence |
 | materializer | `MongoExtractionProjectionMaterializer` | Effectful create-once writes to physical MongoDB collections |
-| inventory reader | `ExtractionProjectionInventoryReader` | Observation of already-materialized target state |
+| pipeline | `ExtractionProjectionMaterializationPipeline` | Fixed synchronous Projector-to-Materializer composition |
+| materialization target | `ExtractionProjectionTargetIdentity` | Explicit deployment, environment, database, schema, and projection slot |
+| projector inventory | `ExtractionProjectorInventory` | Read-only full-content observation of materialized target state |
+| inventory reader | `ExtractionProjectionInventoryReader` | Adapter port used by the projector inventory |
 
 `ExtractionProjectionProjector` accepts no journal, database, authority, clock,
 retry policy, or mutable lookup. The source evidence verifies payload byte count
@@ -52,6 +55,11 @@ Each projected document carries two distinct digests:
 2. `canonical_sha256` on `ExtractionProjectionDocument` binds the complete final
    JSON document, including that marker.
 
+The typed extraction pipeline passes exact publication evidence through the
+pure projector and then passes the resulting read model, explicit target,
+physical configuration, and authority to the materializer. It owns no retries,
+queues, checkpoints, or cross-record lifecycle.
+
 The MongoDB materializer decodes only projector-produced canonical JSON. It
 writes blocks, pages, warnings, and manifests before root completion documents.
 Its upsert filter binds `_id` and `projection_content_sha256`, so an exact replay
@@ -67,10 +75,12 @@ fixed framework's declared source/configuration/output contract violations.
 `MongoExtractionProjectionMaterializationError` begins only after successful
 projection and reports BSON, size, identity-conflict, or database-write failures.
 
-The existing inventory reader still observes `_id` and publication digest only.
-The new per-document canonical evidence is necessary input to a later
-full-content inventory repair, but this change alone does not claim projection
-equivalence or close the known inventory-proof finding.
+The projector inventory reads every complete stored document, serializes it as
+canonical JSON, and hashes sorted `(stable identity, canonical content digest)`
+pairs for each configured collection. Any stored-field change therefore changes
+the collection and aggregate inventory identities. Inventory remains an
+observation; a separate equivalence verifier must compare expected and observed
+evidence before equivalence can be claimed.
 
 ## Provider actions
 
@@ -110,9 +120,10 @@ journal record with `replayed=true`; changed bytes or target identity stop befor
 a new record is accepted.
 
 `ExtractionProjectionInventoryActionizer` queries the five owned MongoDB
-collections through a nominal reader port. It returns only per-collection
-counts plus sorted identity and publication digests. It never retains projected
-documents. `SelectedExtractionProjectionRecoveryActionizer` binds one target to
+collections through the constrained `Inventory` / `ProjectorInventory` pattern.
+Its request binds an explicit target, full observation configuration, and query
+authority. It returns only per-collection counts and full-content digests; it
+never retains projected documents. `SelectedExtractionProjectionRecoveryActionizer` binds one target to
 an exact authoritative journal count and head plus an ordered subset of full
 publication records. The MongoDB backend rejects journal drift, changed selected
 records, target-identity drift, and a nonempty target when an empty rebuild was
