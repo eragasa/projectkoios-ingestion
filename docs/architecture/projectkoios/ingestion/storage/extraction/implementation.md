@@ -40,6 +40,14 @@ invalid bytes stop as invalid evidence, expected-versus-actual identity drift
 stops as ambiguous evidence, and typed reader failures retain their authority
 or identical-retry disposition.
 
+`ValidatedExtractionJournalPublicationActionizer` re-reads and revalidates
+one artifact already accepted by the artifact-validation action before it calls
+the authoritative journal backend. The request binds the successful validation
+request/result, opaque journal target, and write authority. This disk-only action
+never opens MongoDB. Replaying the same request returns the same checksummed
+journal record with `replayed=true`; changed bytes or target identity stop before
+a new record is accepted.
+
 `ExtractionProjectionInventoryActionizer` queries the five owned MongoDB
 collections through a nominal reader port. It returns only per-collection
 counts plus sorted identity and publication digests. It never retains projected

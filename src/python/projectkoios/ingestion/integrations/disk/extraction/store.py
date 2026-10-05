@@ -13,12 +13,22 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import ClassVar
 
+from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.storage.extraction.actions.disposition import (
+    ExtractionActionDisposition,
+)
 from projectkoios.ingestion.storage.extraction.base import (
     AbstractExtractionPublicationStore,
 )
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
+)
+from projectkoios.ingestion.storage.extraction.journal_publication.backend import (  # noqa: E501
+    ValidatedExtractionJournalPublicationBackend,
+)
+from projectkoios.ingestion.storage.extraction.journal_publication.backend_error import (  # noqa: E501
+    ValidatedExtractionJournalPublicationBackendError,
 )
 from projectkoios.ingestion.storage.extraction.publication.record import (
     ExtractionPublicationRecord,
@@ -31,22 +41,96 @@ from projectkoios.ingestion.storage.extraction.publication.result import (
 )
 
 
-class DiskExtractionPublicationStore(AbstractExtractionPublicationStore):
+class DiskExtractionPublicationStore(
+    AbstractExtractionPublicationStore,
+    ValidatedExtractionJournalPublicationBackend,
+):
     """Create-once payload objects plus a checksummed append-only journal."""
 
     MAX_PAYLOAD_BYTES: ClassVar[int] = 512_000_000
     MAX_JOURNAL_BYTES: ClassVar[int] = 256_000_000
     MAX_RECORD_BYTES: ClassVar[int] = 32_768
 
-    def __init__(self, root: Path) -> None:
+    def __init__(
+        self,
+        root: Path,
+        *,
+        journal_reference: str | None = None,
+    ) -> None:
         if not isinstance(root, Path):
             raise TypeError("disk extraction store root must be a Path")
+        if journal_reference is not None and (
+            type(journal_reference) is not str or not journal_reference
+        ):
+            raise ValueError("journal_reference must be non-empty")
         self.root = root.expanduser().resolve()
+        self.journal_reference = journal_reference or stable_id(
+            "disk-extraction-publication-journal",
+            "1.0",
+            str(self.root),
+        )
         self.objects = self.root / "objects"
         self.journal = self.root / "publications.jsonl"
         self._prepare_directory(self.root)
         self._prepare_directory(self.objects)
         self._prepare_journal()
+
+    def publish_validated(
+        self,
+        *,
+        journal_reference: str,
+        authority_id: str,
+        request: ExtractionPublicationRequest,
+    ) -> tuple[ExtractionPublicationResult, ExtractionPublicationRecord]:
+        """Publish one validated request under an explicit journal authority."""
+
+        if journal_reference != self.journal_reference:
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code="journal_reference_differs",
+                disposition=(
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                ),
+                message="journal reference differs from the configured store",
+            )
+        if type(authority_id) is not str or not authority_id:
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code="journal_write_authority_required",
+                disposition=ExtractionActionDisposition.AUTHORITY_REQUIRED,
+                message="journal write authority is required",
+            )
+        try:
+            result = self.publish(request=request)
+            records = self.records()
+        except OSError as error:
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code="journal_temporarily_unavailable",
+                disposition=ExtractionActionDisposition.RETRY_SAME_REQUEST,
+                message="extraction journal is temporarily unavailable",
+            ) from error
+        except ExtractionPublicationError as error:
+            message = str(error)
+            if "conflict" in message or "differently" in message:
+                code = "journal_publication_identity_conflict"
+                disposition = (
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                )
+            else:
+                code = "authoritative_journal_invalid"
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code=code,
+                disposition=disposition,
+                message="validated extraction journal publication failed",
+            ) from error
+        if result.journal_sequence > len(records):
+            raise ValidatedExtractionJournalPublicationBackendError(
+                code="journal_publication_record_missing",
+                disposition=(
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                ),
+                message="published journal record is missing",
+            )
+        return result, records[result.journal_sequence - 1]
 
     def publish(
         self,
@@ -77,8 +161,7 @@ class DiskExtractionPublicationStore(AbstractExtractionPublicationStore):
                 self._verify_payload(record)
                 return self._result(record, replayed=True)
             if any(
-                record.manifest_id
-                == request.extraction.manifest.manifest_id
+                record.manifest_id == request.extraction.manifest.manifest_id
                 and record.payload_sha256 != payload_sha256
                 for record in records
             ):
@@ -270,8 +353,7 @@ class DiskExtractionPublicationStore(AbstractExtractionPublicationStore):
         content = path.read_bytes()
         if (
             len(content) != record.payload_byte_size
-            or hashlib.sha256(content).hexdigest()
-            != record.payload_sha256
+            or hashlib.sha256(content).hexdigest() != record.payload_sha256
         ):
             raise ExtractionPublicationError(
                 "publication recovery payload is corrupt"
