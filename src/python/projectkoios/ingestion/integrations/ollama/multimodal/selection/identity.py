@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.identity import stable_id
 
 

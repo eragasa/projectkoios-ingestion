@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMetadataResponseIdentity,

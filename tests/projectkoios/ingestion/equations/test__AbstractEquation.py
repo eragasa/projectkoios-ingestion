@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.equations.base import AbstractEquation
 
 

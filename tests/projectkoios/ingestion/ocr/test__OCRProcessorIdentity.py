@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRProcessorIdentity."""
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
 
 

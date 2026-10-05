@@ -7,7 +7,7 @@ from enum import Enum
 from re import Pattern
 from typing import ClassVar
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import (
     ExtractedDocument,
     IngestionWarning,

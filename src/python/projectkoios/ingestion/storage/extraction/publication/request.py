@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.serialization import serialize_contract

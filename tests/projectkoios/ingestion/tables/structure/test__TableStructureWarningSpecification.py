@@ -3,7 +3,7 @@
 from dataclasses import FrozenInstanceError
 
 import pytest
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.tables.structure.warning_specification import (
     TableStructureWarningSpecification,
 )

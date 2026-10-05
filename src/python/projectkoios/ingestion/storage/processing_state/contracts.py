@@ -9,7 +9,7 @@ from enum import StrEnum
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 
 _MAX_BOOKS = 512

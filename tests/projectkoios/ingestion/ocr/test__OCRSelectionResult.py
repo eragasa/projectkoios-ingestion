@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRSelectionResult."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
 
 

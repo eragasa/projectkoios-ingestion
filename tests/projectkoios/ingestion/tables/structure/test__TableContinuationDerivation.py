@@ -1,4 +1,4 @@
-from projectkoios.ingestion.base import AbstractDerivation
+from projectkoios.ingestion.base.derivation import AbstractDerivation
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )

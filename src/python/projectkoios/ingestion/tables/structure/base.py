@@ -5,7 +5,7 @@ from __future__ import annotations
 import math
 from abc import ABC
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
 from projectkoios.ingestion.tables.structure.bounds import (
     _MAX_IDENTITY_CHARACTERS,

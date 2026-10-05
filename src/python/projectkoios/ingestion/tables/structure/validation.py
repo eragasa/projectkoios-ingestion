@@ -6,7 +6,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, ClassVar
 
-from projectkoios.ingestion.base import AbstractValidation
+from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.models import (
     IngestionWarning,
 )

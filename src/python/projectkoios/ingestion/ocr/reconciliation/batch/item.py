@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,

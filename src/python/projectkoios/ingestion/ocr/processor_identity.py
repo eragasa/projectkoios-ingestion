@@ -15,7 +15,7 @@ from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
 
 if TYPE_CHECKING:
     from projectkoios.ingestion.ocr.request import OCRRequest
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 
 
 @dataclass(frozen=True)

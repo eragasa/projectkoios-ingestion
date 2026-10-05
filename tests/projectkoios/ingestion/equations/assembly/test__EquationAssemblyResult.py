@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 from projectkoios.base import DataObjectActionResult
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.equations.assembly.identity import (
     EQUATION_ASSEMBLY_CONTRACT_VERSION,
 )

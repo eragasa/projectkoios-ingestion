@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from projectkoios.ingestion.base import AbstractDerivation
+from projectkoios.ingestion.base.derivation import AbstractDerivation
 from projectkoios.ingestion.equations.detection import EquationDetectionResult
 from projectkoios.ingestion.figures import (
     EmbeddedFigureArtifact,

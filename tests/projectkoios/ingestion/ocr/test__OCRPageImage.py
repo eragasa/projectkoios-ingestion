@@ -1,6 +1,6 @@
 """Ownership and nominal-base checks for OCRPageImage."""
 
-from projectkoios.ingestion.base import AbstractImmutableDataObject
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr.page_image import OCRPageImage
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import ClassVar
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.integrations.ollama.base import (
     OLLAMA_BACKEND_NAME,
     OllamaRequestOptions,

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
 
-from projectkoios.ingestion.base import AbstractIdentity
+from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.ollama.base import (
     OllamaHttpResponse,
