@@ -41,10 +41,12 @@ from projectkoios.ingestion.pdf.extraction.text import (
     BlockTextRequest,
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
-from projectkoios.ingestion.source_extractor import SourceExtractor
+from projectkoios.ingestion.storage.extraction.bounded_freeze.extractor import (
+    FreezableSourceExtractor,
+)
 
 
-class PyMuPdfExtractor(SourceExtractor):
+class PyMuPdfExtractor(FreezableSourceExtractor):
     """Deterministic cold PDF extraction through a lazy optional adapter."""
 
     name = "pymupdf"
@@ -70,6 +72,16 @@ class PyMuPdfExtractor(SourceExtractor):
     @property
     def maximum_pages(self) -> int:
         return self.configuration.maximum_pages
+
+    @property
+    def extraction_version(self) -> str:
+        try:
+            import pymupdf
+        except ImportError as error:  # pragma: no cover - environment dependent
+            raise PdfDependencyUnavailableError(
+                "PDF extraction requires the 'pdf' project extra"
+            ) from error
+        return self._extractor_version(pymupdf)
 
     @property
     def configuration_digest(self) -> str:

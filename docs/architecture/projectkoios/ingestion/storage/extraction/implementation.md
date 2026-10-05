@@ -40,6 +40,16 @@ invalid bytes stop as invalid evidence, expected-versus-actual identity drift
 stops as ambiguous evidence, and typed reader failures retain their authority
 or identical-retry disposition.
 
+`BoundedExtractionFreezeActionizer` owns one Class-C native extraction. Its
+request binds opaque source/artifact references, separate read/write authority
+identities, exact source bytes and locator digest, page bound, and exact
+extractor/configuration/cache identities. It first reuses and validates a
+canonical frozen artifact. Only when none exists does it read the source,
+extract once, and create the canonical artifact. The compact result exposes a
+successful artifact-validation request/result for the publication transition;
+it does not retain source bytes or the extraction graph. A retry after a
+successful freeze never invokes the extractor again.
+
 `ValidatedExtractionJournalPublicationActionizer` re-reads and revalidates
 one artifact already accepted by the artifact-validation action before it calls
 the authoritative journal backend. The request binds the successful validation
