@@ -56,6 +56,7 @@ closed as unsuitable for unattended corpus execution.
 | 031 | `031.plan_replicated_ollama_multimodal_canary.py` | Freeze three evidence classes and two independent invocation slots per sample for observed-variability analysis. This stage performs no model execution and grants no execution authorization. |
 | 032 | `032.execute_replicated_ollama_multimodal_canary.py` | Deterministically reconstruct the six planned requests and publish a create-once request manifest. Model calls require `--apply` with the exact frozen plan ID and remain separately authorized. |
 | 033 | `033.audit_replicated_ollama_multimodal_canary.py` | Replay the six retained result byte streams without model execution, verify intrinsic and cross-artifact identities, compare replicate hashes, and perform bounded label/anchor/warning checks without accepting output or claiming determinism. |
+| 034 | `034.plan_mixed_native_ocr_reconciliation_reassessment.py` | Inventory nonempty low-text native pages, select one bounded candidate per affected document, and materialize exact deterministic layout evidence. This is plan-only and performs no OCR, reconciliation, replacement, indexing, or publication. |
 
 Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
@@ -65,11 +66,14 @@ an exact loopback endpoint, model version, manifest digest, and one retained
 selection. Its create-once result prevents replay from invoking the model again;
 it does not make Ollama deterministic, and a fresh invocation may differ.
 Expansion to any additional evidence requires separate operator authorization.
-Workflow 031 is plan-only: its six invocation records remain `not_requested`
-until that separate authorization is given. Workflow 032 without `--apply`
-reconstructs and checks those requests but performs zero model calls. Its
-`--apply` value must equal the complete frozen plan ID; do not provide that
-flag without separate execution authorization.
+Workflow 031 originally froze six invocation records as `not_requested`;
+the separately authorized executions are retained and closed. Workflow 032
+replay reconstructs and checks those requests without additional model calls.
+Workflow 034 is a separate OCR/reconciliation reassessment: it creates only a
+create-once plan and deterministic layout evidence. Its selected pages have no
+OCR or reconciliation publications, and the current reconciliation-plan
+contract still rejects mixed native/OCR evidence. Do not infer execution
+authorization from the plan.
 
 ## Workflow modules
 

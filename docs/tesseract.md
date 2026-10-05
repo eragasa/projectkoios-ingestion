@@ -188,8 +188,24 @@ These results are provenance evidence, not accepted text. A read-only quality
 review found 31 lines below 0.60 backend confidence and visible mathematical,
 layout-order, and low-signal OCR errors. The proposals remain unaccepted and
 chunk-ineligible, and broader empty-page reconciliation is deferred. This
-pilot does not validate the mixed native/OCR path; that path requires a future
-plan contract carrying exact layout evidence.
+pilot does not validate the mixed native/OCR path.
+
+A later plan-only reassessment inventoried the fixed native corpus without
+invoking OCR or reconciliation. It found 40 pages across five documents with a
+nonempty native payload smaller than 40 UTF-8 bytes. Workflow 034 selected the
+page with the largest such payload per affected document, breaking ties by the
+lowest page index, and materialized exact create-once layout evidence for those
+five pages. The retained plan has ID
+`mixed-native-ocr-reconciliation-reassessment:sha256:dd5d762993579f974f65415d131262a7debfd916863ba73df22556663546c09d`
+and SHA-256
+`0997a9a3ec3a9390c2709929985b04c016ea2c39215a91c04c2dd62e8b596780`.
+
+This closes evidence discovery only. The five pages have no retained OCR or
+reconciliation publications, and plan version 1 still rejects native-text
+references. Mixed execution therefore remains blocked until a later plan
+contract binds each exact native page and layout result, followed by separate
+OCR and reconciliation authorization. No replacement text, acceptance,
+Search/indexing, or publication was performed.
 
 ## Operational boundary
 
