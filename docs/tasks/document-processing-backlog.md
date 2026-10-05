@@ -342,6 +342,33 @@ all proposals remain unaccepted and chunk-ineligible. Any mixed-native pilot
 requires a later plan version that binds exact layout evidence and separate
 authorization.
 
+### ING-OCR-06 — Mixed native/OCR reconciliation reassessment (plan-only complete)
+
+Workflow 034 deterministically inventories the retained native corpus for pages
+whose joined nonempty native text is greater than zero and smaller than 40
+UTF-8 bytes. The fixed corpus contains 40 such pages across five documents.
+The bounded reassessment selects one page per affected document by maximum
+native payload, breaking ties by lowest page index, and materializes exact
+private create-once layout evidence for all five selections.
+
+The plan ID is
+`mixed-native-ocr-reconciliation-reassessment:sha256:dd5d762993579f974f65415d131262a7debfd916863ba73df22556663546c09d`;
+its serialized SHA-256 is
+`0997a9a3ec3a9390c2709929985b04c016ea2c39215a91c04c2dd62e8b596780`.
+Replay reports the plan and all five layout artifacts unchanged.
+
+This planning stage invokes neither OCR nor reconciliation. It creates no
+replacement text, performs no acceptance, and does not touch Search, indexing,
+or publication. The selected pages have no retained OCR publications, and
+`SelectiveOCRReconciliationPlan` version 1 intentionally rejects selections
+with native references. A future version must bind the exact native page and
+retained layout result before mixed reconciliation can be attempted. OCR and
+reconciliation execution each require separate operator authorization.
+
+**Disposition:** safe to defer. The plan closes candidate discovery and layout
+evidence preparation, but execution readiness remains intentionally blocked by
+the missing mixed-native plan contract and missing authorized OCR evidence.
+
 ## Structural tasks
 
 ### ING-STRUCTURE-01 — Article structure analyzer (implemented)
