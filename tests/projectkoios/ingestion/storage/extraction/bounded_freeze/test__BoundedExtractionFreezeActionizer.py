@@ -156,6 +156,15 @@ class FixtureExtractor(FreezableSourceExtractor):
         return ExtractionResult(document=document, manifest=manifest)
 
 
+class InvalidFixtureExtractor(FixtureExtractor):
+    def extract(
+        self,
+        source: SourceDocument,
+        content: BinaryIO,
+    ) -> ExtractionResult:
+        raise ValueError("fixture extraction rejected source")
+
+
 SOURCE_BYTES = b"%PDF bounded freeze fixture"
 LOCATOR = "private/bounded-freeze-fixture.pdf"
 
@@ -211,6 +220,25 @@ def test__bounded_extraction_freeze__creates_once_then_reuses() -> None:
     assert created.validation_result == replayed.validation_result
     assert extractor.calls == 1
     assert source_reader.calls == 1
+
+
+def test__bounded_extraction_freeze__maps_typed_extraction_failure() -> None:
+    extractor = InvalidFixtureExtractor()
+    actionizer = BoundedExtractionFreezeActionizer(
+        source_reader=MemorySourceReader(
+            ExtractionSourceMaterial(content=SOURCE_BYTES, locator=LOCATOR)
+        ),
+        artifact_store=MemoryFreezeStore(),
+        extractor=extractor,
+    )
+
+    result = actionizer.action(request=freeze_request(extractor))
+
+    assert result.status is ExtractionActionStatus.FAILED
+    assert (
+        result.disposition is ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+    )
+    assert result.failure_code == "source_extraction_failed"
 
 
 def test__completed_freeze__rejects_failed_nested_validation() -> None:

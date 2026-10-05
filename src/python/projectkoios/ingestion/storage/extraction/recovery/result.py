@@ -33,9 +33,7 @@ class ExtractionProjectionRecoveryResult(
             or self.projected_records > self.observed_records
         ):
             raise ValueError("recovery result counts are inconsistent")
-        if (self.observed_records == 0) != (
-            self.last_journal_sequence is None
-        ):
+        if (self.observed_records == 0) != (self.last_journal_sequence is None):
             raise ValueError("recovery result journal position is inconsistent")
         if (
             self.last_journal_sequence is not None

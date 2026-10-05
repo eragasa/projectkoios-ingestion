@@ -24,6 +24,9 @@ from projectkoios.ingestion.storage.extraction.artifact_validation.result import
 from projectkoios.ingestion.storage.extraction.bounded_freeze.error import (
     BoundedExtractionFreezeError,
 )
+from projectkoios.ingestion.storage.extraction.bounded_freeze.extraction_error import (  # noqa: E501
+    FreezableSourceExtractionError,
+)
 from projectkoios.ingestion.storage.extraction.bounded_freeze.extractor import (
     FreezableSourceExtractor,
 )
@@ -139,7 +142,7 @@ class BoundedExtractionFreezeActionizer(
                 "extractor_identity_differs",
             )
         try:
-            extraction = self.extractor.extract(
+            extraction = self.extractor.extract_for_freeze(
                 source,
                 BytesIO(material.content),
             )
@@ -149,7 +152,7 @@ class BoundedExtractionFreezeActionizer(
                 ExtractionActionDisposition.AUTHORITY_REQUIRED,
                 "extractor_resource_unavailable",
             )
-        except ValueError:
+        except FreezableSourceExtractionError:
             return self._failed(
                 request,
                 ExtractionActionDisposition.STOP_INVALID_EVIDENCE,
