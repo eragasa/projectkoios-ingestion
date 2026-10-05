@@ -13,6 +13,15 @@ from projectkoios.ingestion.integrations.mongodb.extraction.store import (
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
+from projectkoios.ingestion.storage.extraction.projection.index_readiness.actionizer import (  # noqa: E501
+    ExtractionProjectionIndexReadinessActionizer,
+)
+from projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration import (  # noqa: E501
+    ExtractionProjectionIndexReadinessConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.index_readiness.request import (  # noqa: E501
+    ExtractionProjectionIndexReadinessRequest,
+)
 from projectkoios.ingestion.storage.extraction.recovery.request import (
     ExtractionProjectionRecoveryRequest,
 )
@@ -60,6 +69,14 @@ def main() -> None:
         request = ExtractionProjectionRecoveryRequest.create(
             maximum_records=arguments.maximum_records,
         )
+        target = metadata.extraction_projection_target()
+        readiness_request = ExtractionProjectionIndexReadinessRequest.create(
+            target=target,
+            configuration=(
+                ExtractionProjectionIndexReadinessConfiguration.mongodb_v1()
+            ),
+            authority_id="authority:extraction-projection-recovery-cli",
+        )
         journal_path = metadata.recovery_root / "publications.jsonl"
         if not arguments.apply:
             print(
@@ -69,6 +86,9 @@ def main() -> None:
                         "database": metadata.database,
                         "host": metadata.host,
                         "journal_exists": journal_path.is_file(),
+                        "index_readiness_request_id": (
+                            readiness_request.request_id
+                        ),
                         "port": metadata.port,
                         "recovery_request_id": request.request_id,
                         "recovery_root": str(metadata.recovery_root),
@@ -83,17 +103,31 @@ def main() -> None:
             store = MongoExtractionPublicationStore(
                 database=client[metadata.database],
                 journal=journal,
-                projection_target=metadata.extraction_projection_target(),
+                projection_target=target,
                 default_write_authority_id=(
                     "authority:extraction-projection-recovery-cli"
                 ),
             )
+            readiness_result = ExtractionProjectionIndexReadinessActionizer(
+                backend=store.index_readiness_backend
+            ).action(request=readiness_request)
+            if readiness_result.evidence is None:
+                raise ExtractionPublicationError(
+                    f"index readiness failed: {readiness_result.failure_code}"
+                )
+            readiness = readiness_result.evidence
             result = store.recover(request=request)
         print(
             json.dumps(
                 {
                     "apply": True,
                     "database": metadata.database,
+                    "index_count": len(readiness.indexes),
+                    "index_readiness_canonical_sha256": (
+                        readiness.canonical_sha256
+                    ),
+                    "index_readiness_id": readiness.readiness_id,
+                    "index_readiness_request_id": (readiness_result.request_id),
                     "last_journal_sequence": result.last_journal_sequence,
                     "observed_records": result.observed_records,
                     "projected_records": result.projected_records,

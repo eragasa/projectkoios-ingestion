@@ -35,6 +35,7 @@ The extraction read path uses the Projector terminology literally:
 | materializer | `MongoExtractionProjectionMaterializer` | Effectful create-once writes to physical MongoDB collections |
 | pipeline | `ExtractionProjectionMaterializationPipeline` | Fixed synchronous Projector-to-Materializer composition |
 | materialization target | `ExtractionProjectionTargetIdentity` | Explicit deployment, environment, database, schema, and projection slot |
+| index readiness | `ExtractionProjectionIndexReadinessActionizer` | Effectful preparation and exact observation of required physical indexes |
 | projector inventory | `ExtractionProjectorInventory` | Read-only full-content observation of materialized target state |
 | inventory reader | `ExtractionProjectionInventoryReader` | Adapter port used by the projector inventory |
 | expected inventory | `ExpectedExtractionProjectionInventory` | Compact full-content evidence derived from immutable read models or a pre-replay snapshot |
@@ -67,7 +68,11 @@ writes blocks, pages, warnings, and manifests before root completion documents.
 Its upsert filter binds `_id` and `projection_content_sha256`, so an exact replay
 replaces the exact identity while changed projected content reaches a unique-key
 conflict rather than silently overwriting prior content. Index creation remains
-separate adapter readiness work; it is not projection or materialization.
+separate adapter readiness work; it is not projection or materialization. The
+index-readiness request binds the exact target, complete ordered index
+configuration, and write authority. Its authority-neutral idempotency key binds
+the target and configuration, while its evidence records every observed name,
+ordered key, uniqueness property, and definition identity.
 
 Failure terms are also distinct. `ProjectionPayloadError` means source bytes are
 malformed, noncanonical, incomplete, or structurally invalid.
@@ -124,16 +129,24 @@ never opens MongoDB. Replaying the same request returns the same checksummed
 journal record with `replayed=true`; changed bytes or target identity stop before
 a new record is accepted.
 
+`ExtractionProjectionIndexReadinessActionizer` is one atomic owner operation.
+It creates missing configured indexes, re-reads their definitions, rejects
+conflicting definitions, and returns exact compact evidence without retaining
+MongoDB handles or documents. Its typed request/result, stable actionizer
+identity, authority, idempotency, evidence, and disposition can be represented
+as Workflow token colors and transition ports. Ingestion does not infer CPN
+places, guards, lifecycle, retry, concurrency, or acceptance from these types.
+
 `ExtractionProjectionInventoryActionizer` queries the five owned MongoDB
 collections through the constrained `Inventory` / `ProjectorInventory` pattern.
 Its request binds an explicit target, full observation configuration, and query
 authority. It returns only per-collection counts and full-content digests; it
-never retains projected documents. `SelectedExtractionProjectionRecoveryActionizer` binds one target to
-an exact authoritative journal count and head plus an ordered subset of full
-publication records. The MongoDB backend rejects journal drift, changed selected
-records, target-identity drift, and a nonempty target when an empty rebuild was
-requested. Its result distinguishes newly projected from unchanged records and
-includes the resulting compact projection inventory.
+never retains projected documents. `SelectedExtractionProjectionRecoveryActionizer`
+binds one target to an exact authoritative journal count and head plus an ordered
+subset of full publication records. The MongoDB backend rejects journal drift,
+changed selected records, target-identity drift, and a nonempty target when an
+empty rebuild was requested. Its result distinguishes newly projected from
+unchanged records and includes the resulting compact projection inventory.
 
 Operational scripts remain migration and equivalence fixtures. A workflow
 service owns cross-action orchestration, child batches, approvals, durable
