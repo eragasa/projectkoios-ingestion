@@ -40,6 +40,16 @@ invalid bytes stop as invalid evidence, expected-versus-actual identity drift
 stops as ambiguous evidence, and typed reader failures retain their authority
 or identical-retry disposition.
 
+`ExtractionProjectionInventoryActionizer` queries the five owned MongoDB
+collections through a nominal reader port. It returns only per-collection
+counts plus sorted identity and publication digests. It never retains projected
+documents. `SelectedExtractionProjectionRecoveryActionizer` binds one target to
+an exact authoritative journal count and head plus an ordered subset of full
+publication records. The MongoDB backend rejects journal drift, changed selected
+records, target-identity drift, and a nonempty target when an empty rebuild was
+requested. Its result distinguishes newly projected from unchanged records and
+includes the resulting compact projection inventory.
+
 Operational scripts remain migration and equivalence fixtures. A workflow
 service owns cross-action orchestration, child batches, approvals, durable
 checkpoints, and retry timing while invoking these actions without changing
