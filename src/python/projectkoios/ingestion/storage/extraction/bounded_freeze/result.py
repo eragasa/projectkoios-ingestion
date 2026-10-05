@@ -164,6 +164,35 @@ class BoundedExtractionFreezeResult(
                 )
                 or self.validation_result.request_id
                 != self.validation_request.request_id
+                or self.validation_result.idempotency_key
+                != self.validation_request.idempotency_key
+                or self.validation_result.status
+                is not ExtractionActionStatus.COMPLETED
+                or self.validation_result.disposition
+                is not ExtractionActionDisposition.CONTINUE
+                or self.validation_result.failure_code is not None
+                or self.validation_result.artifact_sha256
+                != self.validation_request.expected_artifact_sha256
+                or self.validation_result.artifact_byte_size
+                != self.validation_request.expected_artifact_byte_size
+                or self.validation_result.source_sha256
+                != self.validation_request.expected_source_sha256
+                or self.validation_result.document_id
+                != self.validation_request.expected_document_id
+                or self.validation_result.manifest_id
+                != self.validation_request.expected_manifest_id
+                or self.validation_result.payload_sha256
+                != self.validation_request.expected_payload_sha256
+                or self.validation_result.payload_byte_size
+                != self.validation_request.expected_payload_byte_size
+                or self.validation_result.publication_request_id
+                != self.validation_request.expected_publication_request_id
+                or self.validation_result.page_count
+                != self.validation_request.expected_page_count
+                or self.validation_result.block_count
+                != self.validation_request.expected_block_count
+                or self.validation_result.warning_count
+                != self.validation_request.expected_warning_count
             ):
                 raise ValueError(
                     "completed bounded-extraction result is invalid"

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import BinaryIO
 
+import pytest
 from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.models import (
     CONTRACT_VERSION,
@@ -19,6 +20,9 @@ from projectkoios.ingestion.storage.extraction.actions.disposition import (
 from projectkoios.ingestion.storage.extraction.actions.status import (
     ExtractionActionStatus,
 )
+from projectkoios.ingestion.storage.extraction.artifact_validation.result import (  # noqa: E501
+    ExistingExtractionArtifactValidationResult,
+)
 from projectkoios.ingestion.storage.extraction.bounded_freeze.actionizer import (  # noqa: E501
     BoundedExtractionFreezeActionizer,
 )
@@ -27,6 +31,9 @@ from projectkoios.ingestion.storage.extraction.bounded_freeze.extractor import (
 )
 from projectkoios.ingestion.storage.extraction.bounded_freeze.request import (
     BoundedExtractionFreezeRequest,
+)
+from projectkoios.ingestion.storage.extraction.bounded_freeze.result import (
+    BoundedExtractionFreezeResult,
 )
 from projectkoios.ingestion.storage.extraction.bounded_freeze.source import (
     ExtractionSourceMaterial,
@@ -204,6 +211,40 @@ def test__bounded_extraction_freeze__creates_once_then_reuses() -> None:
     assert created.validation_result == replayed.validation_result
     assert extractor.calls == 1
     assert source_reader.calls == 1
+
+
+def test__completed_freeze__rejects_failed_nested_validation() -> None:
+    extractor = FixtureExtractor()
+    actionizer = BoundedExtractionFreezeActionizer(
+        source_reader=MemorySourceReader(
+            ExtractionSourceMaterial(content=SOURCE_BYTES, locator=LOCATOR)
+        ),
+        artifact_store=MemoryFreezeStore(),
+        extractor=extractor,
+    )
+    request = freeze_request(extractor)
+    completed = actionizer.action(request=request)
+    assert completed.validation_request is not None
+    failed_validation = ExistingExtractionArtifactValidationResult.failed(
+        request=completed.validation_request,
+        disposition=ExtractionActionDisposition.STOP_INVALID_EVIDENCE,
+        failure_code="fixture_validation_failed",
+        actionizer_name="fixture-validation",
+        actionizer_version="1",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="completed bounded-extraction result is invalid",
+    ):
+        BoundedExtractionFreezeResult.completed(
+            request=request,
+            created=True,
+            validation_request=completed.validation_request,
+            validation_result=failed_validation,
+            actionizer_name="fixture-freeze",
+            actionizer_version="1",
+        )
 
 
 def test__bounded_extraction_freeze__stops_on_changed_frozen_artifact() -> None:
