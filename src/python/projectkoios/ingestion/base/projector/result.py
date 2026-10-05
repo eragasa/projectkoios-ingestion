@@ -27,7 +27,23 @@ class ProjectionResult[ProjectionT: AbstractProjectionValue](
     AbstractImmutableDataObject,
     DataObjectActionResult,
 ):
-    """Bind one rebuildable projection to request and projector identities."""
+    """Bind one projection value to request and projector identities.
+
+    Parameters
+    ----------
+    result_id
+        Stable identity over request, projector, sources, and output content.
+    request_id
+        Identity of the exact projection request.
+    source_evidence_ids
+        Canonically ordered source identities copied from the request.
+    projector
+        Exact implementation and schema identity.
+    projection
+        Immutable rebuildable output value.
+    contract_version
+        Version of this fixed result envelope.
+    """
 
     CONTRACT_NAME: ClassVar[str] = "projection-result"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
@@ -50,6 +66,29 @@ class ProjectionResult[ProjectionT: AbstractProjectionValue](
         projector: ProjectorIdentity,
         projection: ProjectionT,
     ) -> ProjectionResult[ProjectionT]:
+        """Create the fixed result envelope.
+
+        Parameters
+        ----------
+        request
+            Exact validated request that produced the output.
+        projector
+            Exact projector implementation identity.
+        projection
+            Immutable rebuildable output value.
+
+        Returns
+        -------
+        ProjectionResult[ProjectionT]
+            Result binding all provenance and content identities.
+
+        Raises
+        ------
+        TypeError
+            If projector or projection values have incompatible contracts.
+        ValueError
+            If source, schema, digest, or result identities differ.
+        """
         source_ids = tuple(source.evidence_id for source in request.sources)
         return cls(
             result_id=stable_id(

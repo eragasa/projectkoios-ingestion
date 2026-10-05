@@ -4,22 +4,30 @@
 flowchart LR
     Request["ExtractionPublicationRequest"]
     Disk["private content-addressed objects + fsynced journal"]
+    Record["ExtractionPublicationEvidence<br/>record + exact payload bytes"]
+    Config["ExtractionProjectionConfiguration"]
+    Projector["ExtractionProjectionProjector<br/>pure and stateless"]
+    ReadModel["ExtractionReadModel<br/>canonical immutable value"]
+    Materializer["MongoExtractionProjectionMaterializer<br/>effectful create-once writes"]
     Mongo["MongoDB read projection"]
-    Documents["documents"]
-    Pages["pages"]
-    Blocks["blocks"]
-    Warnings["warnings"]
-    Manifests["manifests"]
+    Inventory["query-only inventory reader"]
 
     Request --> Disk
-    Disk --> Mongo
-    Mongo --> Documents
-    Mongo --> Pages
-    Mongo --> Blocks
-    Mongo --> Warnings
-    Mongo --> Manifests
+    Disk --> Record
+    Record --> Projector
+    Config --> Projector
+    Projector --> ReadModel
+    ReadModel --> Materializer
+    Materializer --> Mongo
+    Mongo --> Inventory
 ```
 
-Disk commit precedes projection. A lost or empty MongoDB database can be rebuilt
-by replaying the bounded journal through an
-`ExtractionProjectionRecoveryRequest`.
+Disk commit precedes projection and remains authoritative. A lost or empty
+MongoDB target can be rebuilt by reading bounded exact journal evidence,
+projecting it without I/O, and materializing the resulting read models.
+
+The arrows have strict names: reading obtains **source evidence**, projection is
+a pure evidence-to-value transformation, materialization writes that value, and
+inventory observes the resulting target. Record selection, authority, retries,
+index readiness, target identity, and equivalence verification are outside the
+projector.

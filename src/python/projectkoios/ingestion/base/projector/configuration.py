@@ -8,7 +8,19 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 
 
 class AbstractProjectionConfiguration(AbstractImmutableDataObject, ABC):
-    """Require one stable identity for complete projection configuration."""
+    """Define complete immutable deterministic projector configuration.
+
+    Attributes
+    ----------
+    configuration_id
+        Stable identity binding every configuration choice.
+
+    Notes
+    -----
+    Hidden defaults and environment lookups are incompatible with this
+    contract. A concrete configuration must carry every choice that can change
+    projection output.
+    """
 
     __slots__ = ()
 

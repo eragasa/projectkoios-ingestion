@@ -11,7 +11,27 @@ from projectkoios.ingestion.identity import stable_id
 
 @dataclass(frozen=True, slots=True)
 class ProjectorIdentity(AbstractIdentity):
-    """Bind implementation and input/output/schema contracts."""
+    """Bind one projector implementation to all declared contracts.
+
+    Parameters
+    ----------
+    projector_id
+        Stable identity over every remaining field.
+    name
+        Stable implementation name.
+    version
+        Explicit implementation version.
+    source_contract
+        Contract name required for source evidence.
+    configuration_contract
+        Contract name required for deterministic configuration.
+    projection_contract
+        Contract name guaranteed for output values.
+    schema_id
+        Logical output schema identity.
+    contract_version
+        Version of this identity envelope.
+    """
 
     CONTRACT_NAME: ClassVar[str] = "projector-identity"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
@@ -36,6 +56,33 @@ class ProjectorIdentity(AbstractIdentity):
         projection_contract: str,
         schema_id: str,
     ) -> ProjectorIdentity:
+        """Create a stable projector identity from complete contract names.
+
+        Parameters
+        ----------
+        name
+            Stable implementation name.
+        version
+            Explicit implementation version.
+        source_contract
+            Required source evidence contract.
+        configuration_contract
+            Required configuration contract.
+        projection_contract
+            Guaranteed output contract.
+        schema_id
+            Guaranteed logical output schema.
+
+        Returns
+        -------
+        ProjectorIdentity
+            Immutable identity binding all supplied values.
+
+        Raises
+        ------
+        ValueError
+            If a value is empty or the resulting identity is inconsistent.
+        """
         parts = (
             name,
             version,

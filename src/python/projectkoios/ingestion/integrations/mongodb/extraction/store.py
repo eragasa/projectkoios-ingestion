@@ -2,14 +2,25 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any, ClassVar
 
-from bson import BSON
-from bson.errors import InvalidDocument
+from projectkoios.ingestion.base.projector.error import ProjectionContractError
+from projectkoios.ingestion.base.projector.identity_error import (
+    ProjectionIdentityError,
+)
+from projectkoios.ingestion.base.projector.payload_error import (
+    ProjectionPayloadError,
+)
+from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
+)
+from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
+    MongoExtractionProjectionMaterializationError,
+)
+from projectkoios.ingestion.integrations.mongodb.extraction.materializer import (  # noqa: E501
+    MongoExtractionProjectionMaterializer,
 )
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
@@ -19,6 +30,15 @@ from projectkoios.ingestion.storage.extraction.base import (
 )
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
+)
+from projectkoios.ingestion.storage.extraction.projection.configuration import (
+    ExtractionProjectionConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.evidence import (
+    ExtractionPublicationEvidence,
+)
+from projectkoios.ingestion.storage.extraction.projection.projector import (
+    ExtractionProjectionProjector,
 )
 from projectkoios.ingestion.storage.extraction.projection_inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
@@ -69,12 +89,17 @@ class MongoExtractionPublicationStore(
 ):
     """Idempotent MongoDB read projection backed by a disk journal."""
 
-    DOCUMENTS: ClassVar[str] = "extraction_documents"
-    PAGES: ClassVar[str] = "extraction_pages"
-    BLOCKS: ClassVar[str] = "extraction_blocks"
-    WARNINGS: ClassVar[str] = "extraction_warnings"
-    MANIFESTS: ClassVar[str] = "extraction_manifests"
-    MAX_DOCUMENT_BYTES: ClassVar[int] = 15_000_000
+    DOCUMENTS: ClassVar[str] = MongoExtractionProjectionMaterializer.DOCUMENTS
+    PAGES: ClassVar[str] = MongoExtractionProjectionMaterializer.PAGES
+    BLOCKS: ClassVar[str] = MongoExtractionProjectionMaterializer.BLOCKS
+    WARNINGS: ClassVar[str] = MongoExtractionProjectionMaterializer.WARNINGS
+    MANIFESTS: ClassVar[str] = MongoExtractionProjectionMaterializer.MANIFESTS
+    PROJECTOR: ClassVar[ExtractionProjectionProjector] = (
+        ExtractionProjectionProjector()
+    )
+    PROJECTION_CONFIGURATION: ClassVar[ExtractionProjectionConfiguration] = (
+        ExtractionProjectionConfiguration.v1()
+    )
 
     def __init__(
         self,
@@ -91,6 +116,9 @@ class MongoExtractionPublicationStore(
             raise ValueError("projection_reference must be non-empty")
         self.database = database
         self.journal = journal
+        self.materializer = MongoExtractionProjectionMaterializer(
+            database=database
+        )
         self.projection_reference = projection_reference or stable_id(
             "mongodb-extraction-projection",
             "1.0",
@@ -108,7 +136,7 @@ class MongoExtractionPublicationStore(
         committed = self.journal.publish(request=request)
         records = self.journal.records()
         record = records[committed.journal_sequence - 1]
-        self._project(record)
+        self._project_and_materialize(record)
         return committed
 
     def recover(
@@ -128,7 +156,7 @@ class MongoExtractionPublicationStore(
                 "recovery journal exceeds the requested record bound"
             )
         for record in records:
-            self._project(record)
+            self._project_and_materialize(record)
         return ExtractionProjectionRecoveryResult(
             request_id=request.request_id,
             observed_records=len(records),
@@ -200,7 +228,7 @@ class MongoExtractionPublicationStore(
         projected = 0
         try:
             for selected in request.selected_records:
-                projected += self._project(selected)
+                projected += self._project_and_materialize(selected)
         except ExtractionPublicationError as error:
             cause = error.__cause__
             if isinstance(cause, PyMongoError) and not isinstance(
@@ -213,8 +241,24 @@ class MongoExtractionPublicationStore(
                 disposition = (
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                 )
-            else:
+            elif isinstance(
+                cause, MongoExtractionProjectionMaterializationError
+            ):
+                code = cause.code
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            elif isinstance(cause, ProjectionIdentityError):
+                code = "projection_identity_differs"
+                disposition = (
+                    ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
+                )
+            elif isinstance(cause, ProjectionPayloadError):
                 code = "publication_payload_invalid"
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            elif isinstance(cause, ProjectionContractError):
+                code = "projection_contract_invalid"
+                disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
+            else:
+                code = "publication_evidence_invalid"
                 disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
             raise SelectedExtractionProjectionRecoveryBackendError(
                 code=code,
@@ -340,200 +384,67 @@ class MongoExtractionPublicationStore(
             collections.append(inventory)
         return tuple(collections)
 
-    def _project(self, record: ExtractionPublicationRecord) -> int:
+    def _project_and_materialize(
+        self,
+        record: ExtractionPublicationRecord,
+    ) -> int:
+        """Project and materialize one exact authoritative journal record.
+
+        Parameters
+        ----------
+        record
+            Validated journal record whose exact payload remains on disk.
+
+        Returns
+        -------
+        int
+            One when the root document is newly created; zero on exact replay.
+
+        Raises
+        ------
+        ExtractionPublicationError
+            If evidence, projection, index preparation, or materialization
+            fails.
+
+        Notes
+        -----
+        This adapter method composes separate responsibilities. The disk reader
+        supplies complete immutable evidence, the projector performs the pure
+        transformation, and the MongoDB materializer performs writes.
+        """
+        payload = self.journal.payload(record)
+        try:
+            evidence = ExtractionPublicationEvidence.create(
+                record=record,
+                payload=payload,
+            )
+            request = ProjectionRequest.create(
+                sources=(evidence,),
+                configuration=self.PROJECTION_CONFIGURATION,
+            )
+            read_model = self.PROJECTOR.action(request=request).projection
+        except (TypeError, ValueError, ProjectionContractError) as error:
+            raise ExtractionPublicationError(
+                "extraction publication projection evidence is invalid"
+            ) from error
+
+        # Index readiness remains an adapter concern and is intentionally not
+        # hidden inside either the pure projector or the document materializer.
         self._ensure_indexes()
         try:
-            value = json.loads(self.journal.payload(record))
-        except (UnicodeError, json.JSONDecodeError) as error:
+            created_roots = self.materializer.materialize(read_model=read_model)
+        except MongoExtractionProjectionMaterializationError as error:
+            # Preserve PyMongo's typed cause for existing provider-action
+            # disposition mapping while retaining the materializer's category.
+            cause = error.__cause__
+            if isinstance(cause, PyMongoError):
+                raise ExtractionPublicationError(str(error)) from cause
+            raise ExtractionPublicationError(str(error)) from error
+        if created_roots not in (0, 1):
             raise ExtractionPublicationError(
-                "disk recovery payload is not canonical JSON"
-            ) from error
-        if type(value) is not dict:
-            raise ExtractionPublicationError(
-                "disk recovery payload root is not an object"
+                "single publication produced an invalid root-document count"
             )
-        document = value.get("document")
-        manifest = value.get("manifest")
-        warnings = value.get("warnings")
-        if (
-            type(document) is not dict
-            or type(manifest) is not dict
-            or type(warnings) is not list
-        ):
-            raise ExtractionPublicationError(
-                "disk recovery payload is not an extraction result"
-            )
-        document_id = document.get("document_id")
-        manifest_id = manifest.get("manifest_id")
-        pages = document.get("pages")
-        if (
-            type(document_id) is not str
-            or document_id != record.document_id
-            or type(manifest_id) is not str
-            or manifest_id != record.manifest_id
-            or type(pages) is not list
-        ):
-            raise ExtractionPublicationError(
-                "disk recovery payload identities are inconsistent"
-            )
-        page_ids: list[str] = []
-        for page in pages:
-            page_id = self._project_page(
-                document_id=document_id,
-                manifest_id=manifest_id,
-                page=page,
-                publication_digest=record.payload_sha256,
-            )
-            page_ids.append(page_id)
-        for warning in warnings:
-            if (
-                type(warning) is not dict
-                or type(warning.get("warning_id")) is not str
-            ):
-                raise ExtractionPublicationError(
-                    "extraction warning projection is invalid"
-                )
-            warning_document = dict(warning)
-            warning_document.update(
-                {
-                    "_id": stable_id(
-                        "mongodb-extraction-warning",
-                        "1.0",
-                        manifest_id,
-                        warning["warning_id"],
-                    ),
-                    "document_id": document_id,
-                    "manifest_id": manifest_id,
-                    "publication_digest": record.payload_sha256,
-                }
-            )
-            self._replace_create_once(self.WARNINGS, warning_document)
-        manifest_document = dict(manifest)
-        manifest_document.update(
-            {
-                "_id": manifest_id,
-                "document_id": document_id,
-                "publication_digest": record.payload_sha256,
-            }
-        )
-        self._replace_create_once(self.MANIFESTS, manifest_document)
-        document_manifest = {
-            key: item for key, item in document.items() if key != "pages"
-        }
-        document_manifest.update(
-            {
-                "_id": manifest_id,
-                "document_id": document_id,
-                "manifest_id": manifest_id,
-                "page_ids": page_ids,
-                "publication_digest": record.payload_sha256,
-                "publication_state": "complete",
-            }
-        )
-        created = self._replace_create_once(self.DOCUMENTS, document_manifest)
-        return int(created)
-
-    def _project_page(
-        self,
-        *,
-        document_id: str,
-        manifest_id: str,
-        page: object,
-        publication_digest: str,
-    ) -> str:
-        if type(page) is not dict or type(page.get("page_index")) is not int:
-            raise ExtractionPublicationError(
-                "extraction page projection is invalid"
-            )
-        page_index = page["page_index"]
-        blocks = page.get("blocks")
-        if type(blocks) is not list:
-            raise ExtractionPublicationError(
-                "extraction page blocks are invalid"
-            )
-        page_id = stable_id(
-            "mongodb-extraction-page",
-            "1.0",
-            document_id,
-            manifest_id,
-            page_index,
-        )
-        block_ids: list[str] = []
-        for ordinal, block in enumerate(blocks):
-            if (
-                type(block) is not dict
-                or type(block.get("block_id")) is not str
-            ):
-                raise ExtractionPublicationError(
-                    "extraction block projection is invalid"
-                )
-            block_document = dict(block)
-            block_document.update(
-                {
-                    "_id": stable_id(
-                        "mongodb-extraction-block",
-                        "1.0",
-                        manifest_id,
-                        block["block_id"],
-                    ),
-                    "document_id": document_id,
-                    "manifest_id": manifest_id,
-                    "page_id": page_id,
-                    "page_index": page_index,
-                    "ordinal": ordinal,
-                    "publication_digest": publication_digest,
-                }
-            )
-            self._replace_create_once(self.BLOCKS, block_document)
-            block_ids.append(block_document["_id"])
-        page_document = {
-            key: item for key, item in page.items() if key != "blocks"
-        }
-        page_document.update(
-            {
-                "_id": page_id,
-                "document_id": document_id,
-                "manifest_id": manifest_id,
-                "block_ids": block_ids,
-                "publication_digest": publication_digest,
-            }
-        )
-        self._replace_create_once(self.PAGES, page_document)
-        return page_id
-
-    def _replace_create_once(
-        self,
-        collection_name: str,
-        value: MongoDocument,
-    ) -> bool:
-        digest = value["publication_digest"]
-        try:
-            encoded = BSON.encode(value)
-            if len(encoded) > self.MAX_DOCUMENT_BYTES:
-                raise ExtractionPublicationError(
-                    "MongoDB extraction projection document is too large"
-                )
-            result = self.database[collection_name].replace_one(
-                {
-                    "_id": value["_id"],
-                    "publication_digest": digest,
-                },
-                value,
-                upsert=True,
-            )
-            return result.upserted_id is not None
-        except InvalidDocument as error:
-            raise ExtractionPublicationError(
-                "MongoDB extraction projection document is invalid"
-            ) from error
-        except DuplicateKeyError as error:
-            raise ExtractionPublicationError(
-                "MongoDB projection identity has conflicting content"
-            ) from error
-        except PyMongoError as error:
-            raise ExtractionPublicationError(
-                "MongoDB extraction projection failed"
-            ) from error
+        return created_roots
 
     def _ensure_indexes(self) -> None:
         if self._indexes_ready:

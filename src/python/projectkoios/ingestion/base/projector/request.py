@@ -24,7 +24,19 @@ class ProjectionRequest[
     SourceT: AbstractProjectionSource,
     ConfigurationT: AbstractProjectionConfiguration,
 ](AbstractImmutableDataObject, DataObjectActionRequest):
-    """Canonical source evidence and complete deterministic configuration."""
+    """Carry canonical evidence and complete deterministic configuration.
+
+    Parameters
+    ----------
+    request_id
+        Stable identity over source identities, digests, and configuration.
+    sources
+        Nonempty, canonically ordered, identity-unique source evidence.
+    configuration
+        Complete immutable deterministic configuration.
+    contract_version
+        Version of this fixed request envelope.
+    """
 
     CONTRACT_NAME: ClassVar[str] = "projection-request"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
@@ -42,6 +54,27 @@ class ProjectionRequest[
         sources: tuple[SourceT, ...],
         configuration: ConfigurationT,
     ) -> ProjectionRequest[SourceT, ConfigurationT]:
+        """Create the fixed request envelope.
+
+        Parameters
+        ----------
+        sources
+            Canonically ordered immutable source evidence.
+        configuration
+            Complete immutable deterministic configuration.
+
+        Returns
+        -------
+        ProjectionRequest[SourceT, ConfigurationT]
+            Request with a stable identity over exact inputs.
+
+        Raises
+        ------
+        TypeError
+            If sources or configuration do not implement nominal contracts.
+        ValueError
+            If sources are empty, unordered, duplicate, invalid, or unbounded.
+        """
         if not isinstance(sources, tuple) or any(
             not isinstance(source, AbstractProjectionSource)
             for source in sources
@@ -66,16 +99,13 @@ class ProjectionRequest[
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:
             raise ValueError("unsupported projection-request contract")
-        if (
-            not isinstance(self.sources, tuple)
-            or not self.sources
-            or len(self.sources) > self.MAXIMUM_SOURCES
-            or any(
-                not isinstance(source, AbstractProjectionSource)
-                for source in self.sources
-            )
+        if not isinstance(self.sources, tuple) or any(
+            not isinstance(source, AbstractProjectionSource)
+            for source in self.sources
         ):
             raise TypeError("projection sources are invalid")
+        if not self.sources or len(self.sources) > self.MAXIMUM_SOURCES:
+            raise ValueError("projection source count is out of bounds")
         source_parts = tuple(
             (source.evidence_id, source.canonical_sha256)
             for source in self.sources

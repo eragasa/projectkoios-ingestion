@@ -34,6 +34,9 @@ mathml = ["latex2mathml>=3.81"]
 dev = ["pytest>=8.0", "ruff>=0.8", "mypy>=1.13", "PyMuPDF>=1.24", "latex2mathml>=3.81", "mongomock==4.3.0"]
 mongodb = ["pymongo==4.18.2"]
 workflow = ["SNAKES==0.9.33"]
+docs = [
+    "sphinx>=8.2,<10",
+]
 
 [tool.uv.sources]
 projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "233f36900b9b44c943ecc5e27f2968ad4bee97ad" }

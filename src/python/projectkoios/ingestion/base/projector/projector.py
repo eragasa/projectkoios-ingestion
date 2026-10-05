@@ -13,6 +13,9 @@ from projectkoios.ingestion.base.projector.error import (
     ProjectionContractError,
 )
 from projectkoios.ingestion.base.projector.identity import ProjectorIdentity
+from projectkoios.ingestion.base.projector.identity_error import (
+    ProjectionIdentityError,
+)
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.base.projector.result import ProjectionResult
 from projectkoios.ingestion.base.projector.source import (
@@ -32,7 +35,15 @@ class Projector[
     ],
     ABC,
 ):
-    """Pure mapping from complete evidence to a rebuildable view."""
+    """Map complete immutable evidence to a rebuildable projection.
+
+    Notes
+    -----
+    Concrete projectors supply only :meth:`project`. The framework fixes action
+    validation and result construction, and prohibits instance state, authority
+    requirements, and external effects. A projector therefore cannot read a
+    database, consult mutable process state, or materialize its output.
+    """
 
     __slots__ = ()
 
@@ -68,6 +79,29 @@ class Projector[
         *,
         request: ProjectionRequest[SourceT, ConfigurationT],
     ) -> ProjectionResult[ProjectionT]:
+        """Execute the fixed pure projection action.
+
+        Parameters
+        ----------
+        request
+            Canonical source evidence and complete deterministic
+            configuration.
+
+        Returns
+        -------
+        ProjectionResult[ProjectionT]
+            The projection bound to its request and projector identities.
+
+        Raises
+        ------
+        TypeError
+            If ``request`` is not the fixed projection request type.
+        ProjectionContractError
+            If source, configuration, or output contracts differ from the
+            projector declaration.
+        ProjectionIdentityError
+            If the projector identity does not bind those declarations.
+        """
         if not isinstance(request, ProjectionRequest):
             raise TypeError("request must be a ProjectionRequest")
         if any(
@@ -98,11 +132,26 @@ class Projector[
         sources: tuple[SourceT, ...],
         configuration: ConfigurationT,
     ) -> ProjectionT:
-        """Derive one projection using only the supplied immutable values."""
+        """Derive one projection using only supplied immutable values.
+
+        Parameters
+        ----------
+        sources
+            Canonically ordered, unique, immutable source evidence.
+        configuration
+            Complete immutable configuration for the transformation.
+
+        Returns
+        -------
+        ProjectionT
+            One immutable, rebuildable projection value.
+        """
 
     def _validate_identity(self) -> None:
+        # Identity validation is distinct from input-shape validation: all
+        # classes may be structurally valid while naming a different contract.
         if not isinstance(self.identity, ProjectorIdentity):
-            raise ProjectionContractError("projector identity is invalid")
+            raise ProjectionIdentityError("projector identity is invalid")
         expected = (
             self.source_type.CONTRACT_NAME,
             self.configuration_type.CONTRACT_NAME,
@@ -114,4 +163,4 @@ class Projector[
             self.identity.projection_contract,
         )
         if actual != expected:
-            raise ProjectionContractError("projector identity contracts differ")
+            raise ProjectionIdentityError("projector identity contracts differ")
