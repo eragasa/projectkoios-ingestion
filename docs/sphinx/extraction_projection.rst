@@ -12,11 +12,15 @@ collections: documents, pages, blocks, warnings, and manifests.
 
 The logical model is vendor-neutral. Physical MongoDB collection names,
 connections, index preparation, authority, record selection, and write failures
-belong outside the projector.
+belong outside the projector. ``ExtractionProjectionIndexReadinessActionizer``
+owns index preparation as one runtime-neutral action; it does not infer Workflow
+or Colored Petri Net topology.
 
 Data flow
 ---------
 
+#. An explicit readiness request ensures required physical indexes and records
+   their exact observed definitions.
 #. A journal reader obtains one checksummed record and its exact payload bytes.
 #. ``ExtractionPublicationEvidence`` verifies byte count and SHA-256.
 #. ``ExtractionProjectionMaterializationPipeline`` invokes the pure
@@ -123,6 +127,33 @@ Extraction projector-inventory API
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.expected
    :members:
 
+Extraction index-readiness API
+------------------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.index
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.index_evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.backend
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.actionizer
+   :members:
+
 Inventory equivalence API
 -------------------------
 
@@ -143,6 +174,9 @@ Inventory equivalence API
 
 MongoDB materialization API
 ---------------------------
+
+.. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.index_readiness
+   :members:
 
 .. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.materializer
    :members:

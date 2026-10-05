@@ -23,6 +23,9 @@ from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
+from projectkoios.ingestion.integrations.mongodb.extraction.index_readiness import (  # noqa: E501
+    MongoExtractionProjectionIndexReadinessBackend,
+)
 from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
     MongoExtractionProjectionMaterializationError,
 )
@@ -52,6 +55,12 @@ from projectkoios.ingestion.storage.extraction.projection.configuration import (
 )
 from projectkoios.ingestion.storage.extraction.projection.evidence import (
     ExtractionPublicationEvidence,
+)
+from projectkoios.ingestion.storage.extraction.projection.index_readiness.backend_error import (  # noqa: E501
+    ExtractionProjectionIndexReadinessBackendError,
+)
+from projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration import (  # noqa: E501
+    ExtractionProjectionIndexReadinessConfiguration,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
@@ -129,6 +138,9 @@ class MongoExtractionPublicationStore(
     INVENTORY_CONFIGURATION: ClassVar[
         ExtractionProjectionInventoryConfiguration
     ] = ExtractionProjectionInventoryConfiguration.mongodb_v1()
+    INDEX_READINESS_CONFIGURATION: ClassVar[
+        ExtractionProjectionIndexReadinessConfiguration
+    ] = ExtractionProjectionIndexReadinessConfiguration.mongodb_v1()
     DOCUMENTS: ClassVar[str] = (
         MATERIALIZATION_CONFIGURATION.documents_collection
     )
@@ -160,6 +172,13 @@ class MongoExtractionPublicationStore(
         self.journal = journal
         self.projection_target = projection_target
         self.default_write_authority_id = default_write_authority_id
+        self.index_readiness_backend = (
+            MongoExtractionProjectionIndexReadinessBackend(
+                database=database,
+                configured_target=projection_target,
+                configured_configuration=self.INDEX_READINESS_CONFIGURATION,
+            )
+        )
         self.materializer = MongoExtractionProjectionMaterializer(
             database=database,
             configured_target=projection_target,
@@ -294,6 +313,11 @@ class MongoExtractionPublicationStore(
                 disposition = (
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                 )
+            elif isinstance(
+                cause, ExtractionProjectionIndexReadinessBackendError
+            ):
+                code = cause.code
+                disposition = cause.disposition
             elif isinstance(
                 cause, MongoExtractionProjectionMaterializationError
             ):
@@ -507,7 +531,7 @@ class MongoExtractionPublicationStore(
 
         # Index readiness is adapter setup rather than a pipeline stage. It has
         # separate evidence and never changes the projected document values.
-        self._ensure_indexes()
+        self._ensure_indexes_once(authority_id=authority_id)
         try:
             materialization = self.projection_pipeline.action(
                 request=pipeline_request
@@ -539,28 +563,16 @@ class MongoExtractionPublicationStore(
             )
         return document_evidence.created_document_count
 
-    def _ensure_indexes(self) -> None:
+    def _ensure_indexes_once(self, *, authority_id: str) -> None:
         if self._indexes_ready:
             return
         try:
-            self.database[self.DOCUMENTS].create_index(
-                [("publication_state", 1), ("source.content_hash", 1)]
+            self.index_readiness_backend.ensure_index_readiness(
+                target=self.projection_target,
+                configuration=self.INDEX_READINESS_CONFIGURATION,
+                authority_id=authority_id,
             )
-            self.database[self.PAGES].create_index(
-                [("manifest_id", 1), ("page_index", 1)],
-                unique=True,
-            )
-            self.database[self.BLOCKS].create_index(
-                [("manifest_id", 1), ("page_index", 1), ("ordinal", 1)],
-                unique=True,
-            )
-            self.database[self.WARNINGS].create_index(
-                [("document_id", 1), ("code", 1)]
-            )
-            self.database[self.MANIFESTS].create_index(
-                [("source_blob_id", 1), ("status", 1)]
-            )
-        except PyMongoError as error:
+        except ExtractionProjectionIndexReadinessBackendError as error:
             raise ExtractionPublicationError(
                 "MongoDB extraction indexes could not be prepared"
             ) from error
