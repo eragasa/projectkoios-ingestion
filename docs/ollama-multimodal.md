@@ -65,6 +65,16 @@ result reuse, retains failures without automatic retries, and remains
 automated, unreviewed, unaccepted, chunk-text-ineligible, and
 publication-ineligible.
 
+Workflow 033 audits only the six retained result byte streams. All three
+replicate pairs had equal proposal-text hashes and distinct result identities;
+this is an observation about this bounded run, not evidence of deterministic
+inference. The labeled-figure order, declared text-heavy anchors and clipping
+warning, and declared table anchors passed their bounded checks. Content beyond
+those anchors and full table relational structure were not exhaustively
+assessed. The audit ID is
+`reference-ollama-multimodal-replicated-canary-quality-audit:sha256:b47783e86a4179ffd77c2eadd606616abd4481f73e32f9a8c24268680d2e845c`.
+The audit performed zero model calls and makes no corpus-suitability claim.
+
 ## Composition
 
 Render only the exact externally selected page or region. The renderer's public

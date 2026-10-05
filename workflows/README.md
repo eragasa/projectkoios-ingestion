@@ -55,6 +55,7 @@ closed as unsuitable for unattended corpus execution.
 | 030 | `030.audit_bounded_ollama_multimodal_canary.py` | Replay the fixed canary bytes without model execution and audit coverage of the three visible labels. This validates one retained output, not deterministic Ollama behavior or corpus suitability. |
 | 031 | `031.plan_replicated_ollama_multimodal_canary.py` | Freeze three evidence classes and two independent invocation slots per sample for observed-variability analysis. This stage performs no model execution and grants no execution authorization. |
 | 032 | `032.execute_replicated_ollama_multimodal_canary.py` | Deterministically reconstruct the six planned requests and publish a create-once request manifest. Model calls require `--apply` with the exact frozen plan ID and remain separately authorized. |
+| 033 | `033.audit_replicated_ollama_multimodal_canary.py` | Replay the six retained result byte streams without model execution, verify intrinsic and cross-artifact identities, compare replicate hashes, and perform bounded label/anchor/warning checks without accepting output or claiming determinism. |
 
 Later steps may read artifacts produced by earlier steps. Preserve exact source
 PDF bytes and existing artifact roots. Do not use these scripts to mutate source
