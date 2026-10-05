@@ -19,7 +19,58 @@ page, block, warning, and manifest collections. Large PDF/media bytes are never
 stored in MongoDB. The final document manifest is written last with
 `publication_state=complete`; consumers must ignore incomplete publications.
 Projection writes are create-once and idempotent by stable identity and exact
-publication digest.
+projected-content digest.
+
+## Pure extraction projection
+
+The extraction read path uses the Projector terminology literally:
+
+| Term | Concrete owner | Meaning |
+| --- | --- | --- |
+| source evidence | `ExtractionPublicationEvidence` | One validated journal record plus its exact immutable payload bytes |
+| configuration | `ExtractionProjectionConfiguration` | Complete schema, identity-namespace, version, and completion-state choices |
+| projector | `ExtractionProjectionProjector` | Pure parsing and transformation only |
+| projection value | `ExtractionReadModel` | Canonical backend-neutral documents for five logical collections |
+| projection member | `ExtractionProjectionDocument` | One immutable canonical JSON document with full content evidence |
+| materializer | `MongoExtractionProjectionMaterializer` | Effectful create-once writes to physical MongoDB collections |
+| inventory reader | `ExtractionProjectionInventoryReader` | Observation of already-materialized target state |
+
+`ExtractionProjectionProjector` accepts no journal, database, authority, clock,
+retry policy, or mutable lookup. The source evidence verifies payload byte count
+and SHA-256 against its journal record before projection. The projector requires
+canonical extraction-result JSON, checks document and manifest identities
+against the record, derives vendor-neutral page/block/warning identities, and
+rejects duplicate logical collection identities. Its read model is sorted by
+logical collection and stable `_id`, so replay produces the same serialized
+bytes, member digests, aggregate digest, projection identity, and result
+identity.
+
+Each projected document carries two distinct digests:
+
+1. `projection_content_sha256` binds every projected field before the digest
+   marker is inserted and is used for create-once materialization; and
+2. `canonical_sha256` on `ExtractionProjectionDocument` binds the complete final
+   JSON document, including that marker.
+
+The MongoDB materializer decodes only projector-produced canonical JSON. It
+writes blocks, pages, warnings, and manifests before root completion documents.
+Its upsert filter binds `_id` and `projection_content_sha256`, so an exact replay
+replaces the exact identity while changed projected content reaches a unique-key
+conflict rather than silently overwriting prior content. Index creation remains
+separate adapter readiness work; it is not projection or materialization.
+
+Failure terms are also distinct. `ProjectionPayloadError` means source bytes are
+malformed, noncanonical, incomplete, or structurally invalid.
+`ProjectionIdentityError` means otherwise structured record, payload, or output
+identities disagree or duplicate. `ProjectionContractError` is reserved for the
+fixed framework's declared source/configuration/output contract violations.
+`MongoExtractionProjectionMaterializationError` begins only after successful
+projection and reports BSON, size, identity-conflict, or database-write failures.
+
+The existing inventory reader still observes `_id` and publication digest only.
+The new per-document canonical evidence is necessary input to a later
+full-content inventory repair, but this change alone does not claim projection
+equivalence or close the known inventory-proof finding.
 
 ## Provider actions
 

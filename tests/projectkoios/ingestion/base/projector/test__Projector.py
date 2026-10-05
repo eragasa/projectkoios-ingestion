@@ -10,6 +10,12 @@ from projectkoios.ingestion.base.projector.configuration import (
 )
 from projectkoios.ingestion.base.projector.error import ProjectionContractError
 from projectkoios.ingestion.base.projector.identity import ProjectorIdentity
+from projectkoios.ingestion.base.projector.identity_error import (
+    ProjectionIdentityError,
+)
+from projectkoios.ingestion.base.projector.payload_error import (
+    ProjectionPayloadError,
+)
 from projectkoios.ingestion.base.projector.projector import Projector
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.base.projector.source import (
@@ -147,6 +153,12 @@ def request() -> ProjectionRequest[
     )
 
 
+def test__projector__specialized_errors_retain_contract_boundary() -> None:
+    assert issubclass(ProjectionIdentityError, ProjectionContractError)
+    assert issubclass(ProjectionPayloadError, ProjectionContractError)
+    assert not issubclass(ProjectionPayloadError, ProjectionIdentityError)
+
+
 def test__projector__uses_one_fixed_deterministic_pattern() -> None:
     projector = TextProjector()
     projection_request = request()
@@ -203,6 +215,25 @@ def test__projector__rejects_wrong_projection_contract() -> None:
         ProjectionContractError, match="output contract differs"
     ):
         WrongProjectionProjector().action(request=request())
+
+
+def test__projector__separates_identity_contract_failure() -> None:
+    class WrongIdentityProjector(TextProjector):
+        __slots__ = ()
+        identity = ProjectorIdentity.create(
+            name="wrong-identity-projector",
+            version="1",
+            source_contract=TextEvidence.CONTRACT_NAME,
+            configuration_contract=(TextProjectionConfiguration.CONTRACT_NAME),
+            projection_contract="another-projection",
+            schema_id="text-read-model-v1",
+        )
+
+    with pytest.raises(
+        ProjectionIdentityError,
+        match="identity contracts differ",
+    ):
+        WrongIdentityProjector().action(request=request())
 
 
 def test__projector__rejects_effectful_declaration() -> None:

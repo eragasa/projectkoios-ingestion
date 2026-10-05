@@ -56,6 +56,7 @@ jobs:
           cpn
           scripts
           tests
+          docs/sphinx
 
       - name: Type-check all production source
         run: >-
@@ -67,6 +68,12 @@ jobs:
 
       - name: Run full test suite
         run: .venv/bin/python -m pytest -q
+
+      - name: Build Sphinx API documentation
+        run: >-
+          .venv/bin/sphinx-build -W --keep-going -b html
+          docs/sphinx
+          /tmp/projectkoios-ingestion-sphinx
 
       - name: Build source and wheel distributions
         run: uv build --out-dir dist
@@ -82,8 +89,16 @@ jobs:
               ReferenceClaimCandidate,
               ReferencePageLocatorChecker,
           )
+          from projectkoios.ingestion.base.projector.payload_error import (
+              ProjectionPayloadError,
+          )
+          from projectkoios.ingestion.storage.extraction.projection.projector import (
+              ExtractionProjectionProjector,
+          )
           assert ReferenceClaimCandidate is not None
           assert ReferencePageLocatorChecker is not None
+          assert ProjectionPayloadError is not None
+          assert ExtractionProjectionProjector is not None
           PY
 
       - name: Check patch whitespace

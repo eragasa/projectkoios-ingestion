@@ -12,6 +12,8 @@ Every pull request and `master` push runs:
 - Ruff lint over all production and test Python;
 - mypy over all production Python;
 - the complete pytest suite;
+- the NumPy-docstring Sphinx API build under `docs/sphinx/`, with warnings
+  treated as errors;
 - source and wheel builds;
 - installation and import from the built wheel in a clean environment; and
 - whitespace validation.

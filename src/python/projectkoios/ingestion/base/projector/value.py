@@ -8,7 +8,19 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 
 
 class AbstractProjectionValue(AbstractImmutableDataObject, ABC):
-    """Require provenance, schema, and canonical content identities."""
+    """Define an immutable rebuildable value produced by a projector.
+
+    Attributes
+    ----------
+    projection_id
+        Stable identity of the complete projection value.
+    source_evidence_ids
+        Canonically ordered identities of all contributing source evidence.
+    schema_id
+        Logical schema required by compatible consumers or materializers.
+    canonical_sha256
+        Lowercase SHA-256 digest of canonical projection content.
+    """
 
     __slots__ = ()
 
