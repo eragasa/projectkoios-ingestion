@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 from projectkoios.ingestion import (
-    DeterministicArticleStructureAnalyzer,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
     DeterministicTableCandidateDetector,
@@ -18,6 +17,9 @@ from projectkoios.ingestion import (
     PyMuPdfExtractor,
     SourceDocument,
     StructureAnalysis,
+)
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
+    DeterministicArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,

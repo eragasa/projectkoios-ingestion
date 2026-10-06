@@ -5,8 +5,8 @@ from typing import BinaryIO
 from projectkoios.ingestion.documents import ExtractedTextbook
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.source_extractor import SourceExtractor
-from projectkoios.ingestion.textbooks.base import (
-    TextbookIngester,
+from projectkoios.ingestion.textbooks.base import TextbookIngester
+from projectkoios.ingestion.textbooks.structure.analyzer.base import (
     TextbookStructureAnalyzer,
 )
 

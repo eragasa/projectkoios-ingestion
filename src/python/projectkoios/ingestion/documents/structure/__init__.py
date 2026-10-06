@@ -1,0 +1,1 @@
+"""Document-structure ownership package."""

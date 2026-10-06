@@ -20,14 +20,17 @@ def _repository_root() -> Path:
 
 _SOURCE_ROOT = _repository_root() / "src/python/projectkoios/ingestion"
 _MIGRATED_SCOPES = (
+    _SOURCE_ROOT / "articles",
     _SOURCE_ROOT / "base",
     _SOURCE_ROOT / "storage",
     _SOURCE_ROOT / "integrations/mongodb",
     _SOURCE_ROOT / "integrations/sqlite",
+    _SOURCE_ROOT / "documents/structure",
     _SOURCE_ROOT / "figures/relevance",
     _SOURCE_ROOT / "ocr",
     _SOURCE_ROOT / "reconciliation",
     _SOURCE_ROOT / "tables/structure",
+    _SOURCE_ROOT / "textbooks",
     _SOURCE_ROOT / "transcription",
 )
 

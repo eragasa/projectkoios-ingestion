@@ -1,0 +1,1 @@
+"""Textbook-structure ownership package."""

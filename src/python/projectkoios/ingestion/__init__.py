@@ -1,14 +1,5 @@
-from projectkoios.ingestion.article_structure import (
-    ARTICLE_STRUCTURE_PROCESSOR_VERSION,
-    ArticleStructureConfiguration,
-    ArticleStructureLimitError,
-    DeterministicArticleStructureAnalyzer,
-)
-from projectkoios.ingestion.articles import (
-    ArticleIngester,
-    ArticleStructureAnalyzer,
-    PdfArticleIngester,
-)
+from projectkoios.ingestion.articles.base import ArticleIngester
+from projectkoios.ingestion.articles.pdf import PdfArticleIngester
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cache import (
     EXTRACTION_CACHE_FORMAT_VERSION,
@@ -347,11 +338,8 @@ from projectkoios.ingestion.tesseract import (
     TesseractLanguageBinding,
     TesseractOCRProcessor,
 )
-from projectkoios.ingestion.textbooks import (
-    PdfTextbookIngester,
-    TextbookIngester,
-    TextbookStructureAnalyzer,
-)
+from projectkoios.ingestion.textbooks.base import TextbookIngester
+from projectkoios.ingestion.textbooks.pdf import PdfTextbookIngester
 from projectkoios.ingestion.transcript.evidence.selection import (
     SelectedTranscriptBlockEvidence,
     SelectedTranscriptPageEvidence,
@@ -395,7 +383,6 @@ __all__ = [
     "FIGURE_DETECTOR_VERSION",
     "FIGURE_INSPECTOR_VERSION",
     "STRUCTURE_CONTRACT_VERSION",
-    "ARTICLE_STRUCTURE_PROCESSOR_VERSION",
     "LAYOUT_CONTRACT_VERSION",
     "PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION",
     "REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID",
@@ -432,9 +419,6 @@ __all__ = [
     "AbstractTranscriptBlock",
     "AbstractTranscriptPage",
     "ArticleIngester",
-    "ArticleStructureAnalyzer",
-    "ArticleStructureConfiguration",
-    "ArticleStructureLimitError",
     "ChunkIndexWriter",
     "CleanTranscript",
     "CleanTranscriptBlock",
@@ -464,7 +448,6 @@ __all__ = [
     "DehyphenationOutcome",
     "DeterministicCleanTranscriptProjector",
     "DeterministicLayoutProcessor",
-    "DeterministicArticleStructureAnalyzer",
     "DeterministicTableCandidateDetector",
     "DeterministicEquationAssembler",
     "DeterministicEquationCandidateDetector",
@@ -641,7 +624,6 @@ __all__ = [
     "StructureKind",
     "StructureNode",
     "TextbookIngester",
-    "TextbookStructureAnalyzer",
     "TranscriptBatchError",
     "TranscriptBatchItem",
     "TranscriptBatchPlan",

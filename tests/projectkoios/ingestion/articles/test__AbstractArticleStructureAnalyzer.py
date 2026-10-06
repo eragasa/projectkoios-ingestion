@@ -3,13 +3,19 @@
 import inspect
 
 import pytest
-from projectkoios.ingestion import (
+from projectkoios.ingestion.articles.structure.analyzer.base import (
     ArticleStructureAnalyzer,
+)
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
     DeterministicArticleStructureAnalyzer,
+)
+from projectkoios.ingestion.documents.structure.analyzer import (
+    DocumentStructureAnalyzer,
 )
 
 
 def test__article_structure_analyzer__is_abstract() -> None:
+    assert issubclass(ArticleStructureAnalyzer, DocumentStructureAnalyzer)
     assert inspect.isabstract(ArticleStructureAnalyzer)
     with pytest.raises(TypeError):
         ArticleStructureAnalyzer()

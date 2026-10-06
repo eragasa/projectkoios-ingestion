@@ -3,7 +3,6 @@ from typing import BinaryIO
 
 import pytest
 from projectkoios.ingestion import (
-    ArticleStructureAnalyzer,
     ExtractedBlock,
     ExtractedDocument,
     ExtractedPage,
@@ -18,6 +17,11 @@ from projectkoios.ingestion import (
     StructureAnalysis,
     StructureKind,
     StructureNode,
+)
+from projectkoios.ingestion.articles.structure.analyzer.base import (
+    ArticleStructureAnalyzer,
+)
+from projectkoios.ingestion.textbooks.structure.analyzer.base import (
     TextbookStructureAnalyzer,
 )
 
@@ -93,24 +97,33 @@ class FakeExtractor(SourceExtractor):
         return make_extraction(source)
 
 
-class ChapterAnalyzer(ArticleStructureAnalyzer, TextbookStructureAnalyzer):
+def _chapter_analysis(document: ExtractedDocument) -> StructureAnalysis:
+    span = document.pages[0].blocks[0].source_spans[0]
+    chapter = StructureNode.create(
+        kind=StructureKind.CHAPTER,
+        source_spans=(span,),
+        evidence_type="numbered_heading",
+        confidence=0.95,
+        label="1",
+        title="Introduction",
+    )
+    return StructureAnalysis(nodes=(chapter,))
+
+
+class ArticleChapterAnalyzer(ArticleStructureAnalyzer):
     def analyze(self, document: ExtractedDocument) -> StructureAnalysis:
-        span = document.pages[0].blocks[0].source_spans[0]
-        chapter = StructureNode.create(
-            kind=StructureKind.CHAPTER,
-            source_spans=(span,),
-            evidence_type="numbered_heading",
-            confidence=0.95,
-            label="1",
-            title="Introduction",
-        )
-        return StructureAnalysis(nodes=(chapter,))
+        return _chapter_analysis(document)
+
+
+class TextbookChapterAnalyzer(TextbookStructureAnalyzer):
+    def analyze(self, document: ExtractedDocument) -> StructureAnalysis:
+        return _chapter_analysis(document)
 
 
 def test__pdf_article_ingester__returns_article() -> None:
     source = make_source(source_id="article:fixture")
     extractor = FakeExtractor()
-    ingester = PdfArticleIngester(extractor, ChapterAnalyzer())
+    ingester = PdfArticleIngester(extractor, ArticleChapterAnalyzer())
 
     article = ingester.ingest(source, BytesIO(PDF_BYTES))
 
@@ -122,7 +135,7 @@ def test__pdf_article_ingester__returns_article() -> None:
 def test__pdf_textbook_ingester__returns_structured_textbook() -> None:
     source = make_source(source_id="textbook:fixture")
     extractor = FakeExtractor()
-    ingester = PdfTextbookIngester(extractor, ChapterAnalyzer())
+    ingester = PdfTextbookIngester(extractor, TextbookChapterAnalyzer())
 
     textbook = ingester.ingest(source, BytesIO(PDF_BYTES))
 
@@ -134,7 +147,7 @@ def test__pdf_textbook_ingester__returns_structured_textbook() -> None:
 def test__pdf_ingester__rejects_non_pdf_before_extraction() -> None:
     source = make_source(media_type="text/plain")
     extractor = FakeExtractor()
-    ingester = PdfTextbookIngester(extractor, ChapterAnalyzer())
+    ingester = PdfTextbookIngester(extractor, TextbookChapterAnalyzer())
 
     with pytest.raises(ValueError, match="application/pdf"):
         ingester.ingest(source, BytesIO(PDF_BYTES))
@@ -175,8 +188,8 @@ def test__specialized_document__rejects_structure_from_another_blob() -> None:
         locator="memory://other.pdf",
     )
     other_document = make_extraction(other_source).document
-    bad_structure = ChapterAnalyzer().analyze(other_document)
-    ingester = PdfTextbookIngester(FakeExtractor(), ChapterAnalyzer())
+    bad_structure = TextbookChapterAnalyzer().analyze(other_document)
+    ingester = PdfTextbookIngester(FakeExtractor(), TextbookChapterAnalyzer())
 
     textbook = ingester.ingest(source, BytesIO(PDF_BYTES))
 

@@ -10,7 +10,6 @@ from projectkoios.ingestion import (
     CleanTranscriptExclusion,
     CleanTranscriptExclusionReason,
     CleanTranscriptPage,
-    DeterministicArticleStructureAnalyzer,
     DeterministicCleanTranscriptProjector,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
@@ -20,7 +19,10 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion import (
     DerivationAuditValidator as PublicDerivationAuditValidator,
 )
-from projectkoios.ingestion.article_structure import (
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
+    DeterministicArticleStructureAnalyzer,
+)
+from projectkoios.ingestion.articles.structure.constants import (
     ARTICLE_STRUCTURE_PROCESSOR_VERSION,
 )
 from projectkoios.ingestion.clean_transcript import (

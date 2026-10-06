@@ -21,7 +21,6 @@ from projectkoios.ingestion import (
     DerivationAuditInput,
     DerivationAuditStatus,
     DerivationAuditValidator,
-    DeterministicArticleStructureAnalyzer,
     DeterministicCleanTranscriptProjector,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
@@ -32,6 +31,9 @@ from projectkoios.ingestion import (
     PublisherFrontMatterKind,
     PyMuPdfExtractor,
     SourceDocument,
+)
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
+    DeterministicArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,

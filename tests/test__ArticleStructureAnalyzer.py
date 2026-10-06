@@ -6,9 +6,6 @@ from pathlib import Path
 
 import pytest
 from projectkoios.ingestion import (
-    ArticleStructureConfiguration,
-    ArticleStructureLimitError,
-    DeterministicArticleStructureAnalyzer,
     DeterministicLayoutProcessor,
     ExtractedBlock,
     ExtractedDocument,
@@ -19,6 +16,15 @@ from projectkoios.ingestion import (
     StructureEvidenceStatus,
     StructureKind,
     TableOfContentsEntry,
+)
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
+    DeterministicArticleStructureAnalyzer,
+)
+from projectkoios.ingestion.articles.structure.configuration import (
+    ArticleStructureConfiguration,
+)
+from projectkoios.ingestion.articles.structure.limits.error import (
+    ArticleStructureLimitError,
 )
 
 

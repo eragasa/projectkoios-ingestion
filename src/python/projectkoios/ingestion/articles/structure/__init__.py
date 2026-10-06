@@ -1,0 +1,1 @@
+"""Article-structure ownership package."""
