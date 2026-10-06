@@ -9,6 +9,7 @@ import pytest
 from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
+    DeterministicLayoutProcessor,
     DeterministicTableCandidateDetector,
     EquationDetectionResult,
     ExtractedBlock,
@@ -18,8 +19,11 @@ from projectkoios.ingestion import (
     SourceDocument,
     StructureAnalysis,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
@@ -87,7 +91,12 @@ def _pipeline(fixture_name: str):
         locator=f"memory://{fixture_name}.pdf",
     )
     document = PyMuPdfExtractor().extract(source, BytesIO(payload)).document
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    layouts = DeterministicLayoutProcessor().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     equations = DeterministicEquationCandidateDetector(
         region_renderer=PyMuPdfRegionRenderer()
     ).detect(document, BytesIO(payload))

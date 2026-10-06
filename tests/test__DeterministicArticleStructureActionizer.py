@@ -17,14 +17,17 @@ from projectkoios.ingestion import (
     StructureKind,
     TableOfContentsEntry,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
 )
 from projectkoios.ingestion.articles.structure.configuration import (
     ArticleStructureConfiguration,
 )
 from projectkoios.ingestion.articles.structure.limits.error import (
     ArticleStructureLimitError,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 
 
@@ -97,9 +100,36 @@ def _document(
 
 def _analyze(document: ExtractedDocument):
     layouts = DeterministicLayoutProcessor().analyze(document)
-    return DeterministicArticleStructureAnalyzer().analyze_with_layout(
-        document, layouts
+    return DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document,
+            layouts=layouts,
+        )
     )
+
+
+def test__article_structure_request__is_identified_and_immutable() -> None:
+    document = _document(("A Deterministic Article", "1 Introduction"))
+    layouts = DeterministicLayoutProcessor().analyze(document)
+
+    first = ArticleStructureRequest.create(
+        document=document,
+        layouts=layouts,
+    )
+    second = ArticleStructureRequest.create(
+        document=document,
+        layouts=layouts,
+    )
+
+    assert first == second
+    assert first.request_id == second.request_id
+    assert first.configuration.configuration_id == (
+        first.configuration.configuration_digest
+    )
+    with pytest.raises(FrozenInstanceError):
+        first.request_id = "changed"  # type: ignore[misc]
+    with pytest.raises(ValueError, match="inconsistent"):
+        replace(first, request_id="changed")
 
 
 def test__article_structure__detects_bounded_article_hierarchy() -> None:
@@ -228,19 +258,26 @@ def test__article_structure__rejects_stale_layout_evidence() -> None:
     stale_layouts = DeterministicLayoutProcessor().analyze(other)
 
     with pytest.raises(ValueError, match="does not match"):
-        DeterministicArticleStructureAnalyzer().analyze_with_layout(
-            document, stale_layouts
+        DeterministicArticleStructureActionizer().action(
+            request=ArticleStructureRequest.create(
+                document=document,
+                layouts=stale_layouts,
+            )
         )
 
 
 def test__article_structure__enforces_pre_analysis_bounds() -> None:
     document = _document(("First", "Second"), metadata_title=None)
-    analyzer = DeterministicArticleStructureAnalyzer(
-        ArticleStructureConfiguration(max_text_blocks=1)
-    )
+    layouts = DeterministicLayoutProcessor().analyze(document)
 
     with pytest.raises(ArticleStructureLimitError, match="text blocks"):
-        analyzer.analyze(document)
+        DeterministicArticleStructureActionizer().action(
+            request=ArticleStructureRequest.create(
+                document=document,
+                layouts=layouts,
+                configuration=ArticleStructureConfiguration(max_text_blocks=1),
+            )
+        )
 
 
 def test__article_structure__is_deterministic_and_immutable() -> None:
@@ -271,7 +308,8 @@ def test__article_structure__is_deterministic_and_immutable() -> None:
 def test__article_structure__analyzes_pdf_fixture_matrix() -> None:
     pytest.importorskip("fitz")
     fixture_root = Path(__file__).parent / "fixtures" / "pdf"
-    analyzer = DeterministicArticleStructureAnalyzer()
+    actionizer = DeterministicArticleStructureActionizer()
+    layout_processor = DeterministicLayoutProcessor()
     extractor = PyMuPdfExtractor()
 
     for path in sorted(fixture_root.glob("*.pdf")):
@@ -283,14 +321,19 @@ def test__article_structure__analyzes_pdf_fixture_matrix() -> None:
             locator=str(path),
         )
         document = extractor.extract(source, BytesIO(payload)).document
-        result = analyzer.analyze(document)
+        layouts = layout_processor.analyze(document)
+        result = actionizer.action(
+            request=ArticleStructureRequest.create(
+                document=document,
+                layouts=layouts,
+            )
+        )
 
         assert result.analysis_id is not None
         assert result.source_id == source.source_id
         assert result.source_blob_id == source.blob_id
         assert result.layout_result_ids == tuple(
-            layout.result_id
-            for layout in analyzer.layout_processor.analyze(document)
+            layout.result_id for layout in layouts
         )
 
 

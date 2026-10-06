@@ -19,11 +19,14 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion import (
     DerivationAuditValidator as PublicDerivationAuditValidator,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
 )
 from projectkoios.ingestion.articles.structure.constants import (
     ARTICLE_STRUCTURE_PROCESSOR_VERSION,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.clean_transcript import (
     CleanTranscript,
@@ -207,7 +210,11 @@ def clean_audit_fixture() -> _CleanAuditFixture:
     extraction = PyMuPdfExtractor().extract(source, BytesIO(content))
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     equations = DeterministicEquationCandidateDetector(
         region_renderer=PyMuPdfRegionRenderer()
     ).detect_with_layout(document, BytesIO(content), layouts)
@@ -587,7 +594,11 @@ def test__derivation_audit__accepts_complete_structured_pipeline(
     extraction = PyMuPdfExtractor().extract(source, BytesIO(content))
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     equations = DeterministicEquationCandidateDetector(
         region_renderer=PyMuPdfRegionRenderer()
     ).detect_with_layout(document, BytesIO(content), layouts)

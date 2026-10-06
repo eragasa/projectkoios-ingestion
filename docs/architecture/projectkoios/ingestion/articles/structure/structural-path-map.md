@@ -1,7 +1,7 @@
 # Article-structure structural path map
 
 This is the reviewed source inventory for the article-structure hierarchy and
-shared document-structure analyzer migration. Paths are relative to
+action-contract migration. Paths are relative to
 `src/python/projectkoios/ingestion`. Removed paths are not retained as aliases
 or re-export facades.
 
@@ -11,7 +11,7 @@ or re-export facades.
 | `article_structure.py`: hard ceilings | `articles/structure/limits/definition.py` |
 | `article_structure.py`: `ArticleStructureLimitError` | `articles/structure/limits/error.py` |
 | `article_structure.py`: `ArticleStructureConfiguration` | `articles/structure/configuration.py` |
-| `article_structure.py`: `DeterministicArticleStructureAnalyzer` | `articles/structure/analyzer/deterministic.py` |
+| `article_structure.py`: deterministic processor | `articles/structure/actionizer.py` |
 | `article_structure.py`: `_TextEvidence` and ordered text evidence | `articles/structure/evidence/text.py` |
 | `article_structure.py`: ordered unique source spans | `articles/structure/evidence/span.py` |
 | `article_structure.py`: `_Proposal` and `_WarningProposal` | `articles/structure/proposal/model.py` |
@@ -25,33 +25,34 @@ or re-export facades.
 | `article_structure.py`: input relation validation | `articles/structure/validation/input.py` |
 | `article_structure.py`: structure-node and warning derivation | `articles/structure/result/derivation.py` |
 | `article_structure.py`: text normalization | `articles/structure/normalization/text.py` |
-| `articles/base.py`: `ArticleStructureAnalyzer` | `articles/structure/analyzer/base.py` |
-| `textbooks/base.py`: `TextbookStructureAnalyzer` | `textbooks/structure/analyzer/base.py` |
+| `articles/structure/analyzer/base.py`: article analyzer ABC | removed; request/actionizer/result roles use `ingestion/base` |
+| `articles/structure/analyzer/deterministic.py`: deterministic analyzer | `articles/structure/actionizer.py` |
+| new complete immutable action request | `articles/structure/request.py` |
 
-`DocumentStructureAnalyzer` is a new common nominal boundary defined at
-`documents/structure/analyzer.py`. The article and textbook boundaries inherit
-from it. Their ingester contracts remain domain-specific, while shared
-implementations no longer require an article/textbook multiple-inheritance
-diamond.
+`TextbookStructureAnalyzer` remains a separate, pre-existing textbook boundary;
+it is not inherited by or used as the article action contract.
 
 ## Semantic review
 
-- Articles own the deterministic article algorithm and its configuration,
-  evidence, heading, proposal, validation, and result-derivation concerns.
-- The common analyzer contract belongs to `documents/structure/` because its
-  signature consumes `ExtractedDocument` and returns `StructureAnalysis`; no
-  unsupported `Publication` ontology is introduced.
-- Article and textbook analyzers remain nominal domain refinements of that one
-  contract. A concrete analyzer chooses one domain boundary rather than
-  inheriting both refinements.
+- Articles own the deterministic algorithm and its configuration, request,
+  evidence, heading, proposal, validation, actionizer, and result-derivation
+  concerns.
+- `ArticleStructureRequest` and `ArticleStructureConfiguration` inherit the
+  appropriate Ingestion Base immutable/configurable roles.
+- `DeterministicArticleStructureActionizer` inherits the concrete configurable
+  Ingestion Base action behavior and exposes only `action(request=...)`.
+- `StructureAnalysis` implements the Ingestion Base immutable result role while
+  preserving its established fields and serialized bytes.
+- The removed analyzer ABC is not replaced with a protocol or compatibility
+  facade. Specialized implementations may inherit the concrete deterministic
+  actionizer.
+- Exact layout evidence enters the request consumed by the structure action; no
+  actionizer-held configuration or hidden layout-production path remains.
 - `result/derivation.py` names a pure conversion into structure nodes and
   warnings. It is not an effectful Materializer and performs no publication.
 - Hard ceilings and their failure use the plural `limits/` owner.
 - Package initializers in migrated scopes are docstring-only ownership markers.
-  Consumers import definitions from direct leaves; ingestion, article, and
-  textbook package roots do not expose compatibility aliases.
+  Consumers import definitions from direct leaves.
 - Processor versions, configuration identity, evidence ordering, proposal
   policy, node and warning identities, analysis identity, field order,
-  serialized bytes, and non-acceptance semantics are unchanged.
-- Clean-transcript, transcript-batch, Workflow, Pipeline, and operational
-  behavior are outside this change.
+  serialized bytes, and non-acceptance semantics remain unchanged.

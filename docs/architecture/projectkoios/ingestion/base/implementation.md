@@ -12,6 +12,11 @@ the package initializer is only an ownership marker. The classes are thin ABCs
 with no storage or operational behavior. Concrete implementations remain
 responsible for immutable representation and invariant validation.
 
+`base/actionizer/result.py` defines `AbstractDataObjectActionResult`, the
+Ingestion-owned immutable result role for synchronous actionizers. Concrete
+results inherit this owner rather than combining core result and Ingestion
+immutability bases themselves.
+
 ## Structural package inventory
 
 Compound ownership is represented by package structure, not flattened module

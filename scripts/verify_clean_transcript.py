@@ -23,7 +23,12 @@ from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 _MAX_FIXTURE_BYTES = 16 * 1024 * 1024
 _VERIFIER_INPUTS = (
     "scripts/verify_clean_transcript.py",
+    "src/python/projectkoios/ingestion/articles/structure/actionizer.py",
+    "src/python/projectkoios/ingestion/articles/structure/configuration.py",
+    "src/python/projectkoios/ingestion/articles/structure/request.py",
+    "src/python/projectkoios/ingestion/base/actionizer/result.py",
     "src/python/projectkoios/ingestion/clean_transcript.py",
+    "src/python/projectkoios/ingestion/structure.py",
     "src/python/projectkoios/ingestion/transcript_batch.py",
     "src/python/projectkoios/ingestion/provenance/audit.py",
     "src/python/projectkoios/ingestion/provenance/domains.py",
@@ -94,8 +99,11 @@ def _require_fixture(root: Path, value: Path) -> Path:
 
 def _verify(root: Path, fixture: Path) -> dict[str, object]:
     import projectkoios.ingestion.clean_transcript as clean_module
-    from projectkoios.ingestion.articles.structure.analyzer import (
-        deterministic as article_structure,
+    from projectkoios.ingestion.articles.structure.actionizer import (
+        DeterministicArticleStructureActionizer,
+    )
+    from projectkoios.ingestion.articles.structure.request import (
+        ArticleStructureRequest,
     )
     from projectkoios.ingestion.clean_transcript import (
         CleanTranscriptRequest,
@@ -148,8 +156,12 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     extraction = PyMuPdfExtractor().extract(source, BytesIO(payload))
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
-    analyzer = article_structure.DeterministicArticleStructureAnalyzer()
-    structure = analyzer.analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document,
+            layouts=layouts,
+        )
+    )
     renderer = PyMuPdfRegionRenderer()
     equations = DeterministicEquationCandidateDetector(
         region_renderer=renderer

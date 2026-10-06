@@ -33,6 +33,9 @@ review the owned type or operation and answer these questions:
 - Is a broad or catch-all module hiding independently owned concerns?
 - Does unstable API compatibility introduce an alias, re-export facade, legacy
   decoder, stale field, awkward class name, or stale stable-ID namespace?
+- Does each synchronous domain operation expose one complete immutable request,
+  one Ingestion Base actionizer, and one immutable result rather than an
+  analyzer/processor method with positional inputs or hidden configuration?
 - Does a DataObject contract require multiple inheritance or create a diamond
   merely to classify one request or result?
 - Is every immutable concrete record actually implemented as a frozen

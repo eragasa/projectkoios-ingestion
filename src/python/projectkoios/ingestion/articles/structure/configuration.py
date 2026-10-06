@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import ClassVar
 
 from projectkoios.ingestion.articles.structure.limits.definition import (
     _MAX_ABSTRACT_BLOCKS,
@@ -19,11 +20,19 @@ from projectkoios.ingestion.articles.structure.limits.definition import (
 from projectkoios.ingestion.articles.structure.limits.error import (
     ArticleStructureLimitError,
 )
+from projectkoios.ingestion.base.actionizer.configuration import (
+    AbstractActionConfiguration,
+)
 from projectkoios.ingestion.identity import stable_id
 
 
-@dataclass(frozen=True)
-class ArticleStructureConfiguration:
+@dataclass(frozen=True, slots=True)
+class ArticleStructureConfiguration(AbstractActionConfiguration):
+    """Complete deterministic bounds for article-structure analysis."""
+
+    CONTRACT_NAME: ClassVar[str] = "article-structure-configuration"
+    CONTRACT_VERSION: ClassVar[str] = "1.0"
+
     max_pages: int = _MAX_PAGES
     max_input_blocks: int = _MAX_INPUT_BLOCKS
     max_text_blocks: int = _MAX_TEXT_BLOCKS
@@ -34,6 +43,7 @@ class ArticleStructureConfiguration:
     max_abstract_blocks: int = _MAX_ABSTRACT_BLOCKS
     max_bibliography_entries: int = _MAX_BIBLIOGRAPHY_ENTRIES
     fallback_title_top_ratio: float = 0.3
+    configuration_id: str = field(init=False, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         for name, maximum in (
@@ -68,11 +78,12 @@ class ArticleStructureConfiguration:
                 "no greater than one"
             )
         object.__setattr__(self, "fallback_title_top_ratio", normalized)
+        object.__setattr__(self, "configuration_id", self.configuration_digest)
 
     @property
     def configuration_digest(self) -> str:
         return stable_id(
-            "article-structure-configuration",
+            self.CONTRACT_NAME,
             self.max_pages,
             self.max_input_blocks,
             self.max_text_blocks,

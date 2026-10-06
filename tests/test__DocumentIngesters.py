@@ -18,8 +18,11 @@ from projectkoios.ingestion import (
     StructureKind,
     StructureNode,
 )
-from projectkoios.ingestion.articles.structure.analyzer.base import (
-    ArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.textbooks.structure.analyzer.base import (
     TextbookStructureAnalyzer,
@@ -61,6 +64,7 @@ def make_extraction(source: SourceDocument) -> ExtractionResult:
         width=612.0,
         height=792.0,
         blocks=(block,),
+        coordinate_system="pymupdf_unrotated_cropbox_points_top_left",
     )
     document = ExtractedDocument.create(
         source=source,
@@ -110,9 +114,9 @@ def _chapter_analysis(document: ExtractedDocument) -> StructureAnalysis:
     return StructureAnalysis(nodes=(chapter,))
 
 
-class ArticleChapterAnalyzer(ArticleStructureAnalyzer):
-    def analyze(self, document: ExtractedDocument) -> StructureAnalysis:
-        return _chapter_analysis(document)
+class ArticleChapterActionizer(DeterministicArticleStructureActionizer):
+    def action(self, *, request: ArticleStructureRequest) -> StructureAnalysis:
+        return _chapter_analysis(request.document)
 
 
 class TextbookChapterAnalyzer(TextbookStructureAnalyzer):
@@ -123,7 +127,7 @@ class TextbookChapterAnalyzer(TextbookStructureAnalyzer):
 def test__pdf_article_ingester__returns_article() -> None:
     source = make_source(source_id="article:fixture")
     extractor = FakeExtractor()
-    ingester = PdfArticleIngester(extractor, ArticleChapterAnalyzer())
+    ingester = PdfArticleIngester(extractor, ArticleChapterActionizer())
 
     article = ingester.ingest(source, BytesIO(PDF_BYTES))
 

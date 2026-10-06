@@ -88,7 +88,7 @@ adapter with exact traineddata identities. The separate
 `DeterministicOCRReconciler` consumes one exact OCR selection plus its verified
 native page/layout evidence and proposes duplicate, disagreement, native-only,
 and OCR-only relationships without replacing either evidence stream. The
-`DeterministicArticleStructureAnalyzer` now proposes source-backed article front
+`DeterministicArticleStructureActionizer` now proposes source-backed article front
 matter, headings, hierarchy, bibliography observations, and appendices from
 exact page-layout evidence. The bounded `DeterministicEquationCandidateDetector`
 proposes display and inline equation-shaped regions while retaining exact text,
@@ -116,7 +116,9 @@ SourceDocument
     -> SourceExtractor
     -> ExtractedDocument
     -> optional PageLayoutProcessor
-    -> StructuralAnalyzer
+    -> StructureRequest
+    -> StructureActionizer
+    -> StructureAnalysis
     -> StructuredDocument
     -> optional ChunkProducer
     -> IngestionResult
@@ -186,8 +188,9 @@ contracts in hash-sharded version directories beneath an injected root.
 An application may request enrichment of a selected page range or structural
 unit. JIT work can include OCR, page-region rendering, expensive structural
 analysis, or semantic cleanup through injected processors. Deterministic
-article structure can also be derived for an extracted document through the
-injected `ArticleStructureAnalyzer` boundary. The implemented
+article structure is derived through an immutable `ArticleStructureRequest`,
+the concrete `DeterministicArticleStructureActionizer`, and a frozen
+`StructureAnalysis` result. The implemented
 `PageRegionRenderer` boundary accepts only an explicit, non-empty ordered set
 of page or bounding-box selections; it has no automatic whole-document path.
 Its PyMuPDF adapter returns PNG bytes without publishing files and checks
@@ -336,7 +339,7 @@ Structure detection uses available evidence in descending order of reliability:
 3. deterministic page-layout order and source geometry;
 4. bounded, explicitly warned fallback.
 
-The implemented article analyzer requires one exact layout result per page,
+The implemented article-structure request requires one exact layout result per page,
 retains exact source spans and block IDs, records separate heading and reading
 order confidence, and emits a reciprocal acyclic hierarchy. It groups explicit
 front matter, recognizes conservative article section names, and records
