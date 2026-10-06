@@ -152,7 +152,7 @@ jobs:
               "projectkoios.ingestion.storage.extraction.artifact_validation",
               "projectkoios.ingestion.storage.extraction.bounded_freeze",
               "projectkoios.ingestion.storage.extraction.journal_publication",
-              "projectkoios.ingestion.storage.extraction.projection.pipeline",
+              "projectkoios.ingestion.storage.extraction.projection_pipeline",
               "projectkoios.ingestion.storage.extraction.projection.index_readiness",
               "projectkoios.ingestion.storage.extraction.selected_recovery",
           )
