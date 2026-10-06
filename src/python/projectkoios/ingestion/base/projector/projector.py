@@ -14,9 +14,11 @@ from projectkoios.ingestion.base.projector.configuration import (
 from projectkoios.ingestion.base.projector.error import (
     ProjectionContractError,
 )
-from projectkoios.ingestion.base.projector.identity import ProjectorIdentity
-from projectkoios.ingestion.base.projector.identity_error import (
+from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
+)
+from projectkoios.ingestion.base.projector.identity.model import (
+    ProjectorIdentity,
 )
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.base.projector.result import ProjectionResult

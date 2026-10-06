@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from projectkoios.ingestion.base.inventory.identity import InventoryIdentity
-from projectkoios.ingestion.base.inventory.identity_error import (
+from projectkoios.ingestion.base.inventory.identity.error import (
     InventoryIdentityError,
+)
+from projectkoios.ingestion.base.inventory.identity.model import (
+    InventoryIdentity,
 )
 from projectkoios.ingestion.base.projector.inventory.inventory import (
     ProjectorInventory,

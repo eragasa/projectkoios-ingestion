@@ -17,11 +17,11 @@ from projectkoios.ingestion.base.materializer.error import (
 from projectkoios.ingestion.base.materializer.evidence import (
     AbstractMaterializationEvidence,
 )
-from projectkoios.ingestion.base.materializer.identity import (
-    MaterializerIdentity,
-)
-from projectkoios.ingestion.base.materializer.identity_error import (
+from projectkoios.ingestion.base.materializer.identity.error import (
     MaterializationIdentityError,
+)
+from projectkoios.ingestion.base.materializer.identity.model import (
+    MaterializerIdentity,
 )
 from projectkoios.ingestion.base.materializer.request import (
     MaterializationRequest,

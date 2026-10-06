@@ -18,4 +18,15 @@ projectkoios.base.DataObjectActionizer
     ├── fixed final action(ProjectionRequest)
     ├── stateless pure project(Source[], Configuration)
     └── ProjectionResult
+
+base/
+├── data/object.py
+├── projector/
+│   ├── identity/{model.py,error.py}
+│   └── payload/error.py
+├── materializer/identity/{model.py,error.py}
+└── inventory/identity/{model.py,error.py}
 ```
+
+Every package initializer in this inventory is an ownership marker. Public use
+imports the defining leaf; no initializer re-exports moved names.

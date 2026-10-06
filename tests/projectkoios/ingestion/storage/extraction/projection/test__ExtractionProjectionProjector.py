@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 
 import pytest
-from projectkoios.ingestion.base.projector.identity_error import (
+from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
 )
-from projectkoios.ingestion.base.projector.payload_error import (
+from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
 from projectkoios.ingestion.base.projector.request import ProjectionRequest

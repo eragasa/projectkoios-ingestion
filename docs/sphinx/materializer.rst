@@ -34,7 +34,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.materializer.evidence
    :members:
 
-.. automodule:: projectkoios.ingestion.base.materializer.identity
+.. automodule:: projectkoios.ingestion.base.materializer.identity.model
    :members:
 
 .. automodule:: projectkoios.ingestion.base.materializer.request
@@ -49,5 +49,5 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.materializer.error
    :members:
 
-.. automodule:: projectkoios.ingestion.base.materializer.identity_error
+.. automodule:: projectkoios.ingestion.base.materializer.identity.error
    :members:

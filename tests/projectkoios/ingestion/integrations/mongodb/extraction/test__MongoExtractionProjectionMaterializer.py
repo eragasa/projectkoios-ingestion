@@ -5,7 +5,7 @@ from typing import Any, cast
 
 import mongomock
 import pytest
-from projectkoios.ingestion.base.materializer.identity_error import (
+from projectkoios.ingestion.base.materializer.identity.error import (
     MaterializationIdentityError,
 )
 from projectkoios.ingestion.base.materializer.request import (

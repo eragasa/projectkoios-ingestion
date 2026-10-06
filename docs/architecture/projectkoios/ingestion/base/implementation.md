@@ -12,6 +12,27 @@ the package initializer is only an ownership marker. The classes are thin ABCs
 with no storage or operational behavior. Concrete implementations remain
 responsible for immutable representation and invariant validation.
 
+## Structural package inventory
+
+Compound ownership is represented by package structure, not flattened module
+names. Package initializers are docstring-only ownership markers; callers import
+the defining leaf directly. This slice applies the following exact path map:
+
+| Removed module | Direct owner module |
+|---|---|
+| `base/data_object.py` | `base/data/object.py` |
+| `base/projector/identity.py` | `base/projector/identity/model.py` |
+| `base/projector/identity_error.py` | `base/projector/identity/error.py` |
+| `base/projector/payload_error.py` | `base/projector/payload/error.py` |
+| `base/materializer/identity.py` | `base/materializer/identity/model.py` |
+| `base/materializer/identity_error.py` | `base/materializer/identity/error.py` |
+| `base/inventory/identity.py` | `base/inventory/identity/model.py` |
+| `base/inventory/identity_error.py` | `base/inventory/identity/error.py` |
+
+The former modules are removed rather than retained as compatibility facades.
+The moves do not change class definitions, identities, serialization, or error
+inheritance.
+
 ## Projector pilot
 
 `projectkoios.ingestion.base.projector` defines one fixed projector pattern. A

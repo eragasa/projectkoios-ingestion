@@ -45,7 +45,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.projector.value
    :members:
 
-.. automodule:: projectkoios.ingestion.base.projector.identity
+.. automodule:: projectkoios.ingestion.base.projector.identity.model
    :members:
 
 .. automodule:: projectkoios.ingestion.base.projector.request
@@ -60,8 +60,8 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.projector.error
    :members:
 
-.. automodule:: projectkoios.ingestion.base.projector.payload_error
+.. automodule:: projectkoios.ingestion.base.projector.payload.error
    :members:
 
-.. automodule:: projectkoios.ingestion.base.projector.identity_error
+.. automodule:: projectkoios.ingestion.base.projector.identity.error
    :members:

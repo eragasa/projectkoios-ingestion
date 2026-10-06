@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from projectkoios.base import DataObjectActionizer
-from projectkoios.ingestion.base.inventory.identity_error import (
+from projectkoios.ingestion.base.inventory.identity.error import (
     InventoryIdentityError,
 )
 from projectkoios.ingestion.base.inventory.request import InventoryRequest

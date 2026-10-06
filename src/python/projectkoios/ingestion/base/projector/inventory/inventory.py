@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from projectkoios.ingestion.base.inventory.identity_error import (
+from projectkoios.ingestion.base.inventory.identity.error import (
     InventoryIdentityError,
 )
 from projectkoios.ingestion.base.inventory.inventory import Inventory

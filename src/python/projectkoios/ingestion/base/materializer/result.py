@@ -13,7 +13,7 @@ from projectkoios.ingestion.base.materializer.configuration import (
 from projectkoios.ingestion.base.materializer.evidence import (
     AbstractMaterializationEvidence,
 )
-from projectkoios.ingestion.base.materializer.identity import (
+from projectkoios.ingestion.base.materializer.identity.model import (
     MaterializerIdentity,
 )
 from projectkoios.ingestion.base.materializer.request import (
