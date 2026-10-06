@@ -9,7 +9,7 @@ from projectkoios.ingestion.models import (
     ExtractedBlock,
     SourceSpan,
 )
-from projectkoios.ingestion.tables.structure.source_record import (
+from projectkoios.ingestion.tables.structure.record.source import (
     TableSourceRecord,
 )
 
@@ -48,7 +48,7 @@ def test__record_derives_frozen_source_geometry(
     assert (record.center_x, record.center_y) == expected_center
     assert record.order == source_order
     assert TableSourceRecord.__module__ == (
-        "projectkoios.ingestion.tables.structure.source_record"
+        "projectkoios.ingestion.tables.structure.record.source"
     )
     assert issubclass(TableSourceRecord, AbstractImmutableDataObject)
     with pytest.raises(FrozenInstanceError):

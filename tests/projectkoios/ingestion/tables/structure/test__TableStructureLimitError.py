@@ -2,7 +2,7 @@
 
 from builtins import ValueError
 
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
 
@@ -10,6 +10,6 @@ from projectkoios.ingestion.tables.structure.limit_error import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         TableStructureLimitError.__module__
-        == "projectkoios.ingestion.tables.structure.limit_error"
+        == "projectkoios.ingestion.tables.structure.limits.error"
     )
     assert issubclass(TableStructureLimitError, ValueError)

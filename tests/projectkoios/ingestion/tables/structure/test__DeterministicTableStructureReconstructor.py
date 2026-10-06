@@ -23,23 +23,23 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
 )
 from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
-from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
 from projectkoios.ingestion.tables.structure.configuration import (
     TableStructureConfiguration,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
-)
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
+from projectkoios.ingestion.tables.structure.role.cell import TableCellRole
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
+)
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -136,7 +136,7 @@ def test__table_structure__uses_action_family_base_objects() -> None:
 
     assert isinstance(request, DataObjectActionRequest)
     assert actionizer.__class__.__module__ == (
-        "projectkoios.ingestion.tables.structure.reconstructor"
+        "projectkoios.ingestion.tables.structure.reconstructor.deterministic"
     )
     assert isinstance(actionizer, DataObjectActionizer)
     assert isinstance(result, DataObjectActionResult)

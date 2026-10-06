@@ -362,7 +362,7 @@ from projectkoios.ingestion.tables import (
     TableRuleSegment,
     TableTextAssociation,
 )
-from projectkoios.ingestion.tables.structure.reconstruction import (
+from projectkoios.ingestion.tables.structure.reconstructor.base import (
     TableStructureReconstructor,
 )
 from projectkoios.ingestion.tesseract import (

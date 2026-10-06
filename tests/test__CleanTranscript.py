@@ -36,7 +36,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.transcription.composer import (

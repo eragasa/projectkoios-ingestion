@@ -19,7 +19,7 @@ from projectkoios.ingestion.tables.structure.configuration import (
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.validation import (
+from projectkoios.ingestion.tables.structure.validation.structure import (
     TableStructureValidation,
 )
 

@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from projectkoios.ingestion.tables import TableCandidate
-from projectkoios.ingestion.tables.structure.evidence_status import (
+from projectkoios.ingestion.tables.structure.model import TableStructure
+from projectkoios.ingestion.tables.structure.status.evidence import (
     TableStructureEvidenceStatus,
 )
-from projectkoios.ingestion.tables.structure.structure import TableStructure
 from projectkoios.ingestion.transcription.derivation.transcription import (
     TranscriptionDerivation,
 )

@@ -8,7 +8,7 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
-from projectkoios.ingestion.tables.structure.bounds import (
+from projectkoios.ingestion.tables.structure.limits.definition import (
     _MAX_ASSOCIATIONS,
     _MAX_BLOCKS_PER_CELL,
     _MAX_CANDIDATES,
@@ -22,7 +22,7 @@ from projectkoios.ingestion.tables.structure.bounds import (
     _MAX_TEXT_CHARACTERS,
     _MAX_WARNINGS,
 )
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
 

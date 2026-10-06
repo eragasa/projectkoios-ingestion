@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -16,28 +17,29 @@ from projectkoios.ingestion.tables.contracts import (
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
-from projectkoios.ingestion.tables.structure.bounds import _HEADER
 from projectkoios.ingestion.tables.structure.cell import TableCell
-from projectkoios.ingestion.tables.structure.cell_derivation import (
-    TableCellDerivation,
-)
-from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
+from projectkoios.ingestion.tables.structure.derivation.cell import (
+    TableCellDerivation,
+)
+from projectkoios.ingestion.tables.structure.record.source import (
+    TableSourceRecord,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
+from projectkoios.ingestion.tables.structure.role.cell import TableCellRole
 from projectkoios.ingestion.tables.structure.row import TableRow
-from projectkoios.ingestion.tables.structure.source_record import (
-    TableSourceRecord,
-)
-from projectkoios.ingestion.tables.structure.warning_specification import (
+from projectkoios.ingestion.tables.structure.specification.warning import (
     TableStructureWarningSpecification,
 )
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
+)
+
+_HEADER = re.compile(r"\bheader\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)

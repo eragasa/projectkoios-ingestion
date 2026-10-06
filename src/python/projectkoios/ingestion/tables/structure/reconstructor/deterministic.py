@@ -10,10 +10,10 @@ from projectkoios.ingestion.tables.structure.configuration import (
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_RECONSTRUCTOR_VERSION,
 )
-from projectkoios.ingestion.tables.structure.derivation import (
+from projectkoios.ingestion.tables.structure.derivation.structure import (
     TableStructureDerivation,
 )
-from projectkoios.ingestion.tables.structure.reconstruction import (
+from projectkoios.ingestion.tables.structure.reconstructor.base import (
     TableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.request import (

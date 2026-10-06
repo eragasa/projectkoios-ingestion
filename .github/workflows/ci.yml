@@ -161,6 +161,25 @@ jobs:
               "projectkoios.ingestion.reconciliation.segment.native.line",
               "projectkoios.ingestion.reconciliation.validation.request",
               "projectkoios.ingestion.reconciliation.validation.result",
+              "projectkoios.ingestion.tables.structure.derivation.cell",
+              "projectkoios.ingestion.tables.structure.derivation.column",
+              "projectkoios.ingestion.tables.structure.derivation.continuation",
+              "projectkoios.ingestion.tables.structure.derivation.region",
+              "projectkoios.ingestion.tables.structure.derivation.structure",
+              "projectkoios.ingestion.tables.structure.limits.definition",
+              "projectkoios.ingestion.tables.structure.limits.error",
+              "projectkoios.ingestion.tables.structure.model",
+              "projectkoios.ingestion.tables.structure.record.source",
+              "projectkoios.ingestion.tables.structure.reconstructor.base",
+              "projectkoios.ingestion.tables.structure.reconstructor.deterministic",
+              "projectkoios.ingestion.tables.structure.role.cell",
+              "projectkoios.ingestion.tables.structure.specification.warning",
+              "projectkoios.ingestion.tables.structure.status.evidence",
+              "projectkoios.ingestion.tables.structure.validation.cell",
+              "projectkoios.ingestion.tables.structure.validation.column",
+              "projectkoios.ingestion.tables.structure.validation.continuation",
+              "projectkoios.ingestion.tables.structure.validation.row",
+              "projectkoios.ingestion.tables.structure.validation.structure",
           )
           for module_name in required_modules:
               import_module(module_name)
@@ -205,6 +224,22 @@ jobs:
               "projectkoios.ingestion.reconciliation.native_block_evidence",
               "projectkoios.ingestion.reconciliation.native_line_segment",
               "projectkoios.ingestion.reconciliation.stream_choice",
+              "projectkoios.ingestion.tables.structure.bounds",
+              "projectkoios.ingestion.tables.structure.cell_derivation",
+              "projectkoios.ingestion.tables.structure.cell_role",
+              "projectkoios.ingestion.tables.structure.cell_validation",
+              "projectkoios.ingestion.tables.structure.column_derivation",
+              "projectkoios.ingestion.tables.structure.column_validation",
+              "projectkoios.ingestion.tables.structure.continuation_derivation",
+              "projectkoios.ingestion.tables.structure.continuation_validation",
+              "projectkoios.ingestion.tables.structure.evidence_status",
+              "projectkoios.ingestion.tables.structure.limit_error",
+              "projectkoios.ingestion.tables.structure.reconstruction",
+              "projectkoios.ingestion.tables.structure.region_derivation",
+              "projectkoios.ingestion.tables.structure.row_validation",
+              "projectkoios.ingestion.tables.structure.source_record",
+              "projectkoios.ingestion.tables.structure.structure",
+              "projectkoios.ingestion.tables.structure.warning_specification",
           )
           for module_name in removed_modules:
               if find_spec(module_name) is not None:
@@ -212,6 +247,18 @@ jobs:
 
           removed_package_exports = (
               ("projectkoios.ingestion.ocr.result", "OCRResult"),
+              (
+                  "projectkoios.ingestion.tables.structure.derivation",
+                  "TableStructureDerivation",
+              ),
+              (
+                  "projectkoios.ingestion.tables.structure.reconstructor",
+                  "DeterministicTableStructureReconstructor",
+              ),
+              (
+                  "projectkoios.ingestion.tables.structure.validation",
+                  "TableStructureValidation",
+              ),
           )
           for package_name, removed_name in removed_package_exports:
               if removed_name in vars(import_module(package_name)):

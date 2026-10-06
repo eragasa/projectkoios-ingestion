@@ -1,6 +1,4 @@
-"""table-structure hard ceilings."""
-
-import re
+"""Table-structure hard ceilings."""
 
 _MAX_CANDIDATES = 256
 _MAX_REGIONS = 16_384
@@ -16,4 +14,3 @@ _MAX_TEXT_CHARACTERS = 5_000_000
 _MAX_RESULT_BYTES = 128_000_000
 _MAX_IDENTITY_CHARACTERS = 4_096
 _MAX_METADATA_CHARACTERS = 100_000
-_HEADER = re.compile(r"\bheader\b", re.IGNORECASE)

@@ -77,7 +77,7 @@ from projectkoios.ingestion.reconciliation.request import (
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.structure import StructureAnalysis
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.transcription.composer import (

@@ -20,14 +20,14 @@ from projectkoios.ingestion.tables.structure.column import TableColumn
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
+)
+from projectkoios.ingestion.tables.structure.record.source import (
+    TableSourceRecord,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
-)
-from projectkoios.ingestion.tables.structure.source_record import (
-    TableSourceRecord,
 )
 
 

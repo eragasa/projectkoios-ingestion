@@ -15,22 +15,22 @@ from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
 from projectkoios.ingestion.tables.structure.cell import TableCell
-from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
-)
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
+)
+from projectkoios.ingestion.tables.structure.record.source import (
+    TableSourceRecord,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
+from projectkoios.ingestion.tables.structure.role.cell import TableCellRole
 from projectkoios.ingestion.tables.structure.row import TableRow
-from projectkoios.ingestion.tables.structure.source_record import (
-    TableSourceRecord,
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
 )
 
 
