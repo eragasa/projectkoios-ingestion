@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -32,12 +33,32 @@ def _semantic_name(name: str) -> str:
     return name[1:] if name.startswith("_") else name
 
 
+def _source_owned_paths(root: Path) -> Iterator[Path]:
+    # Runtime caches can preserve directories after their source modules move.
+    for path in root.rglob("*"):
+        if "__pycache__" in path.parts:
+            continue
+        if path.is_dir() and not any(
+            child.name != "__pycache__" for child in path.iterdir()
+        ):
+            continue
+        yield path
+
+
+def test__smoke__runtime_cache_only_directories_are_not_source_paths(
+    tmp_path: Path,
+) -> None:
+    runtime_cache = tmp_path / "stale_flattened_name" / "__pycache__"
+    runtime_cache.mkdir(parents=True)
+    (runtime_cache / "module.cpython-314.pyc").touch()
+
+    assert tuple(_source_owned_paths(tmp_path)) == ()
+
+
 def test__smoke__migrated_scopes_have_no_flattened_semantic_names() -> None:
     flattened: list[str] = []
     for root in _MIGRATED_SCOPES:
-        for path in root.rglob("*"):
-            if path.name == "__pycache__" or "__pycache__" in path.parts:
-                continue
+        for path in _source_owned_paths(root):
             name = path.stem if path.is_file() else path.name
             if path.name == "__init__.py":
                 continue
