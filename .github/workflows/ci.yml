@@ -85,6 +85,9 @@ jobs:
             "projectkoios @ git+https://github.com/eragasa/projectkoios.git@233f36900b9b44c943ecc5e27f2968ad4bee97ad" \
             dist/*.whl
           /tmp/projectkoios-ingestion-wheel/bin/python - <<'PY'
+          from importlib import import_module
+          from importlib.util import find_spec
+
           from projectkoios.ingestion import (
               ReferenceClaimCandidate,
               ReferencePageLocatorChecker,
@@ -125,6 +128,37 @@ jobs:
           assert ProjectionIdentityError is not None
           assert ProjectionPayloadError is not None
           assert ExtractionProjectionProjector is not None
+
+          required_modules = (
+              "projectkoios.ingestion.base.pipeline.actionizer",
+              "projectkoios.ingestion.integrations.sqlite.processing.state.store",
+              "projectkoios.ingestion.storage.processing.state.base",
+              "projectkoios.ingestion.storage.extraction.artifact.validation.actionizer",
+              "projectkoios.ingestion.storage.extraction.freeze.bounded.actionizer",
+              "projectkoios.ingestion.storage.extraction.journal.publication.actionizer",
+              "projectkoios.ingestion.storage.extraction.materialization.evidence.collection",
+              "projectkoios.ingestion.storage.extraction.projection.index.readiness.definition",
+              "projectkoios.ingestion.storage.extraction.projection.pipeline.actionizer",
+              "projectkoios.ingestion.storage.extraction.projection.read.model",
+              "projectkoios.ingestion.storage.extraction.recovery.subset.actionizer",
+          )
+          for module_name in required_modules:
+              import_module(module_name)
+
+          removed_modules = (
+              "projectkoios.ingestion.integrations.mongodb.extraction.index_readiness",
+              "projectkoios.ingestion.integrations.sqlite.processing_state",
+              "projectkoios.ingestion.storage.processing_state",
+              "projectkoios.ingestion.storage.extraction.artifact_validation",
+              "projectkoios.ingestion.storage.extraction.bounded_freeze",
+              "projectkoios.ingestion.storage.extraction.journal_publication",
+              "projectkoios.ingestion.storage.extraction.projection_pipeline",
+              "projectkoios.ingestion.storage.extraction.projection.index_readiness",
+              "projectkoios.ingestion.storage.extraction.selected_recovery",
+          )
+          for module_name in removed_modules:
+              if find_spec(module_name) is not None:
+                  raise AssertionError(f"legacy module remains: {module_name}")
           PY
 
       - name: Check patch whitespace

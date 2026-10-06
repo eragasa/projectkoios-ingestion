@@ -11,7 +11,7 @@ from projectkoios.ingestion.models import (
     ExtractionResult,
     IngestionManifest,
 )
-from projectkoios.ingestion.storage.extraction.identity_conflict_error import (
+from projectkoios.ingestion.storage.extraction.identity.conflict.error import (
     ExtractionPublicationIdentityConflictError,
 )
 from projectkoios.ingestion.storage.extraction.publication.request import (

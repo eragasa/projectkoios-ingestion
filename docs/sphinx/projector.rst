@@ -54,7 +54,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.projector.result
    :members:
 
-.. automodule:: projectkoios.ingestion.base.projector.projector
+.. automodule:: projectkoios.ingestion.base.projector.actionizer
    :members:
 
 .. automodule:: projectkoios.ingestion.base.projector.error

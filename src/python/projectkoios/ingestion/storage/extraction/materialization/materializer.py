@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from abc import ABC
 
-from projectkoios.ingestion.base.materializer.materializer import Materializer
+from projectkoios.ingestion.base.materializer.actionizer import Materializer
 from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
     ExtractionProjectionMaterializationConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
 from projectkoios.ingestion.storage.extraction.materialization.target import (
     ExtractionProjectionTargetIdentity,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 

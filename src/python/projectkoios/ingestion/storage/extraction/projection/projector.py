@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+from projectkoios.ingestion.base.projector.actionizer import Projector
 from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
 )
@@ -13,7 +14,6 @@ from projectkoios.ingestion.base.projector.identity.model import (
 from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
-from projectkoios.ingestion.base.projector.projector import Projector
 from projectkoios.ingestion.identity import canonical_json, stable_id
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
@@ -27,7 +27,7 @@ from projectkoios.ingestion.storage.extraction.projection.document import (
 from projectkoios.ingestion.storage.extraction.projection.evidence import (
     ExtractionPublicationEvidence,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 

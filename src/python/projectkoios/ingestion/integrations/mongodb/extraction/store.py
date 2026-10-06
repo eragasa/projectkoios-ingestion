@@ -10,7 +10,9 @@ from projectkoios.ingestion.base.materializer.error import (
 from projectkoios.ingestion.base.materializer.identity.error import (
     MaterializationIdentityError,
 )
-from projectkoios.ingestion.base.pipeline.error import PipelineContractError
+from projectkoios.ingestion.base.pipeline.error import (  # noqa: E501
+    PipelineContractError,
+)
 from projectkoios.ingestion.base.projector.error import ProjectionContractError
 from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
@@ -22,10 +24,10 @@ from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
-from projectkoios.ingestion.integrations.mongodb.extraction.index_readiness import (  # noqa: E501
+from projectkoios.ingestion.integrations.mongodb.extraction.index.readiness.backend import (  # noqa: E501
     MongoExtractionProjectionIndexReadinessBackend,
 )
-from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
+from projectkoios.ingestion.integrations.mongodb.extraction.materialization.error import (  # noqa: E501
     MongoExtractionProjectionMaterializationError,
 )
 from projectkoios.ingestion.integrations.mongodb.extraction.materializer import (  # noqa: E501
@@ -56,10 +58,10 @@ from projectkoios.ingestion.storage.extraction.projection.configuration import (
 from projectkoios.ingestion.storage.extraction.projection.evidence import (
     ExtractionPublicationEvidence,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.backend_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.backend.error import (  # noqa: E501
     ExtractionProjectionIndexReadinessBackendError,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.configuration import (  # noqa: E501
     ExtractionProjectionIndexReadinessConfiguration,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
@@ -68,19 +70,19 @@ from projectkoios.ingestion.storage.extraction.projection.inventory.collection i
 from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
     ExtractionProjectionInventoryConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.projection.inventory.reader import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader.base import (  # noqa: E501
     ExtractionProjectionInventoryReader,
 )
-from projectkoios.ingestion.storage.extraction.projection.inventory.reader_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader.error import (  # noqa: E501
     ExtractionProjectionInventoryReaderError,
 )
-from projectkoios.ingestion.storage.extraction.projection_pipeline.configuration import (  # noqa: E501
-    ExtractionProjectionPipelineConfiguration,
-)
-from projectkoios.ingestion.storage.extraction.projection_pipeline.pipeline import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.pipeline.actionizer import (  # noqa: E501
     ExtractionProjectionMaterializationPipeline,
 )
-from projectkoios.ingestion.storage.extraction.projection_pipeline.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.pipeline.configuration import (  # noqa: E501
+    ExtractionProjectionPipelineConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.projection.pipeline.request import (  # noqa: E501
     ExtractionProjectionPipelineRequest,
 )
 from projectkoios.ingestion.storage.extraction.publication.record import (
@@ -98,17 +100,17 @@ from projectkoios.ingestion.storage.extraction.recovery.request import (
 from projectkoios.ingestion.storage.extraction.recovery.result import (
     ExtractionProjectionRecoveryResult,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.backend import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryBackend,
+from projectkoios.ingestion.storage.extraction.recovery.subset.backend.base import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryBackend,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.backend_error import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryBackendError,
+from projectkoios.ingestion.storage.extraction.recovery.subset.backend.error import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryBackendError,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.evidence import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryEvidence,
+from projectkoios.ingestion.storage.extraction.recovery.subset.evidence import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryEvidence,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.request import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryRequest,
+from projectkoios.ingestion.storage.extraction.recovery.subset.request import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryRequest,
 )
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError, PyMongoError
@@ -119,7 +121,7 @@ MongoDocument = dict[str, Any]
 class MongoExtractionPublicationStore(
     AbstractExtractionPublicationStore,
     ExtractionProjectionInventoryReader,
-    SelectedExtractionProjectionRecoveryBackend,
+    ExtractionProjectionSubsetRecoveryBackend,
 ):
     """Idempotent MongoDB read projection backed by a disk journal."""
 
@@ -233,19 +235,19 @@ class MongoExtractionPublicationStore(
             last_journal_sequence=records[-1].sequence if records else None,
         )
 
-    def recover_selected(
+    def recover_subset(
         self,
         *,
-        request: SelectedExtractionProjectionRecoveryRequest,
-    ) -> SelectedExtractionProjectionRecoveryEvidence:
+        request: ExtractionProjectionSubsetRecoveryRequest,
+    ) -> ExtractionProjectionSubsetRecoveryEvidence:
         """Recover all and only the exact journal records in the request."""
 
-        if not isinstance(request, SelectedExtractionProjectionRecoveryRequest):
+        if not isinstance(request, ExtractionProjectionSubsetRecoveryRequest):
             raise TypeError(
-                "request must be a SelectedExtractionProjectionRecoveryRequest"
+                "request must be an ExtractionProjectionSubsetRecoveryRequest"
             )
         if request.projection_reference != self.projection_reference:
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code="projection_reference_differs",
                 disposition=(
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
@@ -257,7 +259,7 @@ class MongoExtractionPublicationStore(
         try:
             records = self.journal.records()
         except ExtractionPublicationError as error:
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code="authoritative_journal_invalid",
                 disposition=(ExtractionActionDisposition.STOP_INVALID_EVIDENCE),
                 message="authoritative extraction journal is invalid",
@@ -267,38 +269,38 @@ class MongoExtractionPublicationStore(
             len(records) != request.expected_journal_record_count
             or head != request.expected_journal_head_sha256
         ):
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code="authoritative_journal_identity_differs",
                 disposition=(
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                 ),
                 message="authoritative extraction journal identity differs",
             )
-        for selected in request.selected_records:
-            if records[selected.sequence - 1] != selected:
-                raise SelectedExtractionProjectionRecoveryBackendError(
-                    code="selected_publication_record_differs",
+        for subset_record in request.subset_records:
+            if records[subset_record.sequence - 1] != subset_record:
+                raise ExtractionProjectionSubsetRecoveryBackendError(
+                    code="subset_publication_record_differs",
                     disposition=(
                         ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                     ),
-                    message="selected publication record differs",
+                    message="subset publication record differs",
                 )
-        before = self._selected_inventory(request)
+        before = self._subset_inventory(request)
         if request.require_empty_projection and any(
             item.document_count for item in before
         ):
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code="projection_is_not_empty",
                 disposition=(
                     ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
                 ),
-                message="selected recovery requires an empty projection",
+                message="subset recovery requires an empty projection",
             )
         projected = 0
         try:
-            for selected in request.selected_records:
+            for subset_record in request.subset_records:
                 projected += self._apply_publication_record(
-                    selected,
+                    subset_record,
                     authority_id=request.authority_id,
                 )
         except ExtractionPublicationError as error:
@@ -348,29 +350,29 @@ class MongoExtractionPublicationStore(
             else:
                 code = "publication_evidence_invalid"
                 disposition = ExtractionActionDisposition.STOP_INVALID_EVIDENCE
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code=code,
                 disposition=disposition,
-                message="selected extraction projection recovery failed",
+                message="extraction projection subset recovery failed",
             ) from error
-        collections = self._selected_inventory(request)
-        return SelectedExtractionProjectionRecoveryEvidence.create(
+        collections = self._subset_inventory(request)
+        return ExtractionProjectionSubsetRecoveryEvidence.create(
             observed_journal_record_count=len(records),
             observed_journal_head_sha256=head,
-            selected_record_count=len(request.selected_records),
+            subset_record_count=len(request.subset_records),
             projected_record_count=projected,
-            unchanged_record_count=len(request.selected_records) - projected,
-            last_selected_sequence=(
-                request.selected_records[-1].sequence
-                if request.selected_records
+            unchanged_record_count=len(request.subset_records) - projected,
+            last_subset_sequence=(
+                request.subset_records[-1].sequence
+                if request.subset_records
                 else None
             ),
             collections=collections,
         )
 
-    def _selected_inventory(
+    def _subset_inventory(
         self,
-        request: SelectedExtractionProjectionRecoveryRequest,
+        request: ExtractionProjectionSubsetRecoveryRequest,
     ) -> tuple[ExtractionProjectionCollectionInventory, ...]:
         try:
             return self.read_inventory(
@@ -379,10 +381,10 @@ class MongoExtractionPublicationStore(
                 authority_id=request.authority_id,
             )
         except ExtractionProjectionInventoryReaderError as error:
-            raise SelectedExtractionProjectionRecoveryBackendError(
+            raise ExtractionProjectionSubsetRecoveryBackendError(
                 code=error.code,
                 disposition=error.disposition,
-                message="selected recovery projection inventory failed",
+                message="subset recovery projection inventory failed",
             ) from error
 
     def read_inventory(

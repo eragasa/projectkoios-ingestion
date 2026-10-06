@@ -41,7 +41,7 @@ from projectkoios.ingestion.pdf.extraction.text import (
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
-from projectkoios.ingestion.storage.extraction.bounded_freeze.extractor import (
+from projectkoios.ingestion.storage.extraction.freeze.bounded.extractor import (
     FreezableSourceExtractor,
 )
 

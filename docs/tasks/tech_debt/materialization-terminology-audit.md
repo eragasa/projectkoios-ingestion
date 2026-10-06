@@ -24,7 +24,7 @@ Only the MongoDB extraction projection currently implements that framework.
 | Area | Current behavior | Classification | Framework action |
 | --- | --- | --- | --- |
 | MongoDB extraction projection | Applies canonical `ExtractionReadModel` documents to five collections with create-once conflict checks | Effectful Materializer | Conforms through `MongoExtractionProjectionMaterializer` |
-| Extraction projector-to-Mongo composition | Pure projection followed by one effectful materializer | Typed synchronous Pipeline | Extracted as `ExtractionProjectionMaterializationPipeline` |
+| Extraction projector-to-Mongo composition | Pure projection followed by one effectful materializer | Typed synchronous Pipeline | Implemented as `ExtractionProjectionMaterializationPipeline` |
 | Article structure `_materialize` | Constructs nodes, links parents/children, and creates warnings in memory | Pure assembly/linking helper | Do not make a Materializer |
 | Figure detection `_materialize_warnings` | Creates warning values and links warning IDs in memory | Pure assembly/linking helper | Do not make a Materializer |
 | Equation detection `_materialize_warnings` | Creates warning values from resolved candidate references | Pure assembly/linking helper | Do not make a Materializer |
@@ -65,9 +65,9 @@ DataObjectActionizer
     └── Pipeline
 ```
 
-A Pipeline owns only fixed synchronous domain composition. Workflow continues
-to own CPN state, scheduling, claims, retries, approvals, durable checkpoints,
-child batches, and stop propagation.
+A Pipeline joins two or more actionizers into one synchronous prototask for a
+Workflow. Workflow continues to own CPN state, scheduling, claims, retries,
+approvals, durable checkpoints, child batches, and stop propagation.
 
 ## Remaining debt
 

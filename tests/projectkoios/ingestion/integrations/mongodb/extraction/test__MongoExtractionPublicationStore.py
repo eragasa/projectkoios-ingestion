@@ -55,7 +55,7 @@ from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.
 from projectkoios.ingestion.storage.extraction.projection.inventory.expected import (  # noqa: E501
     ExpectedExtractionProjectionInventory,
 )
-from projectkoios.ingestion.storage.extraction.projection.inventory.inventory import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.observer import (  # noqa: E501
     ExtractionProjectorInventory,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501
@@ -70,11 +70,11 @@ from projectkoios.ingestion.storage.extraction.publication.request import (
 from projectkoios.ingestion.storage.extraction.recovery.request import (
     ExtractionProjectionRecoveryRequest,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.actionizer import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryActionizer,
+from projectkoios.ingestion.storage.extraction.recovery.subset.actionizer import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryActionizer,
 )
-from projectkoios.ingestion.storage.extraction.selected_recovery.request import (  # noqa: E501
-    SelectedExtractionProjectionRecoveryRequest,
+from projectkoios.ingestion.storage.extraction.recovery.subset.request import (  # noqa: E501
+    ExtractionProjectionSubsetRecoveryRequest,
 )
 from pymongo.database import Database
 
@@ -354,15 +354,15 @@ def test__mongo_extraction_publication_store__recovers_exact_selection(
     )
     records = journal.records()
     store = _store(database=database, journal=journal)
-    request = SelectedExtractionProjectionRecoveryRequest.create(
+    request = ExtractionProjectionSubsetRecoveryRequest.create(
         projection_reference=store.projection_reference,
         authority_id="authority:development-write",
         expected_journal_record_count=2,
         expected_journal_head_sha256=records[-1].record_sha256,
-        selected_records=(records[1],),
+        subset_records=(records[1],),
         require_empty_projection=False,
     )
-    actionizer = SelectedExtractionProjectionRecoveryActionizer(backend=store)
+    actionizer = ExtractionProjectionSubsetRecoveryActionizer(backend=store)
 
     created = actionizer.action(request=request)
     replayed = actionizer.action(request=request)
@@ -370,7 +370,7 @@ def test__mongo_extraction_publication_store__recovers_exact_selection(
     assert created.status is ExtractionActionStatus.COMPLETED
     assert created.evidence is not None
     assert created.evidence.projected_record_count == 1
-    assert created.evidence.last_selected_sequence == 2
+    assert created.evidence.last_subset_sequence == 2
     assert replayed.evidence is not None
     assert replayed.evidence.projected_record_count == 0
     assert replayed.evidence.unchanged_record_count == 1
@@ -388,12 +388,12 @@ def test__mongo_extraction_publication_store__fails_on_journal_drift(
     )
     records = journal.records()
     store = _store(database=database, journal=journal)
-    request = SelectedExtractionProjectionRecoveryRequest.create(
+    request = ExtractionProjectionSubsetRecoveryRequest.create(
         projection_reference=store.projection_reference,
         authority_id="authority:development-write",
         expected_journal_record_count=1,
         expected_journal_head_sha256=records[-1].record_sha256,
-        selected_records=records,
+        subset_records=records,
         require_empty_projection=True,
     )
     journal.publish(
@@ -402,9 +402,9 @@ def test__mongo_extraction_publication_store__fails_on_journal_drift(
         )
     )
 
-    result = SelectedExtractionProjectionRecoveryActionizer(
-        backend=store
-    ).action(request=request)
+    result = ExtractionProjectionSubsetRecoveryActionizer(backend=store).action(
+        request=request
+    )
 
     assert result.status is ExtractionActionStatus.FAILED
     assert (
@@ -425,18 +425,18 @@ def test__mongo_extraction_publication_store__requires_empty_target(
     records = journal.records()
     store = _store(database=database, journal=journal)
     store.publish(request=publication)
-    request = SelectedExtractionProjectionRecoveryRequest.create(
+    request = ExtractionProjectionSubsetRecoveryRequest.create(
         projection_reference=store.projection_reference,
         authority_id="authority:development-write",
         expected_journal_record_count=1,
         expected_journal_head_sha256=records[-1].record_sha256,
-        selected_records=records,
+        subset_records=records,
         require_empty_projection=True,
     )
 
-    result = SelectedExtractionProjectionRecoveryActionizer(
-        backend=store
-    ).action(request=request)
+    result = ExtractionProjectionSubsetRecoveryActionizer(backend=store).action(
+        request=request
+    )
 
     assert result.status is ExtractionActionStatus.FAILED
     assert result.failure_code == "projection_is_not_empty"

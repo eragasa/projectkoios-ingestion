@@ -7,6 +7,7 @@ import pytest
 from projectkoios.ingestion.base.actionizer.configurable import (
     ConfigurableDataObjectActionizer,
 )
+from projectkoios.ingestion.base.projector.actionizer import Projector
 from projectkoios.ingestion.base.projector.configuration import (
     AbstractProjectionConfiguration,
 )
@@ -20,7 +21,6 @@ from projectkoios.ingestion.base.projector.identity.model import (
 from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
-from projectkoios.ingestion.base.projector.projector import Projector
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.base.projector.source import (
     AbstractProjectionSource,

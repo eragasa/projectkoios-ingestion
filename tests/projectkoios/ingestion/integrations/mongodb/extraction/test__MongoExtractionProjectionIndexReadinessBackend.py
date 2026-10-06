@@ -4,7 +4,7 @@ from typing import Any, cast
 
 import mongomock
 import pytest
-from projectkoios.ingestion.integrations.mongodb.extraction.index_readiness import (  # noqa: E501
+from projectkoios.ingestion.integrations.mongodb.extraction.index.readiness.backend import (  # noqa: E501
     MongoExtractionProjectionIndexReadinessBackend,
 )
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
@@ -13,10 +13,10 @@ from projectkoios.ingestion.storage.extraction.actions.disposition import (
 from projectkoios.ingestion.storage.extraction.materialization.target import (
     ExtractionProjectionTargetIdentity,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.backend_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.backend.error import (  # noqa: E501
     ExtractionProjectionIndexReadinessBackendError,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.configuration import (  # noqa: E501
     ExtractionProjectionIndexReadinessConfiguration,
 )
 from pymongo.database import Database

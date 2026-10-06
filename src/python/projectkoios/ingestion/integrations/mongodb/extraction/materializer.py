@@ -13,16 +13,16 @@ from projectkoios.ingestion.base.materializer.identity.error import (
 from projectkoios.ingestion.base.materializer.identity.model import (
     MaterializerIdentity,
 )
-from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
+from projectkoios.ingestion.integrations.mongodb.extraction.materialization.error import (  # noqa: E501
     MongoExtractionProjectionMaterializationError,
-)
-from projectkoios.ingestion.storage.extraction.materialization.collection_evidence import (  # noqa: E501
-    ExtractionProjectionMaterializationCollectionEvidence,
 )
 from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
     ExtractionProjectionMaterializationConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+from projectkoios.ingestion.storage.extraction.materialization.evidence.collection import (  # noqa: E501
+    ExtractionProjectionMaterializationCollectionEvidence,
+)
+from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
 from projectkoios.ingestion.storage.extraction.materialization.materializer import (  # noqa: E501
@@ -34,7 +34,7 @@ from projectkoios.ingestion.storage.extraction.materialization.target import (
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 from pymongo.database import Database

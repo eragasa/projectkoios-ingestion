@@ -54,7 +54,7 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
 )
-from projectkoios.ingestion.integrations.sqlite.processing_state.store import (
+from projectkoios.ingestion.integrations.sqlite.processing.state.store import (
     SqliteProcessingStateStore,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
@@ -64,10 +64,10 @@ from projectkoios.ingestion.pdf.private_page_span.reference import (
     PrivatePdfPageSpanReference,
 )
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
-from projectkoios.ingestion.storage.processing_state.base import (
+from projectkoios.ingestion.storage.processing.state.base import (
     AbstractProcessingStateStore,
 )
-from projectkoios.ingestion.storage.processing_state.contracts import (
+from projectkoios.ingestion.storage.processing.state.contracts import (
     ProcessingBookRegistration,
     ProcessingBookState,
     ProcessingCandidateState,

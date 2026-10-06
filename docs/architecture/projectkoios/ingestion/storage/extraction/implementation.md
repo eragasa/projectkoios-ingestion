@@ -1,5 +1,9 @@
 # Extraction storage implementation
 
+The reviewed module-to-package inventory for this owner is maintained in the
+[storage structural path map](structural-path-map.md). Package initializers are
+ownership markers; callers import the defining leaf directly.
+
 `AbstractExtractionPublicationStore.publish()` accepts one
 `ExtractionPublicationRequest` and returns one `ExtractionPublicationResult`.
 An extraction manifest identity is create-once: replaying the exact request is
@@ -33,7 +37,7 @@ The extraction read path uses the Projector terminology literally:
 | projection value | `ExtractionReadModel` | Canonical backend-neutral documents for five logical collections |
 | projection member | `ExtractionProjectionDocument` | One immutable canonical JSON document with full content evidence |
 | materializer | `MongoExtractionProjectionMaterializer` | Effectful create-once writes to physical MongoDB collections |
-| pipeline | `ExtractionProjectionMaterializationPipeline` | Fixed synchronous Projector-to-Materializer composition |
+| pipeline | `ExtractionProjectionMaterializationPipeline` | Workflow prototask joining two synchronous actionizers: Projector, then Materializer |
 | materialization target | `ExtractionProjectionTargetIdentity` | Explicit deployment, environment, database, schema, and projection slot |
 | index readiness | `ExtractionProjectionIndexReadinessActionizer` | Effectful preparation and exact observation of required physical indexes |
 | projector inventory | `ExtractionProjectorInventory` | Read-only full-content observation of materialized target state |
@@ -58,10 +62,11 @@ Each projected document carries two distinct digests:
 2. `canonical_sha256` on `ExtractionProjectionDocument` binds the complete final
    JSON document, including that marker.
 
-The typed extraction pipeline passes exact publication evidence through the
-pure projector and then passes the resulting read model, explicit target,
-physical configuration, and authority to the materializer. It owns no retries,
-queues, checkpoints, or cross-record lifecycle.
+The extraction pipeline passes exact publication evidence through the pure
+projector and then passes the resulting read model, explicit target, physical
+configuration, and authority to the materializer. It is a workflow prototask
+that owns exactly those two synchronous calls: no retries, queues, checkpoints,
+or cross-record lifecycle.
 
 The MongoDB materializer decodes only projector-produced canonical JSON. It
 writes blocks, pages, warnings, and manifests before root completion documents.
@@ -141,10 +146,10 @@ places, guards, lifecycle, retry, concurrency, or acceptance from these types.
 collections through the constrained `Inventory` / `ProjectorInventory` pattern.
 Its request binds an explicit target, full observation configuration, and query
 authority. It returns only per-collection counts and full-content digests; it
-never retains projected documents. `SelectedExtractionProjectionRecoveryActionizer`
+never retains projected documents. `ExtractionProjectionSubsetRecoveryActionizer`
 binds one target to an exact authoritative journal count and head plus an ordered
 subset of full publication records. The MongoDB backend rejects journal drift,
-changed selected records, target-identity drift, and a nonempty target when an
+changed subset records, target-identity drift, and a nonempty target when an
 empty rebuild was requested. Its result distinguishes newly projected from
 unchanged records and includes the resulting compact projection inventory.
 

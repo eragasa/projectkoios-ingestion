@@ -25,13 +25,13 @@ from projectkoios.ingestion.storage.extraction.base import (
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
-from projectkoios.ingestion.storage.extraction.identity_conflict_error import (
+from projectkoios.ingestion.storage.extraction.identity.conflict.error import (
     ExtractionPublicationIdentityConflictError,
 )
-from projectkoios.ingestion.storage.extraction.journal_publication.backend import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.journal.publication.backend.base import (  # noqa: E501
     ValidatedExtractionJournalPublicationBackend,
 )
-from projectkoios.ingestion.storage.extraction.journal_publication.backend_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.journal.publication.backend.error import (  # noqa: E501
     ValidatedExtractionJournalPublicationBackendError,
 )
 from projectkoios.ingestion.storage.extraction.publication.record import (
