@@ -15,9 +15,11 @@ from projectkoios.ingestion.base.inventory.error import InventoryContractError
 from projectkoios.ingestion.base.inventory.evidence import (
     AbstractInventoryEvidence,
 )
-from projectkoios.ingestion.base.inventory.identity import InventoryIdentity
-from projectkoios.ingestion.base.inventory.identity_error import (
+from projectkoios.ingestion.base.inventory.identity.error import (
     InventoryIdentityError,
+)
+from projectkoios.ingestion.base.inventory.identity.model import (
+    InventoryIdentity,
 )
 from projectkoios.ingestion.base.inventory.request import InventoryRequest
 from projectkoios.ingestion.base.inventory.result import InventoryResult

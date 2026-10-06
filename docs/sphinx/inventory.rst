@@ -26,7 +26,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.inventory.evidence
    :members:
 
-.. automodule:: projectkoios.ingestion.base.inventory.identity
+.. automodule:: projectkoios.ingestion.base.inventory.identity.model
    :members:
 
 .. automodule:: projectkoios.ingestion.base.inventory.request
@@ -41,7 +41,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.inventory.error
    :members:
 
-.. automodule:: projectkoios.ingestion.base.inventory.identity_error
+.. automodule:: projectkoios.ingestion.base.inventory.identity.error
    :members:
 
 Projector-inventory API

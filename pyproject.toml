@@ -51,6 +51,7 @@ filterwarnings = [
 ]
 markers = [
     "private_integration: requires explicitly configured private local resources",
+    "smoke: verifies package structure and direct import availability",
 ]
 
 [tool.ruff]

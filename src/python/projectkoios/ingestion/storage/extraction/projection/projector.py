@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 
-from projectkoios.ingestion.base.projector.identity import ProjectorIdentity
-from projectkoios.ingestion.base.projector.identity_error import (
+from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
 )
-from projectkoios.ingestion.base.projector.payload_error import (
+from projectkoios.ingestion.base.projector.identity.model import (
+    ProjectorIdentity,
+)
+from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
 from projectkoios.ingestion.base.projector.projector import Projector

@@ -7,15 +7,15 @@ from typing import Any, ClassVar
 from projectkoios.ingestion.base.materializer.error import (
     MaterializationContractError,
 )
-from projectkoios.ingestion.base.materializer.identity_error import (
+from projectkoios.ingestion.base.materializer.identity.error import (
     MaterializationIdentityError,
 )
 from projectkoios.ingestion.base.pipeline.error import PipelineContractError
 from projectkoios.ingestion.base.projector.error import ProjectionContractError
-from projectkoios.ingestion.base.projector.identity_error import (
+from projectkoios.ingestion.base.projector.identity.error import (
     ProjectionIdentityError,
 )
-from projectkoios.ingestion.base.projector.payload_error import (
+from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
 from projectkoios.ingestion.identity import canonical_json

@@ -1,6 +1,6 @@
 import inspect
 
-from projectkoios.ingestion.base.data_object import AbstractDataObject
+from projectkoios.ingestion.base.data.object import AbstractDataObject
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 
 

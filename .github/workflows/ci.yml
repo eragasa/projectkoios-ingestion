@@ -89,7 +89,26 @@ jobs:
               ReferenceClaimCandidate,
               ReferencePageLocatorChecker,
           )
-          from projectkoios.ingestion.base.projector.payload_error import (
+          from projectkoios.ingestion.base.data.object import AbstractDataObject
+          from projectkoios.ingestion.base.inventory.identity.error import (
+              InventoryIdentityError,
+          )
+          from projectkoios.ingestion.base.inventory.identity.model import (
+              InventoryIdentity,
+          )
+          from projectkoios.ingestion.base.materializer.identity.error import (
+              MaterializationIdentityError,
+          )
+          from projectkoios.ingestion.base.materializer.identity.model import (
+              MaterializerIdentity,
+          )
+          from projectkoios.ingestion.base.projector.identity.error import (
+              ProjectionIdentityError,
+          )
+          from projectkoios.ingestion.base.projector.identity.model import (
+              ProjectorIdentity,
+          )
+          from projectkoios.ingestion.base.projector.payload.error import (
               ProjectionPayloadError,
           )
           from projectkoios.ingestion.storage.extraction.projection.projector import (
@@ -97,6 +116,13 @@ jobs:
           )
           assert ReferenceClaimCandidate is not None
           assert ReferencePageLocatorChecker is not None
+          assert AbstractDataObject is not None
+          assert InventoryIdentity is not None
+          assert InventoryIdentityError is not None
+          assert MaterializerIdentity is not None
+          assert MaterializationIdentityError is not None
+          assert ProjectorIdentity is not None
+          assert ProjectionIdentityError is not None
           assert ProjectionPayloadError is not None
           assert ExtractionProjectionProjector is not None
           PY

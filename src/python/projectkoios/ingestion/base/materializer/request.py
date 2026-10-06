@@ -12,7 +12,7 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.base.materializer.configuration import (
     AbstractMaterializationConfiguration,
 )
-from projectkoios.ingestion.base.materializer.identity_error import (
+from projectkoios.ingestion.base.materializer.identity.error import (
     MaterializationIdentityError,
 )
 from projectkoios.ingestion.base.materializer.target import (

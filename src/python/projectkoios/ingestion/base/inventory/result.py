@@ -10,7 +10,9 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.base.inventory.evidence import (
     AbstractInventoryEvidence,
 )
-from projectkoios.ingestion.base.inventory.identity import InventoryIdentity
+from projectkoios.ingestion.base.inventory.identity.model import (
+    InventoryIdentity,
+)
 from projectkoios.ingestion.identity import stable_id
 
 

@@ -23,3 +23,9 @@ Concrete identity, derivation, and validation records inherit their matching
 nominal base. Concrete projectors follow the fixed stateless, authority-free,
 external-effect-free request-to-result pattern. The hierarchy does not add
 serialization, mutation, persistence, or external-effect behavior.
+
+Compound ownership uses structural packages with direct leaf imports. Identity
+records live in `identity/model.py`, identity failures in `identity/error.py`,
+and projector payload failures in `payload/error.py`; package initializers do
+not re-export them. The complete Base path inventory is maintained in the
+[implementation](implementation.md).

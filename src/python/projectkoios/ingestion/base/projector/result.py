@@ -10,7 +10,9 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.base.projector.configuration import (
     AbstractProjectionConfiguration,
 )
-from projectkoios.ingestion.base.projector.identity import ProjectorIdentity
+from projectkoios.ingestion.base.projector.identity.model import (
+    ProjectorIdentity,
+)
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.base.projector.source import (
     AbstractProjectionSource,

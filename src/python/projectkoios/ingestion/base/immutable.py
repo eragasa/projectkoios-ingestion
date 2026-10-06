@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABC
 from typing import ClassVar
 
-from projectkoios.ingestion.base.data_object import AbstractDataObject
+from projectkoios.ingestion.base.data.object import AbstractDataObject
 
 
 class AbstractImmutableDataObject(AbstractDataObject, ABC):
