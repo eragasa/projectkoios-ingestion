@@ -32,8 +32,11 @@ from projectkoios.ingestion import (
     PyMuPdfExtractor,
     SourceDocument,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
@@ -115,7 +118,11 @@ def _pipeline(*, replacement_split: str | None = None):
     document = replace(document, pages=tuple(pages))
     extraction = replace(extraction, document=document)
     layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     equations = DeterministicEquationCandidateDetector(
         region_renderer=PyMuPdfRegionRenderer()
     ).detect_with_layout(document, BytesIO(payload), layouts)

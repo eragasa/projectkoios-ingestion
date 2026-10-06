@@ -12,7 +12,8 @@ AbstractDataObject
 └── AbstractImmutableDataObject
     ├── AbstractIdentity
     ├── AbstractDerivation
-    └── AbstractValidation
+    ├── AbstractValidation
+    └── AbstractDataObjectActionResult
 
 Projector
 ├── ProjectionRequest[ProjectionSource, ProjectionConfiguration]

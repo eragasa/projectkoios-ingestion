@@ -9,8 +9,11 @@ from io import BytesIO
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.clean_transcript import (
@@ -579,7 +582,11 @@ def execute_transcript_batch_item(
 
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     equations = DeterministicEquationCandidateDetector(
         region_renderer=PyMuPdfRegionRenderer()
     ).detect_with_layout(

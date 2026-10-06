@@ -30,5 +30,8 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.actionizer.request
    :members:
 
+.. automodule:: projectkoios.ingestion.base.actionizer.result
+   :members:
+
 .. automodule:: projectkoios.ingestion.base.actionizer.configurable
    :members:

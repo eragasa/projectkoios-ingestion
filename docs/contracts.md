@@ -158,22 +158,26 @@ layout-result identities, processor name/version, and configuration digest.
 It validates stable IDs, exact source provenance, immutable tuples, aggregate
 bounds, unique contiguous reading order, unique warnings, warning links,
 reciprocal parent/child links, and acyclic hierarchy. The original minimal
-`StructureAnalysis(nodes=...)` form remains available for injected legacy
-analyzers but cannot claim processor/layout identity.
+`StructureAnalysis(nodes=...)` form remains available for manually represented
+structure but cannot claim processor/layout identity.
 
 ## Deterministic article structure
 
-`DocumentStructureAnalyzer` is the common nominal contract from an exact
-`ExtractedDocument` to `StructureAnalysis`. `ArticleStructureAnalyzer` and
-`TextbookStructureAnalyzer` are domain-specific nominal refinements of that
-single spine. `DeterministicArticleStructureAnalyzer` implements the article
-boundary explicitly; no production textbook analyzer is currently implemented.
-Concrete implementations do not inherit both domain refinements.
+Article structure follows the Ingestion Base action shape:
+`ArticleStructureRequest` → `DeterministicArticleStructureActionizer` →
+`StructureAnalysis`. The configuration and request inherit the Ingestion-owned
+immutable configurable roles; the result inherits the Ingestion-owned immutable
+result role. The actionizer inherits the concrete configurable action behavior.
+It does not inherit the document/article analyzer hierarchy and no protocol or
+compatibility analyzer facade is provided.
 
-`analyze(document)` produces and consumes exact deterministic page-layout
-results; `analyze_with_layout(document, layouts)` accepts caller-supplied exact
-results and rejects stale source, page, dimensions, rotation, coordinate, raw
-block, kind, or span evidence.
+The request binds one exact `ExtractedDocument`, one ordered
+`PageLayoutResult` per document page, and the complete
+`ArticleStructureConfiguration`. Request construction rejects stale source,
+page, dimensions, rotation, coordinate, raw-block, kind, or span evidence. The
+actionizer exposes only `action(request=...)`; it has no hidden layout
+production, constructor-held configuration, `analyze`, or
+`analyze_with_layout` route.
 
 The processor preserves layout-proposed text order and retains excluded text
 after it in extractor-native order. It proposes a source-backed document root,
@@ -191,14 +195,14 @@ warnings, heading length, abstract blocks, and bibliography entries; all limits
 and the fallback-title geometry threshold enter configuration and analysis
 identity. Layout ambiguity, missing/fallback titles, empty bibliographies, and
 missing text remain explicit warnings. The current raw extraction contract does
-not retain font metrics, so the analyzer does not invent font evidence; its
+not retain font metrics, so the actionizer does not invent font evidence; its
 bounded evidence is bookmarks/table of contents, numbering, explicit labels,
 known headings, source geometry, and layout order.
 
 The output is a proposal, not semantic correction, proofread transcription,
 scientific validation, citation approval, or human acceptance. Bibliography
 entries are source observations, never approved references or final citekeys.
-The analyzer writes no files and stores no derived result.
+The actionizer writes no files and stores no derived result.
 
 ## Equation candidates
 

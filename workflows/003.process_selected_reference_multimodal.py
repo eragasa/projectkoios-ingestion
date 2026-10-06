@@ -39,8 +39,11 @@ from projectkoios.ingestion import (
     build_equation_index,
     serialize_contract,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,
@@ -462,8 +465,10 @@ def load_chunk(book: Book, original: bytes, chunk: int):
     tables = DeterministicTableStructureReconstructor().reconstruct(
         table_detection
     )
-    structure = DeterministicArticleStructureAnalyzer().analyze_with_layout(
-        document, layouts
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
     )
     transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(

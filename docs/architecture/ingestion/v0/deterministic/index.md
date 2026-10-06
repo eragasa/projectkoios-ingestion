@@ -32,7 +32,8 @@ flowchart TD
     OCR --> Reconcile[DeterministicOCRReconciler]
     Layout --> Reconcile
 
-    Layout --> Structure[DeterministicArticleStructureAnalyzer]
+    Layout --> StructureRequest[ArticleStructureRequest]
+    StructureRequest --> Structure[DeterministicArticleStructureActionizer]
     Layout --> Equations[DeterministicEquationCandidateDetector]
     Layout --> Tables[DeterministicTableCandidateDetector]
     Layout --> Figures[DeterministicFigureCandidateDetector]
@@ -58,7 +59,7 @@ page text; deterministic derivations remain explicit caller-selected stages.
 
 - **[`DeterministicLayoutProcessor`](layout/index.md)** — proposes page-local reading order and geometry-backed groups.
 - **`DeterministicOCRReconciler`** — relates exact OCR and native-text evidence.
-- **`DeterministicArticleStructureAnalyzer`** — proposes source-backed article structure.
+- **`DeterministicArticleStructureActionizer`** — proposes source-backed article structure.
 - **`DeterministicEquationCandidateDetector`** and **`DeterministicEquationAssembler`** — detect and assemble equation evidence.
 - **`DeterministicTableCandidateDetector`** and **`DeterministicTableStructureReconstructor`** — detect and reconstruct table evidence.
 - **`DeterministicFigureCandidateDetector`** — retains source-backed figure candidates and associations.

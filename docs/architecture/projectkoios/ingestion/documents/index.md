@@ -1,7 +1,7 @@
 # `projectkoios.ingestion.documents`
 
-This package owns the nominal document hierarchy, concrete extracted document
-representations, and the shared document-structure analyzer contract.
+This package owns the nominal document hierarchy and concrete extracted document
+representations.
 
 ## Hierarchy
 
@@ -11,9 +11,10 @@ representations, and the shared document-structure analyzer contract.
   - `AbstractTranscript` is defined by `ingestion.transcripts`.
 - `AbstractDocumentPage`
 - `AbstractDocumentBlock`
-- `DocumentStructureAnalyzer`
-  - `ArticleStructureAnalyzer`
-  - `TextbookStructureAnalyzer`
+
+Article structure uses the domain-owned Ingestion Base request/actionizer/result
+operation. `DocumentStructureAnalyzer` remains only for the pre-existing
+textbook analyzer boundary.
 
 The established `ExtractedArticle` and `ExtractedTextbook` imports remain
 available from `projectkoios.ingestion.documents`.

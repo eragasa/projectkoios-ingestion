@@ -19,6 +19,7 @@ from projectkoios.ingestion import (
     DeterministicEquationAssembler,
     DeterministicEquationCandidateDetector,
     DeterministicFigureCandidateDetector,
+    DeterministicLayoutProcessor,
     DeterministicStructuredTranscriptionComposer,
     DeterministicTableStructureReconstructor,
     EquationAssemblyArtifact,
@@ -33,8 +34,11 @@ from projectkoios.ingestion import (
     contract_dict,
     serialize_contract,
 )
-from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
-    DeterministicArticleStructureAnalyzer,
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
 )
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,
@@ -296,9 +300,7 @@ def load_chunk(original: bytes, chunk: int):
         )
         filtered_pages.append(replace(page, blocks=valid_blocks))
     document = replace(document, pages=tuple(filtered_pages))
-    layouts = DeterministicArticleStructureAnalyzer().layout_processor.analyze(
-        document
-    )
+    layouts = DeterministicLayoutProcessor().analyze(document)
     equation_renderer = PyMuPdfRegionRenderer(
         max_total_pixels=25_000_000,
         max_total_raster_bytes=100_000_000,
@@ -332,7 +334,11 @@ def load_chunk(original: bytes, chunk: int):
     tables = DeterministicTableStructureReconstructor().reconstruct(
         tables_detected
     )
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    structure = DeterministicArticleStructureActionizer().action(
+        request=ArticleStructureRequest.create(
+            document=document, layouts=layouts
+        )
+    )
     transcription = DeterministicStructuredTranscriptionComposer().action(
         request=StructuredTranscriptionRequest.create(
             document=document,

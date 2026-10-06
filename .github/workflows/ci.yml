@@ -130,6 +130,7 @@ jobs:
           assert ExtractionProjectionProjector is not None
 
           required_modules = (
+              "projectkoios.ingestion.base.actionizer.result",
               "projectkoios.ingestion.base.pipeline.actionizer",
               "projectkoios.ingestion.integrations.sqlite.processing.state.store",
               "projectkoios.ingestion.storage.processing.state.base",
@@ -141,9 +142,9 @@ jobs:
               "projectkoios.ingestion.storage.extraction.projection.pipeline.actionizer",
               "projectkoios.ingestion.storage.extraction.projection.read.model",
               "projectkoios.ingestion.storage.extraction.recovery.subset.actionizer",
-              "projectkoios.ingestion.articles.structure.analyzer.base",
-              "projectkoios.ingestion.articles.structure.analyzer.deterministic",
+              "projectkoios.ingestion.articles.structure.actionizer",
               "projectkoios.ingestion.articles.structure.configuration",
+              "projectkoios.ingestion.articles.structure.request",
               "projectkoios.ingestion.articles.structure.constants",
               "projectkoios.ingestion.articles.structure.evidence.span",
               "projectkoios.ingestion.articles.structure.evidence.text",
@@ -263,6 +264,7 @@ jobs:
               "projectkoios.ingestion.storage.extraction.projection.index_readiness",
               "projectkoios.ingestion.storage.extraction.selected_recovery",
               "projectkoios.ingestion.article_structure",
+              "projectkoios.ingestion.articles.structure.analyzer",
               "projectkoios.ingestion.figure_relevance",
               "projectkoios.ingestion.figure_relevance_processor",
               "projectkoios.ingestion.ocr._geometry",
@@ -336,7 +338,7 @@ jobs:
               ("projectkoios.ingestion", "ArticleStructureAnalyzer"),
               (
                   "projectkoios.ingestion",
-                  "DeterministicArticleStructureAnalyzer",
+                  "DeterministicArticleStructureActionizer",
               ),
               ("projectkoios.ingestion", "TextbookStructureAnalyzer"),
               (

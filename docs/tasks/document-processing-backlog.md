@@ -371,10 +371,11 @@ the missing mixed-native plan contract and missing authorized OCR evidence.
 
 ## Structural tasks
 
-### ING-STRUCTURE-01 — Article structure analyzer (implemented)
+### ING-STRUCTURE-01 — Article structure action (implemented)
 
-`DeterministicArticleStructureAnalyzer` consumes one exact layout result per
-extracted page and proposes an immutable article hierarchy. It detects
+`ArticleStructureRequest` binds one exact layout result per extracted page and
+`DeterministicArticleStructureActionizer` proposes an immutable article
+hierarchy. It detects
 metadata-correlated or explicitly warned fallback titles, explicit author
 lines, abstracts and bounded abstract bodies, keyword lines, numbered and
 conservative known-name sections/subsections, bibliographies, bibliography

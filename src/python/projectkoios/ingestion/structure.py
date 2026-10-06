@@ -3,7 +3,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import ClassVar
 
+from projectkoios.ingestion.base.actionizer.result import (
+    AbstractDataObjectActionResult,
+)
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import (
     IngestionWarning,
@@ -222,7 +226,12 @@ class StructureNode:
 
 
 @dataclass(frozen=True)
-class StructureAnalysis:
+class StructureAnalysis(AbstractDataObjectActionResult):
+    """Immutable result of one document-structure action."""
+
+    CONTRACT_NAME: ClassVar[str] = "structure-analysis-result"
+    CONTRACT_VERSION: ClassVar[str] = STRUCTURE_CONTRACT_VERSION
+
     nodes: tuple[StructureNode, ...]
     warnings: tuple[IngestionWarning, ...] = ()
     analysis_id: str | None = None
