@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 
 import pytest
@@ -34,6 +33,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base import (  # noqa: E501
     OllamaMultimodalRegionProcessor,
 )
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 def test__ollama_multimodal_region_processor__is_an_actionizer() -> None:
@@ -74,9 +74,9 @@ def test__successful_complete_proposals_preserve_order_and_provenance() -> None:
         assert item.png_sha256 == source.png_sha256
         assert item.png_byte_length == source.png_byte_length
         assert item.proposal is not None
-        assert (
-            item.proposal.text_sha256
-            == hashlib.sha256(item.proposal.text.encode()).hexdigest()
+        assert SHA256Verifier.verify(
+            content=item.proposal.text.encode(),
+            expected=item.proposal.text_sha256,
         )
     assert result.raw_response is not None
     assert result.raw_response.assistant_content_sha256 is not None

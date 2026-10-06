@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,7 +138,7 @@ class BoundedExtractionFreezeRequest(
             ("expected_source_sha256", self.expected_source_sha256),
             ("expected_locator_sha256", self.expected_locator_sha256),
         ):
-            if type(value) is not str or not _SHA256.fullmatch(value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError(f"{name} must be lowercase SHA-256")
         if (
             isinstance(self.expected_source_byte_size, bool)

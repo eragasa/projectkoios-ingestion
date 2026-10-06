@@ -14,15 +14,22 @@ def test__equation_image__dispatches_to_nominal_format_classes(
 ) -> None:
     source_ids = ("rendered-region:factory",)
 
-    assert type(
-        EquationImage.from_bytes(content=png_bytes, source_ids=source_ids)
-    ) is EquationPngImage
-    assert type(
-        EquationImage.from_bytes(content=jpeg_bytes, source_ids=source_ids)
-    ) is EquationJpegImage
-    assert type(
-        EquationImage.from_bytes(content=webp_bytes, source_ids=source_ids)
-    ) is EquationWebpImage
+    assert (
+        type(EquationImage.from_bytes(content=png_bytes, source_ids=source_ids))
+        is EquationPngImage
+    )
+    assert (
+        type(
+            EquationImage.from_bytes(content=jpeg_bytes, source_ids=source_ids)
+        )
+        is EquationJpegImage
+    )
+    assert (
+        type(
+            EquationImage.from_bytes(content=webp_bytes, source_ids=source_ids)
+        )
+        is EquationWebpImage
+    )
 
 
 def test__equation_image__cannot_be_instantiated() -> None:

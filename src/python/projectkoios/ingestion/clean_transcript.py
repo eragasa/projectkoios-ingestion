@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 import re
 import unicodedata
@@ -16,6 +15,8 @@ from projectkoios.base import (
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.structure import StructureKind
 from projectkoios.ingestion.transcription.item_kind import (
     TranscriptionItemKind,
@@ -796,7 +797,7 @@ class CleanTranscriptPage(AbstractTranscriptPage):
         block_record_ids: tuple[str, ...],
         text: str,
     ) -> CleanTranscriptPage:
-        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=text.encode("utf-8"))
         page_id = stable_id(
             "clean-transcript-page",
             page_index,
@@ -814,7 +815,9 @@ class CleanTranscriptPage(AbstractTranscriptPage):
         )
 
     def __post_init__(self) -> None:
-        digest = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=self.text.encode("utf-8")
+        )
         if self.page_index < 0 or self.text_sha256 != digest:
             raise ValueError("clean transcript page evidence is inconsistent")
         expected = stable_id(
@@ -894,7 +897,7 @@ class CleanTranscript(AbstractTranscript, DataObjectActionResult):
     ) -> CleanTranscript:
         document = transcription_result.transcription_input.document
         encoded = text.encode("utf-8")
-        digest = hashlib.sha256(encoded).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=encoded)
         layout_ids = tuple(layout.result_id for layout in layouts)
         normalized_warnings = tuple(sorted(set(warnings)))
         status = CleanTranscriptStatus.AUTOMATED_UNREVIEWED
@@ -967,9 +970,8 @@ class CleanTranscript(AbstractTranscript, DataObjectActionResult):
                 "clean transcript text exceeds limit"
             )
         encoded = self.text.encode("utf-8")
-        if (
-            len(encoded) != self.utf8_byte_length
-            or hashlib.sha256(encoded).hexdigest() != self.text_sha256
+        if len(encoded) != self.utf8_byte_length or not SHA256Verifier.verify(
+            content=encoded, expected=self.text_sha256
         ):
             raise ValueError("clean transcript text identity is inconsistent")
         if self.warnings != tuple(sorted(set(self.warnings))):

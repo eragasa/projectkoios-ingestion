@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 _MAX_STRING_CHARACTERS = 4_096
 
 
@@ -129,7 +128,7 @@ class ExistingExtractionArtifactValidationRequest(
             ("expected_source_sha256", self.expected_source_sha256),
             ("expected_payload_sha256", self.expected_payload_sha256),
         ):
-            if type(value) is not str or not _SHA256.fullmatch(value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError(f"{name} must be lowercase SHA-256")
         self._bounded_positive(
             "expected_artifact_byte_size",

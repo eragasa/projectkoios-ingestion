@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -19,6 +18,7 @@ from projectkoios.ingestion.equations.recognition.proposal import (
     EquationRecognitionProposal,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 _MAX_DIAGNOSTIC_BYTES = 4_000_000
 
@@ -61,7 +61,7 @@ class EquationRecognitionArtifact(
             or self.diagnostic_byte_size > _MAX_DIAGNOSTIC_BYTES
         ):
             raise ValueError("recognition diagnostic size is out of bounds")
-        if not re.fullmatch(r"[0-9a-f]{64}", self.diagnostic_sha256):
+        if not SHA256Hash.is_canonical(self.diagnostic_sha256):
             raise ValueError("recognition diagnostic hash must be SHA-256")
         if type(self.proposals) is not tuple or any(
             type(proposal) is not EquationRecognitionProposal

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
@@ -27,6 +26,7 @@ from projectkoios.ingestion.provenance.common import (
     _object_id,
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
@@ -341,7 +341,7 @@ class DerivationAuditRequest(DataObjectActionRequest):
     def _request_id(audit_input: DerivationAuditInput) -> str:
         return stable_id(
             "derivation-audit-request",
-            hashlib.sha256(audit_input.source_content).hexdigest(),
+            SHA256Fingerprinter.fingerprint(content=audit_input.source_content),
             len(audit_input.source_content),
             audit_input.extraction_result.manifest.manifest_id,
             tuple(

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, ClassVar
 
 from projectkoios.ingestion.base.materializer.error import (
@@ -32,6 +31,7 @@ from projectkoios.ingestion.integrations.mongodb.extraction.materialization_erro
 from projectkoios.ingestion.integrations.mongodb.extraction.materializer import (  # noqa: E501
     MongoExtractionProjectionMaterializer,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -434,9 +434,9 @@ class MongoExtractionPublicationStore(
                             message="projection inventory document is invalid",
                         )
                     try:
-                        content_sha256 = hashlib.sha256(
-                            canonical_json(document).encode("utf-8")
-                        ).hexdigest()
+                        content_sha256 = SHA256Fingerprinter.fingerprint(
+                            content=canonical_json(document).encode("utf-8")
+                        )
                     except (TypeError, ValueError) as error:
                         raise ExtractionProjectionInventoryReaderError(
                             code="projection_inventory_document_invalid",

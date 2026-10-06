@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import inspect
 import sys
 import zlib
@@ -47,6 +46,7 @@ from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
 from projectkoios.ingestion.ocr.token import OCRToken
 from projectkoios.ingestion.ocr.warning import OCRWarning
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 PROCESSOR = "synthetic-ocr-processor"
 PROCESSOR_VERSION = "1"
@@ -905,7 +905,7 @@ def test__ocr_page_images_require_immutable_complete_png_evidence() -> None:
             region,
             content=truncated,
             byte_length=len(truncated),
-            content_sha256=hashlib.sha256(truncated).hexdigest(),
+            content_sha256=SHA256Fingerprinter.fingerprint(content=truncated),
         )
 
 

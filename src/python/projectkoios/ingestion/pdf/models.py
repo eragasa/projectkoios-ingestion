@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 import zlib
 from dataclasses import dataclass
@@ -8,6 +7,9 @@ from enum import StrEnum
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import BoundingBox, SourceDocument
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 PYMUPDF_COORDINATE_SYSTEM = "pymupdf_unrotated_cropbox_points_top_left"
 PNG_MEDIA_TYPE = "image/png"
@@ -233,7 +235,7 @@ class RenderedRegion:
             effective_source_bounding_box
         )
         transform = _validated_pixel_to_source_matrix(pixel_to_source_matrix)
-        content_sha256 = hashlib.sha256(content).hexdigest()
+        content_sha256 = SHA256Fingerprinter.fingerprint(content=content)
         region_id = _rendered_region_id(
             source_id=source.source_id,
             source_blob_id=source.blob_id,
@@ -285,16 +287,10 @@ class RenderedRegion:
     def __post_init__(self) -> None:
         if not self.source_id or not self.source_blob_id:
             raise ValueError("rendered region source identity must be complete")
-        if len(self.source_content_hash) != 64:
+        if not SHA256Hash.is_canonical(self.source_content_hash):
             raise ValueError(
                 "rendered region source hash must be a SHA-256 hex digest"
             )
-        try:
-            int(self.source_content_hash, 16)
-        except ValueError as error:
-            raise ValueError(
-                "rendered region source hash must be a SHA-256 hex digest"
-            ) from error
         if self.source_blob_id != f"blob:sha256:{self.source_content_hash}":
             raise ValueError("rendered region blob and content hash must agree")
         if (
@@ -359,7 +355,9 @@ class RenderedRegion:
             raise ValueError(
                 "rendered region byte length does not match content"
             )
-        if hashlib.sha256(self.content).hexdigest() != self.content_sha256:
+        if not SHA256Verifier.verify(
+            content=self.content, expected=self.content_sha256
+        ):
             raise ValueError(
                 "rendered region content hash does not match content"
             )
@@ -384,7 +382,7 @@ class RenderedRegion:
             raise ValueError(
                 "effective source box does not match pixel transform"
             )
-        if len(self.content_sha256) != 64:
+        if not SHA256Hash.is_canonical(self.content_sha256):
             raise ValueError(
                 "rendered region content hash must be a SHA-256 hex digest"
             )
@@ -489,9 +487,7 @@ def _validated_png(content: bytes) -> tuple[int, int, int]:
     if compression != 0 or filtering != 0 or interlace != 0:
         raise ValueError("rendered region PNG encoding is unsupported")
     compressed = b"".join(
-        chunk_data
-        for chunk_type, chunk_data in chunks
-        if chunk_type == b"IDAT"
+        chunk_data for chunk_type, chunk_data in chunks if chunk_type == b"IDAT"
     )
     if not compressed:
         raise ValueError("rendered region PNG has no image data")

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import subprocess
 import tempfile
@@ -66,6 +65,8 @@ from projectkoios.ingestion.integrations.pix2tex.policy import (
 from projectkoios.ingestion.integrations.pix2tex.resource import (
     Pix2TexResourceBinding,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
@@ -99,9 +100,9 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
             EquationRecognitionResource(
                 name=binding.name,
                 path=str(binding.path.expanduser().resolve()),
-                sha256=hashlib.sha256(
-                    binding.path.expanduser().resolve().read_bytes()
-                ).hexdigest(),
+                sha256=SHA256Fingerprinter.fingerprint(
+                    content=binding.path.expanduser().resolve().read_bytes()
+                ),
                 byte_size=(binding.path.expanduser().resolve().stat().st_size),
             )
             for binding in sorted(resources, key=lambda item: item.name)
@@ -112,7 +113,9 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
             processor_version="5",
             backend_name="pix2tex",
             backend_version=backend_version,
-            executable_sha256=hashlib.sha256(executable_content).hexdigest(),
+            executable_sha256=SHA256Fingerprinter.fingerprint(
+                content=executable_content
+            ),
             executable_semantic_sha256=_executable_semantic_sha256(
                 executable_content
             ),
@@ -155,9 +158,9 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
             raise EquationRecognitionError(
                 "equation-recognition executable path became unsafe"
             )
-        if (
-            hashlib.sha256(self.executable.read_bytes()).hexdigest()
-            != self.identity.executable_sha256
+        if not SHA256Verifier.verify(
+            content=self.executable.read_bytes(),
+            expected=self.identity.executable_sha256,
         ):
             raise EquationRecognitionError(
                 "equation-recognition executable changed after planning"
@@ -169,9 +172,8 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
                     "equation-recognition resource path became unsafe"
                 )
             content = path.read_bytes()
-            if (
-                len(content) != resource.byte_size
-                or hashlib.sha256(content).hexdigest() != resource.sha256
+            if len(content) != resource.byte_size or not SHA256Verifier.verify(
+                content=content, expected=resource.sha256
             ):
                 raise EquationRecognitionError(
                     "equation-recognition resource changed after planning"
@@ -215,7 +217,9 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
             )
             for assembly in artifact.assemblies
         )
-        diagnostic_sha256 = hashlib.sha256(invocation_diagnostic).hexdigest()
+        diagnostic_sha256 = SHA256Fingerprinter.fingerprint(
+            content=invocation_diagnostic
+        )
         artifact_id = stable_id(
             "equation-recognition-artifact",
             EQUATION_RECOGNITION_CONTRACT_VERSION,
@@ -332,8 +336,8 @@ def _recognition_proposal(
     mathml_processor_version: str | None = None
     latex_equation: EquationLatex | None = None
     mathml_equation: EquationMathML | None = None
-    ineligibility_reasons = (
-        pix2tex_primary_recognition_ineligibility_reasons(assembly)
+    ineligibility_reasons = pix2tex_primary_recognition_ineligibility_reasons(
+        assembly
     )
     if ineligibility_reasons:
         status = EquationRecognitionStatus.NOT_REQUESTED
@@ -433,4 +437,4 @@ def _executable_semantic_sha256(content: bytes) -> str:
     if content.startswith(b"#!"):
         _, separator, remainder = content.partition(b"\n")
         content = b"#!python\n" + remainder if separator else b"#!python"
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
 import pytest
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 from scripts import pdf_fixture_matrix
 
@@ -25,9 +25,8 @@ def test__pdf_fixture_matrix__manifest_integrity_and_expected_outputs() -> None:
 
     assert manifest["matrix_task"] == "ING-QUALITY-01"
     script_bytes = pdf_fixture_matrix.SCRIPT_PATH.read_bytes()
-    assert (
-        manifest["generation"]["script_sha256"]
-        == hashlib.sha256(script_bytes).hexdigest()
+    assert SHA256Verifier.verify(
+        content=script_bytes, expected=manifest["generation"]["script_sha256"]
     )
     assert [entry["id"] for entry in manifest["fixtures"]] == [
         case.fixture_id for case in pdf_fixture_matrix.CASES
@@ -52,11 +51,12 @@ def test__pdf_fixture_matrix__manifest_integrity_and_expected_outputs() -> None:
         assert entry["purpose"] == case.purpose
         assert entry["assertions"] == list(case.assertions)
         assert len(source_bytes) == source["bytes"]
-        assert hashlib.sha256(source_bytes).hexdigest() == source["sha256"]
+        assert SHA256Verifier.verify(
+            content=source_bytes, expected=source["sha256"]
+        )
         assert len(expected_bytes) == expected_output["bytes"]
-        assert (
-            hashlib.sha256(expected_bytes).hexdigest()
-            == expected_output["sha256"]
+        assert SHA256Verifier.verify(
+            content=expected_bytes, expected=expected_output["sha256"]
         )
         assert _observe(entry["id"]) == json.loads(expected_bytes)
 

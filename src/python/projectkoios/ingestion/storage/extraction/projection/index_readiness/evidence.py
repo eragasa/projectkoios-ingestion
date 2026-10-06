@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.index_readiness.index_evidence import (  # noqa: E501
     ExtractionProjectionIndexEvidence,
 )
@@ -50,9 +50,9 @@ class ExtractionProjectionIndexReadinessEvidence(AbstractImmutableDataObject):
             schema_id,
             tuple(item.index_evidence_id for item in indexes),
         )
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         return cls(
             readiness_id=stable_id(
                 "extraction-projection-index-readiness-evidence",
@@ -100,9 +100,9 @@ class ExtractionProjectionIndexReadinessEvidence(AbstractImmutableDataObject):
             *texts,
             tuple(item.index_evidence_id for item in self.indexes),
         )
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         if self.canonical_sha256 != digest:
             raise ValueError("index-readiness evidence digest is inconsistent")
         expected = stable_id(

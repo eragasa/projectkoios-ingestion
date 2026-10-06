@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import importlib.metadata
 import sys
 from dataclasses import FrozenInstanceError
@@ -23,6 +22,7 @@ from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 pymupdf = pytest.importorskip("pymupdf")
@@ -432,7 +432,7 @@ def test__cli__excessively_nested_cache_is_a_truthful_error(
     assert main([*arguments, "--output", str(first_output)]) == 0
     source = _source(payload)
     cache_key = PyMuPdfExtractor().cache_key(source)
-    key_hash = hashlib.sha256(cache_key.encode()).hexdigest()
+    key_hash = SHA256Fingerprinter.fingerprint(content=cache_key.encode())
     entry = cache_root / "v1" / key_hash[:2] / f"{key_hash}.json"
     depth = max(10_000, sys.getrecursionlimit() * 10)
     entry.write_text("[" * depth + "0" + "]" * depth)

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 def test__extraction_publication_script__dry_run_is_non_mutating(
@@ -42,7 +43,7 @@ def test__extraction_publication_script__dry_run_is_non_mutating(
             "--source-id",
             "source:dry-run",
             "--expected-source-sha256",
-            hashlib.sha256(content).hexdigest(),
+            SHA256Fingerprinter.fingerprint(content=content),
             "--expected-source-byte-size",
             str(len(content)),
             "--connection",

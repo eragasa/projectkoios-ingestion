@@ -5,6 +5,7 @@ from typing import ClassVar
 
 from projectkoios.ingestion.base.identity import AbstractIdentity
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True)
@@ -92,16 +93,8 @@ class OllamaMultimodalSelectionIdentity(AbstractIdentity):
 
     @staticmethod
     def _validate_sha256(name: str, value: str) -> None:
-        if not isinstance(value, str) or len(value) != 64:
+        if not SHA256Hash.is_canonical(value):
             raise ValueError(f"{name} identity must be a SHA-256 digest")
-        try:
-            int(value, 16)
-        except ValueError as error:
-            raise ValueError(
-                f"{name} identity must be a SHA-256 digest"
-            ) from error
-        if value != value.lower():
-            raise ValueError(f"{name} identity must use lowercase hexadecimal")
 
     @staticmethod
     def _validate_text(name: str, value: str, maximum: int) -> None:

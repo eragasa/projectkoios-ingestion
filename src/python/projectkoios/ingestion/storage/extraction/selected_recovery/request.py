@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.storage.extraction.publication.record import (
     ExtractionPublicationRecord,
 )
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,11 +92,7 @@ class SelectedExtractionProjectionRecoveryRequest(
         if self.expected_journal_record_count == 0:
             if self.expected_journal_head_sha256 is not None:
                 raise ValueError("empty journal cannot have a head")
-        elif type(
-            self.expected_journal_head_sha256
-        ) is not str or not _SHA256.fullmatch(
-            self.expected_journal_head_sha256
-        ):
+        elif not SHA256Hash.is_canonical(self.expected_journal_head_sha256):
             raise ValueError("nonempty journal needs a lowercase SHA-256 head")
         if not isinstance(self.selected_records, tuple) or any(
             not isinstance(record, ExtractionPublicationRecord)

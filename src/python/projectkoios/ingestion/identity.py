@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 def to_json_value(value: object) -> Any:
@@ -31,7 +32,10 @@ def to_json_value(value: object) -> Any:
     if isinstance(value, (list, tuple)):
         return [to_json_value(item) for item in value]
 
-    if value is None or isinstance(value, str | int | float | bool):
+    if isinstance(value, str):
+        return str(value)
+
+    if value is None or isinstance(value, int | float | bool):
         return value
 
     raise TypeError(f"Value is not JSON serializable: {type(value).__name__}")
@@ -48,7 +52,7 @@ def canonical_json(value: object) -> str:
 
 
 def sha256_digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def stable_id(namespace: str, *identity_parts: object) -> str:

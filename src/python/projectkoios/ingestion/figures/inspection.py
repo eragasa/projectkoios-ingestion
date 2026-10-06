@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import Any, BinaryIO, cast
 
 from projectkoios.ingestion.figures.contracts import (
@@ -26,6 +25,8 @@ from projectkoios.ingestion.models import (
     ExtractedPage,
     SourceDocument,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 class _PyMuPdfFigureInspector:
@@ -100,13 +101,13 @@ class _PyMuPdfFigureInspector:
                     image = bytes(raw_block.get("image", b""))
                     mask_value = raw_block.get("mask")
                     mask = bytes(mask_value) if mask_value is not None else None
-                    image_hash = hashlib.sha256(image).hexdigest()
+                    image_hash = SHA256Fingerprinter.fingerprint(content=image)
                     if block.asset_id != f"asset:sha256:{image_hash}":
                         raise ValueError(
                             "PDF image content differs from raw extraction"
                         )
                     mask_hash = (
-                        hashlib.sha256(mask).hexdigest()
+                        SHA256Fingerprinter.fingerprint(content=mask)
                         if mask is not None
                         else None
                     )
@@ -359,7 +360,7 @@ def _read_exact_payload(
         raise FigureDetectionLimitError("source exceeds max_source_bytes")
     if len(payload) != source.byte_length:
         raise ValueError("PDF content length does not match source identity")
-    if hashlib.sha256(payload).hexdigest() != source.content_hash:
+    if not SHA256Verifier.verify(content=payload, expected=source.content_hash):
         raise ValueError("PDF content hash does not match source identity")
     return payload
 

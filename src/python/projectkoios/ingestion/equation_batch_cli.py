@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from dataclasses import dataclass
@@ -30,6 +29,8 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 _MAX_EXTRACTION_ARTIFACT_BYTES = 128_000_000
@@ -86,7 +87,7 @@ def _resolve_items(
             )
         if len(content) != item.byte_size:
             raise ValueError(f"source size changed: {item.pdf_path}")
-        if hashlib.sha256(content).hexdigest() != item.sha256:
+        if not SHA256Verifier.verify(content=content, expected=item.sha256):
             raise ValueError(f"source hash changed: {item.pdf_path}")
 
         raw_ingestion_directory = ingestion_root / Path(item.output_directory)
@@ -190,7 +191,7 @@ def _validate_extraction_identity(path: Path, item: PdfBatchItem) -> str:
         raise ValueError(
             "raw extraction identity does not match the batch plan"
         )
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def _planned_summary(items: tuple[_ResolvedItem, ...]) -> dict[str, object]:
@@ -235,9 +236,8 @@ def _derive(
         expected_source_byte_size=item.item.byte_size,
     )
     extraction_bytes = item.extraction_artifact.read_bytes()
-    if (
-        hashlib.sha256(extraction_bytes).hexdigest()
-        != item.extraction_artifact_sha256
+    if not SHA256Verifier.verify(
+        content=extraction_bytes, expected=item.extraction_artifact_sha256
     ):
         raise ValueError("raw extraction artifact changed after preflight")
     existing_extraction = json.loads(extraction_bytes)
@@ -305,12 +305,12 @@ def _completed_item(
         "inline_candidate_count": len(detection.candidates) - display_count,
         "warning_count": len(detection.warnings),
         "transcription_status": "native_text_only",
-        "detection_artifact_sha256": hashlib.sha256(
-            item.detection_artifact.read_bytes()
-        ).hexdigest(),
-        "retrieval_artifact_sha256": hashlib.sha256(
-            item.retrieval_artifact.read_bytes()
-        ).hexdigest(),
+        "detection_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=item.detection_artifact.read_bytes()
+        ),
+        "retrieval_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=item.retrieval_artifact.read_bytes()
+        ),
     }
 
 

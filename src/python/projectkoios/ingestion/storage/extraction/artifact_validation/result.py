@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -18,8 +18,6 @@ from projectkoios.ingestion.storage.extraction.actions.status import (
 from projectkoios.ingestion.storage.extraction.artifact_validation.request import (  # noqa: E501
     ExistingExtractionArtifactValidationRequest,
 )
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,9 +181,7 @@ class ExistingExtractionArtifactValidationResult(
                 self.source_sha256,
                 self.payload_sha256,
             ):
-                if not isinstance(hash_value, str) or not _SHA256.fullmatch(
-                    hash_value
-                ):
+                if not SHA256Hash.is_canonical(hash_value):
                     raise ValueError("completed result hash is invalid")
             for size_value in (
                 self.artifact_byte_size,

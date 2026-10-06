@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, ClassVar
@@ -18,6 +17,8 @@ from projectkoios.ingestion.integrations.ollama.transport.http import (
     normalize_ollama_endpoint,
 )
 from projectkoios.ingestion.pdf.models import RenderedRegion
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 from .selection.identity import OllamaMultimodalSelectionIdentity
 
@@ -187,19 +188,9 @@ class OllamaMultimodalConfiguration:
         if not isinstance(value, str):
             raise TypeError("expected_model_digest must be a string")
         digest = value.removeprefix("sha256:")
-        if len(digest) != 64:
+        if not SHA256Hash.is_canonical(digest):
             raise OllamaMultimodalConfigurationError(
                 "expected_model_digest must be a SHA-256 digest"
-            )
-        try:
-            int(digest, 16)
-        except ValueError as error:
-            raise OllamaMultimodalConfigurationError(
-                "expected_model_digest must be a SHA-256 digest"
-            ) from error
-        if digest != digest.lower():
-            raise OllamaMultimodalConfigurationError(
-                "expected_model_digest must use lowercase hexadecimal"
             )
         return digest
 
@@ -421,7 +412,7 @@ Ordered evidence manifest:
 
     @staticmethod
     def _sha256_bytes(value: bytes) -> str:
-        return hashlib.sha256(value).hexdigest()
+        return SHA256Fingerprinter.fingerprint(content=value)
 
     @classmethod
     def _prompt_template_sha256(cls) -> str:
@@ -490,16 +481,8 @@ class OllamaMetadataResponseIdentity(AbstractIdentity):
 
     @staticmethod
     def _validate_sha256(name: str, value: str) -> None:
-        if not isinstance(value, str) or len(value) != 64:
+        if not SHA256Hash.is_canonical(value):
             raise ValueError(f"{name} identity must be a SHA-256 digest")
-        try:
-            int(value, 16)
-        except ValueError as error:
-            raise ValueError(
-                f"{name} identity must be a SHA-256 digest"
-            ) from error
-        if value != value.lower():
-            raise ValueError(f"{name} identity must use lowercase hexadecimal")
 
     @staticmethod
     def _validate_nonnegative(name: str, value: int | None) -> None:
@@ -584,16 +567,8 @@ class OllamaRawResponseIdentity(AbstractIdentity):
 
     @staticmethod
     def _validate_sha256(name: str, value: str) -> None:
-        if not isinstance(value, str) or len(value) != 64:
+        if not SHA256Hash.is_canonical(value):
             raise ValueError(f"{name} identity must be a SHA-256 digest")
-        try:
-            int(value, 16)
-        except ValueError as error:
-            raise ValueError(
-                f"{name} identity must be a SHA-256 digest"
-            ) from error
-        if value != value.lower():
-            raise ValueError(f"{name} identity must use lowercase hexadecimal")
 
     @staticmethod
     def _validate_nonnegative(name: str, value: int | None) -> None:

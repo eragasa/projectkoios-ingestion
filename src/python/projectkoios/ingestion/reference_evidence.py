@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from enum import StrEnum
@@ -25,6 +24,8 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 REFERENCE_EVIDENCE_CONTRACT_ID = "projectkoios.ingestion.reference-evidence"
 REFERENCE_EVIDENCE_CONTRACT_VERSION = "0.1.0"
@@ -42,7 +43,6 @@ REFERENCE_EVIDENCE_MAX_LIMITATIONS = 32
 _MAX_BOUND_ARTIFACT_BYTES = 128_000_000
 _MAX_JSON_DEPTH = 64
 _MAX_STRING_CHARACTERS = 4_096
-_SHA256_LENGTH = 64
 _EXTRACTION_MEDIA_TYPE = (
     "application/vnd.projectkoios.ingestion.extraction+json"
 )
@@ -114,14 +114,8 @@ def _require_nonnegative_int(value: object, name: str) -> int:
 
 def _require_sha256(value: object, name: str) -> str:
     digest = _require_text(value, name)
-    if len(digest) != _SHA256_LENGTH or digest != digest.lower():
+    if not SHA256Hash.is_canonical(digest):
         raise ValueError(f"{name} must be a lowercase SHA-256 digest")
-    try:
-        int(digest, 16)
-    except ValueError as error:
-        raise ValueError(
-            f"{name} must be a lowercase SHA-256 digest"
-        ) from error
     return digest
 
 
@@ -151,7 +145,7 @@ class ReferenceEvidenceArtifact:
             )
         return cls(
             media_type=media_type,
-            sha256=hashlib.sha256(content).hexdigest(),
+            sha256=SHA256Fingerprinter.fingerprint(content=content),
             byte_length=len(content),
         )
 
@@ -169,7 +163,7 @@ class ReferenceEvidenceArtifact:
             raise TypeError(f"{name} must be bytes")
         if len(content) > _MAX_BOUND_ARTIFACT_BYTES:
             raise ReferenceEvidenceLimitError(f"{name} exceeds size limit")
-        actual = hashlib.sha256(content).hexdigest()
+        actual = SHA256Fingerprinter.fingerprint(content=content)
         if len(content) != self.byte_length or actual != self.sha256:
             raise ReferenceEvidenceVerificationError(
                 f"{name} does not match its recorded content identity"

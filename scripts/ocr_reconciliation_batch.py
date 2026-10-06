@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import stat
@@ -41,6 +40,8 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 _MAX_PLAN_BYTES = 8_000_000
@@ -176,7 +177,9 @@ def _safe_output_artifact(
 
 
 def _sha256(path: Path, maximum: int, label: str) -> str:
-    return hashlib.sha256(_read_bounded(path, maximum, label)).hexdigest()
+    return SHA256Fingerprinter.fingerprint(
+        content=_read_bounded(path, maximum, label)
+    )
 
 
 def _resolve_plan(
@@ -279,7 +282,9 @@ def _ocr_publication(
         _MAX_OCR_PUBLICATION_BYTES,
         "selective OCR publication",
     )
-    if hashlib.sha256(content).hexdigest() != page.ocr_publication_sha256:
+    if not SHA256Verifier.verify(
+        content=content, expected=page.ocr_publication_sha256
+    ):
         raise ValueError("selective OCR publication changed after preflight")
     publication = SelectiveOCRPublication.from_dict(
         _load_json(content, "selective OCR publication")
@@ -379,8 +384,9 @@ def main(arguments: list[str] | None = None) -> int:
                 _MAX_EXTRACTION_BYTES,
                 "native extraction artifact",
             )
-            if hashlib.sha256(extraction_content).hexdigest() != (
-                item.contract.extraction_sha256
+            if not SHA256Verifier.verify(
+                content=extraction_content,
+                expected=item.contract.extraction_sha256,
             ):
                 raise ValueError("native extraction changed after preflight")
             extraction = deserialize_extraction_result(

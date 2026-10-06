@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
 )
 
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 _CONTENT_DIGEST_FIELD = "projection_content_sha256"
 
 
@@ -99,9 +98,7 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
         publication_digest = value.get("publication_digest")
         if type(document_id) is not str or not document_id:
             raise ValueError("projected document identity is invalid")
-        if type(publication_digest) is not str or not _SHA256.fullmatch(
-            publication_digest
-        ):
+        if not SHA256Hash.is_canonical(publication_digest):
             raise ValueError("projected publication digest is invalid")
         if _CONTENT_DIGEST_FIELD in value:
             raise ValueError("projected content digest is reserved")
@@ -166,8 +163,7 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
         if (
             type(self.document_id) is not str
             or not self.document_id
-            or type(self.publication_digest) is not str
-            or not _SHA256.fullmatch(self.publication_digest)
+            or not SHA256Hash.is_canonical(self.publication_digest)
             or self.content_sha256 != expected_content
             or self.canonical_sha256 != expected_canonical
         ):
@@ -186,4 +182,4 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
 
     @staticmethod
     def _digest(value: str) -> str:
-        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+        return SHA256Fingerprinter.fingerprint(content=value.encode("utf-8"))

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 
@@ -15,6 +14,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -195,8 +195,8 @@ def test__renderer__renders_only_requested_regions_in_requested_order(
     )
     assert results[1].source_bounding_box == (150.0, 0.0, 300.0, 200.0)
     assert results[1].content.startswith(b"\x89PNG\r\n\x1a\n")
-    assert hashlib.sha256(results[1].content).hexdigest() == (
-        results[1].content_sha256
+    assert SHA256Verifier.verify(
+        content=results[1].content, expected=results[1].content_sha256
     )
     blue_crop = pymupdf.Pixmap(results[1].content)
     center = (blue_crop.height // 2) * blue_crop.stride + (

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import html
 import json
 import math
@@ -61,6 +60,7 @@ from projectkoios.ingestion.integrations.sqlite.processing_state.store import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.processing_state.base import (
     AbstractProcessingStateStore,
 )
@@ -310,7 +310,7 @@ def check_book(book: Book) -> tuple[bytes, dict[str, object]]:
     if book.source.is_symlink() or not book.source.is_file():
         raise RuntimeError(f"{book.name}: source PDF missing or unsafe")
     content = book.source.read_bytes()
-    if hashlib.sha256(content).hexdigest() != book.digest:
+    if not SHA256Verifier.verify(content=content, expected=book.digest):
         raise RuntimeError(f"{book.name}: source PDF identity changed")
     baseline = json.loads(book.baseline.read_text(encoding="utf-8"))
     if (

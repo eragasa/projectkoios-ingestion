@@ -1,11 +1,12 @@
 #!/Users/eugene/repos/projectkoios-ingestion/.venv/bin/python
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from collections import Counter
 from pathlib import Path
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 PREPARATION = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
@@ -26,7 +27,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

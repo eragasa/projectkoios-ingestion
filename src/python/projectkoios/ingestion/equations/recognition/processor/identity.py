@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 
 from projectkoios.ingestion.equations.recognition.resource import (
     EquationRecognitionResource,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True)
@@ -48,9 +48,9 @@ class EquationRecognitionProcessorIdentity:
             )
         ):
             raise ValueError("recognition processor identity must be complete")
-        if not re.fullmatch(r"[0-9a-f]{64}", self.executable_sha256):
+        if not SHA256Hash.is_canonical(self.executable_sha256):
             raise ValueError("recognition executable hash must be SHA-256")
-        if not re.fullmatch(r"[0-9a-f]{64}", self.executable_semantic_sha256):
+        if not SHA256Hash.is_canonical(self.executable_semantic_sha256):
             raise ValueError(
                 "recognition executable semantic hash must be SHA-256"
             )

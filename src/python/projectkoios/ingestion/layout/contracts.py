@@ -24,6 +24,7 @@ from projectkoios.ingestion.models import (
     SourceSpan,
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 LAYOUT_CONTRACT_VERSION = "1.0"
 
@@ -1160,14 +1161,8 @@ class LayoutContract:
 
     @staticmethod
     def _validate_sha256_source(source_blob_id: str, source_hash: str) -> None:
-        if len(source_hash) != 64:
+        if not SHA256Hash.is_canonical(source_hash):
             raise ValueError("layout source hash must be a SHA-256 digest")
-        try:
-            int(source_hash, 16)
-        except ValueError as error:
-            raise ValueError(
-                "layout source hash must be a SHA-256 digest"
-            ) from error
         if source_blob_id != f"blob:sha256:{source_hash}":
             raise ValueError("layout source blob and hash must agree")
 

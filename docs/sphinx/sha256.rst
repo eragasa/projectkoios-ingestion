@@ -1,0 +1,26 @@
+SHA-256
+*******
+
+Ingestion uses one canonical SHA-256 value and separates calculation from
+verification. Persisted hashes remain lowercase hexadecimal JSON strings.
+
+Hash value
+----------
+
+.. automodule:: projectkoios.ingestion.sha256.hash
+   :members:
+   :show-inheritance:
+
+Fingerprinter
+-------------
+
+.. automodule:: projectkoios.ingestion.sha256.fingerprinter
+   :members:
+   :show-inheritance:
+
+Verifier
+--------
+
+.. automodule:: projectkoios.ingestion.sha256.verifier
+   :members:
+   :show-inheritance:

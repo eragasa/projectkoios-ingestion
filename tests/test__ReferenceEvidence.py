@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -31,6 +30,7 @@ from projectkoios.ingestion.reference_evidence import (
     serialize_reference_evidence,
     verify_reference_evidence,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 FIXTURES = Path(__file__).parent / "fixtures" / "reference_evidence"
 _SOURCE_BYTES = b"sanitized reference-evidence fixture source\n"
@@ -47,7 +47,7 @@ def _artifact(content: bytes, media_type: str) -> ReferenceEvidenceArtifact:
 
 
 def _record() -> ReferenceEvidenceRecord:
-    source_sha256 = hashlib.sha256(_SOURCE_BYTES).hexdigest()
+    source_sha256 = SHA256Fingerprinter.fingerprint(content=_SOURCE_BYTES)
     manifest_id = stable_id("manifest", "sanitized-fixture")
     document_id = stable_id("document", "sanitized-fixture")
     layout_id = stable_id("layout", "sanitized-fixture")
@@ -86,9 +86,9 @@ def _record() -> ReferenceEvidenceRecord:
             status=CleanTranscriptStatus.AUTOMATED_UNREVIEWED,
             structured_transcription_result_id=transcription_id,
             layout_result_ids=(layout_id,),
-            text_sha256=hashlib.sha256(
-                b"sanitized transcript text\n"
-            ).hexdigest(),
+            text_sha256=SHA256Fingerprinter.fingerprint(
+                content=b"sanitized transcript text\n"
+            ),
             text_utf8_byte_length=len(b"sanitized transcript text\n"),
             processor_name="sanitized-fixture-projector",
             processor_version="1",
@@ -157,7 +157,7 @@ def test__reference_evidence__verification_binds_source_and_artifacts() -> None:
 
     verify_reference_evidence(
         record,
-        source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+        source_sha256=SHA256Fingerprinter.fingerprint(content=_SOURCE_BYTES),
         source_byte_length=len(_SOURCE_BYTES),
         source_media_type="application/pdf",
         extraction_artifact=_EXTRACTION_BYTES,
@@ -181,7 +181,9 @@ def test__reference_evidence__verification_binds_source_and_artifacts() -> None:
     ):
         verify_reference_evidence(
             record,
-            source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+            source_sha256=SHA256Fingerprinter.fingerprint(
+                content=_SOURCE_BYTES
+            ),
             source_byte_length=len(_SOURCE_BYTES),
             source_media_type="application/pdf",
             clean_transcript_result_bytes=b"changed",
@@ -192,7 +194,9 @@ def test__reference_evidence__changed_bound_evidence_changes_identity() -> None:
     original = _record()
     changed_transcript = replace(
         original.transcript,
-        text_sha256=hashlib.sha256(b"changed transcript").hexdigest(),
+        text_sha256=SHA256Fingerprinter.fingerprint(
+            content=b"changed transcript"
+        ),
     )
     changed = ReferenceEvidenceRecord.create(
         source=original.source,

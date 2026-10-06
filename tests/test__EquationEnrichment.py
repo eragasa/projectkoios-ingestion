@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import json
 import shutil
@@ -48,6 +47,8 @@ from projectkoios.ingestion.integrations.pix2tex.resource import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 pytest.importorskip("pymupdf")
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
@@ -203,7 +204,7 @@ def test__equation_enrichment_batch__plans_applies_and_replays(
                 source_id="article:equation:enrichment-batch",
                 pdf_path=PurePosixPath("equations.pdf"),
                 output_directory=PurePosixPath("article"),
-                sha256=hashlib.sha256(payload).hexdigest(),
+                sha256=SHA256Fingerprinter.fingerprint(content=payload),
                 byte_size=len(payload),
                 locator="assets/equations.pdf",
             ),
@@ -356,7 +357,7 @@ def test__equation_enrichment__resource_identity_changes_with_model(
         _recognize(first, assembly)
 
     assert before != second.identity.identity_digest
-    assert (
-        second.identity.resources[0].sha256
-        == hashlib.sha256(b"changed model identity").hexdigest()
+    assert SHA256Verifier.verify(
+        content=b"changed model identity",
+        expected=second.identity.resources[0].sha256,
     )

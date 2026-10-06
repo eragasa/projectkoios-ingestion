@@ -13,11 +13,12 @@ Limits: one PDF, at most 16 MiB; normal ingestion object/page limits also apply.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import subprocess
 from io import BytesIO
 from pathlib import Path
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 _MAX_FIXTURE_BYTES = 16 * 1024 * 1024
 _VERIFIER_INPUTS = (
@@ -140,7 +141,7 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     payload = fixture.read_bytes()
     source = SourceDocument.from_bytes(
         payload,
-        source_id=f"fixture:clean-transcript:{hashlib.sha256(payload).hexdigest()}",
+        source_id=f"fixture:clean-transcript:{SHA256Fingerprinter.fingerprint(content=payload)}",
         media_type="application/pdf",
         locator=fixture.relative_to(root).as_posix(),
     )
@@ -209,12 +210,12 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     return {
         "audit_report_id": audit.report_id,
         "clean_transcript_result_id": first.result_id,
-        "clean_transcript_sha256": hashlib.sha256(
-            first_json.encode("utf-8")
-        ).hexdigest(),
+        "clean_transcript_sha256": SHA256Fingerprinter.fingerprint(
+            content=first_json.encode("utf-8")
+        ),
         "clean_text_sha256": first.text_sha256,
         "fixture": fixture.relative_to(root).as_posix(),
-        "fixture_sha256": hashlib.sha256(payload).hexdigest(),
+        "fixture_sha256": SHA256Fingerprinter.fingerprint(content=payload),
         "request_id": request.request_id,
         "status": "verified",
     }

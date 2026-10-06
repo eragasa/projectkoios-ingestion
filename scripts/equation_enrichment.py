@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -54,6 +53,8 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 from workflow.equation_recognition import (
@@ -303,17 +304,19 @@ def _existing_summary(
             if derivation_record is not None
             else None
         ),
-        "assembly_artifact_sha256": hashlib.sha256(
-            target.assembly.read_bytes()
-        ).hexdigest(),
-        "recognition_artifact_sha256": hashlib.sha256(
-            target.recognition.read_bytes()
-        ).hexdigest(),
-        "index_artifact_sha256": hashlib.sha256(
-            target.index.read_bytes()
-        ).hexdigest(),
+        "assembly_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=target.assembly.read_bytes()
+        ),
+        "recognition_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=target.recognition.read_bytes()
+        ),
+        "index_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=target.index.read_bytes()
+        ),
         "derivation_artifact_sha256": (
-            hashlib.sha256(target.derivation.read_bytes()).hexdigest()
+            SHA256Fingerprinter.fingerprint(
+                content=target.derivation.read_bytes()
+            )
             if derivation is not None
             else None
         ),
@@ -390,7 +393,9 @@ def main(arguments: list[str] | None = None) -> int:
                 low_text_threshold=args.low_text_threshold,
             )
             payload = item.pdf.read_bytes()
-            if hashlib.sha256(payload).hexdigest() != item.item.sha256:
+            if not SHA256Verifier.verify(
+                content=payload, expected=item.item.sha256
+            ):
                 raise ValueError(
                     "PDF source changed after enrichment preflight"
                 )
@@ -463,18 +468,22 @@ def main(arguments: list[str] | None = None) -> int:
                         EquationPublicationInventoryStatus.COMPLETE_SET.value
                     ),
                     "derivation_record_id": derivation.record_id,
-                    "assembly_artifact_sha256": hashlib.sha256(
-                        target.assembly.read_bytes()
-                    ).hexdigest(),
-                    "recognition_artifact_sha256": hashlib.sha256(
-                        target.recognition.read_bytes()
-                    ).hexdigest(),
-                    "index_artifact_sha256": hashlib.sha256(
-                        target.index.read_bytes()
-                    ).hexdigest(),
-                    "derivation_artifact_sha256": hashlib.sha256(
-                        target.derivation.read_bytes()
-                    ).hexdigest(),
+                    "assembly_artifact_sha256": SHA256Fingerprinter.fingerprint(
+                        content=target.assembly.read_bytes()
+                    ),
+                    "recognition_artifact_sha256": (
+                        SHA256Fingerprinter.fingerprint(
+                            content=target.recognition.read_bytes()
+                        )
+                    ),
+                    "index_artifact_sha256": SHA256Fingerprinter.fingerprint(
+                        content=target.index.read_bytes()
+                    ),
+                    "derivation_artifact_sha256": (
+                        SHA256Fingerprinter.fingerprint(
+                            content=target.derivation.read_bytes()
+                        )
+                    ),
                 }
             )
     except EquationRecognitionError as error:

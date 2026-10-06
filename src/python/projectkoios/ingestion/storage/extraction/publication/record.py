@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 def _record_digest(
@@ -32,7 +32,9 @@ def _record_digest(
         "request_id": request_id,
         "sequence": sequence,
     }
-    return hashlib.sha256(canonical_json(values).encode("utf-8")).hexdigest()
+    return SHA256Fingerprinter.fingerprint(
+        content=canonical_json(values).encode("utf-8")
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,10 +90,11 @@ class ExtractionPublicationRecord(AbstractImmutableDataObject):
         if not self.request_id or not self.document_id or not self.manifest_id:
             raise ValueError("publication record is incomplete")
         for value in (self.payload_sha256, self.record_sha256):
-            if not re.fullmatch(r"[0-9a-f]{64}", value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError("publication record hash must be SHA-256")
-        if self.previous_record_sha256 is not None and not re.fullmatch(
-            r"[0-9a-f]{64}", self.previous_record_sha256
+        if (
+            self.previous_record_sha256 is not None
+            and not SHA256Hash.is_canonical(self.previous_record_sha256)
         ):
             raise ValueError("previous publication record hash is invalid")
         if self.payload_byte_size <= 0:

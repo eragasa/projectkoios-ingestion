@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -46,6 +45,9 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
 from projectkoios.ingestion.tables.structure.reconstructor import (
     DeterministicTableStructureReconstructor,
@@ -62,7 +64,6 @@ _MAX_PLAN_BYTES = 4_000_000
 _MAX_ARTIFACT_BYTES = 128_000_000
 _MAX_ITEMS = 256
 _MAX_IDENTITY_LENGTH = 4_096
-_SHA256_LENGTH = 64
 _OUTPUT_NAMES = (
     "audit.json",
     "clean.json",
@@ -134,14 +135,8 @@ def _require_text(value: object, name: str) -> str:
 
 def _require_sha256(value: object, name: str) -> str:
     digest = _require_text(value, name)
-    if len(digest) != _SHA256_LENGTH or digest != digest.lower():
+    if not SHA256Hash.is_canonical(digest):
         raise TranscriptBatchError(f"{name} must be a lowercase SHA-256 digest")
-    try:
-        int(digest, 16)
-    except ValueError as error:
-        raise TranscriptBatchError(
-            f"{name} must be a lowercase SHA-256 digest"
-        ) from error
     return digest
 
 
@@ -458,9 +453,9 @@ def build_transcript_batch_plan(
                 locator=source.item.locator,
                 extraction_artifact_sha256=(source.extraction_artifact_sha256),
                 extraction_manifest_id=manifest_id,
-                equation_detection_artifact_sha256=hashlib.sha256(
-                    detection_bytes
-                ).hexdigest(),
+                equation_detection_artifact_sha256=SHA256Fingerprinter.fingerprint(
+                    content=detection_bytes
+                ),
                 equation_detection_result_id=result_id,
             )
         )
@@ -517,8 +512,9 @@ def resolve_transcript_batch_plan(
                 "raw extraction identity differs from the durable plan"
             )
         detection_bytes = _read_artifact(source.detection_artifact)
-        if hashlib.sha256(detection_bytes).hexdigest() != (
-            plan_item.equation_detection_artifact_sha256
+        if not SHA256Verifier.verify(
+            content=detection_bytes,
+            expected=plan_item.equation_detection_artifact_sha256,
         ):
             raise TranscriptBatchError(
                 "equation detection artifact differs from the durable plan"
@@ -567,8 +563,9 @@ def execute_transcript_batch_item(
         expected_source_byte_size=source.item.byte_size,
     )
     extraction_bytes = _read_artifact(source.extraction_artifact)
-    if hashlib.sha256(extraction_bytes).hexdigest() != (
-        resolved.plan_item.extraction_artifact_sha256
+    if not SHA256Verifier.verify(
+        content=extraction_bytes,
+        expected=resolved.plan_item.extraction_artifact_sha256,
     ):
         raise TranscriptBatchError(
             "raw extraction artifact changed after preflight"
@@ -702,9 +699,9 @@ def execute_transcript_batch_item(
         audit_report_id=audit.report_id,
         audit_sha256=_sha256_text(audit_json),
         reference_evidence_record_id=reference_evidence.record_id,
-        reference_evidence_sha256=hashlib.sha256(
-            reference_evidence_bytes
-        ).hexdigest(),
+        reference_evidence_sha256=SHA256Fingerprinter.fingerprint(
+            content=reference_evidence_bytes
+        ),
         counts=counts,
     )
     files = {
@@ -728,9 +725,9 @@ def execute_transcript_batch_item(
         "counts": counts,
         "manifest_id": manifest["manifest_id"],
         "reference_evidence_record_id": reference_evidence.record_id,
-        "reference_evidence_sha256": hashlib.sha256(
-            reference_evidence_bytes
-        ).hexdigest(),
+        "reference_evidence_sha256": SHA256Fingerprinter.fingerprint(
+            content=reference_evidence_bytes
+        ),
         "output_directory": resolved.plan_item.output_directory.as_posix(),
         "source_id": resolved.plan_item.source_id,
     }
@@ -1290,7 +1287,7 @@ def _fsync_directory(path: Path) -> None:
 
 
 def _sha256_text(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=value.encode("utf-8"))
 
 
 def _require_int(value: object, name: str) -> int:

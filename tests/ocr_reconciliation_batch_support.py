@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path, PurePosixPath
 
 from projectkoios.ingestion.batch import PdfBatchItem
@@ -40,6 +39,7 @@ from projectkoios.ingestion.reconciliation.request import (
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 def reconciliation_fixture() -> tuple[
@@ -122,9 +122,9 @@ def reconciliation_fixture() -> tuple[
         page=ocr_item.pages[0],
         result=result,
     )
-    ocr_digest = hashlib.sha256(
-        (serialize_contract(ocr_publication) + "\n").encode()
-    ).hexdigest()
+    ocr_digest = SHA256Fingerprinter.fingerprint(
+        content=(serialize_contract(ocr_publication) + "\n").encode()
+    )
     page = SelectiveOCRReconciliationPage(
         page_index=0,
         ocr_publication_sha256=ocr_digest,

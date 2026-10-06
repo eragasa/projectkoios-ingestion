@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from enum import StrEnum
 
 from projectkoios.base import DataObjectModel
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import Metadata
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 class TranscriptEvidenceMappingBasis(StrEnum):
@@ -109,7 +109,7 @@ class SelectedTranscriptBlockEvidence(DataObjectModel):
 
     @staticmethod
     def _digest(text: str) -> str:
-        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+        return SHA256Fingerprinter.fingerprint(content=text.encode("utf-8"))
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

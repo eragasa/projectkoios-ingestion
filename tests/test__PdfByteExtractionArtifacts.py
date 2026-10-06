@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 from pathlib import Path
@@ -23,6 +22,8 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.cli import ingest_pdf_artifacts
 from projectkoios.ingestion.pdf import artifacts as artifact_module
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 pymupdf = pytest.importorskip("pymupdf")
 
@@ -45,7 +46,7 @@ def _extract(
         source_id="article:bytes-fixture",
         locator="staged/fixture.pdf",
         low_text_character_threshold=0,
-        expected_source_sha256=hashlib.sha256(content).hexdigest(),
+        expected_source_sha256=SHA256Fingerprinter.fingerprint(content=content),
         expected_source_byte_size=len(content),
         maximum_pages=maximum_pages,
     )
@@ -78,9 +79,8 @@ def test__byte_api_returns_owner_built_bounded_artifacts_without_writes(
     assert b"Page 2 exact text" in bundle.artifacts[2].content
     for artifact in bundle.artifacts:
         assert artifact.byte_length == len(artifact.content)
-        assert (
-            artifact.content_sha256
-            == hashlib.sha256(artifact.content).hexdigest()
+        assert SHA256Verifier.verify(
+            content=artifact.content, expected=artifact.content_sha256
         )
 
 
@@ -129,7 +129,9 @@ def test__incoherent_page_and_artifact_bounds_fail_before_page_loading(
             source_id="article:incoherent-bounds",
             locator="staged/incoherent.pdf",
             low_text_character_threshold=0,
-            expected_source_sha256=hashlib.sha256(content).hexdigest(),
+            expected_source_sha256=SHA256Fingerprinter.fingerprint(
+                content=content
+            ),
             expected_source_byte_size=len(content),
             maximum_pages=2,
             artifact_limits=PdfExtractionArtifactLimits(max_artifacts=1),
@@ -149,7 +151,9 @@ def test__cli_page_limit_leaves_no_output_artifacts(tmp_path: Path) -> None:
             source_id="article:cli-limit",
             output=output,
             raw_text_directory=raw_pages,
-            expected_source_sha256=hashlib.sha256(content).hexdigest(),
+            expected_source_sha256=SHA256Fingerprinter.fingerprint(
+                content=content
+            ),
             expected_source_byte_size=len(content),
             maximum_pages=1,
         )
@@ -163,7 +167,7 @@ def test__byte_api_rejects_source_identity_mismatch_before_extraction(
     mismatch: str,
 ) -> None:
     content = _pdf(1)
-    digest = hashlib.sha256(content).hexdigest()
+    digest = SHA256Fingerprinter.fingerprint(content=content)
     size = len(content)
     if mismatch == "hash":
         digest = "0" * 64
@@ -320,7 +324,7 @@ def test__direct_construction_rejects_artifact_and_bundle_tampering() -> None:
 
 def test__byte_api_requires_immutable_bytes_and_bounded_maximum_pages() -> None:
     content = _pdf(1)
-    digest = hashlib.sha256(content).hexdigest()
+    digest = SHA256Fingerprinter.fingerprint(content=content)
 
     with pytest.raises(TypeError, match="immutable bytes"):
         extract_pdf_bytes_artifacts(

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import fcntl
-import hashlib
 import json
 import os
 import stat
@@ -15,6 +14,8 @@ from typing import ClassVar
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -146,7 +147,7 @@ class DiskExtractionPublicationStore(
             raise ExtractionPublicationError(
                 "extraction publication payload size is out of bounds"
             )
-        payload_sha256 = hashlib.sha256(payload).hexdigest()
+        payload_sha256 = SHA256Fingerprinter.fingerprint(content=payload)
         with self._exclusive_journal():
             records = self.records()
             for record in records:
@@ -353,9 +354,10 @@ class DiskExtractionPublicationStore(
         path = self._payload_path(record.payload_sha256)
         self._require_safe_file(path)
         content = path.read_bytes()
-        if (
-            len(content) != record.payload_byte_size
-            or hashlib.sha256(content).hexdigest() != record.payload_sha256
+        if len(
+            content
+        ) != record.payload_byte_size or not SHA256Verifier.verify(
+            content=content, expected=record.payload_sha256
         ):
             raise ExtractionPublicationError(
                 "publication recovery payload is corrupt"

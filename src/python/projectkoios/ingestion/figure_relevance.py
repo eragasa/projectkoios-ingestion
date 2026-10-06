@@ -11,6 +11,7 @@ from projectkoios.ingestion.figures import (
 )
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import Metadata, WarningSeverity
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 FIGURE_RELEVANCE_CONTRACT_VERSION = "1.0"
 FIGURE_RELEVANCE_CONFIGURATION_VERSION = "1"
@@ -1328,12 +1329,8 @@ class FigureRelevanceContract:
 
     @staticmethod
     def _sha256(name: str, value: str) -> None:
-        if len(value) != 64:
+        if not SHA256Hash.is_canonical(value):
             raise ValueError(f"{name} must be a SHA-256 digest")
-        try:
-            int(value, 16)
-        except ValueError as error:
-            raise ValueError(f"{name} must be a SHA-256 digest") from error
 
     @staticmethod
     def _validate_retained_size(value: object, limit: int) -> None:

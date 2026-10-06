@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 from pathlib import Path, PurePosixPath
@@ -8,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import pytest
 from projectkoios.ingestion import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
 FIRST_PDF = (FIXTURES / "born-digital-text.pdf").read_bytes()
@@ -22,7 +22,7 @@ def _plan() -> PdfBatchPlan:
                 source_id="reference:first",
                 pdf_path=PurePosixPath("first.pdf"),
                 output_directory=PurePosixPath("first"),
-                sha256=hashlib.sha256(FIRST_PDF).hexdigest(),
+                sha256=SHA256Fingerprinter.fingerprint(content=FIRST_PDF),
                 byte_size=len(FIRST_PDF),
                 locator="assets/first.pdf",
             ),
@@ -30,7 +30,7 @@ def _plan() -> PdfBatchPlan:
                 source_id="reference:second",
                 pdf_path=PurePosixPath("second.pdf"),
                 output_directory=PurePosixPath("second"),
-                sha256=hashlib.sha256(SECOND_PDF).hexdigest(),
+                sha256=SHA256Fingerprinter.fingerprint(content=SECOND_PDF),
                 byte_size=len(SECOND_PDF),
             ),
         ),

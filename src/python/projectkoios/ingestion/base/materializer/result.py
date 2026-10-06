@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -25,8 +24,7 @@ from projectkoios.ingestion.base.materializer.target import (
 )
 from projectkoios.ingestion.base.projector.value import AbstractProjectionValue
 from projectkoios.ingestion.identity import stable_id
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,8 +109,7 @@ class MaterializationResult[EvidenceT: AbstractMaterializationEvidence](
         if (
             type(self.evidence.evidence_id) is not str
             or not self.evidence.evidence_id
-            or type(self.evidence.canonical_sha256) is not str
-            or not _SHA256.fullmatch(self.evidence.canonical_sha256)
+            or not SHA256Hash.is_canonical(self.evidence.canonical_sha256)
         ):
             raise ValueError("materialization evidence identity is invalid")
         expected = stable_id(

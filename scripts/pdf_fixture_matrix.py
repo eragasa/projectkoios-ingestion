@@ -8,7 +8,6 @@ The committed PDF bytes, not a fresh generation run, are the test inputs.  See
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import struct
 import sys
@@ -18,6 +17,8 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 SCRIPT_PATH = Path(__file__).resolve()
 ROOT = SCRIPT_PATH.parents[1]
@@ -206,8 +207,11 @@ def _tables(pymupdf: Any) -> Any:
 
 def _png_chunk(kind: bytes, payload: bytes) -> bytes:
     checksum = zlib.crc32(kind + payload) & 0xFFFFFFFF
-    return struct.pack(">I", len(payload)) + kind + payload + struct.pack(
-        ">I", checksum
+    return (
+        struct.pack(">I", len(payload))
+        + kind
+        + payload
+        + struct.pack(">I", checksum)
     )
 
 
@@ -407,7 +411,7 @@ CASES = (
 
 
 def _sha256(payload: bytes) -> str:
-    return hashlib.sha256(payload).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=payload)
 
 
 def _round(value: float) -> float:

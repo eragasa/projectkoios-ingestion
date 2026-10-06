@@ -13,9 +13,7 @@ def test__equation_latex__retains_exact_text_and_trace() -> None:
 
     assert isinstance(equation, AbstractEquation)
     assert equation.latex == "  E = mc^2  "
-    assert equation.equation_source_ids == (
-        "equation-image:sha256:source",
-    )
+    assert equation.equation_source_ids == ("equation-image:sha256:source",)
     assert hash(equation)
 
 

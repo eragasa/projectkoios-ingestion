@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import FrozenInstanceError
 
 import pytest
@@ -24,6 +23,8 @@ from projectkoios.ingestion import (
     build_pdf_extraction_artifacts,
     read_pdf_extraction_transcript,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 _SOURCE_BYTES = b"%PDF-1.7\nsanitized fixture only\n%%EOF\n"
 
@@ -125,7 +126,9 @@ def _read(bundle):
     return read_pdf_extraction_transcript(
         bundle.artifacts,
         expected_bundle_id=bundle.bundle_id,
-        expected_source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+        expected_source_sha256=SHA256Fingerprinter.fingerprint(
+            content=_SOURCE_BYTES
+        ),
         expected_source_byte_size=len(_SOURCE_BYTES),
         configuration=bundle.configuration,
         artifact_limits=bundle.artifact_limits,
@@ -141,7 +144,9 @@ def test__replay_returns_exact_ordered_native_page_text_and_identity() -> None:
     assert transcript.bundle_id == bundle.bundle_id
     assert transcript.source_id == "reference:sanitized-fixture"
     assert transcript.source_blob_id.startswith("blob:sha256:")
-    assert transcript.source_sha256 == hashlib.sha256(_SOURCE_BYTES).hexdigest()
+    assert SHA256Verifier.verify(
+        content=_SOURCE_BYTES, expected=transcript.source_sha256
+    )
     assert transcript.source_byte_size == len(_SOURCE_BYTES)
     assert transcript.media_type == "application/pdf"
     assert transcript.metadata == (
@@ -182,7 +187,9 @@ def test__replay_rejects_incomplete_duplicate_or_disordered_inventory(
         read_pdf_extraction_transcript(
             artifacts(bundle),
             expected_bundle_id=bundle.bundle_id,
-            expected_source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+            expected_source_sha256=SHA256Fingerprinter.fingerprint(
+                content=_SOURCE_BYTES
+            ),
             expected_source_byte_size=len(_SOURCE_BYTES),
             configuration=bundle.configuration,
             artifact_limits=bundle.artifact_limits,
@@ -212,9 +219,9 @@ def test__replay_rejects_noncanonical_json_and_changed_page_text() -> None:
             read_pdf_extraction_transcript(
                 artifacts,
                 expected_bundle_id=bundle.bundle_id,
-                expected_source_sha256=hashlib.sha256(
-                    _SOURCE_BYTES
-                ).hexdigest(),
+                expected_source_sha256=SHA256Fingerprinter.fingerprint(
+                    content=_SOURCE_BYTES
+                ),
                 expected_source_byte_size=len(_SOURCE_BYTES),
                 configuration=bundle.configuration,
                 artifact_limits=bundle.artifact_limits,
@@ -243,7 +250,9 @@ def test__replay_rejects_source_configuration_bundle_and_status_mismatch() -> (
     )
     base = {
         "expected_bundle_id": bundle.bundle_id,
-        "expected_source_sha256": hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+        "expected_source_sha256": SHA256Fingerprinter.fingerprint(
+            content=_SOURCE_BYTES
+        ),
         "expected_source_byte_size": len(_SOURCE_BYTES),
         "configuration": bundle.configuration,
         "artifact_limits": bundle.artifact_limits,
@@ -270,7 +279,9 @@ def test__replay_enforces_caller_supplied_bounds_before_semantic_decode() -> (
         read_pdf_extraction_transcript(
             bundle.artifacts,
             expected_bundle_id=bundle.bundle_id,
-            expected_source_sha256=hashlib.sha256(_SOURCE_BYTES).hexdigest(),
+            expected_source_sha256=SHA256Fingerprinter.fingerprint(
+                content=_SOURCE_BYTES
+            ),
             expected_source_byte_size=len(_SOURCE_BYTES),
             configuration=bundle.configuration,
             artifact_limits=PdfExtractionArtifactLimits(max_artifacts=2),

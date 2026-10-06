@@ -19,4 +19,5 @@ generic processing or storage operations.
    materializer
    inventory
    pipeline
+   sha256
    extraction_projection

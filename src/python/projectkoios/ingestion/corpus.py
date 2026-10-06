@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import ctypes
 import errno
-import hashlib
 import json
 import os
 import re
@@ -27,6 +26,8 @@ from projectkoios.ingestion.pdf import (
     build_pdf_extraction_artifacts,
     read_pdf_extraction_transcript,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 _MAX_BATCH_ITEMS = 256
 _MAX_PLAN_BYTES = 4_000_000
@@ -134,7 +135,7 @@ def prepare_pdf_corpus(
             )
         if not content.startswith(b"%PDF-"):
             raise PdfCorpusError("source does not have a PDF header")
-        digest = hashlib.sha256(content).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=content)
         if digest in unique:
             continue
         unique[digest] = PdfBatchItem(
@@ -299,9 +300,8 @@ def validate_pdf_extraction(
     )
     if not source_content.startswith(b"%PDF-"):
         raise PdfCorpusError("source does not have a PDF header")
-    if (
-        len(source_content) != item.byte_size
-        or hashlib.sha256(source_content).hexdigest() != item.sha256
+    if len(source_content) != item.byte_size or not SHA256Verifier.verify(
+        content=source_content, expected=item.sha256
     ):
         raise PdfCorpusError("source identity differs from the batch plan")
 

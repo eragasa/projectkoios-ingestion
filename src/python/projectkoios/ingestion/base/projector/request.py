@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -17,8 +16,7 @@ from projectkoios.ingestion.base.projector.source import (
     AbstractProjectionSource,
 )
 from projectkoios.ingestion.identity import stable_id
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,8 +116,7 @@ class ProjectionRequest[
         if any(
             type(evidence_id) is not str
             or not evidence_id
-            or type(digest) is not str
-            or not _SHA256.fullmatch(digest)
+            or not SHA256Hash.is_canonical(digest)
             for evidence_id, digest in source_parts
         ):
             raise ValueError("projection source identity is invalid")

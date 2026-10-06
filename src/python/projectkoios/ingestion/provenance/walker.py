@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
 from dataclasses import fields, is_dataclass
 from enum import StrEnum
@@ -23,6 +22,7 @@ from projectkoios.ingestion.provenance.audit import (
     DerivationAuditLimitError,
 )
 from projectkoios.ingestion.provenance.common import _object_id
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 class _ContractAuditWalker:
@@ -360,7 +360,7 @@ class _ContractAuditWalker:
         digest = content_value.content_sha256
         byte_length = content_value.byte_length
         if isinstance(content, bytes) and (
-            hashlib.sha256(content).hexdigest() != digest
+            not SHA256Verifier.verify(content=content, expected=digest)
             or len(content) != byte_length
         ):
             self._add(

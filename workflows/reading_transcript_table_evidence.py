@@ -9,7 +9,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
-_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+
 _CANDIDATE_PATTERN = re.compile(r"^table-candidate:sha256:[0-9a-f]{64}$")
 _REGION_PATTERN = re.compile(r"^table-region-evidence:sha256:[0-9a-f]{64}$")
 
@@ -267,7 +268,7 @@ class ReadingTranscriptTableEvidence:
             part in ("", ".", "..") for part in path_value.parts
         ):
             raise ValueError("table rendered path is invalid")
-        if type(sha256) is not str or not _SHA256_PATTERN.fullmatch(sha256):
+        if not SHA256Hash.is_canonical(sha256):
             raise ValueError("table rendered hash is invalid")
         if type(byte_size) is not int or byte_size <= 0:
             raise ValueError("table rendered byte count is invalid")
@@ -298,7 +299,7 @@ class ReadingTranscriptTableEvidence:
             part in ("", ".", "..") for part in path_value.parts
         ):
             raise ValueError("table rendered path is invalid")
-        if type(sha256) is not str or not _SHA256_PATTERN.fullmatch(sha256):
+        if not SHA256Hash.is_canonical(sha256):
             raise ValueError("table rendered hash is invalid")
         if type(byte_size) is not int or byte_size <= 0:
             raise ValueError("table rendered byte count is invalid")

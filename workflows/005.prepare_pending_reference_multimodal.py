@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import math
 import os
 import stat
 from pathlib import Path
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 REFERENCE_ROOT = Path("/Users/eugene/projects/projectkoios/references")
 RESOLUTION_ROOT = Path(
@@ -43,7 +44,7 @@ def canonical(value: object) -> bytes:
 
 
 def sha256(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identified(namespace: str, value: object) -> str:

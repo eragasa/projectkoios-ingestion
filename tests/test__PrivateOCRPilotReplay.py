@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import stat
@@ -27,6 +26,8 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 _MAX_JSON_BYTES = 64_000_000
 _MAX_PDF_BYTES = 1_000_000_000
@@ -197,7 +198,9 @@ def _selection_candidates(
         page_index = empty_indices[0]
         page = cast(dict[str, object], pages[page_index])
         _require(
-            page.get("text_sha256") == hashlib.sha256(b"").hexdigest(),
+            SHA256Verifier.verify(
+                content=b"", expected=page.get("text_sha256")
+            ),
             "selected-page-hash",
         )
         candidate = _SelectedPage(
@@ -259,7 +262,9 @@ def _run_pipeline(
         content = _read_bounded(item.pdf_path, _MAX_PDF_BYTES)
         _require(
             len(content) == item.source_byte_size
-            and hashlib.sha256(content).hexdigest() == item.source_sha256,
+            and SHA256Verifier.verify(
+                content=content, expected=item.source_sha256
+            ),
             "selected-pdf-hash",
         )
         source = SourceDocument.from_bytes(
@@ -293,13 +298,15 @@ def _run_pipeline(
         completed += 1
         warning_count += len(selection_result.warnings)
         result_digests.append(
-            hashlib.sha256(
-                serialize_contract(result).encode("utf-8")
-            ).hexdigest()
+            SHA256Fingerprinter.fingerprint(
+                content=serialize_contract(result).encode("utf-8")
+            )
         )
-    aggregate_digest = hashlib.sha256(
-        json.dumps(result_digests, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    aggregate_digest = SHA256Fingerprinter.fingerprint(
+        content=json.dumps(result_digests, separators=(",", ":")).encode(
+            "utf-8"
+        )
+    )
     return _PipelineEvidence(
         result_digests=tuple(result_digests),
         aggregate_digest=aggregate_digest,
@@ -316,12 +323,12 @@ def test__private_ten_page_ocr_replay__is_deterministic(
     stage = "selection"
     try:
         selected = _select_pages(environment.corpus_root)
-        executable_before = hashlib.sha256(
-            _read_bounded(environment.executable, _MAX_TOOL_BYTES)
-        ).hexdigest()
-        resource_before = hashlib.sha256(
-            _read_bounded(environment.resource, _MAX_TOOL_BYTES)
-        ).hexdigest()
+        executable_before = SHA256Fingerprinter.fingerprint(
+            content=_read_bounded(environment.executable, _MAX_TOOL_BYTES)
+        )
+        resource_before = SHA256Fingerprinter.fingerprint(
+            content=_read_bounded(environment.resource, _MAX_TOOL_BYTES)
+        )
         renderer = PyMuPdfRegionRenderer(resolution_dpi=300)
         ocr_configuration = OCRConfiguration(languages=("en",))
         processor = TesseractOCRProcessor(
@@ -365,14 +372,14 @@ def test__private_ten_page_ocr_replay__is_deterministic(
             "aggregate-digest",
         )
         _require(
-            hashlib.sha256(
-                _read_bounded(environment.executable, _MAX_TOOL_BYTES)
-            ).hexdigest()
-            == executable_before
-            and hashlib.sha256(
-                _read_bounded(environment.resource, _MAX_TOOL_BYTES)
-            ).hexdigest()
-            == resource_before,
+            SHA256Verifier.verify(
+                content=_read_bounded(environment.executable, _MAX_TOOL_BYTES),
+                expected=executable_before,
+            )
+            and SHA256Verifier.verify(
+                content=_read_bounded(environment.resource, _MAX_TOOL_BYTES),
+                expected=resource_before,
+            ),
             "tool-resource-changed",
         )
     except pytest.fail.Exception:

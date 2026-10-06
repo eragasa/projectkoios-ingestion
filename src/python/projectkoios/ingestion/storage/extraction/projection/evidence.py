@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -10,6 +9,8 @@ from projectkoios.ingestion.base.projector.source import (
     AbstractProjectionSource,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.publication.record import (
     ExtractionPublicationRecord,
 )
@@ -104,8 +105,9 @@ class ExtractionPublicationEvidence(AbstractProjectionSource):
             or not self.payload
             or len(self.payload) > self.MAXIMUM_PAYLOAD_BYTES
             or len(self.payload) != self.record.payload_byte_size
-            or hashlib.sha256(self.payload).hexdigest()
-            != self.record.payload_sha256
+            or not SHA256Verifier.verify(
+                content=self.payload, expected=self.record.payload_sha256
+            )
         ):
             raise ValueError("publication evidence payload is invalid")
         expected_digest = self._digest(
@@ -129,10 +131,12 @@ class ExtractionPublicationEvidence(AbstractProjectionSource):
         record: ExtractionPublicationRecord,
         payload: bytes,
     ) -> str:
-        digest = hashlib.sha256()
-        digest.update(record.record_sha256.encode("ascii"))
         # The zero byte makes the framing unambiguous even if a future record
         # digest encoding changes length; it is not part of the source payload.
-        digest.update(b"\0")
-        digest.update(payload)
-        return digest.hexdigest()
+        return SHA256Fingerprinter.fingerprint_chunks(
+            chunks=(
+                record.record_sha256.encode("ascii"),
+                b"\0",
+                payload,
+            )
+        )

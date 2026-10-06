@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -17,6 +16,7 @@ from projectkoios.ingestion.page_projection import (
     page_projection_validation_report_bytes,
     validate_page_projection,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 _PNG = b"\x89PNG\r\n\x1a\nowner-test"
 
@@ -39,7 +39,7 @@ def _fixture(
         document_id="doc-06",
         filename="NeamanSemiconductorPhysicsAndDevices.pdf",
         title="Semiconductor Physics and Devices",
-        source_sha256=hashlib.sha256(source).hexdigest(),
+        source_sha256=SHA256Fingerprinter.fingerprint(content=source),
         expected_page_count=2,
     )
     pages = [

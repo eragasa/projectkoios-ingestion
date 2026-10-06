@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 
 import pytest
@@ -14,6 +13,7 @@ from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
 )
@@ -49,7 +49,7 @@ def _evidence(
         request_id=request.request_id,
         document_id=record_document_id or extraction.document.document_id,
         manifest_id=extraction.manifest.manifest_id,
-        payload_sha256=hashlib.sha256(exact_payload).hexdigest(),
+        payload_sha256=SHA256Fingerprinter.fingerprint(content=exact_payload),
         payload_byte_size=len(exact_payload),
         previous_record_sha256=previous,
     )

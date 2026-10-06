@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 from io import BytesIO
 
@@ -30,6 +29,7 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 _COORDINATE_TUPLE = re.compile(
     r"(?:\d+\s*=\s*\d+\s*[,;]\s*){2,}\d+", re.IGNORECASE
@@ -52,7 +52,9 @@ class DeterministicEquationAssembler:
         """Assemble and render bounded equation candidates."""
 
         document = detection.detection_input.document
-        if hashlib.sha256(content).hexdigest() != document.source.content_hash:
+        if not SHA256Verifier.verify(
+            content=content, expected=document.source.content_hash
+        ):
             raise ValueError("equation assembly requires exact PDF bytes")
         block_text = {
             block.block_id: block.text

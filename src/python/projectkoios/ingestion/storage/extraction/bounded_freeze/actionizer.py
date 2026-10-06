@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from io import BytesIO
 
 from projectkoios.base import DataObjectActionizer
@@ -12,6 +11,8 @@ from projectkoios.ingestion.pdf.adapters.errors import (
     PdfDependencyUnavailableError,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -104,10 +105,14 @@ class BoundedExtractionFreezeActionizer(
             return self._failed(request, error.disposition, error.code)
         if (
             len(material.content) != request.expected_source_byte_size
-            or hashlib.sha256(material.content).hexdigest()
-            != request.expected_source_sha256
-            or hashlib.sha256(material.locator.encode()).hexdigest()
-            != request.expected_locator_sha256
+            or not SHA256Verifier.verify(
+                content=material.content,
+                expected=request.expected_source_sha256,
+            )
+            or not SHA256Verifier.verify(
+                content=material.locator.encode(),
+                expected=request.expected_locator_sha256,
+            )
         ):
             return self._failed(
                 request,
@@ -231,12 +236,16 @@ class BoundedExtractionFreezeActionizer(
         validation_request = ExistingExtractionArtifactValidationRequest.create(
             artifact_reference=request.artifact_reference,
             authority_id=request.artifact_read_authority_id,
-            expected_artifact_sha256=hashlib.sha256(content).hexdigest(),
+            expected_artifact_sha256=SHA256Fingerprinter.fingerprint(
+                content=content
+            ),
             expected_artifact_byte_size=len(content),
             expected_source_sha256=request.expected_source_sha256,
             expected_document_id=extraction.document.document_id,
             expected_manifest_id=extraction.manifest.manifest_id,
-            expected_payload_sha256=hashlib.sha256(content).hexdigest(),
+            expected_payload_sha256=SHA256Fingerprinter.fingerprint(
+                content=content
+            ),
             expected_payload_byte_size=len(content),
             expected_publication_request_id=publication.request_id,
             expected_page_count=len(extraction.document.pages),
@@ -272,8 +281,10 @@ class BoundedExtractionFreezeActionizer(
             source.source_id == request.source_id
             and source.content_hash == request.expected_source_sha256
             and source.byte_length == request.expected_source_byte_size
-            and hashlib.sha256(source.locator.encode()).hexdigest()
-            == request.expected_locator_sha256
+            and SHA256Verifier.verify(
+                content=source.locator.encode(),
+                expected=request.expected_locator_sha256,
+            )
             and source.media_type == request.media_type
             and len(extraction.document.pages) == request.expected_page_count
             and manifest.extractor_name == request.extractor_name

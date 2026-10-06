@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -14,8 +13,7 @@ from projectkoios.ingestion.ocr.result import OCRResult
 from projectkoios.ingestion.ocr.serialization import (
     deserialize_ocr_result,
 )
-
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -77,7 +75,9 @@ class SelectiveOCRPublication(AbstractImmutableDataObject):
         page_index = value["page_index"]
         if type(publication_id) is not str:
             raise TypeError("selective OCR publication ID must be a string")
-        if type(source_sha256) is not str or type(extraction_sha256) is not str:
+        if not isinstance(source_sha256, str) or not isinstance(
+            extraction_sha256, str
+        ):
             raise TypeError("selective OCR publication hashes must be strings")
         if type(page_index) is not int:
             raise TypeError("selective OCR publication page must be an integer")
@@ -94,7 +94,7 @@ class SelectiveOCRPublication(AbstractImmutableDataObject):
             ("source SHA-256", self.source_sha256),
             ("extraction SHA-256", self.extraction_sha256),
         ):
-            if type(value) is not str or not _SHA256.fullmatch(value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError(f"selective OCR {name} is invalid")
         if isinstance(self.page_index, bool) or not isinstance(
             self.page_index,

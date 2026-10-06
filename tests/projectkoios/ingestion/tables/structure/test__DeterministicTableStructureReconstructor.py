@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import FrozenInstanceError, replace
 from io import BytesIO
 from pathlib import Path
@@ -23,6 +22,7 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
 from projectkoios.ingestion.tables.structure.configuration import (
     TableStructureConfiguration,
@@ -326,8 +326,9 @@ def test__table_structure__retains_golden_identity_and_serialization() -> None:
         "table-structure:sha256:"
         "d7a255bde57caa74e5ad34eb197fa5ca3fec2f00d1146921e7af8fd2a565b983",
     )
-    assert hashlib.sha256(serialize_contract(result).encode()).hexdigest() == (
-        "c197689edf506ed989a40ccc7d908d33887f871e41b88ed1099be58c77c3f182"
+    assert SHA256Verifier.verify(
+        content=serialize_contract(result).encode(),
+        expected="c197689edf506ed989a40ccc7d908d33887f871e41b88ed1099be58c77c3f182",
     )
 
 

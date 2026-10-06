@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import stat
@@ -35,6 +34,7 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 SOURCE_SHA256 = (
     "539257eb20229bee438dbd628e017bcf8ba6bb6348198ce1e9000cd685d7263e"
@@ -83,7 +83,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

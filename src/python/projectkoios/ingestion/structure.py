@@ -608,9 +608,7 @@ def _structure_analysis_id(
                 warning.severity.value,
                 warning.message,
                 warning.object_ids,
-                tuple(
-                    span.identity_parts() for span in warning.source_spans
-                ),
+                tuple(span.identity_parts() for span in warning.source_spans),
                 warning.evidence,
                 warning.suggested_recovery,
             )

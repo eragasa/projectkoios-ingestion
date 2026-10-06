@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -17,6 +16,8 @@ from projectkoios.ingestion.reference_evidence import (
     ReferenceEvidenceRecord,
     ReferenceEvidenceVerificationError,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 REFERENCE_LOCATOR_CONTRACT_VERSION = "0.1.0"
 REFERENCE_LOCATOR_PROCESSOR_NAME = "projectkoios-reference-page-locator"
@@ -289,14 +290,7 @@ class ReferencePageLocatorResult:
                 raise ValueError(f"{name} has an invalid identity grammar")
         if type(self.page_index) is not int or self.page_index < 0:
             raise ValueError("page_index must be a nonnegative built-in int")
-        if (
-            type(self.page_text_sha256) is not str
-            or len(self.page_text_sha256) != 64
-            or any(
-                value not in "0123456789abcdef"
-                for value in self.page_text_sha256
-            )
-        ):
+        if not SHA256Hash.is_canonical(self.page_text_sha256):
             raise ValueError("page_text_sha256 must be 64 lowercase hex")
         if (
             type(self.page_text_utf8_byte_length) is not int
@@ -443,7 +437,7 @@ class ReferencePageLocatorChecker:
             sorted(anchor_identities[anchor] for anchor in unmatched)
         )
         encoded = page.text.encode("utf-8")
-        digest = hashlib.sha256(encoded).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=encoded)
         status = (
             ReferencePageLocatorStatus.MATCH
             if matched

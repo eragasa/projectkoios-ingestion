@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import json
 import os
 import stat
@@ -47,6 +46,7 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 PREPARATION = Path(
     "/Users/eugene/projects/projectkoios/artifacts"
@@ -85,7 +85,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

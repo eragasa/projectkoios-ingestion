@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from dataclasses import dataclass
@@ -15,6 +14,8 @@ from projectkoios.ingestion.cli import (
     ingest_pdf_artifacts,
 )
 from projectkoios.ingestion.models import ExtractionResult
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 @dataclass(frozen=True)
@@ -60,7 +61,7 @@ def _resolve_items(
             )
         if len(content) != item.byte_size:
             raise ValueError(f"source size changed: {item.pdf_path}")
-        if hashlib.sha256(content).hexdigest() != item.sha256:
+        if not SHA256Verifier.verify(content=content, expected=item.sha256):
             raise ValueError(f"source hash changed: {item.pdf_path}")
         _reject_symlink_components(
             output_root, Path(item.output_directory), include_leaf=False
@@ -155,9 +156,9 @@ def _completed_item(
             (page.extraction_quality for page in pages), default=None
         ),
         "warning_count": len(result.warnings),
-        "extraction_artifact_sha256": hashlib.sha256(
-            output.read_bytes()
-        ).hexdigest(),
+        "extraction_artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=output.read_bytes()
+        ),
     }
 
 

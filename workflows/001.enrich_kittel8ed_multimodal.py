@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import fcntl
-import hashlib
 import html
 import json
 import os
@@ -56,6 +55,7 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.transcription import StructuredTranscriptionRequest
 
 ROOT = Path(
@@ -185,7 +185,9 @@ def check_inputs() -> tuple[bytes, dict[str, object]]:
     if SOURCE.is_symlink() or not SOURCE.is_file():
         raise RuntimeError("Kittel source PDF is missing or unsafe")
     payload = SOURCE.read_bytes()
-    if hashlib.sha256(payload).hexdigest() != EXPECTED_SOURCE_SHA256:
+    if not SHA256Verifier.verify(
+        content=payload, expected=EXPECTED_SOURCE_SHA256
+    ):
         raise RuntimeError("Kittel source PDF identity changed")
     baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
     if (

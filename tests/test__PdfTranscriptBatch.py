@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import shutil
@@ -14,6 +13,7 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.transcript_batch import (
     TRANSCRIPT_OUTPUT_RELATIVE_PATH,
     TranscriptBatchPublicationError,
@@ -44,7 +44,7 @@ def _setup(
                 source_id="article:transcript:batch",
                 pdf_path=PurePosixPath("equations.pdf"),
                 output_directory=PurePosixPath("article"),
-                sha256=hashlib.sha256(payload).hexdigest(),
+                sha256=SHA256Fingerprinter.fingerprint(content=payload),
                 byte_size=len(payload),
                 locator="assets/equations.pdf",
             ),

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 
 import pytest
@@ -12,6 +11,7 @@ from projectkoios.ingestion.pdf import PyMuPdfExtractor
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor as AdapterPyMuPdfExtractor,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 class _FakeCropBox:
@@ -93,7 +93,8 @@ def test__pymupdf__invalid_image_box_is_warned_and_preserved() -> None:
     assert text.source_spans[0].bounding_box == valid_box
     assert text.warning_ids == ()
     assert image.asset_id == (
-        "asset:sha256:" + hashlib.sha256(b"retained-image-bytes").hexdigest()
+        "asset:sha256:"
+        + SHA256Fingerprinter.fingerprint(content=b"retained-image-bytes")
     )
     assert image.source_spans[0].source_object_id == "page:79:block:1"
     assert image.source_spans[0].bounding_box is None
@@ -134,7 +135,9 @@ def test__pymupdf__preserves_outside_page_image_without_geometry() -> None:
 
     assert len(extracted.blocks) == 1
     block = extracted.blocks[0]
-    assert block.asset_id == "asset:sha256:" + hashlib.sha256(image).hexdigest()
+    assert block.asset_id == "asset:sha256:" + SHA256Fingerprinter.fingerprint(
+        content=image
+    )
     assert block.source_spans[0].bounding_box is None
     assert block.source_spans[0].source_object_id == "page:0:block:0"
     assert len(warnings) == 1

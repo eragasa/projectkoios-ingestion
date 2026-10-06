@@ -16,9 +16,7 @@ def test__equation_mathml__retains_exact_well_formed_mathml() -> None:
     )
 
     assert equation.mathml == content
-    assert equation.equation_source_ids == (
-        "equation-latex:sha256:source",
-    )
+    assert equation.equation_source_ids == ("equation-latex:sha256:source",)
     assert hash(equation)
 
 

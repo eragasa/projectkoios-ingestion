@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import unicodedata
 from collections import Counter
 from typing import TYPE_CHECKING, Any
@@ -26,6 +25,7 @@ from projectkoios.ingestion.provenance.audit import (
     DerivationAuditInput,
     _Registry,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.transcription.source_object_kind import (
     TranscriptionSourceObjectKind,
 )
@@ -67,7 +67,7 @@ class _DomainAuditWalker:
 
     def _audit_source_content(self) -> None:
         content = self.audit_input.source_content
-        digest = hashlib.sha256(content).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=content)
         if (
             digest != self.source.content_hash
             or len(content) != self.source.byte_length

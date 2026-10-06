@@ -21,6 +21,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaPromptRecord,
     OllamaRawResponseIdentity,
 )
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 from .identity import OllamaMultimodalRegionProcessorIdentity
 from .request import OllamaMultimodalRegionProcessingRequest
@@ -357,13 +358,5 @@ class OllamaMultimodalRegionProcessingResult(
         if not isinstance(value, str) or not value.startswith(prefix):
             raise ValueError(f"{name} identity has an invalid namespace")
         digest = value[len(prefix) :]
-        if len(digest) != 64:
+        if not SHA256Hash.is_canonical(digest):
             raise ValueError(f"{name} identity must be a SHA-256 digest")
-        try:
-            int(digest, 16)
-        except ValueError as error:
-            raise ValueError(
-                f"{name} identity must be a SHA-256 digest"
-            ) from error
-        if digest != digest.lower():
-            raise ValueError(f"{name} identity must use lowercase hexadecimal")
