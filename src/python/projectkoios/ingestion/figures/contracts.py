@@ -1202,17 +1202,6 @@ def _validate_result(result: FigureDetectionResult) -> None:
     validate_result(result)
 
 
-def _validate_component_render(
-    component: FigureComponent,
-    document: ExtractedDocument,
-) -> None:
-    from projectkoios.ingestion.figures.validation import (
-        validate_component_render,
-    )
-
-    validate_component_render(component, document)
-
-
 def _validate_rendered_aggregate(
     regions: tuple[RenderedRegion, ...],
     configuration: FigureDetectionConfiguration,
@@ -1655,14 +1644,6 @@ def _validated_extent_box(value: object) -> BoundingBox:
 def _sha256(name: str, value: str) -> None:
     if not SHA256Hash.is_canonical(value):
         raise ValueError(f"{name} must be a SHA-256 digest")
-
-
-def _validate_retained_size(value: object, limit: int) -> None:
-    from projectkoios.ingestion.figures.validation import (
-        validate_retained_size,
-    )
-
-    validate_retained_size(value, limit)
 
 
 _COMPATIBILITY_TYPES = (

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from projectkoios.ingestion.models import (
     Metadata,
 )
@@ -18,12 +16,8 @@ from projectkoios.ingestion.reconciliation.limit.error import (
     OCRReconciliationLimitError,
 )
 
-if TYPE_CHECKING:
-    pass
-
 
 def _validate_metadata(value: Metadata) -> None:
-
     _require_tuple("warning evidence", value)
     if len(value) > _MAX_WARNING_EVIDENCE_ENTRIES:
         raise OCRReconciliationLimitError(

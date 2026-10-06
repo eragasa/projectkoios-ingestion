@@ -16,16 +16,28 @@ The local smoke suite checks objective rules in each migrated source scope:
 - package initializers contain only their ownership docstring and do not
   re-export implementation names;
 - every concrete `DataObjectModel` or `AbstractImmutableDataObject`, including
-  indirect subclasses, is defined as a frozen dataclass; and
+  indirect subclasses, is defined as a frozen dataclass;
+- registered private-member-clean scopes define no underscore-prefixed member
+  functions;
+- registered private-import-clean scopes do not import underscore-prefixed
+  members across module boundaries;
+- every module function has a production-source reference or an explicit entry
+  in `_EXTERNAL_MODULE_FUNCTIONS`, and no conditional block is empty
+  scaffolding; and
 - every registered actionized operation has an immutable request, concrete
   Ingestion Base actionizer, and immutable Ingestion Base result, with exact
   `action(*, request)` typing and no registered legacy analyzer/processor route
   or hidden actionizer configuration.
 
 When an operation adopts the request/actionizer/result standard, add it to the
-smoke suite's `_ACTIONIZED_OPERATIONS` registry in the same change. Registration
-is deliberately incremental: it does not misclassify explicitly unmigrated
-processor boundaries as already actionized.
+smoke suite's `_ACTIONIZED_OPERATIONS` registry in the same change. Register a
+public function in `_EXTERNAL_MODULE_FUNCTIONS` only when its caller genuinely
+lives outside production source, and remove stale registrations. Add a domain
+to `_NO_PRIVATE_MEMBER_FUNCTION_SCOPES` or
+`_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES` as soon as its applicable debt is
+removed. Registration is deliberately incremental: it does not misclassify
+explicitly unmigrated processor boundaries as already actionized or turn broad
+legacy helpers into public API by renaming alone.
 
 Hosted clean-wheel CI additionally verifies that its registered removed modules
 and package exports are absent and that its registered defining leaves import
@@ -33,7 +45,9 @@ from the built wheel. The reviewed old-to-new path map remains the human-owned
 inventory that determines those registrations.
 
 Leading underscores used only for module privacy are not semantic separators.
-Private compound stems still require the same semantic review.
+A private function must remain inside its defining module; cross-module use
+requires a semantic public owner or co-location with its consumer. Private
+compound stems still require the same semantic review.
 
 ## Human semantic review
 
@@ -44,6 +58,10 @@ review the owned type or operation and answer these questions:
 - Is the leaf the real role (`model`, `actionizer`, `backend`, `definition`,
   `error`, `status`) rather than a repeated or adjectival name?
 - Is a broad or catch-all module hiding independently owned concerns?
+- Is a member function private because its responsibility lacks a semantic
+  owner, and does it actually depend on the owning object?
+- Is a private function imported outside its defining module, or is any
+  function left without a production owner or caller?
 - Does unstable API compatibility introduce an alias, re-export facade, legacy
   decoder, stale field, awkward class name, or stale stable-ID namespace?
 - Does each synchronous domain operation expose one complete immutable request,

@@ -1041,16 +1041,6 @@ def _validate_result(result: TableDetectionResult) -> None:
     validate(result)
 
 
-def _validate_region_against_input(
-    region: TableRegionEvidence, detection_input: TableDetectionInput
-) -> None:
-    from projectkoios.ingestion.tables.validation import (
-        _validate_region_against_input as validate,
-    )
-
-    validate(region, detection_input)
-
-
 def _preflight_result(
     detection_input: TableDetectionInput,
     candidates: tuple[TableCandidate, ...],
