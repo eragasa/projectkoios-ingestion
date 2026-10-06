@@ -16,7 +16,6 @@ from projectkoios.ingestion import (
     ExtractionCache,
     ExtractionResult,
     FigureCandidateDetector,
-    FigureRelevanceProcessor,
     FilesystemExtractionCache,
     IngestionManifest,
     IngestionStatus,
@@ -35,6 +34,9 @@ from projectkoios.ingestion import (
     WarningSeverity,
     contract_dict,
     serialize_contract,
+)
+from projectkoios.ingestion.figures.relevance.processor.base import (
+    FigureRelevanceProcessor,
 )
 from projectkoios.ingestion.reconciliation.reconciler import (
     DeterministicOCRReconciler,

@@ -9,30 +9,62 @@ import pytest
 from projectkoios.base import DataObjectActionRequest, DataObjectActionResult
 from projectkoios.ingestion import (
     DeterministicFigureCandidateDetector,
-    FigureRelevanceProcessor,
     PyMuPdfExtractor,
     SourceDocument,
     WarningSeverity,
 )
-from projectkoios.ingestion.figure_relevance import (
-    FigureRelevanceConfidence,
-    FigureRelevanceConfiguration,
-    FigureRelevanceFailure,
-    FigureRelevanceFailureKind,
-    FigureRelevanceLevel,
-    FigureRelevanceLimitError,
-    FigureRelevanceProcessorIdentity,
-    FigureRelevanceProposal,
-    FigureRelevanceRequest,
-    FigureRelevanceResourceIdentity,
-    FigureRelevanceResourceIdentityKind,
-    FigureRelevanceResult,
-    FigureRelevanceScore,
-    FigureRelevanceSelection,
-    FigureRelevanceSelectionResult,
-    FigureRelevanceStatus,
-    FigureRelevanceWarning,
+from projectkoios.ingestion.figures.relevance.cache.identity import (
     build_figure_relevance_cache_key,
+)
+from projectkoios.ingestion.figures.relevance.confidence import (
+    FigureRelevanceConfidence,
+)
+from projectkoios.ingestion.figures.relevance.configuration import (
+    FigureRelevanceConfiguration,
+)
+from projectkoios.ingestion.figures.relevance.failure import (
+    FigureRelevanceFailure,
+)
+from projectkoios.ingestion.figures.relevance.identity.processor import (
+    FigureRelevanceProcessorIdentity,
+)
+from projectkoios.ingestion.figures.relevance.identity.resource.kind import (
+    FigureRelevanceResourceIdentityKind,
+)
+from projectkoios.ingestion.figures.relevance.identity.resource.model import (
+    FigureRelevanceResourceIdentity,
+)
+from projectkoios.ingestion.figures.relevance.kind.failure import (
+    FigureRelevanceFailureKind,
+)
+from projectkoios.ingestion.figures.relevance.level import FigureRelevanceLevel
+from projectkoios.ingestion.figures.relevance.limits.error import (
+    FigureRelevanceLimitError,
+)
+from projectkoios.ingestion.figures.relevance.processor.base import (
+    FigureRelevanceProcessor,
+)
+from projectkoios.ingestion.figures.relevance.proposal import (
+    FigureRelevanceProposal,
+)
+from projectkoios.ingestion.figures.relevance.request import (
+    FigureRelevanceRequest,
+)
+from projectkoios.ingestion.figures.relevance.result.aggregate import (
+    FigureRelevanceResult,
+)
+from projectkoios.ingestion.figures.relevance.result.selection import (
+    FigureRelevanceSelectionResult,
+)
+from projectkoios.ingestion.figures.relevance.score import FigureRelevanceScore
+from projectkoios.ingestion.figures.relevance.selection import (
+    FigureRelevanceSelection,
+)
+from projectkoios.ingestion.figures.relevance.status.result import (
+    FigureRelevanceStatus,
+)
+from projectkoios.ingestion.figures.relevance.warning import (
+    FigureRelevanceWarning,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,

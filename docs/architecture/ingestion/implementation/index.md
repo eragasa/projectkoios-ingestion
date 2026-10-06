@@ -615,7 +615,10 @@ projectkoios/ingestion/
     models.py
     source_extractor.py
     chunk_index_writer.py
-    figure_relevance_processor.py
+    figures/
+        relevance/
+            processor/
+                base.py
     layout/
         __init__.py
         actionizer.py
