@@ -55,6 +55,9 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
 )
 from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
+from projectkoios.ingestion.pdf.private_page_span.reference import (
+    PrivatePdfPageSpanReference,
+)
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.transcription import StructuredTranscriptionRequest
 
@@ -254,11 +257,16 @@ def load_chunk(original: bytes, chunk: int):
     content = make_chunk(original, chunk)
     first = (chunk - 1) * CHUNK_PAGES + 1
     last = min(EXPECTED_PAGES, first + CHUNK_PAGES - 1)
+    reference = PrivatePdfPageSpanReference.create(
+        owner="Kittel8ed",
+        first_page_number=first,
+        last_page_number=last,
+    )
     source = SourceDocument.from_bytes(
         content,
-        source_id=f"private:Kittel8ed:pages:{first:04d}-{last:04d}",
+        source_id=reference.source_id,
         media_type="application/pdf",
-        locator=f"private://Kittel8ed/pages-{first:04d}-{last:04d}.pdf",
+        locator=reference.locator,
     )
     extraction = PyMuPdfExtractor(maximum_pages=CHUNK_PAGES).extract(
         source, BytesIO(content)

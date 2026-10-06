@@ -42,6 +42,9 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.pdf.models import RenderedRegion
+from projectkoios.ingestion.pdf.private_page_span.reference import (
+    PrivatePdfPageSpanReference,
+)
 from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
@@ -367,11 +370,16 @@ def reconstruct_regions(
             inventory["last_page_index_exclusive"],
             "last page index exclusive",
         )
+        reference = PrivatePdfPageSpanReference.create(
+            owner=book,
+            first_page_number=first + 1,
+            last_page_number=last,
+        )
         source = SourceDocument.from_bytes(
             content,
-            source_id=f"private:{book}:pages:{first + 1:04d}-{last:04d}",
+            source_id=reference.source_id,
             media_type="application/pdf",
-            locator=f"private://{book}/pages-{first + 1:04d}-{last:04d}.pdf",
+            locator=reference.locator,
         )
         document = filtered_document(content, source)
         layouts = DeterministicLayoutProcessor(
