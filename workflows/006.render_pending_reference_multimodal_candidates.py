@@ -24,6 +24,9 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.pdf.private_page_span.reference import (
+    PrivatePdfPageSpanReference,
+)
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ROOT = Path(
@@ -140,11 +143,16 @@ def process_chunk(
 
     content = chunk_pdf(source_bytes, first, last)
     create_once(directory / "source.pdf", content)
+    reference = PrivatePdfPageSpanReference.create(
+        owner=name,
+        first_page_number=first + 1,
+        last_page_number=last,
+    )
     source = SourceDocument.from_bytes(
         content,
-        source_id=f"private:{name}:pages:{first + 1:04d}-{last:04d}",
+        source_id=reference.source_id,
         media_type="application/pdf",
-        locator=f"private://{name}/pages-{first + 1:04d}-{last:04d}.pdf",
+        locator=reference.locator,
     )
     extraction = PyMuPdfExtractor(maximum_pages=last - first).extract(
         source, BytesIO(content)

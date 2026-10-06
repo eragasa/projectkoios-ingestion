@@ -60,6 +60,9 @@ from projectkoios.ingestion.integrations.sqlite.processing_state.store import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.pdf.private_page_span.reference import (
+    PrivatePdfPageSpanReference,
+)
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.processing_state.base import (
     AbstractProcessingStateStore,
@@ -379,11 +382,16 @@ def load_chunk(book: Book, original: bytes, chunk: int):
     content = make_chunk(book, original, chunk)
     first = (chunk - 1) * book.chunk_pages + 1
     last = min(book.pages, first + book.chunk_pages - 1)
+    reference = PrivatePdfPageSpanReference.create(
+        owner=book.name,
+        first_page_number=first,
+        last_page_number=last,
+    )
     source = SourceDocument.from_bytes(
         content,
-        source_id=f"private:{book.name}:pages:{first:04d}-{last:04d}",
+        source_id=reference.source_id,
         media_type="application/pdf",
-        locator=f"private://{book.name}/pages-{first:04d}-{last:04d}.pdf",
+        locator=reference.locator,
     )
     extraction = PyMuPdfExtractor(maximum_pages=book.chunk_pages).extract(
         source, BytesIO(content)
