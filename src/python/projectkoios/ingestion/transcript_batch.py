@@ -49,7 +49,7 @@ from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.tables import DeterministicTableCandidateDetector
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.transcription.composer import (

@@ -16,31 +16,31 @@ from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
 from projectkoios.ingestion.tables.structure.cell import TableCell
-from projectkoios.ingestion.tables.structure.column_derivation import (
-    TableColumnDerivation,
-)
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.continuation_derivation import (
+from projectkoios.ingestion.tables.structure.derivation.column import (
+    TableColumnDerivation,
+)
+from projectkoios.ingestion.tables.structure.derivation.continuation import (
     TableContinuationDerivation,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
-)
-from projectkoios.ingestion.tables.structure.limit_error import (
-    TableStructureLimitError,
-)
-from projectkoios.ingestion.tables.structure.region_derivation import (
+from projectkoios.ingestion.tables.structure.derivation.region import (
     TableRegionDerivation,
 )
+from projectkoios.ingestion.tables.structure.limits.error import (
+    TableStructureLimitError,
+)
+from projectkoios.ingestion.tables.structure.model import TableStructure
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
 )
 from projectkoios.ingestion.tables.structure.row import TableRow
-from projectkoios.ingestion.tables.structure.structure import TableStructure
-from projectkoios.ingestion.tables.structure.warning_specification import (
+from projectkoios.ingestion.tables.structure.specification.warning import (
     TableStructureWarningSpecification,
+)
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
 )
 
 

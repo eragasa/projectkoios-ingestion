@@ -121,7 +121,7 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     from projectkoios.ingestion.tables import (
         DeterministicTableCandidateDetector,
     )
-    from projectkoios.ingestion.tables.structure.reconstructor import (
+    from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
         DeterministicTableStructureReconstructor,
     )
     from projectkoios.ingestion.transcription.composer import (

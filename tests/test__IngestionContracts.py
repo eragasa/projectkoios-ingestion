@@ -39,7 +39,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.reconciliation.reconciler import (
     DeterministicOCRReconciler,
 )
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 

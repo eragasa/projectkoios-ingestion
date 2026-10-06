@@ -7,13 +7,13 @@ from abc import ABC
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
-from projectkoios.ingestion.tables.structure.bounds import (
+from projectkoios.ingestion.tables.structure.limits.definition import (
     _MAX_IDENTITY_CHARACTERS,
     _MAX_METADATA_CHARACTERS,
     _MAX_SOURCE_SPANS,
     _MAX_TEXT_CHARACTERS,
 )
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
 

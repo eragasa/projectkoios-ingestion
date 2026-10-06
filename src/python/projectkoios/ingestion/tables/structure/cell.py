@@ -9,20 +9,20 @@ from projectkoios.ingestion.models import Metadata, SourceSpan
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
-from projectkoios.ingestion.tables.structure.bounds import (
+from projectkoios.ingestion.tables.structure.constants import (
+    TABLE_STRUCTURE_CONTRACT_VERSION,
+)
+from projectkoios.ingestion.tables.structure.limits.definition import (
     _MAX_BLOCKS_PER_CELL,
     _MAX_COLUMNS,
     _MAX_ROWS,
 )
-from projectkoios.ingestion.tables.structure.cell_role import TableCellRole
-from projectkoios.ingestion.tables.structure.constants import (
-    TABLE_STRUCTURE_CONTRACT_VERSION,
-)
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
-)
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
+)
+from projectkoios.ingestion.tables.structure.role.cell import TableCellRole
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
 )
 
 

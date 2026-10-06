@@ -20,7 +20,7 @@ from projectkoios.ingestion.tables.structure.base import (
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
 
@@ -28,13 +28,13 @@ if TYPE_CHECKING:
     from projectkoios.ingestion.tables.structure.configuration import (
         TableStructureConfiguration,
     )
+    from projectkoios.ingestion.tables.structure.model import TableStructure
     from projectkoios.ingestion.tables.structure.request import (
         TableStructureRequest,
     )
     from projectkoios.ingestion.tables.structure.result import (
         TableStructureResult,
     )
-    from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 
 @dataclass(frozen=True)
@@ -241,10 +241,10 @@ class TableStructureValidation(
         candidate: TableCandidate,
         detection_result: TableDetectionResult,
     ) -> None:
-        from .cell_validation import TableCellValidation
-        from .column_validation import TableColumnValidation
-        from .continuation_validation import TableContinuationValidation
-        from .row_validation import TableRowValidation
+        from .cell import TableCellValidation
+        from .column import TableColumnValidation
+        from .continuation import TableContinuationValidation
+        from .row import TableRowValidation
 
         regions = candidate.regions
         blocks = tuple(
@@ -272,11 +272,11 @@ class TableStructureValidation(
         processor_name: str,
         processor_version: str,
     ) -> None:
+        from projectkoios.ingestion.tables.structure.model import (
+            TableStructure,
+        )
         from projectkoios.ingestion.tables.structure.request import (
             TableStructureRequest,
-        )
-        from projectkoios.ingestion.tables.structure.structure import (
-            TableStructure,
         )
 
         if not isinstance(structure_input, TableStructureRequest):

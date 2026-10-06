@@ -14,7 +14,7 @@ from projectkoios.ingestion.tables.structure.base import (
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.structure import TableStructure
+from projectkoios.ingestion.tables.structure.model import TableStructure
 
 
 @dataclass(frozen=True)

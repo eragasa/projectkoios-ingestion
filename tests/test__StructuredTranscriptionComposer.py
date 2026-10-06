@@ -24,7 +24,7 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
 )
 from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
-from projectkoios.ingestion.tables.structure.reconstructor import (
+from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult

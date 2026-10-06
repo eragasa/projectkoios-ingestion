@@ -12,7 +12,7 @@ from projectkoios.ingestion.tables.structure.base import (
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
+from projectkoios.ingestion.tables.structure.status.evidence import (
     TableStructureEvidenceStatus,
 )
 

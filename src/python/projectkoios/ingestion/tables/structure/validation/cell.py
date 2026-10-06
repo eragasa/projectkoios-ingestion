@@ -16,8 +16,8 @@ from projectkoios.ingestion.tables.structure.cell import TableCell
 from projectkoios.ingestion.tables.structure.constants import (
     TABLE_STRUCTURE_CONTRACT_VERSION,
 )
+from projectkoios.ingestion.tables.structure.model import TableStructure
 from projectkoios.ingestion.tables.structure.row import TableRow
-from projectkoios.ingestion.tables.structure.structure import TableStructure
 
 
 @dataclass(frozen=True)

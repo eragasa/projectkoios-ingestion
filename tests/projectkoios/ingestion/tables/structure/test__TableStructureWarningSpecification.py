@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.tables.structure.warning_specification import (
+from projectkoios.ingestion.tables.structure.specification.warning import (
     TableStructureWarningSpecification,
 )
 
@@ -12,7 +12,7 @@ from projectkoios.ingestion.tables.structure.warning_specification import (
 def test__warning_spec_is_frozen_and_owned() -> None:
     warning = TableStructureWarningSpecification("code", "message", (), ())
     assert TableStructureWarningSpecification.__module__ == (
-        "projectkoios.ingestion.tables.structure.warning_specification"
+        "projectkoios.ingestion.tables.structure.specification.warning"
     )
     assert issubclass(
         TableStructureWarningSpecification,

@@ -19,14 +19,14 @@ from projectkoios.ingestion.tables.structure.constants import (
 from projectkoios.ingestion.tables.structure.continuation import (
     TableContinuation,
 )
-from projectkoios.ingestion.tables.structure.evidence_status import (
-    TableStructureEvidenceStatus,
-)
-from projectkoios.ingestion.tables.structure.limit_error import (
+from projectkoios.ingestion.tables.structure.limits.error import (
     TableStructureLimitError,
 )
 from projectkoios.ingestion.tables.structure.request import (
     TableStructureRequest,
+)
+from projectkoios.ingestion.tables.structure.status.evidence import (
+    TableStructureEvidenceStatus,
 )
 
 

@@ -2,14 +2,14 @@ from projectkoios.ingestion.base.validation import AbstractValidation
 from projectkoios.ingestion.tables.structure.base import (
     AbstractTableStructureDataObject,
 )
-from projectkoios.ingestion.tables.structure.cell_validation import (
+from projectkoios.ingestion.tables.structure.validation.cell import (
     TableCellValidation,
 )
 
 
 def test__table_cell_validation__is_immutable_owned_state() -> None:
     assert TableCellValidation.__module__ == (
-        "projectkoios.ingestion.tables.structure.cell_validation"
+        "projectkoios.ingestion.tables.structure.validation.cell"
     )
     assert issubclass(TableCellValidation, AbstractTableStructureDataObject)
     assert issubclass(TableCellValidation, AbstractValidation)
