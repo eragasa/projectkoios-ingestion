@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from projectkoios.ingestion.base.inventory.inventory import Inventory
-from projectkoios.ingestion.base.projector.inventory.inventory import (
+from projectkoios.ingestion.base.inventory.actionizer import Inventory
+from projectkoios.ingestion.base.projector.inventory.observer import (
     ProjectorInventory,
 )
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
@@ -23,10 +23,10 @@ from projectkoios.ingestion.storage.extraction.projection.inventory.collection i
 from projectkoios.ingestion.storage.extraction.projection.inventory.configuration import (  # noqa: E501
     ExtractionProjectionInventoryConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.projection.inventory.reader import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader.base import (  # noqa: E501
     ExtractionProjectionInventoryReader,
 )
-from projectkoios.ingestion.storage.extraction.projection.inventory.reader_error import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.inventory.reader.error import (  # noqa: E501
     ExtractionProjectionInventoryReaderError,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.request import (  # noqa: E501

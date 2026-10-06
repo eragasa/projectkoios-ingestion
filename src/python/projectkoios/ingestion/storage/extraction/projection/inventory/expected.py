@@ -20,7 +20,7 @@ from projectkoios.ingestion.storage.extraction.projection.inventory.configuratio
 from projectkoios.ingestion.storage.extraction.projection.inventory.evidence import (  # noqa: E501
     ExtractionProjectionInventoryEvidence,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 

@@ -13,13 +13,13 @@ from projectkoios.ingestion.integrations.mongodb.extraction.store import (
 from projectkoios.ingestion.storage.extraction.error import (
     ExtractionPublicationError,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.actionizer import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.actionizer import (  # noqa: E501
     ExtractionProjectionIndexReadinessActionizer,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.configuration import (  # noqa: E501
     ExtractionProjectionIndexReadinessConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.projection.index_readiness.request import (  # noqa: E501
+from projectkoios.ingestion.storage.extraction.projection.index.readiness.request import (  # noqa: E501
     ExtractionProjectionIndexReadinessRequest,
 )
 from projectkoios.ingestion.storage.extraction.recovery.request import (

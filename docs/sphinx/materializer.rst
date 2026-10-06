@@ -43,7 +43,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.materializer.result
    :members:
 
-.. automodule:: projectkoios.ingestion.base.materializer.materializer
+.. automodule:: projectkoios.ingestion.base.materializer.actionizer
    :members:
 
 .. automodule:: projectkoios.ingestion.base.materializer.error

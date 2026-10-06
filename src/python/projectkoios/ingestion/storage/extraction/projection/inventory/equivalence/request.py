@@ -8,7 +8,7 @@ from typing import ClassVar
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind import (  # noqa: E501

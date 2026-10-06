@@ -35,7 +35,7 @@ Framework API
 .. automodule:: projectkoios.ingestion.base.inventory.result
    :members:
 
-.. automodule:: projectkoios.ingestion.base.inventory.inventory
+.. automodule:: projectkoios.ingestion.base.inventory.actionizer
    :members:
 
 .. automodule:: projectkoios.ingestion.base.inventory.error
@@ -56,5 +56,5 @@ Projector-inventory API
 .. automodule:: projectkoios.ingestion.base.projector.inventory.evidence
    :members:
 
-.. automodule:: projectkoios.ingestion.base.projector.inventory.inventory
+.. automodule:: projectkoios.ingestion.base.projector.inventory.observer
    :members:

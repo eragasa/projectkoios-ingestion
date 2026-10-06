@@ -4,13 +4,13 @@ import pytest
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
-from projectkoios.ingestion.storage.extraction.materialization.collection_evidence import (  # noqa: E501
-    ExtractionProjectionMaterializationCollectionEvidence,
-)
 from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
     ExtractionProjectionMaterializationConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+from projectkoios.ingestion.storage.extraction.materialization.evidence.collection import (  # noqa: E501
+    ExtractionProjectionMaterializationCollectionEvidence,
+)
+from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
 from projectkoios.ingestion.storage.extraction.materialization.target import (
@@ -46,7 +46,7 @@ from projectkoios.ingestion.storage.extraction.projection.inventory.evidence imp
 from projectkoios.ingestion.storage.extraction.projection.inventory.expected import (  # noqa: E501
     ExpectedExtractionProjectionInventory,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 

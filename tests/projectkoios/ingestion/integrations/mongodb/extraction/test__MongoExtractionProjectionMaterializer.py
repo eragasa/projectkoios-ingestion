@@ -18,7 +18,7 @@ from projectkoios.ingestion.base.projector.request import ProjectionRequest
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
-from projectkoios.ingestion.integrations.mongodb.extraction.materialization_error import (  # noqa: E501
+from projectkoios.ingestion.integrations.mongodb.extraction.materialization.error import (  # noqa: E501
     MongoExtractionProjectionMaterializationError,
 )
 from projectkoios.ingestion.integrations.mongodb.extraction.materializer import (  # noqa: E501
@@ -37,7 +37,7 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
     ExtractionProjectionMaterializationConfiguration,
 )
-from projectkoios.ingestion.storage.extraction.materialization.evidence import (
+from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
 from projectkoios.ingestion.storage.extraction.materialization.target import (
@@ -52,7 +52,7 @@ from projectkoios.ingestion.storage.extraction.projection.evidence import (
 from projectkoios.ingestion.storage.extraction.projection.projector import (
     ExtractionProjectionProjector,
 )
-from projectkoios.ingestion.storage.extraction.projection.read_model import (
+from projectkoios.ingestion.storage.extraction.projection.read.model import (
     ExtractionReadModel,
 )
 from projectkoios.ingestion.storage.extraction.publication.request import (

@@ -24,6 +24,11 @@ silently reformatted by this CI introduction. Lint, typing, tests, and packaging
 still cover the full repository. Expanding formatter ownership requires a
 separate reviewed baseline-only change.
 
+Hierarchy changes also follow the maintained [code smell review](code-smell-review.md).
+Its smoke gates enforce objective package-shape rules in migrated scopes, while
+semantic ownership, action boundaries, and unstable API terminology receive an
+explicit human-readable review in each pull request.
+
 These checks verify software contracts only. They do not establish extraction
 accuracy, OCR adequacy, claim support, scientific validity, rights clearance,
 human acceptance, or publication authority. Real Tesseract execution remains an

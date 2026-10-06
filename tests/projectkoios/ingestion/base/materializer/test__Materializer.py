@@ -7,6 +7,7 @@ import pytest
 from projectkoios.ingestion.base.actionizer.configurable import (
     ConfigurableDataObjectActionizer,
 )
+from projectkoios.ingestion.base.materializer.actionizer import Materializer
 from projectkoios.ingestion.base.materializer.configuration import (
     AbstractMaterializationConfiguration,
 )
@@ -16,7 +17,6 @@ from projectkoios.ingestion.base.materializer.evidence import (
 from projectkoios.ingestion.base.materializer.identity.model import (
     MaterializerIdentity,
 )
-from projectkoios.ingestion.base.materializer.materializer import Materializer
 from projectkoios.ingestion.base.materializer.request import (
     MaterializationRequest,
 )

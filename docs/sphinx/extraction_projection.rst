@@ -26,7 +26,7 @@ Data flow
 #. ``ExtractionProjectionMaterializationPipeline`` invokes the pure
    ``ExtractionProjectionProjector`` and receives a complete immutable read
    model.
-#. The pipeline passes that value, an explicit target identity, physical
+#. The same actionizer passes that value, an explicit target identity, physical
    configuration, and authority identity to
    ``MongoExtractionProjectionMaterializer``.
 #. The materializer writes create-once, with root completion documents last,
@@ -67,7 +67,7 @@ Pure projection API
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.document
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.read_model
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.read.model
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.projector
@@ -82,28 +82,28 @@ Extraction materialization API
 .. automodule:: projectkoios.ingestion.storage.extraction.materialization.configuration
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.materialization.collection_evidence
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence.collection
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence.model
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.materialization.materializer
    :members:
 
-Extraction pipeline API
------------------------
+Extraction composition-action API
+---------------------------------
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.configuration
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.pipeline.configuration
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.request
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.pipeline.request
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.result
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.pipeline.result
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection_pipeline.pipeline
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.pipeline.actionizer
    :members:
 
 Extraction projector-inventory API
@@ -118,10 +118,10 @@ Extraction projector-inventory API
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.evidence
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.inventory
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.observer
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.reader
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.reader.base
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.expected
@@ -130,28 +130,28 @@ Extraction projector-inventory API
 Extraction index-readiness API
 ------------------------------
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.index
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.definition
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.configuration
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.configuration
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.index_evidence
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.evidence.index
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.evidence
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.evidence.model
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.request
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.request
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.result
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.result
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.backend
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.backend.base
    :members:
 
-.. automodule:: projectkoios.ingestion.storage.extraction.projection.index_readiness.actionizer
+.. automodule:: projectkoios.ingestion.storage.extraction.projection.index.readiness.actionizer
    :members:
 
 Inventory equivalence API
@@ -172,14 +172,83 @@ Inventory equivalence API
 .. automodule:: projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.verifier
    :members:
 
+Extraction provider-action API
+------------------------------
+
+.. automodule:: projectkoios.ingestion.storage.extraction.artifact.validation.reader.base
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.artifact.validation.reader.error
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.artifact.validation.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.artifact.validation.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.artifact.validation.actionizer
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.source.model
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.source.reader
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.extraction.error
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.freeze.bounded.actionizer
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.backend.base
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.backend.error
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.actionizer
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.backend.base
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.backend.error
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.evidence
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.request
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.result
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.actionizer
+   :members:
+
 MongoDB materialization API
 ---------------------------
 
-.. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.index_readiness
+.. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.index.readiness.backend
    :members:
 
 .. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.materializer
    :members:
 
-.. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.materialization_error
+.. automodule:: projectkoios.ingestion.integrations.mongodb.extraction.materialization.error
    :members:
