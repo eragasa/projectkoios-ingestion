@@ -1,0 +1,1 @@
+"""Ocr kind ownership package."""

@@ -7,26 +7,32 @@ from dataclasses import dataclass
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.ocr.line import OCRLine
-from projectkoios.ingestion.reconciliation import _identity as identity
-from projectkoios.ingestion.reconciliation import _primitives as primitives
-from projectkoios.ingestion.reconciliation import _validation as validation
+from projectkoios.ingestion.reconciliation.choice.stream import (
+    OCRReconciliationStreamChoice,
+)
 from projectkoios.ingestion.reconciliation.constants import (
     OCR_RECONCILIATION_CONTRACT_VERSION,
 )
-from projectkoios.ingestion.reconciliation.item import OCRReconciledItem
-from projectkoios.ingestion.reconciliation.match import OCRReconciliationMatch
-from projectkoios.ingestion.reconciliation.native_block_evidence import (
+from projectkoios.ingestion.reconciliation.evidence.native.block import (
     OCRNativeBlockEvidence,
 )
-from projectkoios.ingestion.reconciliation.native_line_segment import (
-    OCRNativeLineSegment,
+from projectkoios.ingestion.reconciliation.identity import (
+    derivation as identity,
+)
+from projectkoios.ingestion.reconciliation.item import OCRReconciledItem
+from projectkoios.ingestion.reconciliation.match import (
+    OCRReconciliationMatch,
 )
 from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
 )
-from projectkoios.ingestion.reconciliation.stream_choice import (
-    OCRReconciliationStreamChoice,
+from projectkoios.ingestion.reconciliation.segment.native.line import (
+    OCRNativeLineSegment,
 )
+from projectkoios.ingestion.reconciliation.validation import (
+    result as validation,
+)
+from projectkoios.ingestion.reconciliation.validation import value as primitives
 from projectkoios.ingestion.reconciliation.warning import (
     OCRReconciliationWarning,
 )

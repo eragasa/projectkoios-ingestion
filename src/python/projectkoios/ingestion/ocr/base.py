@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from projectkoios.ingestion.models import BoundingBox
-from projectkoios.ingestion.ocr import _primitives as primitives
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 if TYPE_CHECKING:
     from projectkoios.ingestion.ocr.confidence import OCRConfidence
@@ -40,11 +40,11 @@ class OCRTextOutput(ABC):
 
     def _validate_common_contract(self) -> None:
         """Validate invariants shared by every OCR text output."""
-        from projectkoios.ingestion.ocr._limits import (
-            _MAX_TEXT_CHARACTERS_PER_ITEM,
-        )
         from projectkoios.ingestion.ocr.constants import (
             PIXEL_COORDINATE_SYSTEM,
+        )
+        from projectkoios.ingestion.ocr.limit.definition import (
+            _MAX_TEXT_CHARACTERS_PER_ITEM,
         )
         from projectkoios.ingestion.pdf.models import (
             PYMUPDF_COORDINATE_SYSTEM,

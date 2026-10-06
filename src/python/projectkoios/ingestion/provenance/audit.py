@@ -20,7 +20,7 @@ from projectkoios.ingestion.models import (
     Metadata,
     SourceDocument,
 )
-from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.result.ocr import OCRResult
 from projectkoios.ingestion.provenance.common import (
     _artifact_id,
     _object_id,

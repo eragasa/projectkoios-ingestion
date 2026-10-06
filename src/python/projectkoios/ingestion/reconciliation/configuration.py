@@ -7,8 +7,7 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.reconciliation import _primitives as primitives
-from projectkoios.ingestion.reconciliation._limits import (
+from projectkoios.ingestion.reconciliation.limit.definition import (
     _MAX_CANDIDATE_PAIRS,
     _MAX_COMPARISON_TEXT_CHARACTERS,
     _MAX_COMPARISON_WORK,
@@ -20,9 +19,10 @@ from projectkoios.ingestion.reconciliation._limits import (
     _MAX_TOTAL_TEXT_CHARACTERS,
     _MAX_WARNINGS,
 )
-from projectkoios.ingestion.reconciliation.limit_error import (
+from projectkoios.ingestion.reconciliation.limit.error import (
     OCRReconciliationLimitError,
 )
+from projectkoios.ingestion.reconciliation.validation import value as primitives
 
 
 @dataclass(frozen=True)

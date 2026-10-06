@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.reconciliation import _geometry as geometry
-from projectkoios.ingestion.reconciliation import _identity as identity
-from projectkoios.ingestion.reconciliation import _primitives as primitives
-from projectkoios.ingestion.reconciliation.match_kind import (
+from projectkoios.ingestion.reconciliation.geometry import analysis as geometry
+from projectkoios.ingestion.reconciliation.identity import (
+    derivation as identity,
+)
+from projectkoios.ingestion.reconciliation.kind.match import (
     OCRReconciliationMatchKind,
 )
+from projectkoios.ingestion.reconciliation.validation import value as primitives
 
 
 @dataclass(frozen=True)

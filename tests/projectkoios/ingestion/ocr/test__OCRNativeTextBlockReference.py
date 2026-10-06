@@ -1,7 +1,7 @@
 """Ownership and nominal-base checks for OCRNativeTextBlockReference."""
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.ocr.native_text_block_reference import (
+from projectkoios.ingestion.ocr.reference.native.text.block import (
     OCRNativeTextBlockReference,
 )
 
@@ -9,6 +9,6 @@ from projectkoios.ingestion.ocr.native_text_block_reference import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRNativeTextBlockReference.__module__
-        == "projectkoios.ingestion.ocr.native_text_block_reference"
+        == "projectkoios.ingestion.ocr.reference.native.text.block"
     )
     assert issubclass(OCRNativeTextBlockReference, AbstractImmutableDataObject)

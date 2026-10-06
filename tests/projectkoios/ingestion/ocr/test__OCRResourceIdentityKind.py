@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from projectkoios.ingestion.ocr.resource_identity_kind import (
+from projectkoios.ingestion.ocr.kind.resource.identity import (
     OCRResourceIdentityKind,
 )
 
@@ -10,6 +10,6 @@ from projectkoios.ingestion.ocr.resource_identity_kind import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRResourceIdentityKind.__module__
-        == "projectkoios.ingestion.ocr.resource_identity_kind"
+        == "projectkoios.ingestion.ocr.kind.resource.identity"
     )
     assert issubclass(OCRResourceIdentityKind, StrEnum)

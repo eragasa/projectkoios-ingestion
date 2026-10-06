@@ -2,7 +2,7 @@
 
 from builtins import ValueError
 
-from projectkoios.ingestion.reconciliation.limit_error import (
+from projectkoios.ingestion.reconciliation.limit.error import (
     OCRReconciliationLimitError,
 )
 
@@ -10,6 +10,6 @@ from projectkoios.ingestion.reconciliation.limit_error import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRReconciliationLimitError.__module__
-        == "projectkoios.ingestion.reconciliation.limit_error"
+        == "projectkoios.ingestion.reconciliation.limit.error"
     )
     assert issubclass(OCRReconciliationLimitError, ValueError)

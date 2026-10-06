@@ -1,0 +1,1 @@
+"""Ocr result ownership package."""

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.ocr import _primitives as primitives
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)

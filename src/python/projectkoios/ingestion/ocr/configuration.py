@@ -6,8 +6,7 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.ocr import _primitives as primitives
-from projectkoios.ingestion.ocr._limits import (
+from projectkoios.ingestion.ocr.limit.definition import (
     _MAX_BYTES_PER_IMAGE,
     _MAX_IDENTITY_FIELD_CHARACTERS,
     _MAX_IMAGES,
@@ -31,8 +30,9 @@ from projectkoios.ingestion.ocr._limits import (
     _MAX_WARNING_MESSAGE_CHARACTERS,
     _MAX_WARNINGS_PER_SELECTION,
 )
-from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
-from projectkoios.ingestion.ocr.output_mode import OCROutputMode
+from projectkoios.ingestion.ocr.limit.error import OCRContractLimitError
+from projectkoios.ingestion.ocr.mode.output import OCROutputMode
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)
