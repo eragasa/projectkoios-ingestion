@@ -141,6 +141,26 @@ jobs:
               "projectkoios.ingestion.storage.extraction.projection.pipeline.actionizer",
               "projectkoios.ingestion.storage.extraction.projection.read.model",
               "projectkoios.ingestion.storage.extraction.recovery.subset.actionizer",
+              "projectkoios.ingestion.ocr.cache.identity",
+              "projectkoios.ingestion.ocr.failure",
+              "projectkoios.ingestion.ocr.identity.resource.language",
+              "projectkoios.ingestion.ocr.reference.native.text.block",
+              "projectkoios.ingestion.ocr.processor",
+              "projectkoios.ingestion.ocr.request",
+              "projectkoios.ingestion.ocr.result.ocr",
+              "projectkoios.ingestion.ocr.selection",
+              "projectkoios.ingestion.ocr.validation.reference",
+              "projectkoios.ingestion.ocr.validation.request",
+              "projectkoios.ingestion.ocr.validation.result",
+              "projectkoios.ingestion.ocr.validation.selection",
+              "projectkoios.ingestion.reconciliation.derivation.match",
+              "projectkoios.ingestion.reconciliation.derivation.native",
+              "projectkoios.ingestion.reconciliation.derivation.stream",
+              "projectkoios.ingestion.reconciliation.derivation.warning",
+              "projectkoios.ingestion.reconciliation.evidence.native.block",
+              "projectkoios.ingestion.reconciliation.segment.native.line",
+              "projectkoios.ingestion.reconciliation.validation.request",
+              "projectkoios.ingestion.reconciliation.validation.result",
           )
           for module_name in required_modules:
               import_module(module_name)
@@ -155,10 +175,49 @@ jobs:
               "projectkoios.ingestion.storage.extraction.projection_pipeline",
               "projectkoios.ingestion.storage.extraction.projection.index_readiness",
               "projectkoios.ingestion.storage.extraction.selected_recovery",
+              "projectkoios.ingestion.ocr._geometry",
+              "projectkoios.ingestion.ocr._identity",
+              "projectkoios.ingestion.ocr._limits",
+              "projectkoios.ingestion.ocr._primitives",
+              "projectkoios.ingestion.ocr._validation",
+              "projectkoios.ingestion.ocr.cache_key",
+              "projectkoios.ingestion.ocr.failure_kind",
+              "projectkoios.ingestion.ocr.language_resource_identity",
+              "projectkoios.ingestion.ocr.limit_error",
+              "projectkoios.ingestion.ocr.native_text_block_reference",
+              "projectkoios.ingestion.ocr.output_mode",
+              "projectkoios.ingestion.ocr.page_image",
+              "projectkoios.ingestion.ocr.processor_identity",
+              "projectkoios.ingestion.ocr.resource_identity_kind",
+              "projectkoios.ingestion.ocr.result_status",
+              "projectkoios.ingestion.ocr.selection_result",
+              "projectkoios.ingestion.ocr.selection_status",
+              "projectkoios.ingestion.reconciliation._candidate",
+              "projectkoios.ingestion.reconciliation._derivation",
+              "projectkoios.ingestion.reconciliation._geometry",
+              "projectkoios.ingestion.reconciliation._identity",
+              "projectkoios.ingestion.reconciliation._limits",
+              "projectkoios.ingestion.reconciliation._primitives",
+              "projectkoios.ingestion.reconciliation._validation",
+              "projectkoios.ingestion.reconciliation.item_kind",
+              "projectkoios.ingestion.reconciliation.limit_error",
+              "projectkoios.ingestion.reconciliation.match_kind",
+              "projectkoios.ingestion.reconciliation.native_block_evidence",
+              "projectkoios.ingestion.reconciliation.native_line_segment",
+              "projectkoios.ingestion.reconciliation.stream_choice",
           )
           for module_name in removed_modules:
               if find_spec(module_name) is not None:
                   raise AssertionError(f"legacy module remains: {module_name}")
+
+          removed_package_exports = (
+              ("projectkoios.ingestion.ocr.result", "OCRResult"),
+          )
+          for package_name, removed_name in removed_package_exports:
+              if removed_name in vars(import_module(package_name)):
+                  raise AssertionError(
+                      f"legacy package export remains: {package_name}.{removed_name}"
+                  )
           PY
 
       - name: Check patch whitespace

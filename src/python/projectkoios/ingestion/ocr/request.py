@@ -8,13 +8,13 @@ from itertools import islice
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.ocr import _identity as identity
-from projectkoios.ingestion.ocr import _primitives as primitives
-from projectkoios.ingestion.ocr import _validation as validation
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
 from projectkoios.ingestion.ocr.constants import OCR_CONTRACT_VERSION
-from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
+from projectkoios.ingestion.ocr.identity import derivation as identity
+from projectkoios.ingestion.ocr.limit.error import OCRContractLimitError
 from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.validation import request as validation
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)

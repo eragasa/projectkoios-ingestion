@@ -8,11 +8,14 @@ from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.publication import SelectiveOCRPublication
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
-from projectkoios.ingestion.ocr.language_resource_identity import (
+from projectkoios.ingestion.ocr.identity.processor import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.identity.resource.language import (
     OCRLanguageResourceIdentity,
 )
-from projectkoios.ingestion.ocr.page_image import OCRPageImage
-from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.image.page import OCRPageImage
+from projectkoios.ingestion.ocr.kind.resource.identity import (
+    OCRResourceIdentityKind,
+)
 from projectkoios.ingestion.ocr.reconciliation.batch.item import (
     SelectiveOCRReconciliationItem,
 )
@@ -20,13 +23,10 @@ from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,
 )
 from projectkoios.ingestion.ocr.request import OCRRequest
-from projectkoios.ingestion.ocr.resource_identity_kind import (
-    OCRResourceIdentityKind,
-)
-from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.result.ocr import OCRResult
+from projectkoios.ingestion.ocr.result.selection import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection import OCRSelection
-from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
-from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,

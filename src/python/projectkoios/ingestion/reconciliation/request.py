@@ -8,18 +8,22 @@ from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.layout import PageLayoutResult
 from projectkoios.ingestion.models import ExtractedPage
-from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.result.ocr import OCRResult
+from projectkoios.ingestion.ocr.result.selection import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection import OCRSelection
-from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
-from projectkoios.ingestion.reconciliation import _identity as identity
-from projectkoios.ingestion.reconciliation import _primitives as primitives
-from projectkoios.ingestion.reconciliation import _validation as validation
 from projectkoios.ingestion.reconciliation.configuration import (
     OCRReconciliationConfiguration,
 )
 from projectkoios.ingestion.reconciliation.constants import (
     OCR_RECONCILIATION_CONTRACT_VERSION,
 )
+from projectkoios.ingestion.reconciliation.identity import (
+    derivation as identity,
+)
+from projectkoios.ingestion.reconciliation.validation import (
+    request as validation,
+)
+from projectkoios.ingestion.reconciliation.validation import value as primitives
 
 
 @dataclass(frozen=True)

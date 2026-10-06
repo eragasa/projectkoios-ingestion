@@ -6,20 +6,20 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import ExtractedPage
-from projectkoios.ingestion.ocr import _identity as identity
-from projectkoios.ingestion.ocr import _primitives as primitives
-from projectkoios.ingestion.ocr import _validation as validation
-from projectkoios.ingestion.ocr._limits import (
+from projectkoios.ingestion.ocr.constants import OCR_CONTRACT_VERSION
+from projectkoios.ingestion.ocr.identity import derivation as identity
+from projectkoios.ingestion.ocr.image.page import OCRPageImage
+from projectkoios.ingestion.ocr.limit.definition import (
     _MAX_IDENTITY_FIELD_CHARACTERS,
     _MAX_NATIVE_TEXT_REFERENCES,
     _MAX_TOTAL_IDENTITY_CHARACTERS,
 )
-from projectkoios.ingestion.ocr.constants import OCR_CONTRACT_VERSION
-from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
-from projectkoios.ingestion.ocr.native_text_block_reference import (
+from projectkoios.ingestion.ocr.limit.error import OCRContractLimitError
+from projectkoios.ingestion.ocr.reference.native.text.block import (
     OCRNativeTextBlockReference,
 )
-from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.validation import reference as validation
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)

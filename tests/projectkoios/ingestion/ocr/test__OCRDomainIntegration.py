@@ -18,7 +18,7 @@ from projectkoios.ingestion import (
     WarningSeverity,
 )
 from projectkoios.ingestion.ocr.base import OCRTextOutput
-from projectkoios.ingestion.ocr.cache_key import build_ocr_cache_key
+from projectkoios.ingestion.ocr.cache.identity import build_ocr_cache_key
 from projectkoios.ingestion.ocr.confidence import OCRConfidence
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
 from projectkoios.ingestion.ocr.constants import (
@@ -26,24 +26,24 @@ from projectkoios.ingestion.ocr.constants import (
     PIXEL_COORDINATE_SYSTEM,
 )
 from projectkoios.ingestion.ocr.failure import OCRFailure
-from projectkoios.ingestion.ocr.failure_kind import OCRFailureKind
-from projectkoios.ingestion.ocr.language_resource_identity import (
+from projectkoios.ingestion.ocr.identity.processor import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.identity.resource.language import (
     OCRLanguageResourceIdentity,
 )
-from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
-from projectkoios.ingestion.ocr.line import OCRLine
-from projectkoios.ingestion.ocr.output_mode import OCROutputMode
-from projectkoios.ingestion.ocr.page_image import OCRPageImage
-from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
-from projectkoios.ingestion.ocr.request import OCRRequest
-from projectkoios.ingestion.ocr.resource_identity_kind import (
+from projectkoios.ingestion.ocr.image.page import OCRPageImage
+from projectkoios.ingestion.ocr.kind.failure import OCRFailureKind
+from projectkoios.ingestion.ocr.kind.resource.identity import (
     OCRResourceIdentityKind,
 )
-from projectkoios.ingestion.ocr.result import OCRResult
-from projectkoios.ingestion.ocr.result_status import OCRResultStatus
+from projectkoios.ingestion.ocr.limit.error import OCRContractLimitError
+from projectkoios.ingestion.ocr.line import OCRLine
+from projectkoios.ingestion.ocr.mode.output import OCROutputMode
+from projectkoios.ingestion.ocr.request import OCRRequest
+from projectkoios.ingestion.ocr.result.ocr import OCRResult
+from projectkoios.ingestion.ocr.result.selection import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection import OCRSelection
-from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
-from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.ocr.status.result import OCRResultStatus
+from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
 from projectkoios.ingestion.ocr.token import OCRToken
 from projectkoios.ingestion.ocr.warning import OCRWarning
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter

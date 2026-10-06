@@ -6,14 +6,14 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.models import BoundingBox
-from projectkoios.ingestion.ocr import _geometry as geometry
-from projectkoios.ingestion.ocr import _identity as identity
-from projectkoios.ingestion.ocr import _primitives as primitives
 from projectkoios.ingestion.ocr.base import OCRTextOutput
 from projectkoios.ingestion.ocr.confidence import OCRConfidence
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
 from projectkoios.ingestion.ocr.constants import PIXEL_COORDINATE_SYSTEM
+from projectkoios.ingestion.ocr.geometry import mapping as geometry
+from projectkoios.ingestion.ocr.identity import derivation as identity
 from projectkoios.ingestion.ocr.selection import OCRSelection
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)

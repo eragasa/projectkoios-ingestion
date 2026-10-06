@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from projectkoios.ingestion.reconciliation.match_kind import (
+from projectkoios.ingestion.reconciliation.kind.match import (
     OCRReconciliationMatchKind,
 )
 
@@ -10,6 +10,6 @@ from projectkoios.ingestion.reconciliation.match_kind import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRReconciliationMatchKind.__module__
-        == "projectkoios.ingestion.reconciliation.match_kind"
+        == "projectkoios.ingestion.reconciliation.kind.match"
     )
     assert issubclass(OCRReconciliationMatchKind, StrEnum)

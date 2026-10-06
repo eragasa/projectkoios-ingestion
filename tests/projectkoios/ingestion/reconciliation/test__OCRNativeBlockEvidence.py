@@ -1,7 +1,7 @@
 """Ownership and nominal-base checks for OCRNativeBlockEvidence."""
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.reconciliation.native_block_evidence import (
+from projectkoios.ingestion.reconciliation.evidence.native.block import (
     OCRNativeBlockEvidence,
 )
 
@@ -9,6 +9,6 @@ from projectkoios.ingestion.reconciliation.native_block_evidence import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRNativeBlockEvidence.__module__
-        == "projectkoios.ingestion.reconciliation.native_block_evidence"
+        == "projectkoios.ingestion.reconciliation.evidence.native.block"
     )
     assert issubclass(OCRNativeBlockEvidence, AbstractImmutableDataObject)

@@ -4,9 +4,20 @@ from __future__ import annotations
 
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.models import WarningSeverity
-from projectkoios.ingestion.reconciliation import _derivation as derivation
 from projectkoios.ingestion.reconciliation.base import OCRReconciler
-from projectkoios.ingestion.reconciliation.limit_error import (
+from projectkoios.ingestion.reconciliation.derivation import (
+    match as match_derivation,
+)
+from projectkoios.ingestion.reconciliation.derivation import (
+    native as native_derivation,
+)
+from projectkoios.ingestion.reconciliation.derivation import (
+    stream as stream_derivation,
+)
+from projectkoios.ingestion.reconciliation.derivation import (
+    warning as warning_derivation,
+)
+from projectkoios.ingestion.reconciliation.limit.error import (
     OCRReconciliationLimitError,
 )
 from projectkoios.ingestion.reconciliation.request import (
@@ -46,8 +57,8 @@ class DeterministicOCRReconciler(
     def _reconcile(
         self, reconciliation_input: OCRReconciliationRequest
     ) -> OCRReconciliationResult:
-        native_stream = derivation._native_stream(reconciliation_input)
-        native_segments = derivation._native_segments(
+        native_stream = native_derivation._native_stream(reconciliation_input)
+        native_segments = native_derivation._native_segments(
             native_stream, reconciliation_input.configuration
         )
         ocr_stream = reconciliation_input.selection_result.lines
@@ -65,12 +76,12 @@ class DeterministicOCRReconciler(
             raise OCRReconciliationLimitError(
                 "candidate pairs exceed max_candidate_pairs"
             )
-        warnings = derivation._input_warnings(reconciliation_input)
-        candidates, comparison_warnings = derivation._candidates(
+        warnings = warning_derivation._input_warnings(reconciliation_input)
+        candidates, comparison_warnings = match_derivation._candidates(
             native_segments, ocr_stream, config
         )
         warnings.extend(comparison_warnings)
-        selected_candidates, match_warnings = derivation._matches(
+        selected_candidates, match_warnings = match_derivation._matches(
             candidates, config
         )
         warnings.extend(match_warnings)
@@ -101,10 +112,10 @@ class DeterministicOCRReconciler(
             )
         warning_by_id = {warning.warning_id: warning for warning in warnings}
         matches = tuple(
-            derivation._match_with_warning(candidate, warning_by_id)
+            match_derivation._match_with_warning(candidate, warning_by_id)
             for candidate in selected_candidates
         )
-        proposed = derivation._merged_stream(
+        proposed = stream_derivation._merged_stream(
             native_segments,
             ocr_stream,
             matches,

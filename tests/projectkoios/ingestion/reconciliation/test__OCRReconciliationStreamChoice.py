@@ -2,7 +2,7 @@
 
 from enum import StrEnum
 
-from projectkoios.ingestion.reconciliation.stream_choice import (
+from projectkoios.ingestion.reconciliation.choice.stream import (
     OCRReconciliationStreamChoice,
 )
 
@@ -10,6 +10,6 @@ from projectkoios.ingestion.reconciliation.stream_choice import (
 def test__owned_module_and_nominal_base() -> None:
     assert (
         OCRReconciliationStreamChoice.__module__
-        == "projectkoios.ingestion.reconciliation.stream_choice"
+        == "projectkoios.ingestion.reconciliation.choice.stream"
     )
     assert issubclass(OCRReconciliationStreamChoice, StrEnum)

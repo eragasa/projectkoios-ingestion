@@ -17,11 +17,11 @@ from projectkoios.ingestion import (
     TesseractOCRProcessor,
 )
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
-from projectkoios.ingestion.ocr.page_image import OCRPageImage
+from projectkoios.ingestion.ocr.image.page import OCRPageImage
 from projectkoios.ingestion.ocr.request import OCRRequest
-from projectkoios.ingestion.ocr.result_status import OCRResultStatus
 from projectkoios.ingestion.ocr.selection import OCRSelection
-from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.ocr.status.result import OCRResultStatus
+from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )

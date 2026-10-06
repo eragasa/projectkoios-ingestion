@@ -5,10 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.ocr import _identity as identity
-from projectkoios.ingestion.ocr import _primitives as primitives
-from projectkoios.ingestion.ocr._limits import _MAX_WARNING_MESSAGE_CHARACTERS
-from projectkoios.ingestion.ocr.failure_kind import OCRFailureKind
+from projectkoios.ingestion.ocr.identity import derivation as identity
+from projectkoios.ingestion.ocr.kind.failure import OCRFailureKind
+from projectkoios.ingestion.ocr.limit.definition import (
+    _MAX_WARNING_MESSAGE_CHARACTERS,
+)
+from projectkoios.ingestion.ocr.validation import value as primitives
 
 
 @dataclass(frozen=True)

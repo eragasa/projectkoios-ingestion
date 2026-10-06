@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from projectkoios.ingestion.ocr.processor_identity import OCRProcessorIdentity
+from projectkoios.ingestion.ocr.identity.processor import OCRProcessorIdentity
 from projectkoios.ingestion.ocr.request import OCRRequest
-from projectkoios.ingestion.ocr.result import OCRResult
+from projectkoios.ingestion.ocr.result.ocr import OCRResult
 
 
 class OCRProcessor(ABC):

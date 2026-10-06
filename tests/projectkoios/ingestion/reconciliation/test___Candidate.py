@@ -3,8 +3,8 @@
 from dataclasses import FrozenInstanceError
 
 import pytest
-from projectkoios.ingestion.reconciliation._candidate import _Candidate
-from projectkoios.ingestion.reconciliation.match_kind import (
+from projectkoios.ingestion.reconciliation.candidate.model import _Candidate
+from projectkoios.ingestion.reconciliation.kind.match import (
     OCRReconciliationMatchKind,
 )
 
@@ -22,7 +22,7 @@ def test___Candidate__is_frozen_and_owned_by_its_module() -> None:
     )
     assert (
         _Candidate.__module__
-        == "projectkoios.ingestion.reconciliation._candidate"
+        == "projectkoios.ingestion.reconciliation.candidate.model"
     )
     with pytest.raises(FrozenInstanceError):
         candidate.score = 0.5  # type: ignore[misc]
