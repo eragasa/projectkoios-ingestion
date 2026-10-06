@@ -11,7 +11,7 @@ owner modules and removed the graph of subordinate validation classes. The
 result is a substantial improvement in ownership, navigation, and reviewability.
 
 The remaining localized debt is
-`src/python/projectkoios/ingestion/transcription/result_validation.py`, which
+`src/python/projectkoios/ingestion/transcription/validation/result.py`, which
 contains 461 lines, including a 359-line
 `TranscriptionResultValidation.validate()` method. That implementation was
 reduced from 564 lines, but its remaining trust-boundary checks are still tiring

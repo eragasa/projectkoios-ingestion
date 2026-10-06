@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.source_object_kind import (
+from projectkoios.ingestion.transcription.kind.source.object import (
     TranscriptionSourceObjectKind,
 )
 

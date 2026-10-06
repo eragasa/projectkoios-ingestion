@@ -8,8 +8,11 @@ from projectkoios.ingestion.models import IngestionWarning
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.cache_identity import (
+from projectkoios.ingestion.transcription.cache.identity import (
     TranscriptionCacheIdentity,
+)
+from projectkoios.ingestion.transcription.derivation.disposition.structure import (  # noqa: E501
+    TranscriptionStructureDisposition,
 )
 from projectkoios.ingestion.transcription.derivation.order import (
     TranscriptionOrderDerivation,
@@ -17,29 +20,26 @@ from projectkoios.ingestion.transcription.derivation.order import (
 from projectkoios.ingestion.transcription.derivation.page import (
     PageTranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.derivation.structure_disposition import (  # noqa: E501
-    TranscriptionStructureDisposition,
-)
 from projectkoios.ingestion.transcription.item import TranscriptionItem
-from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.kind.item import TranscriptionItemKind
+from projectkoios.ingestion.transcription.kind.source.object import (
+    TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.limits.error import (
     TranscriptionLimitError,
 )
 from projectkoios.ingestion.transcription.omission import TranscriptionOmission
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.reason.omission import (
     TranscriptionOmissionReason,
 )
-from projectkoios.ingestion.transcription.order_status import (
+from projectkoios.ingestion.transcription.request.structured import (
+    StructuredTranscriptionRequest,
+)
+from projectkoios.ingestion.transcription.status.order import (
     TranscriptionOrderStatus,
 )
-from projectkoios.ingestion.transcription.result_status import (
+from projectkoios.ingestion.transcription.status.result import (
     TranscriptionStatus,
-)
-from projectkoios.ingestion.transcription.source_object_kind import (
-    TranscriptionSourceObjectKind,
-)
-from projectkoios.ingestion.transcription.structured_request import (
-    StructuredTranscriptionRequest,
 )
 
 

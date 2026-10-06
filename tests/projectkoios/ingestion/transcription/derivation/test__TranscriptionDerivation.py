@@ -1,5 +1,5 @@
 from projectkoios.ingestion.base.derivation import AbstractDerivation
-from projectkoios.ingestion.transcription.derivation.transcription import (
+from projectkoios.ingestion.transcription.derivation.model import (
     TranscriptionDerivation,
 )
 

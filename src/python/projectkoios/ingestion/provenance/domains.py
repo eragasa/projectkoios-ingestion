@@ -26,7 +26,7 @@ from projectkoios.ingestion.provenance.audit import (
     _Registry,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
-from projectkoios.ingestion.transcription.source_object_kind import (
+from projectkoios.ingestion.transcription.kind.source.object import (
     TranscriptionSourceObjectKind,
 )
 

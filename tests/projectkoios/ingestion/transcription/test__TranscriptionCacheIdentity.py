@@ -1,6 +1,6 @@
 import pytest
 from projectkoios.ingestion.base.identity import AbstractIdentity
-from projectkoios.ingestion.transcription.cache_identity import (
+from projectkoios.ingestion.transcription.cache.identity import (
     TranscriptionCacheIdentity,
 )
 

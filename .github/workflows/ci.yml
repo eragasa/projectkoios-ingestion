@@ -180,6 +180,23 @@ jobs:
               "projectkoios.ingestion.tables.structure.validation.continuation",
               "projectkoios.ingestion.tables.structure.validation.row",
               "projectkoios.ingestion.tables.structure.validation.structure",
+              "projectkoios.ingestion.transcription.cache.identity",
+              "projectkoios.ingestion.transcription.composer.deterministic",
+              "projectkoios.ingestion.transcription.derivation.block.raw",
+              "projectkoios.ingestion.transcription.derivation.disposition.structure",
+              "projectkoios.ingestion.transcription.derivation.model",
+              "projectkoios.ingestion.transcription.inventory.input.artifact",
+              "projectkoios.ingestion.transcription.kind.item",
+              "projectkoios.ingestion.transcription.kind.source.object",
+              "projectkoios.ingestion.transcription.limits.error",
+              "projectkoios.ingestion.transcription.reason.omission",
+              "projectkoios.ingestion.transcription.request.structured",
+              "projectkoios.ingestion.transcription.result.structured",
+              "projectkoios.ingestion.transcription.status.evidence",
+              "projectkoios.ingestion.transcription.status.order",
+              "projectkoios.ingestion.transcription.status.result",
+              "projectkoios.ingestion.transcription.validation.request",
+              "projectkoios.ingestion.transcription.validation.result",
           )
           for module_name in required_modules:
               import_module(module_name)
@@ -240,6 +257,22 @@ jobs:
               "projectkoios.ingestion.tables.structure.source_record",
               "projectkoios.ingestion.tables.structure.structure",
               "projectkoios.ingestion.tables.structure.warning_specification",
+              "projectkoios.ingestion.transcription.artifact_inventory",
+              "projectkoios.ingestion.transcription.cache_identity",
+              "projectkoios.ingestion.transcription.evidence_status",
+              "projectkoios.ingestion.transcription.item_kind",
+              "projectkoios.ingestion.transcription.limit_error",
+              "projectkoios.ingestion.transcription.omission_reason",
+              "projectkoios.ingestion.transcription.order_status",
+              "projectkoios.ingestion.transcription.request_validation",
+              "projectkoios.ingestion.transcription.result_status",
+              "projectkoios.ingestion.transcription.result_validation",
+              "projectkoios.ingestion.transcription.source_object_kind",
+              "projectkoios.ingestion.transcription.structured_request",
+              "projectkoios.ingestion.transcription.structured_result",
+              "projectkoios.ingestion.transcription.derivation.raw_block",
+              "projectkoios.ingestion.transcription.derivation.structure_disposition",
+              "projectkoios.ingestion.transcription.derivation.transcription",
           )
           for module_name in removed_modules:
               if find_spec(module_name) is not None:
@@ -258,6 +291,10 @@ jobs:
               (
                   "projectkoios.ingestion.tables.structure.validation",
                   "TableStructureValidation",
+              ),
+              (
+                  "projectkoios.ingestion.transcription.composer",
+                  "DeterministicStructuredTranscriptionComposer",
               ),
           )
           for package_name, removed_name in removed_package_exports:

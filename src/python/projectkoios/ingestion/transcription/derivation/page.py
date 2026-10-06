@@ -4,15 +4,15 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import ExtractedDocument, ExtractedPage
-from projectkoios.ingestion.transcription.derivation.transcription import (
+from projectkoios.ingestion.transcription.derivation.model import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.evidence_status import (
-    TranscriptionEvidenceStatus,
-)
-from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
-from projectkoios.ingestion.transcription.source_object_kind import (
+from projectkoios.ingestion.transcription.kind.item import TranscriptionItemKind
+from projectkoios.ingestion.transcription.kind.source.object import (
     TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.status.evidence import (
+    TranscriptionEvidenceStatus,
 )
 
 

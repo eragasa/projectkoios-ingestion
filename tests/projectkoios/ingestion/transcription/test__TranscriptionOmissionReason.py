@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.reason.omission import (
     TranscriptionOmissionReason,
 )
 

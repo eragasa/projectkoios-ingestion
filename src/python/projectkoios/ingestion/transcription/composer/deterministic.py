@@ -11,11 +11,20 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
+from projectkoios.ingestion.transcription.derivation.block.raw import (
+    RawBlockTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.disposition.structure import (  # noqa: E501
+    TranscriptionStructureDisposition,
+)
 from projectkoios.ingestion.transcription.derivation.equation import (
     EquationTranscriptionDerivation,
 )
 from projectkoios.ingestion.transcription.derivation.figure import (
     FigureTranscriptionDerivation,
+)
+from projectkoios.ingestion.transcription.derivation.model import (
+    TranscriptionDerivation,
 )
 from projectkoios.ingestion.transcription.derivation.order import (
     TranscriptionOrderDerivation,
@@ -23,20 +32,11 @@ from projectkoios.ingestion.transcription.derivation.order import (
 from projectkoios.ingestion.transcription.derivation.page import (
     PageTranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.derivation.raw_block import (
-    RawBlockTranscriptionDerivation,
-)
 from projectkoios.ingestion.transcription.derivation.structure import (
     StructureTranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.derivation.structure_disposition import (  # noqa: E501
-    TranscriptionStructureDisposition,
-)
 from projectkoios.ingestion.transcription.derivation.table import (
     TableTranscriptionDerivation,
-)
-from projectkoios.ingestion.transcription.derivation.transcription import (
-    TranscriptionDerivation,
 )
 from projectkoios.ingestion.transcription.derivation.warning import (
     TranscriptionWarningDerivation,
@@ -45,17 +45,17 @@ from projectkoios.ingestion.transcription.item import TranscriptionItem
 from projectkoios.ingestion.transcription.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.reason.omission import (
     TranscriptionOmissionReason,
 )
-from projectkoios.ingestion.transcription.order_status import (
-    TranscriptionOrderStatus,
-)
-from projectkoios.ingestion.transcription.structured_request import (
+from projectkoios.ingestion.transcription.request.structured import (
     StructuredTranscriptionRequest,
 )
-from projectkoios.ingestion.transcription.structured_result import (
+from projectkoios.ingestion.transcription.result.structured import (
     StructuredTranscriptionResult,
+)
+from projectkoios.ingestion.transcription.status.order import (
+    TranscriptionOrderStatus,
 )
 
 

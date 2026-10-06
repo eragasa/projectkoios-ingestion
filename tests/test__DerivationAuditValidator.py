@@ -80,10 +80,10 @@ from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
 )
-from projectkoios.ingestion.transcription.composer import (
+from projectkoios.ingestion.transcription.composer.deterministic import (
     DeterministicStructuredTranscriptionComposer,
 )
-from projectkoios.ingestion.transcription.structured_request import (
+from projectkoios.ingestion.transcription.request.structured import (
     StructuredTranscriptionRequest,
 )
 

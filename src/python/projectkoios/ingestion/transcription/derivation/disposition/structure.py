@@ -11,10 +11,10 @@ from projectkoios.ingestion.structure import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.evidence_status import (
+from projectkoios.ingestion.transcription.kind.item import TranscriptionItemKind
+from projectkoios.ingestion.transcription.status.evidence import (
     TranscriptionEvidenceStatus,
 )
-from projectkoios.ingestion.transcription.item_kind import TranscriptionItemKind
 
 
 @dataclass(frozen=True)

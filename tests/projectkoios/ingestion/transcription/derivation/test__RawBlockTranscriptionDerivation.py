@@ -1,5 +1,5 @@
 from projectkoios.ingestion.base.derivation import AbstractDerivation
-from projectkoios.ingestion.transcription.derivation.raw_block import (
+from projectkoios.ingestion.transcription.derivation.block.raw import (
     RawBlockTranscriptionDerivation,
 )
 

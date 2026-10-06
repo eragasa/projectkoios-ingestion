@@ -1,5 +1,5 @@
 from projectkoios.ingestion.base.derivation import AbstractDerivation
-from projectkoios.ingestion.transcription.derivation.structure_disposition import (  # noqa: E501
+from projectkoios.ingestion.transcription.derivation.disposition.structure import (  # noqa: E501
     TranscriptionStructureDisposition,
 )
 

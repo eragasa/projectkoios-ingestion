@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.result_status import (
+from projectkoios.ingestion.transcription.status.result import (
     TranscriptionStatus,
 )
 

@@ -7,7 +7,7 @@ from projectkoios.ingestion.models import IngestionWarning, WarningSeverity
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.derivation.transcription import (
+from projectkoios.ingestion.transcription.derivation.model import (
     TranscriptionDerivation,
 )
 

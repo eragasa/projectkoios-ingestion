@@ -4,13 +4,13 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.models import ExtractedBlock
 from projectkoios.ingestion.structure import StructureNode
-from projectkoios.ingestion.transcription.derivation.structure_disposition import (  # noqa: E501
+from projectkoios.ingestion.transcription.derivation.disposition.structure import (  # noqa: E501
     TranscriptionStructureDisposition,
 )
-from projectkoios.ingestion.transcription.derivation.transcription import (
+from projectkoios.ingestion.transcription.derivation.model import (
     TranscriptionDerivation,
 )
-from projectkoios.ingestion.transcription.source_object_kind import (
+from projectkoios.ingestion.transcription.kind.source.object import (
     TranscriptionSourceObjectKind,
 )
 

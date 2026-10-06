@@ -1,0 +1,1 @@
+"""Transcription kind ownership package."""

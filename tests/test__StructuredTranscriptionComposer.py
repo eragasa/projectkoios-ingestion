@@ -28,47 +28,47 @@ from projectkoios.ingestion.tables.structure.reconstructor.deterministic import 
     DeterministicTableStructureReconstructor,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription.artifact_inventory import (
-    TranscriptionInputArtifactInventory,
-)
-from projectkoios.ingestion.transcription.cache_identity import (
+from projectkoios.ingestion.transcription.cache.identity import (
     TranscriptionCacheIdentity,
 )
-from projectkoios.ingestion.transcription.composer import (
+from projectkoios.ingestion.transcription.composer.deterministic import (
     DeterministicStructuredTranscriptionComposer,
 )
 from projectkoios.ingestion.transcription.configuration import (
     TranscriptionConfiguration,
 )
-from projectkoios.ingestion.transcription.evidence_status import (
-    TranscriptionEvidenceStatus,
+from projectkoios.ingestion.transcription.inventory.input.artifact import (
+    TranscriptionInputArtifactInventory,
 )
-from projectkoios.ingestion.transcription.item_kind import (
+from projectkoios.ingestion.transcription.kind.item import (
     TranscriptionItemKind,
 )
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.kind.source.object import (
+    TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.limits.error import (
     TranscriptionLimitError,
 )
 from projectkoios.ingestion.transcription.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.reason.omission import (
     TranscriptionOmissionReason,
 )
-from projectkoios.ingestion.transcription.order_status import (
-    TranscriptionOrderStatus,
-)
-from projectkoios.ingestion.transcription.result_status import (
-    TranscriptionStatus,
-)
-from projectkoios.ingestion.transcription.source_object_kind import (
-    TranscriptionSourceObjectKind,
-)
-from projectkoios.ingestion.transcription.structured_request import (
+from projectkoios.ingestion.transcription.request.structured import (
     StructuredTranscriptionRequest,
 )
-from projectkoios.ingestion.transcription.structured_result import (
+from projectkoios.ingestion.transcription.result.structured import (
     StructuredTranscriptionResult,
+)
+from projectkoios.ingestion.transcription.status.evidence import (
+    TranscriptionEvidenceStatus,
+)
+from projectkoios.ingestion.transcription.status.order import (
+    TranscriptionOrderStatus,
+)
+from projectkoios.ingestion.transcription.status.result import (
+    TranscriptionStatus,
 )
 
 pytest.importorskip("pymupdf")

@@ -42,11 +42,15 @@ embedded, mask, and total byte counts. It deduplicates shared artifact evidence
 by canonical artifact identity and retains no equation, table, or figure result
 graphs.
 
-Concrete modules live directly under `transcription/`; only the related
-source-specific derivation family is grouped under `transcription/derivation/`.
-Package initializers are empty ownership markers and re-export nothing. There
-are no transcription free helper functions, private helper methods, static
-utility methods, local imports, or `TYPE_CHECKING` import escapes.
+Concrete definitions live in direct noun modules or semantic ownership
+packages. Structured requests/results, statuses, kinds, validation records,
+cache identity, the pure input-artifact inventory summary, and the deterministic
+composer use direct role leaves. Source-specific immutable derivations remain
+under `transcription/derivation/`. Package initializers are docstring-only
+ownership markers and re-export nothing. There are no transcription free helper
+functions, private helper methods, static utility methods, local imports, or
+`TYPE_CHECKING` import escapes. The complete reviewed inventory is the
+[structural path map](structural-path-map.md).
 
 Golden verification preserves request, result, item, cache, and serialized
 result identities.

@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.order_status import (
+from projectkoios.ingestion.transcription.status.order import (
     TranscriptionOrderStatus,
 )
 
