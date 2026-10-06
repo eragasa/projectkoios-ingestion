@@ -1,10 +1,32 @@
 from __future__ import annotations
 
 import ast
+import inspect
 from collections.abc import Iterator
+from dataclasses import dataclass, is_dataclass
+from importlib import import_module
 from pathlib import Path
+from typing import get_type_hints
 
 import pytest
+from projectkoios.base import DataObjectModel
+from projectkoios.ingestion.articles.structure.actionizer import (
+    DeterministicArticleStructureActionizer,
+)
+from projectkoios.ingestion.articles.structure.request import (
+    ArticleStructureRequest,
+)
+from projectkoios.ingestion.base.actionizer.configurable import (
+    ConfigurableDataObjectActionizer,
+)
+from projectkoios.ingestion.base.actionizer.request import (
+    ConfigurableDataObjectActionRequest,
+)
+from projectkoios.ingestion.base.actionizer.result import (
+    AbstractDataObjectActionResult,
+)
+from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
+from projectkoios.ingestion.structure import StructureAnalysis
 
 pytestmark = pytest.mark.smoke
 
@@ -35,6 +57,34 @@ _MIGRATED_SCOPES = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _ActionizedOperation:
+    name: str
+    request_type: type[object]
+    request_base: type[object]
+    actionizer_type: type[object]
+    actionizer_base: type[object]
+    result_type: type[object]
+    result_base: type[object]
+    configuration_field: str | None = None
+    stateless_actionizer: bool = False
+
+
+_ACTIONIZED_OPERATIONS = (
+    _ActionizedOperation(
+        name="article_structure",
+        request_type=ArticleStructureRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=DeterministicArticleStructureActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=StructureAnalysis,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+)
+
+
 def _semantic_name(name: str) -> str:
     return name[1:] if name.startswith("_") else name
 
@@ -51,6 +101,28 @@ def _source_owned_paths(root: Path) -> Iterator[Path]:
         yield path
 
 
+def _migrated_python_paths() -> tuple[Path, ...]:
+    return tuple(
+        sorted(
+            {
+                path
+                for root in _MIGRATED_SCOPES
+                for path in root.rglob("*.py")
+                if "__pycache__" not in path.parts
+            }
+        )
+    )
+
+
+def _module_name(path: Path) -> str:
+    relative = path.relative_to(_SOURCE_ROOT).with_suffix("")
+    parts = relative.parts
+    if parts[-1] == "__init__":
+        parts = parts[:-1]
+    suffix = ".".join(parts)
+    return "projectkoios.ingestion" + (f".{suffix}" if suffix else "")
+
+
 def test__smoke__runtime_cache_only_directories_are_not_source_paths(
     tmp_path: Path,
 ) -> None:
@@ -59,6 +131,22 @@ def test__smoke__runtime_cache_only_directories_are_not_source_paths(
     (runtime_cache / "module.cpython-314.pyc").touch()
 
     assert tuple(_source_owned_paths(tmp_path)) == ()
+
+
+def test__smoke__registered_migrated_scopes_exist() -> None:
+    missing = sorted(
+        str(root.relative_to(_SOURCE_ROOT))
+        for root in _MIGRATED_SCOPES
+        if not root.is_dir()
+    )
+    empty = sorted(
+        str(root.relative_to(_SOURCE_ROOT))
+        for root in _MIGRATED_SCOPES
+        if root.is_dir() and not any(root.rglob("*.py"))
+    )
+
+    assert missing == []
+    assert empty == []
 
 
 def test__smoke__migrated_scopes_have_no_flattened_semantic_names() -> None:
@@ -102,32 +190,89 @@ def test__smoke__migrated_package_initializers_are_ownership_markers() -> None:
     assert invalid == []
 
 
-def test__smoke__direct_immutable_records_are_frozen_dataclasses() -> None:
+def test__smoke__immutable_records_are_frozen_dataclasses() -> None:
     invalid: list[str] = []
-    for root in _MIGRATED_SCOPES:
-        for path in root.rglob("*.py"):
-            module = ast.parse(path.read_text())
-            for node in module.body:
-                if not isinstance(node, ast.ClassDef):
-                    continue
-                bases = tuple(ast.unparse(base) for base in node.bases)
-                directly_immutable = any(
-                    base.endswith("AbstractImmutableDataObject")
-                    for base in bases
-                )
-                if not directly_immutable or node.name.startswith("Abstract"):
-                    continue
-                decorators = tuple(
-                    ast.unparse(decorator).replace(" ", "")
-                    for decorator in node.decorator_list
-                )
-                if not any(
-                    decorator.startswith("dataclass(")
-                    and "frozen=True" in decorator
-                    for decorator in decorators
-                ):
+    seen: set[type[object]] = set()
+    for path in _migrated_python_paths():
+        module = import_module(_module_name(path))
+        for value in vars(module).values():
+            if (
+                not inspect.isclass(value)
+                or value.__module__ != module.__name__
+                or value in seen
+            ):
+                continue
+            seen.add(value)
+            if inspect.isabstract(value) or not issubclass(
+                value,
+                (DataObjectModel, AbstractImmutableDataObject),
+            ):
+                continue
+            parameters = value.__dict__.get("__dataclass_params__")
+            if not is_dataclass(value) or not (
+                parameters is not None and parameters.frozen
+            ):
+                invalid.append(f"{module.__name__}:{value.__name__}")
+
+    assert invalid == []
+
+
+def test__smoke__registered_operations_use_action_contracts() -> None:
+    invalid: list[str] = []
+    for operation in _ACTIONIZED_OPERATIONS:
+        request_type = operation.request_type
+        actionizer_type = operation.actionizer_type
+        result_type = operation.result_type
+        if not issubclass(request_type, operation.request_base):
+            invalid.append(f"{operation.name}:request_base")
+        if not issubclass(actionizer_type, operation.actionizer_base):
+            invalid.append(f"{operation.name}:actionizer_base")
+        if not issubclass(result_type, operation.result_base):
+            invalid.append(f"{operation.name}:result_base")
+        if inspect.isabstract(actionizer_type):
+            invalid.append(f"{operation.name}:abstract_actionizer")
+        if getattr(actionizer_type, "_is_protocol", False):
+            invalid.append(f"{operation.name}:protocol_actionizer")
+
+        request_parameters = request_type.__dict__.get("__dataclass_params__")
+        result_parameters = result_type.__dict__.get("__dataclass_params__")
+        if not is_dataclass(request_type) or not (
+            request_parameters is not None and request_parameters.frozen
+        ):
+            invalid.append(f"{operation.name}:mutable_request")
+        if not is_dataclass(result_type) or not (
+            result_parameters is not None and result_parameters.frozen
+        ):
+            invalid.append(f"{operation.name}:mutable_result")
+        if operation.configuration_field is not None and (
+            operation.configuration_field
+            not in getattr(request_type, "__dataclass_fields__", {})
+        ):
+            invalid.append(f"{operation.name}:configuration_not_in_request")
+
+        action = actionizer_type.__dict__.get("action")
+        if action is None:
+            invalid.append(f"{operation.name}:action_not_owned")
+            continue
+        parameters = inspect.signature(action).parameters
+        if tuple(parameters) != ("self", "request") or (
+            parameters["request"].kind is not inspect.Parameter.KEYWORD_ONLY
+        ):
+            invalid.append(f"{operation.name}:action_signature")
+        hints = get_type_hints(action)
+        if hints.get("request") is not request_type:
+            invalid.append(f"{operation.name}:request_annotation")
+        if hints.get("return") is not result_type:
+            invalid.append(f"{operation.name}:result_annotation")
+
+        if operation.stateless_actionizer:
+            instance = actionizer_type()
+            if hasattr(instance, "configuration"):
+                invalid.append(f"{operation.name}:hidden_configuration")
+            for legacy_method in ("analyze", "analyze_with_layout", "process"):
+                if hasattr(instance, legacy_method):
                     invalid.append(
-                        f"{path.relative_to(_SOURCE_ROOT)}:{node.name}"
+                        f"{operation.name}:legacy_{legacy_method}_method"
                     )
 
     assert invalid == []
