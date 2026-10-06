@@ -7,17 +7,30 @@ recorded as compatibility waivers.
 
 ## Automated checks
 
-The smoke suite checks objective rules in each migrated source scope:
+The local smoke suite checks objective rules in each migrated source scope:
 
+- every registered migrated scope exists and contains Python source;
 - semantic words are not flattened into underscore-named modules or package
   directories;
 - a package does not contain a redundant same-named module such as `x/x.py`;
 - package initializers contain only their ownership docstring and do not
   re-export implementation names;
-- direct concrete `AbstractImmutableDataObject` records use frozen dataclasses;
-- removed flat modules are absent and defining leaves remain directly
-  importable; and
-- source and wheel inventories agree with the reviewed old-to-new path map.
+- every concrete `DataObjectModel` or `AbstractImmutableDataObject`, including
+  indirect subclasses, is defined as a frozen dataclass; and
+- every registered actionized operation has an immutable request, concrete
+  Ingestion Base actionizer, and immutable Ingestion Base result, with exact
+  `action(*, request)` typing and no registered legacy analyzer/processor route
+  or hidden actionizer configuration.
+
+When an operation adopts the request/actionizer/result standard, add it to the
+smoke suite's `_ACTIONIZED_OPERATIONS` registry in the same change. Registration
+is deliberately incremental: it does not misclassify explicitly unmigrated
+processor boundaries as already actionized.
+
+Hosted clean-wheel CI additionally verifies that its registered removed modules
+and package exports are absent and that its registered defining leaves import
+from the built wheel. The reviewed old-to-new path map remains the human-owned
+inventory that determines those registrations.
 
 Leading underscores used only for module privacy are not semantic separators.
 Private compound stems still require the same semantic review.
@@ -48,5 +61,6 @@ review the owned type or operation and answer these questions:
 - Does an owner-specific concept leak into a generic base contract?
 
 A hierarchy change is ready only when its PR includes the exact old-to-new path
-map, the semantic reason for every non-obvious leaf, direct-import and wheel
-inventory evidence, and no unresolved finding in its scope.
+map, the semantic reason for every non-obvious leaf, action-registry enrollment
+when applicable, direct-import and wheel inventory evidence, and no unresolved
+finding in its scope.
