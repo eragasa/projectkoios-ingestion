@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from projectkoios.ingestion.figure_relevance import (
+from projectkoios.ingestion.figures.relevance.identity.processor import (
     FigureRelevanceProcessorIdentity,
+)
+from projectkoios.ingestion.figures.relevance.request import (
     FigureRelevanceRequest,
+)
+from projectkoios.ingestion.figures.relevance.result.aggregate import (
     FigureRelevanceResult,
 )
 

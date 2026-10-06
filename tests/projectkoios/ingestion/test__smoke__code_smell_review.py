@@ -24,6 +24,7 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "storage",
     _SOURCE_ROOT / "integrations/mongodb",
     _SOURCE_ROOT / "integrations/sqlite",
+    _SOURCE_ROOT / "figures/relevance",
     _SOURCE_ROOT / "ocr",
     _SOURCE_ROOT / "reconciliation",
     _SOURCE_ROOT / "tables/structure",

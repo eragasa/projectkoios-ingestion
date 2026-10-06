@@ -1,6 +1,6 @@
 # `ingestion.figures` implementation
 
-The package exports its existing figure contracts and deterministic detector.
+The package owns figure contracts and its deterministic detector.
 `FigureInspector` is the nominal inspection boundary, implemented by the
 package-owned `PyMuPdfFigureInspector`. Renderer-facing modules depend on the
 nominal `PageRegionRenderer`; they neither import nor instantiate
@@ -27,6 +27,10 @@ in page evidence while declining to promote artifacts below the configured
 minimum embedded dimension or area. This prevents scanline-like PDF fragments
 from exhausting the candidate bound without deleting their deterministic asset
 evidence.
+
+Question-specific relevance contracts use direct defining leaves under
+`figures/relevance/`; package initializers do not re-export those definitions.
+See the [figure-relevance implementation](relevance/implementation.md).
 
 Centralizing figure inspection under the PDF adapter hierarchy is outside this
 checkpoint and requires a separate ownership review.
