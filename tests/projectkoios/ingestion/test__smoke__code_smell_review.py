@@ -5,6 +5,7 @@ import inspect
 from collections.abc import Iterator
 from dataclasses import dataclass, is_dataclass
 from importlib import import_module
+from importlib.util import resolve_name
 from pathlib import Path
 from typing import get_type_hints
 
@@ -55,6 +56,48 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "textbooks",
     _SOURCE_ROOT / "transcription",
 )
+_NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
+    _SOURCE_ROOT / "articles/structure",
+    _SOURCE_ROOT / "figures/relevance",
+    _SOURCE_ROOT / "transcription",
+)
+_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (_SOURCE_ROOT / "transcription",)
+_EXTERNAL_MODULE_FUNCTIONS = frozenset(
+    {
+        (
+            "projectkoios.ingestion.equations.publication.inventory",
+            "require_equation_publication_inventory",
+        ),
+        (
+            "projectkoios.ingestion.equations.recognition.checkpoint.policy",
+            "defer_equation_recognition",
+        ),
+        (
+            "projectkoios.ingestion.integrations.ollama.multimodal.base",
+            "build_ollama_multimodal_cache_key",
+        ),
+        (
+            "projectkoios.ingestion.page_projection",
+            "iter_page_projection_pages",
+        ),
+        (
+            "projectkoios.ingestion.page_projection",
+            "iter_page_projection_windows",
+        ),
+        (
+            "projectkoios.ingestion.page_projection",
+            "load_owner_validated_page_projection",
+        ),
+        (
+            "projectkoios.ingestion.page_projection",
+            "page_projection_validation_report_bytes",
+        ),
+        (
+            "projectkoios.ingestion.page_projection",
+            "validate_page_projection",
+        ),
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,17 +144,25 @@ def _source_owned_paths(root: Path) -> Iterator[Path]:
         yield path
 
 
-def _migrated_python_paths() -> tuple[Path, ...]:
+def _python_paths(scopes: tuple[Path, ...]) -> tuple[Path, ...]:
     return tuple(
         sorted(
             {
                 path
-                for root in _MIGRATED_SCOPES
+                for root in scopes
                 for path in root.rglob("*.py")
                 if "__pycache__" not in path.parts
             }
         )
     )
+
+
+def _migrated_python_paths() -> tuple[Path, ...]:
+    return _python_paths(_MIGRATED_SCOPES)
+
+
+def _source_python_paths() -> tuple[Path, ...]:
+    return _python_paths((_SOURCE_ROOT,))
 
 
 def _module_name(path: Path) -> str:
@@ -134,14 +185,21 @@ def test__smoke__runtime_cache_only_directories_are_not_source_paths(
 
 
 def test__smoke__registered_migrated_scopes_exist() -> None:
+    registered_scopes = tuple(
+        {
+            *_MIGRATED_SCOPES,
+            *_NO_PRIVATE_MEMBER_FUNCTION_SCOPES,
+            *_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES,
+        }
+    )
     missing = sorted(
         str(root.relative_to(_SOURCE_ROOT))
-        for root in _MIGRATED_SCOPES
+        for root in registered_scopes
         if not root.is_dir()
     )
     empty = sorted(
         str(root.relative_to(_SOURCE_ROOT))
-        for root in _MIGRATED_SCOPES
+        for root in registered_scopes
         if root.is_dir() and not any(root.rglob("*.py"))
     )
 
@@ -188,6 +246,153 @@ def test__smoke__migrated_package_initializers_are_ownership_markers() -> None:
                 invalid.append(str(path.relative_to(_SOURCE_ROOT)))
 
     assert invalid == []
+
+
+def test__smoke__registered_scopes_have_no_private_member_functions() -> None:
+    invalid: list[str] = []
+    for path in _python_paths(_NO_PRIVATE_MEMBER_FUNCTION_SCOPES):
+        for class_node in (
+            node
+            for node in ast.walk(ast.parse(path.read_text()))
+            if isinstance(node, ast.ClassDef)
+        ):
+            for node in class_node.body:
+                if (
+                    isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and _semantic_name(node.name) != node.name
+                    and not (
+                        node.name.startswith("__") and node.name.endswith("__")
+                    )
+                ):
+                    invalid.append(
+                        f"{path.relative_to(_SOURCE_ROOT)}:"
+                        f"{node.lineno}:{class_node.name}.{node.name}"
+                    )
+
+    assert invalid == []
+
+
+def test__smoke__registered_scopes_do_not_import_private_members() -> None:
+    invalid: list[str] = []
+    for path in _python_paths(_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.ImportFrom):
+                for imported in node.names:
+                    if _semantic_name(imported.name) != imported.name:
+                        invalid.append(
+                            f"{path.relative_to(_SOURCE_ROOT)}:"
+                            f"{node.lineno}:{imported.name}"
+                        )
+            elif isinstance(node, ast.Import):
+                for imported in node.names:
+                    member = imported.name.rpartition(".")[2]
+                    if _semantic_name(member) != member:
+                        invalid.append(
+                            f"{path.relative_to(_SOURCE_ROOT)}:"
+                            f"{node.lineno}:{imported.name}"
+                        )
+
+    assert invalid == []
+
+
+def test__smoke__source_has_no_empty_conditional_scaffolding() -> None:
+    invalid = sorted(
+        f"{path.relative_to(_SOURCE_ROOT)}:{node.lineno}"
+        for path in _source_python_paths()
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.If)
+        and len(node.body) == 1
+        and isinstance(node.body[0], ast.Pass)
+    )
+
+    assert invalid == []
+
+
+def test__smoke__module_functions_have_source_owners() -> None:
+    modules = {
+        _module_name(path): (path, ast.parse(path.read_text()))
+        for path in _source_python_paths()
+    }
+    definitions = {
+        (module_name, node.name): (path, node)
+        for module_name, (path, tree) in modules.items()
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and not (node.name.startswith("__") and node.name.endswith("__"))
+    }
+    references: set[tuple[str, str]] = set()
+    for module_name, (path, tree) in modules.items():
+        local_names = {
+            node.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+        }
+        references.update(
+            key
+            for key in definitions
+            if key[0] == module_name and key[1] in local_names
+        )
+
+        package_name = (
+            module_name
+            if path.name == "__init__.py"
+            else module_name.rpartition(".")[0]
+        )
+        module_aliases: dict[str, str] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                imported_module = node.module or ""
+                if node.level:
+                    imported_module = resolve_name(
+                        "." * node.level + imported_module,
+                        package_name,
+                    )
+                for imported in node.names:
+                    direct_key = (imported_module, imported.name)
+                    if direct_key in definitions:
+                        references.add(direct_key)
+                    candidate_module = (
+                        f"{imported_module}.{imported.name}"
+                        if imported_module
+                        else imported.name
+                    )
+                    if candidate_module in modules:
+                        module_aliases[imported.asname or imported.name] = (
+                            candidate_module
+                        )
+            elif isinstance(node, ast.Import):
+                for imported in node.names:
+                    if imported.name in modules:
+                        module_aliases[
+                            imported.asname or imported.name.split(".")[0]
+                        ] = imported.name
+
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in module_aliases
+            ):
+                continue
+            key = (module_aliases[node.value.id], node.attr)
+            if key in definitions:
+                references.add(key)
+
+    invalid = sorted(
+        f"{path.relative_to(_SOURCE_ROOT)}:{node.lineno}:{node.name}"
+        for key, (path, node) in definitions.items()
+        if key not in references and key not in _EXTERNAL_MODULE_FUNCTIONS
+    )
+    invalid_external_registrations = sorted(
+        f"{module_name}:{function_name}"
+        for module_name, function_name in _EXTERNAL_MODULE_FUNCTIONS
+        if (module_name, function_name) not in definitions
+        or _semantic_name(function_name) != function_name
+        or (module_name, function_name) in references
+    )
+
+    assert invalid == []
+    assert invalid_external_registrations == []
 
 
 def test__smoke__immutable_records_are_frozen_dataclasses() -> None:

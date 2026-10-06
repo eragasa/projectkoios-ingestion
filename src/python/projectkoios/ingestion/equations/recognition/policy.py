@@ -21,11 +21,3 @@ def primary_equation_recognition_ineligibility_reasons(
     ):
         reasons.append("detector_evidence_not_proposed")
     return tuple(reasons)
-
-
-def is_primary_equation_recognition_candidate(
-    assembly: EquationAssembly,
-) -> bool:
-    """Return whether an assembly is primary recognition evidence."""
-
-    return not primary_equation_recognition_ineligibility_reasons(assembly)

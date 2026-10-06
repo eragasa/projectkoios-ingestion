@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import unicodedata
-from typing import TYPE_CHECKING
 
 from projectkoios.ingestion.models import (
     BoundingBox,
@@ -17,12 +16,8 @@ from projectkoios.ingestion.reconciliation.limit.error import (
     OCRReconciliationLimitError,
 )
 
-if TYPE_CHECKING:
-    pass
-
 
 def _normalized_text(value: str) -> str:
-
     normalized = " ".join(
         unicodedata.normalize("NFKC", value).casefold().split()
     )
