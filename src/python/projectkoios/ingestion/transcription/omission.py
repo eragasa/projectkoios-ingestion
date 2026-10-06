@@ -10,7 +10,7 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.omission_reason import (
+from projectkoios.ingestion.transcription.reason.omission import (
     TranscriptionOmissionReason,
 )
 

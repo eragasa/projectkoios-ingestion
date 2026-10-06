@@ -16,16 +16,16 @@ from projectkoios.ingestion.structure import (
     StructureAnalysis,
 )
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription.artifact_inventory import (
-    TranscriptionInputArtifactInventory,
-)
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
 from projectkoios.ingestion.transcription.configuration import (  # noqa: E501
     TranscriptionConfiguration,
 )
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.inventory.input.artifact import (
+    TranscriptionInputArtifactInventory,
+)
+from projectkoios.ingestion.transcription.limits.error import (
     TranscriptionLimitError,
 )
 

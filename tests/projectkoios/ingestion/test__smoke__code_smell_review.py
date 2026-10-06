@@ -27,6 +27,7 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "ocr",
     _SOURCE_ROOT / "reconciliation",
     _SOURCE_ROOT / "tables/structure",
+    _SOURCE_ROOT / "transcription",
 )
 
 

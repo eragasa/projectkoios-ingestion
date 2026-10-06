@@ -1,4 +1,4 @@
-from projectkoios.ingestion.transcription.evidence_status import (
+from projectkoios.ingestion.transcription.status.evidence import (
     TranscriptionEvidenceStatus,
 )
 

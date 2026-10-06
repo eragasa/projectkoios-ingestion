@@ -2,7 +2,7 @@ from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.structured_request import (
+from projectkoios.ingestion.transcription.request.structured import (
     StructuredTranscriptionRequest,
 )
 

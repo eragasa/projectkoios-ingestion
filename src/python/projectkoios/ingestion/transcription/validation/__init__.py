@@ -1,0 +1,1 @@
+"""Transcription validation ownership package."""

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.transcription.artifact_inventory import (
+from projectkoios.ingestion.transcription.inventory.input.artifact import (
     TranscriptionInputArtifactInventory,
 )
 

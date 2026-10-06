@@ -3,14 +3,14 @@ from __future__ import annotations
 from enum import StrEnum
 
 from projectkoios.ingestion.models import IngestionWarning
-from projectkoios.ingestion.transcription.evidence_status import (
-    TranscriptionEvidenceStatus,
-)
 from projectkoios.ingestion.transcription.item import TranscriptionItem
 from projectkoios.ingestion.transcription.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.order_status import (
+from projectkoios.ingestion.transcription.status.evidence import (
+    TranscriptionEvidenceStatus,
+)
+from projectkoios.ingestion.transcription.status.order import (
     TranscriptionOrderStatus,
 )
 

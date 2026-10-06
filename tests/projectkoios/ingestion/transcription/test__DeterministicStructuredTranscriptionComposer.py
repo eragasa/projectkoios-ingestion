@@ -1,5 +1,5 @@
 from projectkoios.base import DataObjectActionizer
-from projectkoios.ingestion.transcription.composer import (
+from projectkoios.ingestion.transcription.composer.deterministic import (
     DeterministicStructuredTranscriptionComposer,
 )
 

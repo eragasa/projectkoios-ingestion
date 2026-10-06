@@ -1,0 +1,1 @@
+"""Transcription result ownership package."""

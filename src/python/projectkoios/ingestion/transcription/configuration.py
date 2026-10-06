@@ -6,7 +6,7 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.limit_error import (
+from projectkoios.ingestion.transcription.limits.error import (
     TranscriptionLimitError,
 )
 

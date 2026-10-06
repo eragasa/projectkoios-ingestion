@@ -18,10 +18,10 @@ from projectkoios.ingestion.models import BoundingBox, Metadata, SourceSpan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.structure import StructureKind
-from projectkoios.ingestion.transcription.item_kind import (
+from projectkoios.ingestion.transcription.kind.item import (
     TranscriptionItemKind,
 )
-from projectkoios.ingestion.transcription.structured_result import (
+from projectkoios.ingestion.transcription.result.structured import (
     StructuredTranscriptionResult,
 )
 from projectkoios.ingestion.transcripts.base import AbstractTranscript

@@ -10,17 +10,17 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.evidence_status import (
-    TranscriptionEvidenceStatus,
-)
-from projectkoios.ingestion.transcription.item_kind import (
+from projectkoios.ingestion.transcription.kind.item import (
     TranscriptionItemKind,
 )
-from projectkoios.ingestion.transcription.order_status import (
-    TranscriptionOrderStatus,
-)
-from projectkoios.ingestion.transcription.source_object_kind import (
+from projectkoios.ingestion.transcription.kind.source.object import (
     TranscriptionSourceObjectKind,
+)
+from projectkoios.ingestion.transcription.status.evidence import (
+    TranscriptionEvidenceStatus,
+)
+from projectkoios.ingestion.transcription.status.order import (
+    TranscriptionOrderStatus,
 )
 
 

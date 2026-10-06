@@ -30,7 +30,7 @@ from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.structure import StructureAnalysis
 from projectkoios.ingestion.tables import TableDetectionResult
 from projectkoios.ingestion.tables.structure.result import TableStructureResult
-from projectkoios.ingestion.transcription.structured_result import (
+from projectkoios.ingestion.transcription.result.structured import (
     StructuredTranscriptionResult,
 )
 

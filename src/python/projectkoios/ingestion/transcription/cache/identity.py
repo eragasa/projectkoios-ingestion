@@ -7,7 +7,7 @@ from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.structured_request import (
+from projectkoios.ingestion.transcription.request.structured import (
     StructuredTranscriptionRequest,
 )
 

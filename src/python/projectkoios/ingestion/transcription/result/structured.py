@@ -12,21 +12,21 @@ from projectkoios.ingestion.models import (
 from projectkoios.ingestion.transcription.base import (
     AbstractTranscriptionDataObject,
 )
-from projectkoios.ingestion.transcription.cache_identity import (
+from projectkoios.ingestion.transcription.cache.identity import (
     TranscriptionCacheIdentity,
 )
 from projectkoios.ingestion.transcription.item import TranscriptionItem
 from projectkoios.ingestion.transcription.omission import (
     TranscriptionOmission,
 )
-from projectkoios.ingestion.transcription.result_status import (
+from projectkoios.ingestion.transcription.request.structured import (
+    StructuredTranscriptionRequest,
+)
+from projectkoios.ingestion.transcription.status.result import (
     TranscriptionStatus,
 )
-from projectkoios.ingestion.transcription.result_validation import (
+from projectkoios.ingestion.transcription.validation.result import (
     TranscriptionResultValidation,
-)
-from projectkoios.ingestion.transcription.structured_request import (
-    StructuredTranscriptionRequest,
 )
 
 

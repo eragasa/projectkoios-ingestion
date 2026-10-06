@@ -25,7 +25,7 @@ from projectkoios.ingestion.transcription.base import (
 from projectkoios.ingestion.transcription.configuration import (  # noqa: E501
     TranscriptionConfiguration,
 )
-from projectkoios.ingestion.transcription.request_validation import (
+from projectkoios.ingestion.transcription.validation.request import (
     TranscriptionRequestValidation,
 )
 
