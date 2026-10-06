@@ -17,7 +17,6 @@ from pathlib import Path
 import pymupdf
 from projectkoios.ingestion import (
     CleanTranscriptRequest,
-    DeterministicArticleStructureAnalyzer,
     DeterministicCleanTranscriptProjector,
     DeterministicEquationAssembler,
     DeterministicEquationCandidateDetector,
@@ -39,6 +38,9 @@ from projectkoios.ingestion import (
     TablePageRuleEvidence,
     build_equation_index,
     serialize_contract,
+)
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
+    DeterministicArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.equation_enrichment import (
     EQUATION_ENRICHMENT_CONTRACT_VERSION,

@@ -163,11 +163,12 @@ analyzers but cannot claim processor/layout identity.
 
 ## Deterministic article structure
 
-`ArticleStructureAnalyzer` is the nominal abstract injection boundary for
-article-structure analysis. `DeterministicArticleStructureAnalyzer` implements
-that boundary explicitly. `TextbookStructureAnalyzer` provides the equivalent
-nominal boundary for textbook ingesters; no production textbook analyzer is
-currently implemented.
+`DocumentStructureAnalyzer` is the common nominal contract from an exact
+`ExtractedDocument` to `StructureAnalysis`. `ArticleStructureAnalyzer` and
+`TextbookStructureAnalyzer` are domain-specific nominal refinements of that
+single spine. `DeterministicArticleStructureAnalyzer` implements the article
+boundary explicitly; no production textbook analyzer is currently implemented.
+Concrete implementations do not inherit both domain refinements.
 
 `analyze(document)` produces and consumes exact deterministic page-layout
 results; `analyze_with_layout(document, layouts)` accepts caller-supplied exact

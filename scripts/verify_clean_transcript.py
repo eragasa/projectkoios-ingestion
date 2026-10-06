@@ -94,8 +94,8 @@ def _require_fixture(root: Path, value: Path) -> Path:
 
 def _verify(root: Path, fixture: Path) -> dict[str, object]:
     import projectkoios.ingestion.clean_transcript as clean_module
-    from projectkoios.ingestion.article_structure import (
-        DeterministicArticleStructureAnalyzer,
+    from projectkoios.ingestion.articles.structure.analyzer import (
+        deterministic as article_structure,
     )
     from projectkoios.ingestion.clean_transcript import (
         CleanTranscriptRequest,
@@ -148,7 +148,8 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     extraction = PyMuPdfExtractor().extract(source, BytesIO(payload))
     document = extraction.document
     layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureAnalyzer().analyze(document)
+    analyzer = article_structure.DeterministicArticleStructureAnalyzer()
+    structure = analyzer.analyze(document)
     renderer = PyMuPdfRegionRenderer()
     equations = DeterministicEquationCandidateDetector(
         region_renderer=renderer

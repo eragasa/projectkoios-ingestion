@@ -9,6 +9,10 @@ than serialized contract objects.
 implementations. Each concrete representation exposes the stable identity of
 its underlying extracted document through `document_identity`.
 
+`documents/structure/analyzer.py` defines the common nominal analyzer contract
+from `ExtractedDocument` to `StructureAnalysis`. Article and textbook analyzer
+boundaries refine this contract under their domain-owned structure packages.
+
 The package initializer preserves the established extracted-document import
 surface during the module-to-package migration. New implementation code imports
 the defining modules directly.

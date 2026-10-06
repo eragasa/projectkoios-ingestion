@@ -9,7 +9,7 @@ from io import BytesIO
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from projectkoios.ingestion.article_structure import (
+from projectkoios.ingestion.articles.structure.analyzer.deterministic import (
     DeterministicArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan

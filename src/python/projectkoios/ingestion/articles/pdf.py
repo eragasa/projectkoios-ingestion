@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import BinaryIO
 
-from projectkoios.ingestion.articles.base import (
-    ArticleIngester,
+from projectkoios.ingestion.articles.base import ArticleIngester
+from projectkoios.ingestion.articles.structure.analyzer.base import (
     ArticleStructureAnalyzer,
 )
 from projectkoios.ingestion.documents import ExtractedArticle
