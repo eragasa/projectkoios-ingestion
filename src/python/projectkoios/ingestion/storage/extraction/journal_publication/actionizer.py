@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
-
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.cache import deserialize_extraction_result
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -86,8 +86,9 @@ class ValidatedExtractionJournalPublicationActionizer(
         if (
             type(content) is not bytes
             or len(content) != expected.expected_artifact_byte_size
-            or hashlib.sha256(content).hexdigest()
-            != expected.expected_artifact_sha256
+            or not SHA256Verifier.verify(
+                content=content, expected=expected.expected_artifact_sha256
+            )
         ):
             return self._failed(
                 request,
@@ -112,7 +113,7 @@ class ValidatedExtractionJournalPublicationActionizer(
             extraction.document.source.content_hash,
             extraction.document.document_id,
             extraction.manifest.manifest_id,
-            hashlib.sha256(payload).hexdigest(),
+            SHA256Fingerprinter.fingerprint(content=payload),
             len(payload),
             publication_request.request_id,
             len(extraction.document.pages),

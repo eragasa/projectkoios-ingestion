@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import stat
@@ -41,6 +40,8 @@ from projectkoios.ingestion.serialization import (
     contract_dict,
     serialize_contract,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 from projectkoios.ingestion.tesseract import (
     TesseractAdapterConfiguration,
@@ -236,7 +237,9 @@ def _validate_extraction(
     item: SelectiveOCRItem,
     content: bytes,
 ) -> dict[str, object]:
-    if hashlib.sha256(content).hexdigest() != item.extraction_sha256:
+    if not SHA256Verifier.verify(
+        content=content, expected=item.extraction_sha256
+    ):
         raise ValueError("selective OCR extraction hash changed")
     value = _load_json(content, "selective OCR extraction")
     document = value.get("document")
@@ -282,7 +285,9 @@ def _resolve_plan(
         )
         if (
             len(pdf_content) != item.source.byte_size
-            or hashlib.sha256(pdf_content).hexdigest() != item.source.sha256
+            or not SHA256Verifier.verify(
+                content=pdf_content, expected=item.source.sha256
+            )
             or not pdf_content.startswith(b"%PDF-")
         ):
             raise ValueError("selective OCR source PDF identity changed")
@@ -478,9 +483,9 @@ def _summary(
             / f"page-{page.selection.page_index + 1:06d}"
             / "result.json"
         ).as_posix(),
-        "artifact_sha256": hashlib.sha256(
-            page.artifact.read_bytes()
-        ).hexdigest(),
+        "artifact_sha256": SHA256Fingerprinter.fingerprint(
+            content=page.artifact.read_bytes()
+        ),
         "native_text_preserved_separately": True,
     }
 
@@ -588,8 +593,9 @@ def main(arguments: list[str] | None = None) -> int:
                 _MAX_EXTRACTION_BYTES,
                 "selective OCR extraction artifact",
             )
-            if hashlib.sha256(current_extraction).hexdigest() != (
-                item.contract.extraction_sha256
+            if not SHA256Verifier.verify(
+                content=current_extraction,
+                expected=item.contract.extraction_sha256,
             ):
                 raise ValueError(
                     "selective OCR extraction changed after preflight"

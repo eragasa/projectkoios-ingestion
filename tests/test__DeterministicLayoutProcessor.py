@@ -447,9 +447,9 @@ def test__layout__group_claims_participate_in_stable_identity() -> None:
         replace(result.groups[0], confidence=0.1)
 
     footnote_source, footnote_document = _fixture("footnote-layout")
-    footnote_result = DeterministicLayoutProcessor().analyze(
-        footnote_document
-    )[0]
+    footnote_result = DeterministicLayoutProcessor().analyze(footnote_document)[
+        0
+    ]
     with pytest.raises(ValueError, match="group ID"):
         replace(footnote_result.groups[-1], warning_ids=())
     assert footnote_source.source_id == footnote_result.source_id
@@ -551,9 +551,7 @@ def test__layout__combined_exclusion_warning_is_not_linked_to_group() -> None:
         _block(source, 2, (40.0, 20.0, 90.0, 50.0)),
     )
 
-    result = DeterministicLayoutProcessor().analyze_page(
-        source, _page(blocks)
-    )
+    result = DeterministicLayoutProcessor().analyze_page(source, _page(blocks))
 
     warnings = {warning.code: warning for warning in result.warnings}
     assert set(warnings) == {
@@ -607,9 +605,11 @@ def test__layout__extracts_all_rotations_and_marks_nonzero_ambiguous() -> None:
         media_type="application/pdf",
         locator="memory://rotations.pdf",
     )
-    extracted = PyMuPdfExtractor(low_text_character_threshold=0).extract(
-        source, BytesIO(payload)
-    ).document
+    extracted = (
+        PyMuPdfExtractor(low_text_character_threshold=0)
+        .extract(source, BytesIO(payload))
+        .document
+    )
 
     assert [page.rotation_degrees for page in extracted.pages] == [
         0,
@@ -667,9 +667,7 @@ def test__layout__multiple_sparse_blocks_per_side_remain_ambiguous() -> None:
         _block(source, 3, (60.0, 13.0, 80.0, 15.0)),
     )
 
-    result = DeterministicLayoutProcessor().analyze_page(
-        source, _page(blocks)
-    )
+    result = DeterministicLayoutProcessor().analyze_page(source, _page(blocks))
 
     assert result.page_kind is LayoutPageKind.AMBIGUOUS
     assert result.confidence == 0.25
@@ -692,9 +690,7 @@ def test__layout__qualifying_nested_split_on_either_side_is_ambiguous() -> None:
         _block(source, 3, (82.0, 10.0, 92.0, 90.0)),
     )
 
-    result = DeterministicLayoutProcessor().analyze_page(
-        source, _page(blocks)
-    )
+    result = DeterministicLayoutProcessor().analyze_page(source, _page(blocks))
 
     assert result.page_kind is LayoutPageKind.AMBIGUOUS
     assert result.warnings[-1].code == (
@@ -751,17 +747,13 @@ def test__layout__wide_left_heading_does_not_become_spanning() -> None:
         _block(source, 2, (70.0, 20.0, 90.0, 80.0)),
     )
 
-    result = DeterministicLayoutProcessor().analyze_page(
-        source, _page(blocks)
-    )
+    result = DeterministicLayoutProcessor().analyze_page(source, _page(blocks))
 
     assert result.page_kind is LayoutPageKind.AMBIGUOUS
     assert LayoutGroupKind.SPANNING_HEADING not in {
         group.kind for group in result.groups
     }
-    assert result.warnings[-1].code == (
-        "layout.spanning_position_ambiguous"
-    )
+    assert result.warnings[-1].code == ("layout.spanning_position_ambiguous")
 
 
 def test__layout__separated_footer_is_only_a_footnote_candidate() -> None:
@@ -776,9 +768,7 @@ def test__layout__separated_footer_is_only_a_footnote_candidate() -> None:
         _block(source, 1, (0.0, 85.0, 100.0, 95.0)),
     )
 
-    result = DeterministicLayoutProcessor().analyze_page(
-        source, _page(blocks)
-    )
+    result = DeterministicLayoutProcessor().analyze_page(source, _page(blocks))
 
     assert result.page_kind is LayoutPageKind.AMBIGUOUS
     candidate = result.groups[-1]
@@ -803,9 +793,7 @@ def test__layout__bounds_all_raw_evidence_and_identity_strings() -> None:
     )
     foreign_second = replace(
         blocks[1],
-        source_spans=(
-            replace(blocks[1].source_spans[0], source_id="foreign"),
-        ),
+        source_spans=(replace(blocks[1].source_spans[0], source_id="foreign"),),
     )
     with pytest.raises(LayoutAnalysisLimitError, match="raw block count"):
         DeterministicLayoutProcessor(

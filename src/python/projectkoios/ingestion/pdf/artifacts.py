@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import PurePosixPath
@@ -21,6 +20,8 @@ from projectkoios.ingestion.pdf.extraction.contracts import (
     PdfExtractionConfiguration,
 )
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 PDF_EXTRACTION_ARTIFACT_CONTRACT_VERSION = "1.0"
 RAW_EXTRACTION_RELATIVE_PATH = "raw-extraction.json"
@@ -117,7 +118,7 @@ class PdfExtractionArtifactPayload:
             relative_path=relative_path,
             media_type=media_type,
             byte_length=len(content),
-            content_sha256=hashlib.sha256(content).hexdigest(),
+            content_sha256=SHA256Fingerprinter.fingerprint(content=content),
             content=content,
         )
 
@@ -139,7 +140,7 @@ class PdfExtractionArtifactPayload:
             raise PdfExtractionArtifactLimitError(
                 "artifact content exceeds the implementation byte limit"
             )
-        digest = hashlib.sha256(self.content).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=self.content)
         if self.content_sha256 != digest:
             raise PdfExtractionArtifactValidationError(
                 "artifact content hash does not match content"
@@ -361,7 +362,7 @@ def prepare_pdf_bytes_extraction(
         raise PdfSourceIntegrityError(
             "PDF source size does not match the planned byte size"
         )
-    actual_digest = hashlib.sha256(content).hexdigest()
+    actual_digest = SHA256Fingerprinter.fingerprint(content=content)
     if actual_digest != expected_digest:
         raise PdfSourceIntegrityError(
             "PDF source hash does not match the planned SHA-256"
@@ -719,16 +720,10 @@ def _validate_relative_path(value: str) -> None:
 def _validated_sha256(value: str) -> str:
     if not isinstance(value, str):
         raise TypeError("expected_source_sha256 must be a string")
-    if len(value) != 64 or value != value.lower():
+    if not SHA256Hash.is_canonical(value):
         raise PdfSourceIntegrityError(
             "expected_source_sha256 must be lowercase SHA-256 hexadecimal"
         )
-    try:
-        int(value, 16)
-    except ValueError as error:
-        raise PdfSourceIntegrityError(
-            "expected_source_sha256 must be lowercase SHA-256 hexadecimal"
-        ) from error
     return value
 
 

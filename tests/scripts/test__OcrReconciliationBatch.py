@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import stat
 import sys
@@ -22,6 +21,8 @@ from projectkoios.ingestion.ocr.reconciliation.batch.plan import (
     SelectiveOCRReconciliationPlan,
 )
 from projectkoios.ingestion.ocr_batch_cli import main as selective_ocr_batch
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 from scripts.ocr_reconciliation_batch import main as reconcile_batch
 
@@ -71,7 +72,7 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
         source_id="source:reconciliation-batch-fixture",
         pdf_path=PurePosixPath("fixture.pdf"),
         output_directory=PurePosixPath("native/fixture"),
-        sha256=hashlib.sha256(payload).hexdigest(),
+        sha256=SHA256Fingerprinter.fingerprint(content=payload),
         byte_size=len(payload),
         locator="fixture://reconciliation-batch.pdf",
     )
@@ -98,7 +99,9 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
     extraction = ingestion_root / "native/fixture/extraction.json"
     ocr_item = SelectiveOCRItem(
         source=source,
-        extraction_sha256=hashlib.sha256(extraction.read_bytes()).hexdigest(),
+        extraction_sha256=SHA256Fingerprinter.fingerprint(
+            content=extraction.read_bytes()
+        ),
         output_directory=PurePosixPath("ocr/fixture"),
         pages=(SelectiveOCRPage(0),),
     )
@@ -139,9 +142,9 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
         pages=(
             SelectiveOCRReconciliationPage(
                 page_index=0,
-                ocr_publication_sha256=hashlib.sha256(
-                    ocr_artifact.read_bytes()
-                ).hexdigest(),
+                ocr_publication_sha256=SHA256Fingerprinter.fingerprint(
+                    content=ocr_artifact.read_bytes()
+                ),
             ),
         ),
     )
@@ -214,12 +217,12 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
         "reconciliation/fixture/page-000001/result.json"
     )
     artifact = output_root / "reconciliation/fixture/page-000001/result.json"
-    assert (
-        created["items"][0]["artifact_sha256"]
-        == hashlib.sha256(artifact.read_bytes()).hexdigest()
+    assert SHA256Verifier.verify(
+        content=artifact.read_bytes(),
+        expected=created["items"][0]["artifact_sha256"],
     )
     before = (
-        hashlib.sha256(artifact.read_bytes()).hexdigest(),
+        SHA256Fingerprinter.fingerprint(content=artifact.read_bytes()),
         artifact.stat().st_size,
         artifact.stat().st_mtime_ns,
     )
@@ -230,7 +233,7 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
     replayed = json.loads(capfd.readouterr().out)
     assert replayed["items"][0]["action"] == "unchanged"
     assert (
-        hashlib.sha256(artifact.read_bytes()).hexdigest(),
+        SHA256Fingerprinter.fingerprint(content=artifact.read_bytes()),
         artifact.stat().st_size,
         artifact.stat().st_mtime_ns,
     ) == before

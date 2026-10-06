@@ -1,7 +1,6 @@
 #!/Users/eugene/repos/projectkoios-ingestion/.venv/bin/python
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import stat
@@ -14,6 +13,7 @@ from projectkoios.ingestion.page_projection import (
     page_projection_validation_report_bytes,
     validate_page_projection,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ARTIFACTS = Path("/Users/eugene/projects/projectkoios/artifacts")
 LEGACY = ARTIFACTS / "reference-multimodal-v1"
@@ -120,7 +120,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

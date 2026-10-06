@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
 )
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,11 +88,7 @@ class SelectedExtractionProjectionRecoveryEvidence(AbstractImmutableDataObject):
         if self.observed_journal_record_count == 0:
             if self.observed_journal_head_sha256 is not None:
                 raise ValueError("empty observed journal cannot have a head")
-        elif type(
-            self.observed_journal_head_sha256
-        ) is not str or not _SHA256.fullmatch(
-            self.observed_journal_head_sha256
-        ):
+        elif not SHA256Hash.is_canonical(self.observed_journal_head_sha256):
             raise ValueError("observed journal head is invalid")
         if self.selected_record_count == 0:
             if self.last_selected_sequence is not None:

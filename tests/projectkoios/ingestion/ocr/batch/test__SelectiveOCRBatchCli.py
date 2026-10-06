@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import stat
 import sys
@@ -13,6 +12,7 @@ from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 pymupdf = pytest.importorskip("pymupdf")
 selective_ocr_batch = ocr_batch_cli.main
@@ -59,7 +59,7 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
         source_id="source:selective-ocr-fixture",
         pdf_path=PurePosixPath("fixture.pdf"),
         output_directory=PurePosixPath("native/fixture"),
-        sha256=hashlib.sha256(payload).hexdigest(),
+        sha256=SHA256Fingerprinter.fingerprint(content=payload),
         byte_size=len(payload),
         locator="fixture://selective-ocr.pdf",
     )
@@ -87,9 +87,9 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
         items=(
             SelectiveOCRItem(
                 source=source,
-                extraction_sha256=hashlib.sha256(
-                    extraction.read_bytes()
-                ).hexdigest(),
+                extraction_sha256=SHA256Fingerprinter.fingerprint(
+                    content=extraction.read_bytes()
+                ),
                 output_directory=PurePosixPath("ocr/fixture"),
                 pages=(SelectiveOCRPage(0),),
             ),

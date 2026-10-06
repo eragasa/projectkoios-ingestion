@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,7 +30,7 @@ class ExtractionPublicationResult(
     def __post_init__(self) -> None:
         if not self.request_id or not self.document_id:
             raise ValueError("extraction publication result is incomplete")
-        if not re.fullmatch(r"[0-9a-f]{64}", self.payload_sha256):
+        if not SHA256Hash.is_canonical(self.payload_sha256):
             raise ValueError("publication payload hash must be SHA-256")
         if self.payload_byte_size <= 0:
             raise ValueError("publication payload size must be positive")

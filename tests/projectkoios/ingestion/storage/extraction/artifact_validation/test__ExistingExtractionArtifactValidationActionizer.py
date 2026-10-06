@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import replace
 
 import pytest
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -64,12 +64,16 @@ def request_for(
     return ExistingExtractionArtifactValidationRequest.create(
         artifact_reference="artifact:fixture",
         authority_id="authority:fixture",
-        expected_artifact_sha256=hashlib.sha256(content).hexdigest(),
+        expected_artifact_sha256=SHA256Fingerprinter.fingerprint(
+            content=content
+        ),
         expected_artifact_byte_size=len(content),
         expected_source_sha256=extraction.document.source.content_hash,
         expected_document_id=document_id or extraction.document.document_id,
         expected_manifest_id=extraction.manifest.manifest_id,
-        expected_payload_sha256=hashlib.sha256(payload).hexdigest(),
+        expected_payload_sha256=SHA256Fingerprinter.fingerprint(
+            content=payload
+        ),
         expected_payload_byte_size=len(payload),
         expected_publication_request_id=publication.request_id,
         expected_page_count=len(extraction.document.pages),

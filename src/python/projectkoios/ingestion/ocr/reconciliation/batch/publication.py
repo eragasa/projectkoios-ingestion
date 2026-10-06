@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -15,8 +14,7 @@ from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
-
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,7 +72,7 @@ class SelectiveOCRReconciliationPublication(AbstractImmutableDataObject):
             ("extraction SHA-256", self.extraction_sha256),
             ("OCR publication SHA-256", self.ocr_publication_sha256),
         ):
-            if type(value) is not str or not _SHA256.fullmatch(value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError(f"reconciliation {name} is invalid")
         if type(self.page_index) is not int:
             raise TypeError(

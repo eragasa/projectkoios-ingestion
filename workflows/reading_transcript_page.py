@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,11 +38,7 @@ class ReadingTranscriptPage:
 
         if type(book) is not str or not book:
             raise ValueError("reading page book is required")
-        if (
-            type(source_sha256) is not str
-            or len(source_sha256) != 64
-            or any(value not in "0123456789abcdef" for value in source_sha256)
-        ):
+        if not SHA256Hash.is_canonical(source_sha256):
             raise ValueError("reading page source hash must be SHA-256")
         if type(page_index) is not int or page_index < 0:
             raise ValueError("reading page index must be nonnegative")
@@ -56,7 +55,7 @@ class ReadingTranscriptPage:
         page_id = native_page.get("page_id")
         if (
             type(native_text) is not str
-            or type(native_sha256) is not str
+            or not SHA256Hash.is_canonical(native_sha256)
             or type(native_byte_size) is not int
             or type(page_id) is not str
             or not page_id
@@ -64,7 +63,9 @@ class ReadingTranscriptPage:
             raise ValueError("native page evidence is incomplete")
         native_payload = native_text.encode()
         if (
-            hashlib.sha256(native_payload).hexdigest() != native_sha256
+            not SHA256Verifier.verify(
+                content=native_payload, expected=native_sha256
+            )
             or len(native_payload) != native_byte_size
         ):
             raise ValueError("native page text evidence differs")
@@ -86,7 +87,7 @@ class ReadingTranscriptPage:
             composition_id = composed_page.get("composition_id")
             if (
                 type(ocr_text) is not str
-                or type(ocr_sha256) is not str
+                or not SHA256Hash.is_canonical(ocr_sha256)
                 or type(ocr_byte_size) is not int
                 or type(composition_id) is not str
                 or not composition_id
@@ -94,7 +95,9 @@ class ReadingTranscriptPage:
                 raise ValueError("selected OCR evidence is incomplete")
             ocr_payload = ocr_text.encode()
             if (
-                hashlib.sha256(ocr_payload).hexdigest() != ocr_sha256
+                not SHA256Verifier.verify(
+                    content=ocr_payload, expected=ocr_sha256
+                )
                 or len(ocr_payload) != ocr_byte_size
             ):
                 raise ValueError("selected OCR text evidence differs")
@@ -199,8 +202,9 @@ class ReadingTranscriptPage:
             raise ValueError("reading page native text is invalid")
         native_payload = native["text"].encode()
         if (
-            hashlib.sha256(native_payload).hexdigest()
-            != native.get("text_sha256")
+            not SHA256Verifier.verify(
+                content=native_payload, expected=native.get("text_sha256")
+            )
             or len(native_payload) != native.get("text_utf8_byte_length")
             or len(native_payload) != self.native_text_utf8_bytes
         ):
@@ -218,8 +222,10 @@ class ReadingTranscriptPage:
                 raise ValueError("selected OCR evidence is invalid")
             ocr_payload = selected_ocr["text"].encode()
             if (
-                hashlib.sha256(ocr_payload).hexdigest()
-                != selected_ocr.get("text_sha256")
+                not SHA256Verifier.verify(
+                    content=ocr_payload,
+                    expected=selected_ocr.get("text_sha256"),
+                )
                 or len(ocr_payload) != selected_ocr.get("text_utf8_byte_length")
                 or len(ocr_payload) != self.selected_ocr_text_utf8_bytes
             ):
@@ -249,7 +255,7 @@ class ReadingTranscriptPage:
     def _identity(cls, namespace: str, value: object) -> str:
         return (
             f"{namespace}:sha256:"
-            f"{hashlib.sha256(cls._canonical(value)).hexdigest()}"
+            f"{SHA256Fingerprinter.fingerprint(content=cls._canonical(value))}"
         )
 
     @staticmethod

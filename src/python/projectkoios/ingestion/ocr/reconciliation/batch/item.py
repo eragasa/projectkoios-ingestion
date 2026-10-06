@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
@@ -11,8 +10,8 @@ from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,
 )
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _MAX_PAGES_PER_ITEM = 1_024
 _MAX_PATH_CHARACTERS = 4_096
 
@@ -30,9 +29,7 @@ class SelectiveOCRReconciliationItem(AbstractImmutableDataObject):
     def __post_init__(self) -> None:
         if type(self.source) is not PdfBatchItem:
             raise TypeError("reconciliation source must be a PdfBatchItem")
-        if type(self.extraction_sha256) is not str or not _SHA256.fullmatch(
-            self.extraction_sha256
-        ):
+        if not SHA256Hash.is_canonical(self.extraction_sha256):
             raise ValueError(
                 "reconciliation extraction SHA-256 must be lowercase"
             )
@@ -69,7 +66,7 @@ class SelectiveOCRReconciliationItem(AbstractImmutableDataObject):
         output_directory = value["output_directory"]
         pages = value["pages"]
         if (
-            type(extraction_sha256) is not str
+            not isinstance(extraction_sha256, str)
             or type(ocr_directory) is not str
             or type(output_directory) is not str
         ):

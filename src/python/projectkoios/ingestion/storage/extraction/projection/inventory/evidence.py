@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -10,6 +9,7 @@ from projectkoios.ingestion.base.projector.inventory.evidence import (
     AbstractProjectorInventoryEvidence,
 )
 from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.inventory.collection import (  # noqa: E501
     ExtractionProjectionCollectionInventory,
 )
@@ -49,9 +49,9 @@ class ExtractionProjectionInventoryEvidence(AbstractProjectorInventoryEvidence):
             schema_id,
             tuple(item.inventory_id for item in collections),
         )
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         return cls(
             inventory_id=stable_id(
                 "extraction-projection-inventory-evidence",
@@ -92,9 +92,9 @@ class ExtractionProjectionInventoryEvidence(AbstractProjectorInventoryEvidence):
             *texts,
             tuple(item.inventory_id for item in self.collections),
         )
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         if self.canonical_sha256 != digest:
             raise ValueError("extraction inventory digest is inconsistent")
         expected = stable_id(

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 from typing import BinaryIO
 
 from projectkoios.ingestion.models import ExtractedDocument, SourceDocument
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.tables.contracts import (
     TABLE_RULE_INSPECTOR_VERSION,
     TableDetectionConfiguration,
@@ -214,7 +214,7 @@ def _read_exact_payload(
         raise TypeError("PDF content stream must return bytes")
     if len(payload) > configuration.max_source_bytes:
         raise TableDetectionLimitError("source exceeds max_source_bytes")
-    digest = hashlib.sha256(payload).hexdigest()
+    digest = SHA256Fingerprinter.fingerprint(content=payload)
     if len(payload) != source.byte_length or digest != source.content_hash:
         raise ValueError("source bytes do not agree with SourceDocument")
     return payload

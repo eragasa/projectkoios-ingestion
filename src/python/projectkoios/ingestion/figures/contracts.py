@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import math
 import re
 from abc import ABC, abstractmethod
@@ -32,6 +31,8 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 FIGURE_CONTRACT_VERSION = "1.0"
 FIGURE_DETECTOR_VERSION = "2"
@@ -263,9 +264,9 @@ class EmbeddedFigureArtifact:
         _positive_integer("artifact pixel width", width_pixels)
         _positive_integer("artifact pixel height", height_pixels)
         box = _block_box(block)
-        content_hash = hashlib.sha256(content).hexdigest()
+        content_hash = SHA256Fingerprinter.fingerprint(content=content)
         mask_hash = (
-            hashlib.sha256(mask_content).hexdigest()
+            SHA256Fingerprinter.fingerprint(content=mask_content)
             if mask_content is not None
             else None
         )
@@ -348,7 +349,7 @@ class EmbeddedFigureArtifact:
             raise ValueError("embedded artifact content must be non-empty")
         if self.byte_length != len(self.content):
             raise ValueError("embedded artifact byte length is inconsistent")
-        digest = hashlib.sha256(self.content).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=self.content)
         if (
             self.content_sha256 != digest
             or self.asset_id != f"asset:sha256:{digest}"
@@ -372,7 +373,9 @@ class EmbeddedFigureArtifact:
                 raise TypeError("embedded mask content must be immutable bytes")
             if not self.mask_content:
                 raise ValueError("embedded mask content must be non-empty")
-            mask_digest = hashlib.sha256(self.mask_content).hexdigest()
+            mask_digest = SHA256Fingerprinter.fingerprint(
+                content=self.mask_content
+            )
             if (
                 self.mask_byte_length != len(self.mask_content)
                 or self.mask_content_sha256 != mask_digest
@@ -1650,12 +1653,8 @@ def _validated_extent_box(value: object) -> BoundingBox:
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64:
+    if not SHA256Hash.is_canonical(value):
         raise ValueError(f"{name} must be a SHA-256 digest")
-    try:
-        int(value, 16)
-    except ValueError as error:
-        raise ValueError(f"{name} must be a SHA-256 digest") from error
 
 
 def _validate_retained_size(value: object, limit: int) -> None:

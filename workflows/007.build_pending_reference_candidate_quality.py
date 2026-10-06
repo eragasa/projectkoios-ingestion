@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from dataclasses import replace
@@ -27,6 +26,7 @@ from projectkoios.ingestion import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ROOT = Path(
     "/Users/eugene/projects/projectkoios/artifacts/reference-multimodal-preparation-v2"
@@ -42,7 +42,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

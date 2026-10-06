@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import hashlib
-
 import pytest
 from projectkoios.ingestion.equations.image.webp import EquationWebpImage
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 def test__equation_webp_image__retains_exact_identified_bytes(
@@ -16,7 +15,9 @@ def test__equation_webp_image__retains_exact_identified_bytes(
 
     assert image.media_type == "image/webp"
     assert image.content is webp_bytes
-    assert image.content_sha256 == hashlib.sha256(webp_bytes).hexdigest()
+    assert SHA256Verifier.verify(
+        content=webp_bytes, expected=image.content_sha256
+    )
 
 
 def test__equation_webp_image__rejects_inconsistent_riff_size() -> None:

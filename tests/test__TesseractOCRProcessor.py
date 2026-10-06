@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import inspect
 import os
 import sys
@@ -37,6 +36,8 @@ from projectkoios.ingestion.ocr.resource_identity_kind import (
 from projectkoios.ingestion.ocr.result_status import OCRResultStatus
 from projectkoios.ingestion.ocr.selection import OCRSelection
 from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 FIXTURE = Path("tests/fixtures/ocr/synthetic-text.png")
 FIXTURE_SHA256 = (
@@ -321,8 +322,9 @@ def test__tesseract_identity__includes_engine_configuration_and_resources(
         first_identity.language_resources[0].identity_kind
         is OCRResourceIdentityKind.SHA256
     )
-    assert first_identity.language_resources[0].resource_identity == (
-        hashlib.sha256(b"traineddata-v1").hexdigest()
+    assert SHA256Verifier.verify(
+        content=b"traineddata-v1",
+        expected=first_identity.language_resources[0].resource_identity,
     )
 
     changed_binary = _processor(
@@ -405,7 +407,7 @@ def test__tesseract_processor__deduplicates_shared_backend_resources(
     assert {
         resource_identity.resource_identity
         for resource_identity in result.processor_identity.language_resources
-    } == {hashlib.sha256(b"traineddata-v1").hexdigest()}
+    } == {SHA256Fingerprinter.fingerprint(content=b"traineddata-v1")}
 
 
 @pytest.mark.parametrize("mode", tuple(OCROutputMode))
@@ -740,5 +742,5 @@ def test__tesseract_processor__optional_real_engine_smoke() -> None:
 def test__ocr_fixture__is_exact_and_redistributable() -> None:
     content = FIXTURE.read_bytes()
     assert len(content) == 238
-    assert hashlib.sha256(content).hexdigest() == FIXTURE_SHA256
+    assert SHA256Verifier.verify(content=content, expected=FIXTURE_SHA256)
     assert content.startswith(b"\x89PNG\r\n\x1a\n")

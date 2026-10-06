@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+
 _MAX_BATCH_ITEMS = 256
 _MAX_IDENTITY_LENGTH = 4096
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _relative_path(value: object, *, field: str) -> PurePosixPath:
@@ -56,7 +56,7 @@ class PdfBatchItem:
                 raise ValueError(f"{field} must be a safe relative path")
         if self.pdf_path.suffix.lower() != ".pdf":
             raise ValueError("pdf_path must name a PDF")
-        if not isinstance(self.sha256, str) or not _SHA256.fullmatch(
+        if not isinstance(self.sha256, str) or not SHA256Hash.is_canonical(
             self.sha256
         ):
             raise ValueError("sha256 must be a lowercase SHA-256 digest")

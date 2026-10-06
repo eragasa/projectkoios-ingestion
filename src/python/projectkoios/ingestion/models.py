@@ -5,6 +5,7 @@ from enum import StrEnum
 
 from projectkoios.ingestion.cache_identity import build_extraction_cache_key
 from projectkoios.ingestion.identity import sha256_digest, stable_id
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 CONTRACT_VERSION = "2.2"
 BoundingBox = tuple[float, float, float, float]
@@ -66,14 +67,8 @@ class SourceDocument:
             raise ValueError(
                 "only sha256 source hashes are currently supported"
             )
-        if len(self.content_hash) != 64:
+        if not SHA256Hash.is_canonical(self.content_hash):
             raise ValueError("content_hash must be a SHA-256 hex digest")
-        try:
-            int(self.content_hash, 16)
-        except ValueError as error:
-            raise ValueError(
-                "content_hash must be a SHA-256 hex digest"
-            ) from error
         if self.blob_id != f"blob:sha256:{self.content_hash}":
             raise ValueError("blob_id must agree with content_hash")
 

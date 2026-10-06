@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import replace
 
 import pytest
@@ -29,6 +28,7 @@ from projectkoios.ingestion import (
 )
 from projectkoios.ingestion.clean_transcript import CleanTranscript
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 def evidence(
@@ -48,7 +48,7 @@ def evidence(
     )
     text = f"{page_text}\n"
     text_bytes = text.encode()
-    transcript_digest = hashlib.sha256(text_bytes).hexdigest()
+    transcript_digest = SHA256Fingerprinter.fingerprint(content=text_bytes)
     transcript_id = stable_id(
         "clean-transcript-result",
         transcription_id,

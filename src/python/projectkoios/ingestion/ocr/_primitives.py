@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -24,6 +23,7 @@ from projectkoios.ingestion.ocr.limit_error import OCRContractLimitError
 from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 if TYPE_CHECKING:
     from projectkoios.ingestion.ocr.confidence import OCRConfidence
@@ -236,9 +236,7 @@ def _canonical_language_tag(value: object) -> str:
 
 
 def _validate_sha256(name: str, value: object) -> None:
-    _hard_bounded_string(name, value, nonempty=True, limit=64)
-    assert isinstance(value, str)
-    if not re.fullmatch(r"[0-9a-f]{64}", value):
+    if not SHA256Hash.is_canonical(value):
         raise ValueError(f"{name} must be a lowercase SHA-256 digest")
 
 

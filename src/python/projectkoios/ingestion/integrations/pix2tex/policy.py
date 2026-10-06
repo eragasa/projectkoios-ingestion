@@ -15,9 +15,7 @@ def pix2tex_primary_recognition_ineligibility_reasons(
 ) -> tuple[str, ...]:
     """Return deterministic reasons Pix2Tex invocation is ineligible."""
 
-    reasons = list(
-        primary_equation_recognition_ineligibility_reasons(assembly)
-    )
+    reasons = list(primary_equation_recognition_ineligibility_reasons(assembly))
     raw_text = " ".join(assembly.raw_fragments)
     if not 4 <= len(raw_text) <= 64:
         reasons.append("native_text_length_outside_4_64")
@@ -34,9 +32,7 @@ def pix2tex_primary_recognition_ineligibility_reasons(
     else:
         if band_count > 2:
             reasons.append("foreground_band_count_exceeds_2")
-        if band_count == 2 and (
-            top_margin < 0.02 or bottom_margin < 0.02
-        ):
+        if band_count == 2 and (top_margin < 0.02 or bottom_margin < 0.02):
             reasons.append("two_band_region_touches_vertical_edge")
     return tuple(reasons)
 
@@ -131,8 +127,7 @@ def _foreground_profile(content: bytes) -> tuple[int, float, float]:
                 raise ValueError("PNG uses an unsupported row filter")
             row[index] = (value + predictor) & 0xFF
         ink_count = sum(
-            min(row[index : index + 3]) < 180
-            for index in range(0, stride, 3)
+            min(row[index : index + 3]) < 180 for index in range(0, stride, 3)
         )
         active = ink_count >= minimum_ink
         if active and not inside_band:

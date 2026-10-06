@@ -26,7 +26,5 @@ class FigureRelevanceProcessor(ABC):
         """Return the exact processor identity for a request."""
 
     @abstractmethod
-    def process(
-        self, request: FigureRelevanceRequest
-    ) -> FigureRelevanceResult:
+    def process(self, request: FigureRelevanceRequest) -> FigureRelevanceResult:
         """Produce relevance proposals for one complete request."""

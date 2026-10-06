@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-
-_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,9 +20,7 @@ class SelectiveOCRReconciliationPage(AbstractImmutableDataObject):
             raise TypeError("reconciliation page index must be an integer")
         if self.page_index < 0:
             raise ValueError("reconciliation page index must be nonnegative")
-        if type(
-            self.ocr_publication_sha256
-        ) is not str or not _SHA256.fullmatch(self.ocr_publication_sha256):
+        if not SHA256Hash.is_canonical(self.ocr_publication_sha256):
             raise ValueError("OCR publication SHA-256 must be lowercase")
 
     @classmethod
@@ -36,6 +32,6 @@ class SelectiveOCRReconciliationPage(AbstractImmutableDataObject):
             raise ValueError("reconciliation page has an invalid shape")
         page_index = value["page_index"]
         digest = value["ocr_publication_sha256"]
-        if type(page_index) is not int or type(digest) is not str:
+        if type(page_index) is not int or not isinstance(digest, str):
             raise TypeError("reconciliation page fields have invalid types")
         return cls(page_index=page_index, ocr_publication_sha256=digest)

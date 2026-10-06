@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
-import re
 import stat
 import unicodedata
 from collections.abc import Iterator, Mapping, Sequence
@@ -14,6 +12,9 @@ from pathlib import Path, PurePosixPath
 from typing import cast
 
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 __all__ = (
     "PAGE_PROJECTION_CONTRACT_VERSION",
@@ -37,7 +38,6 @@ _MAXIMUM_PAGE_LINE_BYTES = 16_000_000
 _MAXIMUM_PAGES = 10_000
 _MAXIMUM_BLOCKS_PER_PAGE = 100_000
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 _VALIDATION_RULES = (
     "source_digest",
     "private_no_follow_owner_artifacts",
@@ -78,7 +78,7 @@ class PageProjectionPlanEntry:
             raise ValueError("page projection filename must be a basename")
         if not self.title or len(self.title) > 16_384:
             raise ValueError("page projection title is invalid")
-        if _SHA256.fullmatch(self.source_sha256) is None:
+        if SHA256Hash.is_canonical(self.source_sha256) is None:
             raise ValueError("page projection source hash must be SHA-256")
         if not 1 <= self.expected_page_count <= _MAXIMUM_PAGES:
             raise ValueError("page projection page count is outside its bounds")
@@ -171,7 +171,7 @@ class PageProjectionValidationReport:
             self.media_manifest_sha256,
             self.page_projection_sha256,
         ):
-            if _SHA256.fullmatch(value) is None:
+            if SHA256Hash.is_canonical(value) is None:
                 raise ValueError("page projection report hash is invalid")
         counts = (
             self.paragraph_count,
@@ -250,7 +250,7 @@ def validate_page_projection(
     """Validate owner artifacts and return a path-free, typed projection."""
 
     source = _read_private_regular_file(source_path)
-    if hashlib.sha256(source).hexdigest() != plan.source_sha256:
+    if not SHA256Verifier.verify(content=source, expected=plan.source_sha256):
         raise PageProjectionValidationError("source PDF digest differs")
     transcript = _read_private_regular_file(transcript_path)
     summary_content = _read_private_regular_file(summary_path)
@@ -298,8 +298,8 @@ def validate_page_projection(
         raise PageProjectionValidationError(
             f"paragraph character coverage is deficient: {character_ratio:.4f}"
         )
-    transcript_sha256 = hashlib.sha256(transcript).hexdigest()
-    summary_sha256 = hashlib.sha256(summary_content).hexdigest()
+    transcript_sha256 = SHA256Fingerprinter.fingerprint(content=transcript)
+    summary_sha256 = SHA256Fingerprinter.fingerprint(content=summary_content)
     page_projection_sha256 = _page_projection_sha256(parsed.pages)
     paragraph_character_ratio = round(character_ratio, 6)
     paragraph_page_coverage = round(coverage, 6)
@@ -448,7 +448,9 @@ def load_owner_validated_page_projection(
     report = load_page_projection_validation_report(validation_report_path)
     _require_plan_report_binding(plan, report)
     transcript = _read_regular_file(transcript_path)
-    if hashlib.sha256(transcript).hexdigest() != report.transcript_sha256:
+    if not SHA256Verifier.verify(
+        content=transcript, expected=report.transcript_sha256
+    ):
         raise PageProjectionValidationError(
             "validated transcript digest differs"
         )
@@ -718,9 +720,15 @@ def _validate_media(media_root: Path, paths: Sequence[str]) -> str:
         if not content.startswith(_PNG_SIGNATURE):
             raise PageProjectionValidationError("media artifact is not PNG")
         records.append(
-            (value, len(content), hashlib.sha256(content).hexdigest())
+            (
+                value,
+                len(content),
+                SHA256Fingerprinter.fingerprint(content=content),
+            )
         )
-    return hashlib.sha256(_canonical_json_bytes(records)).hexdigest()
+    return SHA256Fingerprinter.fingerprint(
+        content=_canonical_json_bytes(records)
+    )
 
 
 def _validate_summary(
@@ -894,9 +902,9 @@ def _canonical_json_bytes(value: object) -> bytes:
 
 
 def _page_projection_sha256(pages: Sequence[PageProjectionPage]) -> str:
-    return hashlib.sha256(
-        _canonical_json_bytes([asdict(page) for page in pages])
-    ).hexdigest()
+    return SHA256Fingerprinter.fingerprint(
+        content=_canonical_json_bytes([asdict(page) for page in pages])
+    )
 
 
 def _validation_id(report: PageProjectionValidationReport) -> str:

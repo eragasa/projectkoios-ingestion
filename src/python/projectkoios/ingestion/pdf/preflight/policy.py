@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 from collections.abc import Iterable
 from itertools import islice
@@ -15,6 +14,7 @@ from projectkoios.ingestion.pdf.preflight.plan import (
     PdfRegionRenderPreflightPlan,
 )
 from projectkoios.ingestion.pdf.renderer import PdfRegionRenderLimitError
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 class PdfRegionRenderPreflight:
@@ -64,7 +64,7 @@ class PdfRegionRenderPreflight:
 
     @staticmethod
     def validate_source(source: SourceDocument, payload: bytes) -> None:
-        digest = hashlib.sha256(payload).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=payload)
         if digest != source.content_hash or len(payload) != source.byte_length:
             raise ValueError("source bytes do not agree with SourceDocument")
 

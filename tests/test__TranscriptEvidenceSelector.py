@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import importlib
 from dataclasses import FrozenInstanceError, replace
 
@@ -27,6 +26,8 @@ from projectkoios.ingestion import (
     TranscriptEvidenceSelector,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 _TRANSFORMATIONS = (
     ("control_character_offsets", ""),
@@ -113,7 +114,7 @@ def _transcript(
     )
     text = "\n\n".join(page.text for page in pages) + "\n"
     encoded = text.encode("utf-8")
-    digest = hashlib.sha256(encoded).hexdigest()
+    digest = SHA256Fingerprinter.fingerprint(content=encoded)
     transcription_result_id = stable_id("fixture-transcription", "one")
     document_id = stable_id("fixture-document", "one")
     layout_result_ids = (stable_id("fixture-layout", "one"),)
@@ -295,13 +296,13 @@ def test__selector__retains_separate_raw_and_clean_text_with_digests() -> None:
     assert block.indexed_clean_text == source.clean_text
     assert block.retained_raw_text == source.raw_text
     assert block.indexed_clean_text != block.retained_raw_text
-    assert (
-        block.indexed_clean_text_sha256
-        == hashlib.sha256(source.clean_text.encode("utf-8")).hexdigest()
+    assert SHA256Verifier.verify(
+        content=source.clean_text.encode("utf-8"),
+        expected=block.indexed_clean_text_sha256,
     )
-    assert (
-        block.retained_raw_text_sha256
-        == hashlib.sha256(source.raw_text.encode("utf-8")).hexdigest()
+    assert SHA256Verifier.verify(
+        content=source.raw_text.encode("utf-8"),
+        expected=block.retained_raw_text_sha256,
     )
     assert block.mapping_basis is (
         TranscriptEvidenceMappingBasis.CLEAN_TRANSCRIPT_BLOCK_EXACT_PAIR

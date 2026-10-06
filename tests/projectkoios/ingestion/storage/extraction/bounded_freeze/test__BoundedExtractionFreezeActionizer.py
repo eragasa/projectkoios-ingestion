@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from typing import BinaryIO
 
 import pytest
@@ -14,6 +13,7 @@ from projectkoios.ingestion.models import (
     IngestionStatus,
     SourceDocument,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -188,7 +188,9 @@ def freeze_request(
         media_type=source.media_type,
         expected_source_sha256=source.content_hash,
         expected_source_byte_size=source.byte_length,
-        expected_locator_sha256=hashlib.sha256(LOCATOR.encode()).hexdigest(),
+        expected_locator_sha256=SHA256Fingerprinter.fingerprint(
+            content=LOCATOR.encode()
+        ),
         expected_page_count=1,
         extractor_name=extractor.name,
         expected_extractor_version=extractor.version,

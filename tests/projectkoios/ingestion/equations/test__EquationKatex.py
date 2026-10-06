@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import hashlib
-
 import pytest
 from projectkoios.ingestion.equations.katex import EquationKatex
 from projectkoios.ingestion.equations.latex import EquationLatex
 from projectkoios.ingestion.equations.mathml import EquationMathML
+from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
 def _representations() -> tuple[EquationLatex, EquationMathML]:
@@ -34,7 +33,9 @@ def test__equation_katex__binds_rendering_to_latex_and_mathml() -> None:
         latex.equation_id,
         mathml.equation_id,
     )
-    assert equation.html_sha256 == hashlib.sha256(html.encode()).hexdigest()
+    assert SHA256Verifier.verify(
+        content=html.encode(), expected=equation.html_sha256
+    )
     assert hash(equation)
 
 

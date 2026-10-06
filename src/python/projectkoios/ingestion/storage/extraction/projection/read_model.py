@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.projector.value import AbstractProjectionValue
 from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.document import (
     ExtractionProjectionDocument,
 )
@@ -92,9 +92,9 @@ class ExtractionReadModel(AbstractProjectionValue):
         # Aggregate compact member evidence rather than duplicating every JSON
         # document in the identity input. Each member digest already binds its
         # complete canonical content.
-        digest = hashlib.sha256(
-            canonical_json(members).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(members).encode("utf-8")
+        )
         return cls(
             projection_id=stable_id(
                 "extraction-read-model",
@@ -140,9 +140,11 @@ class ExtractionReadModel(AbstractProjectionValue):
             raise ValueError("read-model documents are not canonical")
         if len(keys) != len(set(keys)):
             raise ValueError("read-model document identities are not unique")
-        digest = hashlib.sha256(
-            canonical_json(self._members(self.documents)).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(self._members(self.documents)).encode(
+                "utf-8"
+            )
+        )
         if self.canonical_sha256 != digest:
             raise ValueError("read-model canonical digest is inconsistent")
         expected_id = stable_id(

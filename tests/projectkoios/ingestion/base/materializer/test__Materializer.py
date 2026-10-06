@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -26,6 +25,7 @@ from projectkoios.ingestion.base.materializer.target import (
 )
 from projectkoios.ingestion.base.projector.value import AbstractProjectionValue
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +40,7 @@ class FixtureProjection(AbstractProjectionValue):
 
     @classmethod
     def create(cls, text: str) -> FixtureProjection:
-        digest = hashlib.sha256(text.encode()).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=text.encode())
         return cls(
             projection_id=stable_id("fixture-projection", digest),
             source_evidence_ids=("fixture-evidence:one",),
@@ -102,7 +102,7 @@ class FixtureEvidence(AbstractMaterializationEvidence):
         authority_id: str,
         created: bool,
     ) -> FixtureEvidence:
-        digest = hashlib.sha256(str(created).encode()).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=str(created).encode())
         return cls(
             evidence_id=stable_id(
                 "fixture-materialization-evidence",

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import struct
 import zlib
 from pathlib import Path
+
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 FIXTURE_PATH = Path("tests/fixtures/ocr/synthetic-text.png")
 TEXT = "KOIOS OCR 42"
@@ -140,7 +141,7 @@ def main() -> int:
         FIXTURE_PATH.write_bytes(expected)
         print(
             f"wrote {FIXTURE_PATH} "
-            f"sha256={hashlib.sha256(expected).hexdigest()}"
+            f"sha256={SHA256Fingerprinter.fingerprint(content=expected)}"
         )
         return 0
     if not FIXTURE_PATH.is_file():
@@ -150,9 +151,8 @@ def main() -> int:
         raise SystemExit(
             f"fixture mismatch: {FIXTURE_PATH}; run with --refresh"
         )
-    print(
-        f"verified {FIXTURE_PATH} sha256={hashlib.sha256(actual).hexdigest()}"
-    )
+    fingerprint = SHA256Fingerprinter.fingerprint(content=actual)
+    print(f"verified {FIXTURE_PATH} sha256={fingerprint}")
     return 0
 
 

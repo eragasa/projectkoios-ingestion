@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import hashlib
-
 import pytest
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 from workflows.reading_transcript_page import ReadingTranscriptPage
 
@@ -14,7 +13,7 @@ def native_page(text: str = "native page text") -> dict[str, object]:
     return {
         "page_id": "page:fixture",
         "text": text,
-        "text_sha256": hashlib.sha256(payload).hexdigest(),
+        "text_sha256": SHA256Fingerprinter.fingerprint(content=payload),
         "text_utf8_byte_length": len(payload),
     }
 
@@ -24,7 +23,7 @@ def composed_native(text: str = "native page text") -> dict[str, object]:
     return {
         "chosen_source": "native",
         "text": text,
-        "text_sha256": hashlib.sha256(payload).hexdigest(),
+        "text_sha256": SHA256Fingerprinter.fingerprint(content=payload),
         "text_utf8_byte_length": len(payload),
         "printed_page_label": "7",
     }
@@ -103,7 +102,7 @@ def test__reading_page__retains_native_and_selected_ocr_separately() -> None:
         "chosen_source": "ocr",
         "composition_id": "composition:fixture",
         "text": ocr_text,
-        "text_sha256": hashlib.sha256(ocr_payload).hexdigest(),
+        "text_sha256": SHA256Fingerprinter.fingerprint(content=ocr_payload),
         "text_utf8_byte_length": len(ocr_payload),
         "printed_page_label": None,
     }
@@ -125,7 +124,7 @@ def test__reading_page__retains_native_and_selected_ocr_separately() -> None:
     assert text["selected_ocr_text"] == {
         "composition_id": "composition:fixture",
         "text": ocr_text,
-        "text_sha256": hashlib.sha256(ocr_payload).hexdigest(),
+        "text_sha256": SHA256Fingerprinter.fingerprint(content=ocr_payload),
         "text_utf8_byte_length": len(ocr_payload),
         "automated": True,
         "accepted": False,

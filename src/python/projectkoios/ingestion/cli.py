@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import os
 import stat
 from collections.abc import Sequence
@@ -24,6 +23,7 @@ from projectkoios.ingestion.pdf import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
 
 
@@ -71,7 +71,7 @@ def extract_pdf_evidence(
 ) -> tuple[bytes, ExtractionResult]:
     """Return exact PDF bytes and raw extraction, optionally from cache."""
     payload = _read_pdf_bytes(pdf)
-    actual_sha256 = hashlib.sha256(payload).hexdigest()
+    actual_sha256 = SHA256Fingerprinter.fingerprint(content=payload)
     planned_sha256 = expected_source_sha256 or actual_sha256
     planned_size = (
         len(payload)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -21,8 +20,7 @@ from projectkoios.ingestion.base.materializer.target import (
 )
 from projectkoios.ingestion.base.projector.value import AbstractProjectionValue
 from projectkoios.ingestion.identity import stable_id
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,9 +129,7 @@ class MaterializationRequest[
                 or len(value) > self.MAXIMUM_TEXT_LENGTH
             ):
                 raise ValueError(f"materialization {name} is invalid")
-        if type(
-            self.projection.canonical_sha256
-        ) is not str or not _SHA256.fullmatch(self.projection.canonical_sha256):
+        if not SHA256Hash.is_canonical(self.projection.canonical_sha256):
             raise ValueError("materialization projection digest is invalid")
         if not (
             self.projection.schema_id

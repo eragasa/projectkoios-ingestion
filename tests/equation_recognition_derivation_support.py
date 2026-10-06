@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import zlib
 
 from projectkoios.ingestion.equations.assembly.identity import (
@@ -43,6 +42,7 @@ from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
 )
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 def assembly(*, name: str = "fixture") -> EquationAssemblyResult:
@@ -163,7 +163,7 @@ def artifact(
         )
         for equation_assembly in actual_request.assembly_artifact.assemblies
     )
-    diagnostic_sha256 = hashlib.sha256(b"").hexdigest()
+    diagnostic_sha256 = SHA256Fingerprinter.fingerprint(content=b"")
     artifact_id = stable_id(
         "equation-recognition-artifact",
         EQUATION_RECOGNITION_CONTRACT_VERSION,

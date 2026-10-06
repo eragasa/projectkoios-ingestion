@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass, field
 from typing import ClassVar
 
@@ -10,6 +9,7 @@ from projectkoios.ingestion.equations.base import AbstractEquation
 from projectkoios.ingestion.equations.latex import EquationLatex
 from projectkoios.ingestion.equations.mathml import EquationMathML
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +59,7 @@ class EquationKatex(AbstractEquation):
             or len(self.katex_version) > self.MAX_VERSION_CHARACTERS
         ):
             raise ValueError("KaTeX version is invalid")
-        digest = hashlib.sha256(encoded).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=encoded)
         object.__setattr__(self, "_html_sha256", digest)
         object.__setattr__(
             self,

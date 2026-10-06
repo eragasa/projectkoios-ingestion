@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import ClassVar
 
 from projectkoios.ingestion.equations.base import AbstractEquation
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +55,7 @@ class AbstractEquationImage(AbstractEquation):
         if not self.content or len(self.content) > self.MAX_CONTENT_BYTES:
             raise ValueError("equation image content size is out of bounds")
         self._validate_format()
-        digest = hashlib.sha256(self.content).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=self.content)
         object.__setattr__(self, "_content_sha256", digest)
         object.__setattr__(self, "_byte_length", len(self.content))
         object.__setattr__(

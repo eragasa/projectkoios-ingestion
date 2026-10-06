@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 import os
 import re
@@ -11,7 +10,7 @@ import stat
 import subprocess
 import tempfile
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO, TypedDict
@@ -41,6 +40,7 @@ from projectkoios.ingestion.ocr.selection_result import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection_status import OCRSelectionStatus
 from projectkoios.ingestion.ocr.token import OCRToken
 from projectkoios.ingestion.ocr.warning import OCRWarning
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 TESSERACT_ADAPTER_VERSION = "1"
 TESSERACT_BACKEND_NAME = "tesseract"
@@ -1323,9 +1323,9 @@ class TesseractOCRContract:
             if match:
                 version = match.group(1)
                 if 0 < len(version) <= 128:
-                    report_digest = hashlib.sha256(
-                        normalized.encode("utf-8")
-                    ).hexdigest()
+                    report_digest = SHA256Fingerprinter.fingerprint(
+                        content=normalized.encode("utf-8")
+                    )
                     return f"{version}+version-output-sha256:{report_digest}"
         return "unavailable"
 
@@ -1361,7 +1361,6 @@ class TesseractOCRContract:
     def _hash_bounded_file(
         path: Path, maximum_bytes: int
     ) -> tuple[str | None, int, str | None]:
-        digest = hashlib.sha256()
         size = 0
         try:
             reader, declared_size = TesseractOCRContract._open_regular_file(
@@ -1370,25 +1369,35 @@ class TesseractOCRContract:
             with reader:
                 if declared_size > maximum_bytes:
                     return None, declared_size, "resource-size-limit"
-                while True:
-                    chunk = reader.read(_READ_CHUNK_BYTES)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    if size > maximum_bytes:
-                        return None, size, "resource-size-limit"
-                    digest.update(chunk)
+
+                def chunks() -> Iterator[bytes]:
+                    nonlocal size
+                    while True:
+                        chunk = reader.read(_READ_CHUNK_BYTES)
+                        if not chunk:
+                            break
+                        size += len(chunk)
+                        if size > maximum_bytes:
+                            raise OCRContractLimitError(
+                                "language resource exceeds adapter limits"
+                            )
+                        yield chunk
+
+                fingerprint = SHA256Fingerprinter.fingerprint_chunks(
+                    chunks=chunks()
+                )
+        except OCRContractLimitError:
+            return None, size, "resource-size-limit"
         except FileNotFoundError:
             return None, 0, "resource-missing"
         except OSError:
             return None, 0, "resource-unreadable"
-        return digest.hexdigest(), size, None
+        return fingerprint, size, None
 
     @staticmethod
     def _copy_bounded_file(
         source: Path, destination: Path, maximum_bytes: int
     ) -> tuple[str, int]:
-        digest = hashlib.sha256()
         size = 0
         reader, declared_size = TesseractOCRContract._open_regular_file(source)
         with reader:
@@ -1397,20 +1406,27 @@ class TesseractOCRContract:
                     "language resource exceeds adapter limits"
                 )
             with destination.open("xb") as writer:
-                while True:
-                    chunk = reader.read(_READ_CHUNK_BYTES)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    if size > maximum_bytes:
-                        raise OCRContractLimitError(
-                            "language resource exceeds adapter limits"
-                        )
-                    digest.update(chunk)
-                    writer.write(chunk)
+
+                def chunks() -> Iterator[bytes]:
+                    nonlocal size
+                    while True:
+                        chunk = reader.read(_READ_CHUNK_BYTES)
+                        if not chunk:
+                            break
+                        size += len(chunk)
+                        if size > maximum_bytes:
+                            raise OCRContractLimitError(
+                                "language resource exceeds adapter limits"
+                            )
+                        writer.write(chunk)
+                        yield chunk
+
+                fingerprint = SHA256Fingerprinter.fingerprint_chunks(
+                    chunks=chunks()
+                )
                 writer.flush()
                 os.fsync(writer.fileno())
-        return digest.hexdigest(), size
+        return fingerprint, size
 
     @staticmethod
     def _open_regular_file(path: Path) -> tuple[BinaryIO, int]:

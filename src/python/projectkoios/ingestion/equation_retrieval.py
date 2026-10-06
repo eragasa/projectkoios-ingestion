@@ -11,6 +11,7 @@ from projectkoios.ingestion.equations.detection import (
 )
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.models import BoundingBox, SourceSpan
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 EQUATION_RETRIEVAL_CONTRACT_VERSION = "1.0"
 _MAX_RECORDS = 256
@@ -132,14 +133,8 @@ class EquationRetrievalRecord:
             raise ValueError("page_index must be non-negative")
         if len(self.retrieval_text) > _MAX_RETRIEVAL_TEXT_CHARACTERS:
             raise ValueError("equation retrieval text exceeds the limit")
-        if len(self.rendered_region_sha256) != 64:
+        if not SHA256Hash.is_canonical(self.rendered_region_sha256):
             raise ValueError("rendered_region_sha256 must be a SHA-256 digest")
-        try:
-            int(self.rendered_region_sha256, 16)
-        except ValueError as error:
-            raise ValueError(
-                "rendered_region_sha256 must be a SHA-256 digest"
-            ) from error
         expected = stable_id(
             "equation-retrieval-record",
             EQUATION_RETRIEVAL_CONTRACT_VERSION,

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from pathlib import Path
 
 from projectkoios.ingestion.integrations.disk.extraction.store import (
@@ -8,6 +7,7 @@ from projectkoios.ingestion.integrations.disk.extraction.store import (
 )
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
 )
@@ -60,12 +60,16 @@ def validation_request(
     return ExistingExtractionArtifactValidationRequest.create(
         artifact_reference="artifact:fixture",
         authority_id="authority:artifact-read",
-        expected_artifact_sha256=hashlib.sha256(content).hexdigest(),
+        expected_artifact_sha256=SHA256Fingerprinter.fingerprint(
+            content=content
+        ),
         expected_artifact_byte_size=len(content),
         expected_source_sha256=extraction.document.source.content_hash,
         expected_document_id=extraction.document.document_id,
         expected_manifest_id=extraction.manifest.manifest_id,
-        expected_payload_sha256=hashlib.sha256(payload).hexdigest(),
+        expected_payload_sha256=SHA256Fingerprinter.fingerprint(
+            content=payload
+        ),
         expected_payload_byte_size=len(payload),
         expected_publication_request_id=publication.request_id,
         expected_page_count=len(extraction.document.pages),

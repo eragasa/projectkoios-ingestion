@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Literal
 
+from projectkoios.ingestion.sha256.hash import SHA256Hash
+
 
 @dataclass(frozen=True, slots=True)
 class ReadingTranscriptEquationEvidence:
@@ -133,10 +135,7 @@ class ReadingTranscriptEquationEvidence:
             part in ("", ".", "..") for part in relative_path.parts
         ):
             raise ValueError("selected equation rendered path is invalid")
-        if (
-            type(sha256) is not str
-            or re.fullmatch(r"[0-9a-f]{64}", sha256) is None
-        ):
+        if not SHA256Hash.is_canonical(sha256):
             raise ValueError("selected equation rendered hash is invalid")
         if type(byte_size) is not int or byte_size <= 0:
             raise ValueError("selected equation rendered byte size is invalid")

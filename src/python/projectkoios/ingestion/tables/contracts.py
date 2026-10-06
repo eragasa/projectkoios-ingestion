@@ -29,6 +29,7 @@ from projectkoios.ingestion.pdf.models import (
     RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import PageRegionRenderer
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 TABLE_CONTRACT_VERSION = "1.0"
 TABLE_DETECTOR_VERSION = "1"
@@ -1613,13 +1614,8 @@ def _unit_float(name: str, value: object) -> float:
 
 
 def _validate_sha256(name: str, value: str) -> None:
-    _bounded_string(name, value, nonempty=True)
-    if len(value) != 64:
+    if not SHA256Hash.is_canonical(value):
         raise ValueError(f"{name} must be a SHA-256 hex digest")
-    try:
-        int(value, 16)
-    except ValueError as error:
-        raise ValueError(f"{name} must be a SHA-256 hex digest") from error
 
 
 def _validate_retained_size(value: object, limit: int) -> None:

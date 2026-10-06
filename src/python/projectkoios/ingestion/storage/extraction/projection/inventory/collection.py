@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
-import re
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-
-_SHA256 = re.compile(r"[0-9a-f]{64}")
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,8 +38,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
             or len(member) != 2
             or type(member[0]) is not str
             or not member[0]
-            or type(member[1]) is not str
-            or not _SHA256.fullmatch(member[1])
+            or not SHA256Hash.is_canonical(member[1])
             for member in members
         ):
             raise TypeError("projection inventory members are invalid")
@@ -85,7 +82,7 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
         ):
             raise ValueError("projection document count is out of bounds")
         for value in (self.identity_sha256, self.content_sha256):
-            if type(value) is not str or not _SHA256.fullmatch(value):
+            if not SHA256Hash.is_canonical(value):
                 raise ValueError("projection inventory digest is invalid")
         expected = stable_id(
             "extraction-projection-collection-inventory",
@@ -105,4 +102,4 @@ class ExtractionProjectionCollectionInventory(AbstractImmutableDataObject):
             ensure_ascii=False,
             separators=(",", ":"),
         ).encode()
-        return hashlib.sha256(serialized).hexdigest()
+        return SHA256Fingerprinter.fingerprint(content=serialized)

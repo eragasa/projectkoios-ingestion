@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.materialization.target import (
     ExtractionProjectionTargetIdentity,
 )
@@ -127,9 +127,9 @@ class ExpectedExtractionProjectionInventory(AbstractImmutableDataObject):
             schema_id,
             tuple(item.inventory_id for item in collections),
         )
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         return cls(
             expected_inventory_id=stable_id(
                 "expected-extraction-projection-inventory",
@@ -161,9 +161,9 @@ class ExpectedExtractionProjectionInventory(AbstractImmutableDataObject):
                 "expected collection inventories are not canonical"
             )
         values = (*texts, tuple(item.inventory_id for item in self.collections))
-        digest = hashlib.sha256(
-            canonical_json(values).encode("utf-8")
-        ).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(
+            content=canonical_json(values).encode("utf-8")
+        )
         if self.canonical_sha256 != digest:
             raise ValueError("expected inventory digest is inconsistent")
         expected = stable_id(

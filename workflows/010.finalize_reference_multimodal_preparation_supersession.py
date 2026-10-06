@@ -1,12 +1,12 @@
 #!/Users/eugene/repos/projectkoios-ingestion/.venv/bin/python
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 from pathlib import Path
 
 import pymupdf
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ARTIFACTS = Path("/Users/eugene/projects/projectkoios/artifacts")
 V1 = ARTIFACTS / "reference-multimodal-preparation-v1"
@@ -21,7 +21,7 @@ def canonical(value: object) -> bytes:
 
 
 def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+    return SHA256Fingerprinter.fingerprint(content=content)
 
 
 def identity(namespace: str, value: object) -> str:

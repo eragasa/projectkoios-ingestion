@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import math
 from datetime import UTC, datetime
 from typing import Any, BinaryIO
@@ -41,6 +40,7 @@ from projectkoios.ingestion.pdf.extraction.text import (
     BlockTextRequest,
 )
 from projectkoios.ingestion.pdf.models import PYMUPDF_COORDINATE_SYSTEM
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.bounded_freeze.extractor import (
     FreezableSourceExtractor,
 )
@@ -324,9 +324,9 @@ class PyMuPdfExtractor(FreezableSourceExtractor):
                 image = bytes(raw_block.get("image", b""))
                 mask_value = raw_block.get("mask")
                 mask = bytes(mask_value) if mask_value is not None else None
-                asset_hash = hashlib.sha256(image).hexdigest()
+                asset_hash = SHA256Fingerprinter.fingerprint(content=image)
                 mask_hash = (
-                    hashlib.sha256(mask).hexdigest()
+                    SHA256Fingerprinter.fingerprint(content=mask)
                     if mask is not None
                     else None
                 )
@@ -495,6 +495,6 @@ class PyMuPdfExtractor(FreezableSourceExtractor):
 
     @staticmethod
     def _validate_source(source: SourceDocument, payload: bytes) -> None:
-        digest = hashlib.sha256(payload).hexdigest()
+        digest = SHA256Fingerprinter.fingerprint(content=payload)
         if digest != source.content_hash or len(payload) != source.byte_length:
             raise ValueError("source bytes do not agree with SourceDocument")

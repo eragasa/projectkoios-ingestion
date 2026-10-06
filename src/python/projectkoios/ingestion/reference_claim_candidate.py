@@ -17,6 +17,7 @@ from projectkoios.ingestion.reference_locator import (
     ReferencePageLocatorResult,
     ReferencePageLocatorStatus,
 )
+from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID = (
     "projectkoios.ingestion.reference-claim-candidate"
@@ -34,7 +35,6 @@ _BLOB_ID = re.compile(r"blob:sha256:([0-9a-f]{64})")
 _TRANSCRIPT_ID = re.compile(r"clean-transcript-result:sha256:[0-9a-f]{64}")
 _PAGE_ID = re.compile(r"clean-transcript-page:sha256:[0-9a-f]{64}")
 _ANCHOR_ID = re.compile(r"reference-topic-anchor:sha256:[0-9a-f]{64}")
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 _LIMITATIONS = (
     "automated_unreviewed",
     "citation_candidate_only",
@@ -172,11 +172,9 @@ class ReferenceClaimCandidate:
             _BLOB_ID,
             "source_blob_id",
         )
-        source_digest = _identity(
-            self.source_content_sha256,
-            _SHA256,
-            "source_content_sha256",
-        )
+        if not SHA256Hash.is_canonical(self.source_content_sha256):
+            raise ValueError("source_content_sha256 has an invalid grammar")
+        source_digest = self.source_content_sha256
         if source_blob_id != f"blob:sha256:{source_digest}":
             raise ValueError("source blob identity must bind source digest")
         _identity(
@@ -187,11 +185,8 @@ class ReferenceClaimCandidate:
         _identity(self.page_id, _PAGE_ID, "page_id")
         if type(self.page_index) is not int or self.page_index < 0:
             raise ValueError("page_index must be a nonnegative built-in int")
-        _identity(
-            self.page_text_sha256,
-            _SHA256,
-            "page_text_sha256",
-        )
+        if not SHA256Hash.is_canonical(self.page_text_sha256):
+            raise ValueError("page_text_sha256 has an invalid grammar")
         if (
             type(self.page_text_utf8_byte_length) is not int
             or self.page_text_utf8_byte_length < 0
