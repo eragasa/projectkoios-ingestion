@@ -2,20 +2,36 @@
 
 ```text
 isolated model runtime
-        │ frozen labels, pixel boxes, confidence
+        │ frozen label, pixel box, confidence, render ID
         v
 LayoutParserDetection[]
         │
         v
 LayoutParserProposalRequest
-        │ exact package/backend/model/hash/label-map configuration
-        v
-LayoutParserRegionProposalActionizer
+        ├─ exact LayoutPageRenderEvidence
+        └─ package/backend/model/hash/label-map configuration
         │
         v
+LayoutParserRegionProposalActionizer
+        │ deterministic one-to-one adaptation
+        v
 LayoutParserProposalResult
-        ├─ LayoutRegionProposalSource
-        └─ LayoutRegionProposal[]
+        ├─ complete request
+        ├─ exact LayoutRegionProposalSource
+        └─ LayoutParserProposalAdaptation[]
+              ├─ detection_id
+              └─ LayoutRegionProposal
 ```
 
-Vendor inference is outside this runtime-neutral action boundary.
+```text
+LayoutParserProposalAdaptation[]
+        │ computed proposal view
+        v
+backend-neutral LayoutRegionProposal[]
+        │
+        v
+LayoutReviewRequest
+```
+
+Vendor inference, model loading, retries, and resource acquisition remain
+outside this runtime-neutral action boundary. Proposals remain unaccepted.

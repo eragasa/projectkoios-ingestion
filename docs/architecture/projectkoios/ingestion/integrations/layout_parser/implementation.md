@@ -1,8 +1,12 @@
-# LayoutParser integration
+# LayoutParser integration architecture
 
-The LayoutParser integration is an adaptation boundary for frozen external
-inference output. It does not add LayoutParser, PyTorch, model weights, or an
-in-process model runner to the Ingestion runtime.
+Status: this is the required target architecture for the unmerged LayoutParser
+adapter slice. The adapter remains dependency-free and does not run inference.
+
+The LayoutParser integration adapts frozen external detection evidence into
+backend-neutral, non-authoritative layout proposals. It does not add
+LayoutParser, PyTorch, model weights, or an in-process model runner to the
+Ingestion runtime.
 
 ```text
 isolated LayoutParser worker
@@ -10,8 +14,9 @@ isolated LayoutParser worker
     -> LayoutParserProposalRequest
     -> LayoutParserRegionProposalActionizer
     -> LayoutParserProposalResult
-        - LayoutRegionProposalSource
-        - LayoutRegionProposal[]
+        - complete request
+        - exact LayoutRegionProposalSource
+        - one LayoutParserProposalAdaptation per detection
 ```
 
 ## Resource binding
@@ -20,28 +25,94 @@ isolated LayoutParser worker
 
 - LayoutParser package version;
 - backend name and version;
-- model resource identity and SHA-256;
+- exact model resource identity and SHA-256;
 - complete backend-label to `LayoutRegionKind` mapping;
+- label-map and label-text bounds; and
 - maximum detection count.
 
-Every raw detection binds exact rendered-page identity, original model label,
-pixel bounds, confidence, and optional evidence. Unknown labels, stale render
-identities, duplicate detections, out-of-bounds geometry, and excessive output
-are rejected before adaptation.
+Configuration identity includes every field. Label maps are immutable, unique,
+sorted, and bounded before hashing.
+
+Every `LayoutParserDetection` binds exact rendered-page identity, original model
+label, pixel bounds, confidence, and bounded optional evidence. Unknown labels,
+stale render identities, duplicate detections, out-of-bounds geometry, and
+excessive output are rejected before adaptation.
+
+## Exact derivation
+
+`LayoutParserProposalAdaptation`, defined in
+`integrations/layout_parser/adaptation.py`, binds one detection identity to one
+backend-neutral `LayoutRegionProposal`.
+
+`LayoutParserProposalResult` retains:
+
+- the complete immutable request;
+- the proposal source derived from that request's configuration;
+- adaptations in exact request-detection order;
+- actionizer name and version; and
+- stable result identity.
+
+The result does not accept arbitrary caller-supplied proposal sources or proposal
+tuples. Construction derives them from the request. Reconstruction validates:
+
+- one adaptation for every detection;
+- exact order and unique detection identities;
+- no omitted, duplicated, substituted, or extra proposal;
+- proposal kind equal to the configured label mapping;
+- proposal pixel box and confidence equal to the detection;
+- proposal render identity equal to the request render;
+- proposal source equal to the exact package/backend/model/configuration
+  resource; and
+- detection lineage retained in proposal evidence.
+
+The result may expose proposals as a computed ordered view of adaptations. The
+adaptations, not a second independent proposal tuple, are the serialized source
+of truth.
 
 ## Runtime boundary
 
 Inference remains isolated because released LayoutParser model integrations use
-legacy resources and checkpoint loading behavior that are unsuitable for the
-Python 3.14 core runtime. An external worker may use a repaired or containerized
-runtime, but it must freeze detections before this action executes.
+legacy resources and checkpoint loading behavior unsuitable for the Python 3.14
+core runtime. An external worker may use a repaired or containerized runtime,
+but must freeze detections and exact render evidence before this action executes.
 
-The adapter never imports vendor classes. It converts exact immutable detection
-records into backend-neutral, non-authoritative proposals while retaining the
-model resource and detection lineage needed for replay and annotation.
+The adapter imports no vendor classes. Vendor-specific records remain under
+`integrations.layout_parser`; `layout.proposal` receives only backend-neutral
+proposal contracts.
+
+No unsafe `torch.load(..., weights_only=False)` compatibility shim enters the
+repository or production runtime.
+
+## Bounds
+
+`integrations/layout_parser/limits/definition.py` owns adapter-specific hard
+limits, including label-map count and label length. Shared text and metadata
+limits belong to `layout/limits/definition.py`; proposal count limits belong to
+`layout/proposal/limits/definition.py`.
+
+All external strings, evidence, mappings, boxes, scores, and counts are checked
+before canonical serialization or stable-ID hashing.
 
 ## Intended use
 
-LayoutParser proposals can pre-label pages selected by deterministic layout
+LayoutParser proposals may pre-label pages selected by deterministic layout
 warnings or disagreement analysis. They must not directly produce
-`PageLayoutResult`, infer reading order, or override native block evidence.
+`PageLayoutResult`, infer reading order, override native block evidence, or
+create publication authority.
+
+The useful boundary is:
+
+```text
+frozen vendor evidence
+    -> exact typed derivation
+    -> backend-neutral proposal
+    -> deterministic review comparison
+    -> external human annotation
+```
+
+## Replay requirements
+
+Tests must reject stale and cross-request sources, omitted detections, duplicate
+adaptations, reordered adaptations, wrong label mappings, altered confidence or
+geometry, and stale stable IDs. Equivalent requests must serialize to identical
+proposal-source, adaptation, proposal, and result bytes.
