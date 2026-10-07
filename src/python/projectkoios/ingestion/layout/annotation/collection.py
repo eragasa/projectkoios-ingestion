@@ -21,13 +21,13 @@ from projectkoios.ingestion.layout.annotation.limits.error import (
 )
 from projectkoios.ingestion.layout.annotation.order import (
     LayoutReadingOrderAnnotation,
+    LayoutReadingOrderValidation,
 )
 from projectkoios.ingestion.layout.annotation.region import (
     LayoutRegionAnnotation,
 )
 from projectkoios.ingestion.layout.review.result import LayoutReviewCase
 from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
-from projectkoios.ingestion.models import Metadata
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +48,6 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
     regions: tuple[LayoutRegionAnnotation, ...]
     order_edges: tuple[LayoutReadingOrderAnnotation, ...]
     failures: tuple[LayoutFailureAnnotation, ...]
-    evidence: Metadata
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -61,10 +60,11 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
         regions: tuple[LayoutRegionAnnotation, ...] = (),
         order_edges: tuple[LayoutReadingOrderAnnotation, ...] = (),
         failures: tuple[LayoutFailureAnnotation, ...] = (),
-        evidence: Metadata = (),
     ) -> LayoutAnnotationCollection:
         """Create one validated annotation collection for an exact case."""
-        normalized_evidence = LayoutValueValidation.normalize_metadata(evidence)
+        annotator = LayoutValueValidation.require_text(
+            "annotator_id", annotator_id
+        )
         cls.validate(
             case=case,
             outcome=outcome,
@@ -76,22 +76,20 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
             cls.CONTRACT_NAME,
             cls.CONTRACT_VERSION,
             case.case_id,
-            annotator_id,
+            annotator,
             outcome,
             tuple(region.region_annotation_id for region in regions),
             tuple(edge.order_annotation_id for edge in order_edges),
             tuple(failure.failure_annotation_id for failure in failures),
-            normalized_evidence,
         )
         return cls(
             annotation_id=annotation_id,
             case=case,
-            annotator_id=annotator_id,
+            annotator_id=annotator,
             outcome=outcome,
             regions=regions,
             order_edges=order_edges,
             failures=failures,
-            evidence=normalized_evidence,
         )
 
     @classmethod
@@ -139,16 +137,16 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
                     f"{name} exceeds annotation implementation limit"
                 )
             identities = [getattr(value, identity_name) for value in values]
-            if len(set(identities)) != len(identities):
+            if name != "order_edges" and len(set(identities)) != len(
+                identities
+            ):
                 raise ValueError(f"{name} identities must be unique")
             if any(value.case_id != case.case_id for value in values):
                 raise ValueError(f"{name} references another review case")
 
-        valid_block_ids = (
-            set(case.covered_block_ids)
-            | set(case.uncovered_block_ids)
-            | set(case.invalid_geometry_block_ids)
-        )
+        valid_block_ids = {
+            review.block_id for review in case.block_reviews
+        }
         valid_proposal_ids = set(case.proposal_ids)
         valid_region_ids = {region.region_annotation_id for region in regions}
         for region in regions:
@@ -171,14 +169,10 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
                 raise ValueError(
                     "failure references an unknown region annotation"
                 )
-        for edge in order_edges:
-            if {
-                edge.before_block_id,
-                edge.after_block_id,
-            } - valid_block_ids:
-                raise ValueError(
-                    "order edge references an unknown native block"
-                )
+        LayoutReadingOrderValidation.validate(
+            valid_block_ids=valid_block_ids,
+            edges=order_edges,
+        )
 
         if outcome is LayoutAnnotationOutcome.NO_FAILURE_OBSERVED and (
             regions or order_edges or failures
@@ -190,29 +184,6 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
             regions or order_edges
         ):
             raise ValueError("correction outcome requires corrected evidence")
-
-        incoming = {block_id: 0 for block_id in valid_block_ids}
-        outgoing: dict[str, set[str]] = {
-            block_id: set() for block_id in valid_block_ids
-        }
-        for edge in order_edges:
-            if edge.after_block_id not in outgoing[edge.before_block_id]:
-                outgoing[edge.before_block_id].add(edge.after_block_id)
-                incoming[edge.after_block_id] += 1
-        ready = sorted(
-            block_id for block_id, count in incoming.items() if count == 0
-        )
-        visited = 0
-        while ready:
-            block_id = ready.pop(0)
-            visited += 1
-            for successor in sorted(outgoing[block_id]):
-                incoming[successor] -= 1
-                if incoming[successor] == 0:
-                    ready.append(successor)
-                    ready.sort()
-        if visited != len(valid_block_ids):
-            raise ValueError("reading-order annotations contain a cycle")
 
     @property
     def case_id(self) -> str:
@@ -230,8 +201,6 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
             order_edges=self.order_edges,
             failures=self.failures,
         )
-        evidence = LayoutValueValidation.normalize_metadata(self.evidence)
-        object.__setattr__(self, "evidence", evidence)
         expected = stable_id(
             self.CONTRACT_NAME,
             self.CONTRACT_VERSION,
@@ -241,7 +210,6 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
             tuple(region.region_annotation_id for region in self.regions),
             tuple(edge.order_annotation_id for edge in self.order_edges),
             tuple(failure.failure_annotation_id for failure in self.failures),
-            evidence,
         )
         if self.annotation_id != expected:
             raise ValueError("layout annotation ID is inconsistent")

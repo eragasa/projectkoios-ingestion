@@ -19,6 +19,13 @@ from projectkoios.ingestion.layout.proposal.limits.error import (
 from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
+from .limits.definition import (
+    MAX_LAYOUT_PARSER_LABEL_CHARACTERS,
+    MAX_LAYOUT_PARSER_LABEL_MAPPING_CHARACTERS,
+    MAX_LAYOUT_PARSER_LABEL_MAPPINGS,
+)
+from .limits.error import LayoutParserLimitError
+
 
 @dataclass(frozen=True, slots=True)
 class LayoutParserProposalConfiguration(AbstractActionConfiguration):
@@ -48,14 +55,33 @@ class LayoutParserProposalConfiguration(AbstractActionConfiguration):
         object.__setattr__(self, "model_sha256", digest)
         if not isinstance(self.label_mapping, tuple) or not self.label_mapping:
             raise ValueError("label_mapping must be a non-empty tuple")
+        if len(self.label_mapping) > MAX_LAYOUT_PARSER_LABEL_MAPPINGS:
+            raise LayoutParserLimitError(
+                "label_mapping exceeds implementation maximum"
+            )
         labels: set[str] = set()
+        label_characters = 0
         for item in self.label_mapping:
             if not isinstance(item, tuple) or len(item) != 2:
                 raise TypeError("label_mapping items must be two-value tuples")
-            label = LayoutValueValidation.require_text("model label", item[0])
+            label = LayoutValueValidation.require_text(
+                "model label", item[0]
+            )
+            if len(label) > MAX_LAYOUT_PARSER_LABEL_CHARACTERS:
+                raise LayoutParserLimitError(
+                    "model label exceeds implementation character limit"
+                )
             if label in labels:
                 raise ValueError("model labels must be unique")
             labels.add(label)
+            label_characters += len(label)
+            if (
+                label_characters
+                > MAX_LAYOUT_PARSER_LABEL_MAPPING_CHARACTERS
+            ):
+                raise LayoutParserLimitError(
+                    "label_mapping exceeds aggregate character limit"
+                )
             if not isinstance(item[1], LayoutRegionKind):
                 raise TypeError("model labels must map to LayoutRegionKind")
         if tuple(sorted(self.label_mapping, key=lambda item: item[0])) != (

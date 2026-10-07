@@ -1,7 +1,7 @@
 # Layout review and annotation architecture
 
-Status: this is the required target architecture for the unmerged layout-review
-slice. Existing provisional contracts must conform before publication.
+Status: implemented on the unmerged layout-review branch. Publication remains
+pending complete validation and fresh independent review.
 
 Layout review preserves disagreement evidence without changing authoritative
 page-layout results.
@@ -163,13 +163,17 @@ Valid annotation block identities derive from the case's ordered
 
 Bounds are enforced before stable-ID serialization:
 
-- shared text, identity, coordinate, and metadata bounds in `layout/limits/`;
+- shared identity-field and coordinate bounds in `layout/limits/`;
 - raster dimension and pixel-area bounds in `layout/render/limits/`;
 - proposal count bounds in `layout/proposal/limits/`;
 - block, comparison, and overlap bounds in `layout/review/limits/`; and
 - annotation record and edge bounds in `layout/annotation/limits/`.
 
-Metadata has per-key, per-value, item-count, and aggregate-character limits.
+These contracts do not accept generic metadata or an optional ``evidence``
+key/value bag. Detection lineage, resource identity, geometry, affected
+annotation identities, and review outcomes use explicit typed fields. A future
+operation that consumes human notes or external artifacts must introduce a
+bounded operation-specific contract rather than adding arbitrary metadata.
 Finite numeric validation also rejects booleans, NaN, infinity, singular
 transforms, and invalid boxes.
 
@@ -187,6 +191,7 @@ The architecture explicitly rejects:
 
 - deriving pixel geometry from width/height ratios;
 - attaching a loose transform tuple directly to the review request;
+- accepting generic metadata or optional key/value evidence bags;
 - binding render identity to one analyzer result;
 - persisting parallel block partitions that can disagree;
 - accepting caller-supplied LayoutParser outputs as an adaptation result;

@@ -1,7 +1,7 @@
 # Layout render evidence architecture
 
-Status: this is the required target architecture for the unmerged layout-review
-slice. Provisional dimension-only render evidence is not publication-ready.
+Status: implemented on the unmerged layout-review branch. Publication remains
+pending complete validation and fresh independent review.
 
 `layout.render` identifies exact page pixels and the complete mapping between
 source-page coordinates and raster coordinates. It does not own PDF rendering,
@@ -64,7 +64,8 @@ A full-page `LayoutReviewRequest` validates that:
 - source coordinate systems match;
 - mapping rotation matches the layout page rotation;
 - requested source bounds equal the analyzed page bounds;
-- effective bounds are consistent with renderer rounding; and
+- effective bounds differ from requested bounds by at most one mapped pixel
+  per source axis, allowing exact clipping or outward rounding; and
 - every proposal lies within raster bounds.
 
 A future cropped-region review must introduce a separate explicit eligibility
@@ -84,11 +85,14 @@ ratios are then measured in this exact pixel space.
 
 ## Relation to PDF rendering
 
-The existing PDF `RenderedRegion` already retains effective source bounds,
-pixel-to-source transform, rounding convention, rotation, dimensions, renderer
-identity, and image hash. The canonical repository renderer path projects those
-fields into `LayoutPageRenderEvidence`; it does not recompute a mapping from
-width and height.
+The existing PDF `RenderedRegion` already retains requested and effective
+source bounds, pixel-to-source transform, rounding convention, rotation,
+dimensions, renderer identity, and image hash.
+`PyMuPdfRegionRenderer.project_layout_render_evidence()` copies those fields
+from one full-page renderer result into `LayoutPixelMapping` and
+`LayoutPageRenderEvidence`; it does not recompute a mapping from width and
+height. Cropped renderer results are rejected at this bridge because the
+current review request is explicitly full-page.
 
 An isolated external renderer may produce the same backend-neutral contract,
 but must freeze all equivalent geometry and resource identity. Supplying only
@@ -104,6 +108,7 @@ maximum dimension: 16,384 pixels
 maximum raster area: 25,000,000 pixels
 ```
 
-Shared identity, coordinate, and evidence-string bounds remain under
-`layout/limits/definition.py`. All limits are enforced before image geometry or
-external text enters canonical serialization and hashing.
+Shared identity-field and coordinate bounds remain under
+`layout/limits/definition.py`. The render contracts accept no generic metadata
+or optional key/value evidence bag. All limits are enforced before image
+geometry or external text enters canonical serialization and hashing.

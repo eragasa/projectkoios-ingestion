@@ -23,6 +23,7 @@ from projectkoios.ingestion.layout.review.configuration import (
 from projectkoios.ingestion.layout.review.limits.error import (
     LayoutReviewLimitError,
 )
+from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,15 +114,36 @@ class LayoutReviewRequest(
             raise LayoutReviewLimitError(
                 "block-proposal comparisons exceed max_comparisons"
             )
-        if render.layout_result_id != layout.result_id:
-            raise ValueError("render does not identify the requested layout")
         if (
             render.source_id != layout.source_id
             or render.source_blob_id != layout.source_blob_id
             or render.page_index != layout.page_index
-            or render.page_coordinate_system != layout.coordinate_system
+            or render.mapping.source_coordinate_system
+            != layout.coordinate_system
+            or render.mapping.page_rotation_degrees != layout.rotation_degrees
         ):
             raise ValueError("render does not identify the layout source page")
+        expected_page_box = LayoutValueValidation.require_box(
+            "layout_page_bounding_box",
+            (0.0, 0.0, layout.page_width, layout.page_height),
+        )
+        if render.mapping.requested_source_bounding_box != expected_page_box:
+            raise ValueError("layout review requires an exact full-page render")
+        requested = render.mapping.requested_source_bounding_box
+        effective = render.mapping.effective_source_bounding_box
+        a, b, c, d, _, _ = render.mapping.pixel_to_source_matrix
+        x_rounding = abs(a) + abs(c)
+        y_rounding = abs(b) + abs(d)
+        tolerance = 1e-9
+        if (
+            abs(effective[0] - requested[0]) > x_rounding + tolerance
+            or abs(effective[1] - requested[1]) > y_rounding + tolerance
+            or abs(effective[2] - requested[2]) > x_rounding + tolerance
+            or abs(effective[3] - requested[3]) > y_rounding + tolerance
+        ):
+            raise ValueError(
+                "effective render bounds exceed outward pixel rounding"
+            )
         proposal_ids: set[str] = set()
         for proposal in proposals:
             if type(proposal) is not LayoutRegionProposal:

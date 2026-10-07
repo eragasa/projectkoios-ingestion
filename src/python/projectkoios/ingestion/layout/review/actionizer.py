@@ -5,11 +5,13 @@ from __future__ import annotations
 from projectkoios.ingestion.base.actionizer.configurable import (
     ConfigurableDataObjectActionizer,
 )
-from projectkoios.ingestion.layout.contracts import LayoutPageKind
+from projectkoios.ingestion.layout.review.block import (
+    LayoutBlockReviewEvidence,
+)
 from projectkoios.ingestion.layout.review.configuration import (
     LayoutReviewConfiguration,
 )
-from projectkoios.ingestion.layout.review.kind import LayoutReviewReason
+from projectkoios.ingestion.layout.review.kind import LayoutBlockReviewStatus
 from projectkoios.ingestion.layout.review.limits.error import (
     LayoutReviewLimitError,
 )
@@ -36,96 +38,87 @@ class DeterministicLayoutReviewActionizer(
     configuration_type = LayoutReviewConfiguration
 
     def action(self, *, request: LayoutReviewRequest) -> LayoutReviewCase:
-        """Prepare one bounded immutable review case."""
+        """Prepare one bounded immutable review case in one pass per block."""
         if type(request) is not LayoutReviewRequest:
             raise TypeError("request must be LayoutReviewRequest")
         configuration = request.configuration
         if type(configuration) is not LayoutReviewConfiguration:
             raise TypeError("action configuration contract differs")
 
-        overlaps: list[LayoutBlockRegionOverlap] = []
-        invalid_geometry: list[str] = []
+        block_reviews: list[LayoutBlockReviewEvidence] = []
+        overlap_count = 0
+        mapping = request.render.mapping
         for block in request.layout.input_text_blocks:
-            if block.bounding_box is None:
-                invalid_geometry.append(block.block_id)
+            source_box = block.bounding_box
+            mapped_box = (
+                None
+                if source_box is None
+                else mapping.source_box_to_pixel_box(source_box)
+            )
+            if mapped_box is not None and (
+                mapped_box[0] < 0.0
+                or mapped_box[1] < 0.0
+                or mapped_box[2] > request.render.image_width
+                or mapped_box[3] > request.render.image_height
+            ):
+                mapped_box = None
+            if mapped_box is None:
+                block_reviews.append(
+                    LayoutBlockReviewEvidence.create(
+                        render_id=request.render.render_id,
+                        mapping_id=mapping.mapping_id,
+                        block_id=block.block_id,
+                        block_bounding_box_pixels=None,
+                        status=LayoutBlockReviewStatus.INVALID_GEOMETRY,
+                        overlaps=(),
+                        significant_proposal_ids=(),
+                    )
+                )
                 continue
+
+            overlaps: list[LayoutBlockRegionOverlap] = []
+            significant_proposal_ids: list[str] = []
             for proposal in request.proposals:
                 overlap = LayoutBlockRegionOverlap.measure(
-                    block=block,
+                    block_id=block.block_id,
+                    block_bounding_box_pixels=mapped_box,
                     proposal=proposal,
                     render=request.render,
-                    page_width=request.layout.page_width,
-                    page_height=request.layout.page_height,
                 )
                 if overlap is None:
                     continue
-                overlaps.append(overlap)
-                if len(overlaps) > configuration.max_overlaps:
+                overlap_count += 1
+                if overlap_count > configuration.max_overlaps:
                     raise LayoutReviewLimitError(
                         "derived overlaps exceed max_overlaps"
                     )
-
-        significant = tuple(
-            overlap
-            for overlap in overlaps
-            if overlap.intersection_over_block_area
-            >= configuration.minimum_block_intersection_ratio
-        )
-        covered = tuple(
-            block.block_id
-            for block in request.layout.input_text_blocks
-            if any(
-                overlap.block_id == block.block_id for overlap in significant
+                overlaps.append(overlap)
+                if (
+                    overlap.intersection_over_block_area
+                    >= configuration.minimum_block_intersection_ratio
+                ):
+                    significant_proposal_ids.append(proposal.proposal_id)
+            significant = tuple(significant_proposal_ids)
+            status = (
+                LayoutBlockReviewStatus.COVERED
+                if significant
+                else LayoutBlockReviewStatus.UNCOVERED
             )
-        )
-        invalid = tuple(invalid_geometry)
-        uncovered = tuple(
-            block.block_id
-            for block in request.layout.input_text_blocks
-            if block.block_id not in covered and block.block_id not in invalid
-        )
-        block_count = len(request.layout.input_text_blocks)
-        coverage_ratio = (
-            1.0 if block_count == 0 else round(len(covered) / block_count, 12)
-        )
-
-        reasons: set[LayoutReviewReason] = set()
-        if request.layout.page_kind is LayoutPageKind.AMBIGUOUS:
-            reasons.add(LayoutReviewReason.BASELINE_AMBIGUOUS)
-        if request.layout.warnings:
-            reasons.add(LayoutReviewReason.BASELINE_WARNING)
-        if invalid:
-            reasons.add(LayoutReviewReason.INVALID_BLOCK_GEOMETRY)
-        if block_count and not request.proposals:
-            reasons.add(LayoutReviewReason.NO_REGION_PROPOSALS)
-        if (
-            block_count
-            and coverage_ratio < configuration.minimum_page_coverage_ratio
-        ):
-            reasons.add(LayoutReviewReason.INCOMPLETE_REGION_COVERAGE)
-
-        proposal_kind = {
-            proposal.proposal_id: proposal.kind
-            for proposal in request.proposals
-        }
-        for block_id in covered:
-            kinds = {
-                proposal_kind[overlap.proposal_id]
-                for overlap in significant
-                if overlap.block_id == block_id
-            }
-            if len(kinds) > 1:
-                reasons.add(LayoutReviewReason.CONFLICTING_REGION_KINDS)
-                break
+            block_reviews.append(
+                LayoutBlockReviewEvidence.create(
+                    render_id=request.render.render_id,
+                    mapping_id=mapping.mapping_id,
+                    block_id=block.block_id,
+                    block_bounding_box_pixels=mapped_box,
+                    status=status,
+                    overlaps=tuple(overlaps),
+                    significant_proposal_ids=significant,
+                )
+            )
 
         return LayoutReviewCase.create(
             request=request,
-            overlaps=tuple(overlaps),
-            covered_block_ids=covered,
-            uncovered_block_ids=uncovered,
-            invalid_geometry_block_ids=invalid,
-            page_coverage_ratio=coverage_ratio,
-            reasons=tuple(sorted(reasons, key=str)),
+            block_reviews=tuple(block_reviews),
             actionizer_name=self.actionizer_name,
             actionizer_version=self.actionizer_version,
         )

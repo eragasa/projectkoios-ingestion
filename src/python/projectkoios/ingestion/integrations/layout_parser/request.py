@@ -22,6 +22,11 @@ from projectkoios.ingestion.layout.render.evidence import (
     LayoutPageRenderEvidence,
 )
 
+from .limits.definition import (
+    MAX_LAYOUT_PARSER_DETECTION_LABEL_CHARACTERS,
+)
+from .limits.error import LayoutParserLimitError
+
 
 @dataclass(frozen=True, slots=True)
 class LayoutParserProposalRequest(
@@ -87,6 +92,7 @@ class LayoutParserProposalRequest(
             raise LayoutProposalLimitError("detections exceed max_detections")
         supported_labels = {label for label, _ in configuration.label_mapping}
         detection_ids: set[str] = set()
+        detection_label_characters = 0
         for detection in detections:
             if type(detection) is not LayoutParserDetection:
                 raise TypeError("detections must contain LayoutParserDetection")
@@ -97,6 +103,14 @@ class LayoutParserProposalRequest(
                 raise ValueError("detection identifies another render")
             if detection.label not in supported_labels:
                 raise ValueError("detection label is not mapped")
+            detection_label_characters += len(detection.label)
+            if (
+                detection_label_characters
+                > MAX_LAYOUT_PARSER_DETECTION_LABEL_CHARACTERS
+            ):
+                raise LayoutParserLimitError(
+                    "detection labels exceed aggregate character limit"
+                )
             x1, y1, x2, y2 = detection.bounding_box_pixels
             if (
                 x1 < 0.0

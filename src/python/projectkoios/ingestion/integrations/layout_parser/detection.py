@@ -8,7 +8,9 @@ from typing import ClassVar
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
-from projectkoios.ingestion.models import Metadata
+
+from .limits.definition import MAX_LAYOUT_PARSER_LABEL_CHARACTERS
+from .limits.error import LayoutParserLimitError
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,7 +25,6 @@ class LayoutParserDetection(AbstractImmutableDataObject):
     label: str
     bounding_box_pixels: tuple[float, float, float, float]
     confidence: float
-    evidence: Metadata
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -34,37 +35,43 @@ class LayoutParserDetection(AbstractImmutableDataObject):
         label: str,
         bounding_box_pixels: tuple[float, float, float, float],
         confidence: float,
-        evidence: Metadata = (),
     ) -> LayoutParserDetection:
         """Create one stable raw detection from isolated inference output."""
+        render = LayoutValueValidation.require_text("render_id", render_id)
+        model_label = LayoutValueValidation.require_text("label", label)
+        if len(model_label) > MAX_LAYOUT_PARSER_LABEL_CHARACTERS:
+            raise LayoutParserLimitError(
+                "label exceeds implementation character limit"
+            )
         box = LayoutValueValidation.require_box(
             "bounding_box_pixels", bounding_box_pixels
         )
         score = LayoutValueValidation.require_ratio("confidence", confidence)
-        normalized_evidence = LayoutValueValidation.normalize_metadata(evidence)
         detection_id = stable_id(
             cls.CONTRACT_NAME,
             cls.CONTRACT_VERSION,
-            render_id,
-            label,
+            render,
+            model_label,
             box,
             score,
-            normalized_evidence,
         )
         return cls(
             detection_id=detection_id,
-            render_id=render_id,
-            label=label,
+            render_id=render,
+            label=model_label,
             bounding_box_pixels=box,
             confidence=score,
-            evidence=normalized_evidence,
         )
 
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:
             raise ValueError("unsupported LayoutParser detection contract")
         LayoutValueValidation.require_text("render_id", self.render_id)
-        LayoutValueValidation.require_text("label", self.label)
+        model_label = LayoutValueValidation.require_text("label", self.label)
+        if len(model_label) > MAX_LAYOUT_PARSER_LABEL_CHARACTERS:
+            raise LayoutParserLimitError(
+                "label exceeds implementation character limit"
+            )
         box = LayoutValueValidation.require_box(
             "bounding_box_pixels", self.bounding_box_pixels
         )
@@ -73,8 +80,6 @@ class LayoutParserDetection(AbstractImmutableDataObject):
             "confidence", self.confidence
         )
         object.__setattr__(self, "confidence", score)
-        evidence = LayoutValueValidation.normalize_metadata(self.evidence)
-        object.__setattr__(self, "evidence", evidence)
         expected = stable_id(
             self.CONTRACT_NAME,
             self.CONTRACT_VERSION,
@@ -82,7 +87,6 @@ class LayoutParserDetection(AbstractImmutableDataObject):
             self.label,
             box,
             score,
-            evidence,
         )
         if self.detection_id != expected:
             raise ValueError("LayoutParser detection ID is inconsistent")

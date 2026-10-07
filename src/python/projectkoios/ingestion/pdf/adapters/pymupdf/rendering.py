@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, cast
 
+from projectkoios.ingestion.layout.render.evidence import (
+    LayoutPageRenderEvidence,
+)
+from projectkoios.ingestion.layout.render.mapping import LayoutPixelMapping
 from projectkoios.ingestion.models import BoundingBox
 from projectkoios.ingestion.pdf.adapters.errors import (
     PdfDependencyUnavailableError,
@@ -11,6 +15,7 @@ from projectkoios.ingestion.pdf.models import (
     PageRegionSelection,
     PixelToSourceMatrix,
     RegionColorMode,
+    RenderedRegion,
 )
 from projectkoios.ingestion.pdf.renderer import (
     PdfRegionRenderer,
@@ -38,6 +43,57 @@ class PyMuPdfRegionRenderer(PdfRegionRenderer):
     name = "pymupdf-region-renderer"
     version = "1"
     backend_name = "pymupdf"
+
+    @classmethod
+    def project_layout_render_evidence(
+        cls, *, rendered_region: RenderedRegion
+    ) -> LayoutPageRenderEvidence:
+        """Project exact full-page renderer output into layout evidence."""
+        if type(rendered_region) is not RenderedRegion:
+            raise TypeError("rendered_region must be RenderedRegion")
+        if (
+            rendered_region.processor_name != cls.name
+            or rendered_region.processor_version != cls.version
+            or rendered_region.backend_name != cls.backend_name
+        ):
+            raise ValueError("rendered region was not produced by this adapter")
+        if not rendered_region.selection_was_full_page:
+            raise ValueError(
+                "layout render evidence requires a full-page rendered region"
+            )
+        mapping = LayoutPixelMapping.create(
+            source_coordinate_system=rendered_region.coordinate_system,
+            requested_source_bounding_box=(
+                rendered_region.source_bounding_box
+            ),
+            effective_source_bounding_box=(
+                rendered_region.effective_source_bounding_box
+            ),
+            pixel_to_source_matrix=(
+                rendered_region.pixel_to_source_matrix
+            ),
+            pixel_rounding=rendered_region.pixel_rounding,
+            page_rotation_degrees=(
+                rendered_region.page_rotation_degrees
+            ),
+            image_width=rendered_region.width_pixels,
+            image_height=rendered_region.height_pixels,
+        )
+        return LayoutPageRenderEvidence.create(
+            source_id=rendered_region.source_id,
+            source_blob_id=rendered_region.source_blob_id,
+            page_index=rendered_region.page_index,
+            mapping=mapping,
+            image_media_type=rendered_region.media_type,
+            image_sha256=rendered_region.content_sha256,
+            renderer_name=rendered_region.processor_name,
+            renderer_version=rendered_region.processor_version,
+            backend_name=rendered_region.backend_name,
+            backend_version=rendered_region.backend_version,
+            renderer_configuration_id=(
+                rendered_region.configuration_digest
+            ),
+        )
 
     def _open_document(self, payload: bytes) -> object:
         try:

@@ -7,9 +7,14 @@ from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.layout.annotation.limits.definition import (
+    MAX_LAYOUT_REFERENCES_PER_ANNOTATION,
+)
+from projectkoios.ingestion.layout.annotation.limits.error import (
+    LayoutAnnotationLimitError,
+)
 from projectkoios.ingestion.layout.proposal.kind import LayoutRegionKind
 from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
-from projectkoios.ingestion.models import Metadata
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,7 +29,6 @@ class LayoutRegionAnnotation(AbstractImmutableDataObject):
     kind: LayoutRegionKind
     bounding_box_pixels: tuple[float, float, float, float]
     block_ids: tuple[str, ...]
-    evidence: Metadata
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -35,29 +39,45 @@ class LayoutRegionAnnotation(AbstractImmutableDataObject):
         kind: LayoutRegionKind,
         bounding_box_pixels: tuple[float, float, float, float],
         block_ids: tuple[str, ...],
-        evidence: Metadata = (),
     ) -> LayoutRegionAnnotation:
         """Create one stable corrected-region annotation."""
+        case = LayoutValueValidation.require_text("case_id", case_id)
+        if not isinstance(kind, LayoutRegionKind):
+            raise TypeError("kind must be LayoutRegionKind")
+        if not isinstance(block_ids, tuple):
+            raise TypeError("block_ids must be a tuple")
+        if len(block_ids) > MAX_LAYOUT_REFERENCES_PER_ANNOTATION:
+            raise LayoutAnnotationLimitError(
+                "block_ids exceed annotation implementation maximum"
+            )
+        if any(
+            not isinstance(block_id, str) or not block_id
+            for block_id in block_ids
+        ):
+            raise ValueError("block_ids must contain non-empty IDs")
+        bounded_block_ids = tuple(
+            LayoutValueValidation.require_text("block_id", block_id)
+            for block_id in block_ids
+        )
+        if len(set(bounded_block_ids)) != len(bounded_block_ids):
+            raise ValueError("block_ids must be unique")
         box = LayoutValueValidation.require_box(
             "bounding_box_pixels", bounding_box_pixels
         )
-        normalized_evidence = LayoutValueValidation.normalize_metadata(evidence)
         annotation_id = stable_id(
             cls.CONTRACT_NAME,
             cls.CONTRACT_VERSION,
-            case_id,
+            case,
             kind,
             box,
-            block_ids,
-            normalized_evidence,
+            bounded_block_ids,
         )
         return cls(
             region_annotation_id=annotation_id,
-            case_id=case_id,
+            case_id=case,
             kind=kind,
             bounding_box_pixels=box,
-            block_ids=block_ids,
-            evidence=normalized_evidence,
+            block_ids=bounded_block_ids,
         )
 
     def __post_init__(self) -> None:
@@ -72,12 +92,21 @@ class LayoutRegionAnnotation(AbstractImmutableDataObject):
         object.__setattr__(self, "bounding_box_pixels", box)
         if not isinstance(self.block_ids, tuple):
             raise TypeError("block_ids must be a tuple")
-        if len(set(self.block_ids)) != len(self.block_ids) or any(
-            not block_id for block_id in self.block_ids
+        if len(self.block_ids) > MAX_LAYOUT_REFERENCES_PER_ANNOTATION:
+            raise LayoutAnnotationLimitError(
+                "block_ids exceed annotation implementation maximum"
+            )
+        if any(
+            not isinstance(block_id, str) or not block_id
+            for block_id in self.block_ids
         ):
-            raise ValueError("block_ids must contain unique non-empty IDs")
-        evidence = LayoutValueValidation.normalize_metadata(self.evidence)
-        object.__setattr__(self, "evidence", evidence)
+            raise ValueError("block_ids must contain non-empty IDs")
+        bounded_block_ids = tuple(
+            LayoutValueValidation.require_text("block_id", block_id)
+            for block_id in self.block_ids
+        )
+        if len(set(bounded_block_ids)) != len(bounded_block_ids):
+            raise ValueError("block_ids must be unique")
         expected = stable_id(
             self.CONTRACT_NAME,
             self.CONTRACT_VERSION,
@@ -85,7 +114,6 @@ class LayoutRegionAnnotation(AbstractImmutableDataObject):
             self.kind,
             box,
             self.block_ids,
-            evidence,
         )
         if self.region_annotation_id != expected:
             raise ValueError("layout region annotation ID is inconsistent")

@@ -1,7 +1,7 @@
 # LayoutParser integration architecture
 
-Status: this is the required target architecture for the unmerged LayoutParser
-adapter slice. The adapter remains dependency-free and does not run inference.
+Status: implemented on the unmerged layout-review branch. The adapter remains
+dependency-free and does not run inference; publication awaits fresh review.
 
 The LayoutParser integration adapts frozen external detection evidence into
 backend-neutral, non-authoritative layout proposals. It does not add
@@ -34,9 +34,10 @@ Configuration identity includes every field. Label maps are immutable, unique,
 sorted, and bounded before hashing.
 
 Every `LayoutParserDetection` binds exact rendered-page identity, original model
-label, pixel bounds, confidence, and bounded optional evidence. Unknown labels,
-stale render identities, duplicate detections, out-of-bounds geometry, and
-excessive output are rejected before adaptation.
+label, pixel bounds, and confidence. It accepts no generic metadata or optional
+key/value evidence bag. Unknown labels, stale render identities, duplicate
+detections, out-of-bounds geometry, and excessive output are rejected before
+adaptation.
 
 ## Exact derivation
 
@@ -63,7 +64,7 @@ tuples. Construction derives them from the request. Reconstruction validates:
 - proposal render identity equal to the request render;
 - proposal source equal to the exact package/backend/model/configuration
   resource; and
-- detection lineage retained in proposal evidence.
+- detection lineage retained by the typed adaptation relation.
 
 The result may expose proposals as a computed ordered view of adaptations. The
 adaptations, not a second independent proposal tuple, are the serialized source
@@ -86,12 +87,14 @@ repository or production runtime.
 ## Bounds
 
 `integrations/layout_parser/limits/definition.py` owns adapter-specific hard
-limits, including label-map count and label length. Shared text and metadata
-limits belong to `layout/limits/definition.py`; proposal count limits belong to
+limits, including label-map count, per-label length, aggregate label-map text,
+and aggregate detection-label text. Shared identity-field limits belong to
+`layout/limits/definition.py`; proposal count limits belong to
 `layout/proposal/limits/definition.py`.
 
-All external strings, evidence, mappings, boxes, scores, and counts are checked
-before canonical serialization or stable-ID hashing.
+All external strings, mappings, boxes, scores, and counts are checked before
+canonical serialization or stable-ID hashing. Resource binding and detection
+lineage use explicit fields rather than arbitrary metadata.
 
 ## Intended use
 

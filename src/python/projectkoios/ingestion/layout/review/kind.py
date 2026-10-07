@@ -3,6 +3,14 @@
 from enum import StrEnum
 
 
+class LayoutBlockReviewStatus(StrEnum):
+    """Coverage disposition for one authoritative native text block."""
+
+    COVERED = "covered"
+    UNCOVERED = "uncovered"
+    INVALID_GEOMETRY = "invalid_geometry"
+
+
 class LayoutReviewReason(StrEnum):
     """Deterministic reason that one page merits layout review."""
 

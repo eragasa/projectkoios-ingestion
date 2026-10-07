@@ -14,9 +14,9 @@ decoder is retained.
 | `layout/review/evidence/source.py` | `layout/proposal/source.py` | Detector and model resource identity |
 | `layout/review/proposal.py` | `layout/proposal/region.py` | Unaccepted region proposal |
 
-## Required target refinement
+## Implemented refinement
 
-| Current provisional path or responsibility | Target defining path | Ownership |
+| Replaced provisional path or responsibility | Defining path | Ownership |
 |---|---|---|
 | dimension-derived render geometry in `layout/render/evidence.py` | `layout/render/mapping.py` | Exact affine pixel/source mapping |
 | render-specific values mixed with shared limits | `layout/render/limits/definition.py` | Raster dimension and pixel-area bounds |
@@ -46,7 +46,7 @@ decoder is retained.
 | `layout/annotation/limits/definition.py` | Annotation collection bounds |
 | `layout/annotation/limits/error.py` | Annotation limit failure |
 | `layout/validation/value.py` | Shared layout value validation |
-| `layout/limits/definition.py` | Shared text, identity, coordinate, and evidence bounds |
+| `layout/limits/definition.py` | Shared identity-field and coordinate bounds |
 | `integrations/layout_parser/detection.py` | Frozen vendor detection record |
 | `integrations/layout_parser/configuration.py` | Exact vendor resource binding |
 | `integrations/layout_parser/request.py` | Frozen detection adaptation request |

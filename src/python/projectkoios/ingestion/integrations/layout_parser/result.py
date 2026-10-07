@@ -9,6 +9,9 @@ from projectkoios.ingestion.base.actionizer.result import (
     AbstractDataObjectActionResult,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.integrations.layout_parser.adaptation import (
+    LayoutParserProposalAdaptation,
+)
 from projectkoios.ingestion.integrations.layout_parser.request import (
     LayoutParserProposalRequest,
 )
@@ -21,19 +24,17 @@ from projectkoios.ingestion.layout.validation.value import LayoutValueValidation
 
 @dataclass(frozen=True, slots=True)
 class LayoutParserProposalResult(AbstractDataObjectActionResult):
-    """Expose backend-neutral proposals while retaining LayoutParser lineage."""
+    """Expose exact request-bound proposals with complete adapter lineage."""
 
     CONTRACT_NAME: ClassVar[str] = "layout-parser-proposal-result"
     CONTRACT_VERSION: ClassVar[str] = "1.0"
 
     result_id: str
-    request_id: str
-    render_id: str
+    request: LayoutParserProposalRequest
     proposal_source: LayoutRegionProposalSource
-    proposals: tuple[LayoutRegionProposal, ...]
+    adaptations: tuple[LayoutParserProposalAdaptation, ...]
     actionizer_name: str
     actionizer_version: str
-    configuration_id: str
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -41,80 +42,148 @@ class LayoutParserProposalResult(AbstractDataObjectActionResult):
         cls,
         *,
         request: LayoutParserProposalRequest,
-        proposal_source: LayoutRegionProposalSource,
-        proposals: tuple[LayoutRegionProposal, ...],
         actionizer_name: str,
         actionizer_version: str,
     ) -> LayoutParserProposalResult:
-        """Create one stable adapter result."""
+        """Derive one stable result from the complete immutable request."""
+        if type(request) is not LayoutParserProposalRequest:
+            raise TypeError("request must be LayoutParserProposalRequest")
+        source = cls.proposal_source_for(request)
+        adaptations = cls.adaptations_for(request=request, source=source)
+        actionizer = LayoutValueValidation.require_text(
+            "actionizer_name", actionizer_name
+        )
+        actionizer_release = LayoutValueValidation.require_text(
+            "actionizer_version", actionizer_version
+        )
         result_id = stable_id(
             cls.CONTRACT_NAME,
             cls.CONTRACT_VERSION,
             request.request_id,
-            request.render.render_id,
-            proposal_source.proposal_source_id,
-            tuple(proposal.proposal_id for proposal in proposals),
-            actionizer_name,
-            actionizer_version,
+            source.proposal_source_id,
+            tuple(
+                adaptation.adaptation_id for adaptation in adaptations
+            ),
+            actionizer,
+            actionizer_release,
             request.configuration.configuration_id,
         )
         return cls(
             result_id=result_id,
-            request_id=request.request_id,
-            render_id=request.render.render_id,
-            proposal_source=proposal_source,
-            proposals=proposals,
-            actionizer_name=actionizer_name,
-            actionizer_version=actionizer_version,
-            configuration_id=request.configuration.configuration_id,
+            request=request,
+            proposal_source=source,
+            adaptations=adaptations,
+            actionizer_name=actionizer,
+            actionizer_version=actionizer_release,
         )
+
+    @staticmethod
+    def proposal_source_for(
+        request: LayoutParserProposalRequest,
+    ) -> LayoutRegionProposalSource:
+        """Derive exact proposal-source identity from request configuration."""
+        configuration = request.configuration
+        return LayoutRegionProposalSource.create(
+            detector_name=f"layoutparser:{configuration.backend_name}",
+            detector_version=(
+                f"{configuration.package_version}/"
+                f"{configuration.backend_version}"
+            ),
+            resource_identity=configuration.model_identity,
+            resource_sha256=configuration.model_sha256,
+            configuration_id=configuration.configuration_id,
+        )
+
+    @staticmethod
+    def adaptations_for(
+        *,
+        request: LayoutParserProposalRequest,
+        source: LayoutRegionProposalSource,
+    ) -> tuple[LayoutParserProposalAdaptation, ...]:
+        """Derive exactly one proposal adaptation per request detection."""
+        label_mapping = dict(request.configuration.label_mapping)
+        return tuple(
+            LayoutParserProposalAdaptation.create(
+                detection_id=detection.detection_id,
+                proposal=LayoutRegionProposal.create(
+                    render_id=request.render.render_id,
+                    proposal_source_id=source.proposal_source_id,
+                    kind=label_mapping[detection.label],
+                    bounding_box_pixels=detection.bounding_box_pixels,
+                    confidence=detection.confidence,
+                ),
+            )
+            for detection in request.detections
+        )
+
+    @property
+    def request_id(self) -> str:
+        """Return complete adaptation-request identity."""
+        return self.request.request_id
+
+    @property
+    def render_id(self) -> str:
+        """Return exact rendered-page identity."""
+        return self.request.render.render_id
+
+    @property
+    def proposals(self) -> tuple[LayoutRegionProposal, ...]:
+        """Return backend-neutral proposals in detection order."""
+        return tuple(adaptation.proposal for adaptation in self.adaptations)
+
+    @property
+    def configuration_id(self) -> str:
+        """Return request-bound configuration identity."""
+        return self.request.configuration.configuration_id
 
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:
             raise ValueError(
                 "unsupported LayoutParser proposal result contract"
             )
-        for name, value in (
-            ("request_id", self.request_id),
-            ("render_id", self.render_id),
-            ("actionizer_name", self.actionizer_name),
-            ("actionizer_version", self.actionizer_version),
-            ("configuration_id", self.configuration_id),
-        ):
-            LayoutValueValidation.require_text(name, value)
+        if type(self.request) is not LayoutParserProposalRequest:
+            raise TypeError("request must be LayoutParserProposalRequest")
         if type(self.proposal_source) is not LayoutRegionProposalSource:
             raise TypeError(
                 "proposal_source must be LayoutRegionProposalSource"
             )
-        if not isinstance(self.proposals, tuple) or any(
-            type(proposal) is not LayoutRegionProposal
-            for proposal in self.proposals
+        if not isinstance(self.adaptations, tuple) or any(
+            type(adaptation) is not LayoutParserProposalAdaptation
+            for adaptation in self.adaptations
         ):
-            raise TypeError("proposals must contain LayoutRegionProposal")
-        if len({proposal.proposal_id for proposal in self.proposals}) != len(
-            self.proposals
-        ):
-            raise ValueError("proposal IDs must be unique")
-        if any(
-            proposal.proposal_source_id
-            != self.proposal_source.proposal_source_id
-            for proposal in self.proposals
-        ):
-            raise ValueError("proposal source identity differs")
-        if any(
-            proposal.render_id != self.render_id for proposal in self.proposals
-        ):
-            raise ValueError("proposal render identity differs")
+            raise TypeError(
+                "adaptations must contain LayoutParserProposalAdaptation"
+            )
+        if len(
+            {adaptation.adaptation_id for adaptation in self.adaptations}
+        ) != len(self.adaptations):
+            raise ValueError("adaptation IDs must be unique")
+        expected_source = self.proposal_source_for(self.request)
+        if self.proposal_source != expected_source:
+            raise ValueError("proposal source differs from adaptation request")
+        expected_adaptations = self.adaptations_for(
+            request=self.request,
+            source=expected_source,
+        )
+        if self.adaptations != expected_adaptations:
+            raise ValueError("proposals differ from adaptation request")
+        LayoutValueValidation.require_text(
+            "actionizer_name", self.actionizer_name
+        )
+        LayoutValueValidation.require_text(
+            "actionizer_version", self.actionizer_version
+        )
         expected = stable_id(
             self.CONTRACT_NAME,
             self.CONTRACT_VERSION,
-            self.request_id,
-            self.render_id,
+            self.request.request_id,
             self.proposal_source.proposal_source_id,
-            tuple(proposal.proposal_id for proposal in self.proposals),
+            tuple(
+                adaptation.adaptation_id for adaptation in self.adaptations
+            ),
             self.actionizer_name,
             self.actionizer_version,
-            self.configuration_id,
+            self.request.configuration.configuration_id,
         )
         if self.result_id != expected:
             raise ValueError("LayoutParser proposal result ID is inconsistent")
