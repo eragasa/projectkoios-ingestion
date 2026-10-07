@@ -1,9 +1,9 @@
 from pathlib import PurePosixPath
 
 import pytest
-from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
 
 
 def _source() -> PdfBatchItem:

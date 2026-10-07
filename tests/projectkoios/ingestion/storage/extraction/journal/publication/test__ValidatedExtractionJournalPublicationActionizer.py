@@ -5,8 +5,8 @@ from pathlib import Path
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import ExtractionResult
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
@@ -55,7 +55,7 @@ def validation_request(
     extraction: ExtractionResult,
     content: bytes,
 ) -> ExistingExtractionArtifactValidationRequest:
-    payload = serialize_contract(extraction).encode()
+    payload = CanonicalJsonSerializer.serialize_text(extraction).encode()
     publication = ExtractionPublicationRequest.create(extraction=extraction)
     return ExistingExtractionArtifactValidationRequest.create(
         artifact_reference="artifact:fixture",
@@ -100,7 +100,9 @@ def test__validated_journal_publication__creates_then_replays_exact_record(
     tmp_path: Path,
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = publication_request(extraction_result, content)
     store = DiskExtractionPublicationStore(
         tmp_path / "journal",
@@ -128,7 +130,9 @@ def test__validated_journal_publication__stops_before_write_on_changed_bytes(
     tmp_path: Path,
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = publication_request(extraction_result, content)
     store = DiskExtractionPublicationStore(
         tmp_path / "journal",
@@ -153,7 +157,9 @@ def test__validated_journal_publication__stops_on_other_journal(
     tmp_path: Path,
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = publication_request(extraction_result, content)
     store = DiskExtractionPublicationStore(
         tmp_path / "journal",

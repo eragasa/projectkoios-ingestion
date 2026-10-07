@@ -31,8 +31,6 @@ from projectkoios.ingestion import (
     TableDetectionResult,
     TablePageRuleEvidence,
     build_equation_index,
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.articles.structure.actionizer import (
     DeterministicArticleStructureActionizer,
@@ -60,6 +58,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.requ
 from projectkoios.ingestion.integrations.pix2tex.recognizer import (
     Pix2TexCliEquationRecognizer,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf import PyMuPdfRegionRenderer
 from projectkoios.ingestion.pdf.private_page_span.reference import (
     PrivatePdfPageSpanReference,
@@ -133,7 +132,9 @@ def atomic_json(path: Path, value: object) -> None:
 
 
 def owner_json(path: Path, value: object) -> None:
-    atomic_bytes(path, (serialize_contract(value) + "\n").encode())
+    atomic_bytes(
+        path, (CanonicalJsonSerializer.serialize_text(value) + "\n").encode()
+    )
 
 
 def connect() -> sqlite3.Connection:
@@ -419,7 +420,9 @@ def persist_detection(
             {
                 "human_label": label,
                 "source_page": source_page,
-                "owner_candidate": contract_dict(candidate),
+                "owner_candidate": CanonicalJsonSerializer.project_object(
+                    candidate
+                ),
                 "limitations": [
                     "automated_unreviewed",
                     "candidate_not_validated",
@@ -449,10 +452,14 @@ def persist_detection(
             {
                 "human_label": label,
                 "source_page": source_page,
-                "owner_candidate": contract_dict(candidate),
+                "owner_candidate": CanonicalJsonSerializer.project_object(
+                    candidate
+                ),
                 "owner_rendered_region": {
                     k: v
-                    for k, v in contract_dict(region).items()
+                    for k, v in CanonicalJsonSerializer.project_object(
+                        region
+                    ).items()
                     if k != "content"
                 },
                 "associations": [

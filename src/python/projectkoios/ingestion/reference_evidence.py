@@ -9,7 +9,8 @@ from projectkoios.ingestion.clean_transcript import (
     CleanTranscript,
     CleanTranscriptStatus,
 )
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import (
     CONTRACT_VERSION,
     ExtractionResult,
@@ -19,10 +20,6 @@ from projectkoios.ingestion.provenance import (
     DERIVATION_AUDIT_CONTRACT_VERSION,
     DerivationAuditReport,
     DerivationAuditStatus,
-)
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
@@ -550,7 +547,9 @@ class ReferenceEvidenceRecord:
 
 
 def _canonical_artifact_bytes(value: object) -> bytes:
-    return (serialize_contract(value) + "\n").encode("utf-8")
+    return (CanonicalJsonSerializer.serialize_text(value) + "\n").encode(
+        "utf-8"
+    )
 
 
 def _parse_json_bytes(content: bytes, *, name: str, maximum: int) -> object:
@@ -590,7 +589,9 @@ def _verify_extraction_artifact(
             "extraction artifact root must be an object"
         )
     try:
-        if (canonical_json(value) + "\n").encode("utf-8") != content:
+        if (CanonicalJsonSerializer.serialize_text(value) + "\n").encode(
+            "utf-8"
+        ) != content:
             raise ReferenceEvidenceVerificationError(
                 "extraction artifact serialization is noncanonical"
             )
@@ -598,7 +599,7 @@ def _verify_extraction_artifact(
         raise ReferenceEvidenceVerificationError(
             "extraction artifact cannot be canonicalized"
         ) from error
-    expected = contract_dict(extraction_result)
+    expected = CanonicalJsonSerializer.project_object(extraction_result)
     if set(value) != set(expected):
         raise ReferenceEvidenceVerificationError(
             "extraction artifact fields do not match ExtractionResult"
@@ -786,7 +787,9 @@ def serialize_reference_evidence(record: ReferenceEvidenceRecord) -> bytes:
     if not isinstance(record, ReferenceEvidenceRecord):
         raise TypeError("record must be ReferenceEvidenceRecord")
     try:
-        payload = canonical_json(record).encode("utf-8", errors="strict")
+        payload = CanonicalJsonSerializer.serialize_text(record).encode(
+            "utf-8", errors="strict"
+        )
     except (UnicodeEncodeError, ValueError, RecursionError) as error:
         raise ReferenceEvidenceError(
             "reference evidence cannot be canonically serialized"

@@ -38,16 +38,13 @@ from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.request import (
     OllamaMultimodalRegionProcessingRequest,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.pdf.models import RenderedRegion
 from projectkoios.ingestion.pdf.private_page_span.reference import (
     PrivatePdfPageSpanReference,
-)
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
@@ -483,7 +480,9 @@ def prepare() -> tuple[
     )
     validate_plan(plan)
     active_processor = processor()
-    processor_record = contract_dict(active_processor.identity())
+    processor_record = CanonicalJsonSerializer.project_object(
+        active_processor.identity()
+    )
     if processor_record != plan["processor_identity"]:
         raise RuntimeError("replicated canary processor identity differs")
     regions = reconstruct_regions(plan)
@@ -690,7 +689,9 @@ def existing_or_execute(
     if not apply:
         return "not_requested", None, False
     result = active_processor.action(request=prepared.request)
-    result_bytes = (serialize_contract(result) + "\n").encode()
+    result_bytes = (
+        CanonicalJsonSerializer.serialize_text(result) + "\n"
+    ).encode()
     status = create_once(result_path, result_bytes)
     receipt = result_receipt(plan, manifest, invocation, result_bytes)
     create_once(receipt_path, json_bytes(receipt))

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.identity import canonical_json
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
@@ -33,7 +33,7 @@ def _record_digest(
         "sequence": sequence,
     }
     return SHA256Fingerprinter.fingerprint(
-        content=canonical_json(values).encode("utf-8")
+        content=CanonicalJsonSerializer.serialize_text(values).encode("utf-8")
     )
 
 

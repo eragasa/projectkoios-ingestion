@@ -9,7 +9,6 @@ from pathlib import Path
 
 from projectkoios.ingestion import (
     EquationAssemblyResult,
-    contract_dict,
 )
 from projectkoios.ingestion.equations.assembly.identity import (
     EQUATION_ASSEMBLY_CONTRACT_VERSION,
@@ -24,6 +23,7 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
 from projectkoios.ingestion.integrations.pix2tex.resource import (
     Pix2TexResourceBinding,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ROOT = Path(
@@ -171,7 +171,9 @@ def build_plan(processor: Pix2TexCliEquationRecognizer) -> dict[str, object]:
         "scope": "thirty-item-local-pix2tex-canary",
         "selection_policy": "ten_equal_order_strata_per_book_with_fixed_feature_quantiles",
         "selection_quantiles": list(QUANTILES),
-        "processor_identity": contract_dict(processor.identity),
+        "processor_identity": CanonicalJsonSerializer.project_object(
+            processor.identity
+        ),
         "item_count": len(items),
         "items": items,
         "authorization": {
@@ -296,7 +298,7 @@ def main() -> None:
             "page_index": item["page_index"],
             "assembly_id": item["assembly_id"],
             "request_id": request.request_id,
-            "recognition": contract_dict(recognition),
+            "recognition": CanonicalJsonSerializer.project_object(recognition),
             "automated": True,
             "reviewed": False,
             "accepted": False,

@@ -18,6 +18,7 @@ import subprocess
 from io import BytesIO
 from pathlib import Path
 
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 _MAX_FIXTURE_BYTES = 16 * 1024 * 1024
@@ -125,7 +126,6 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
         DerivationAuditInput,
         DerivationAuditValidator,
     )
-    from projectkoios.ingestion.serialization import serialize_contract
     from projectkoios.ingestion.tables import (
         DeterministicTableCandidateDetector,
     )
@@ -194,8 +194,8 @@ def _verify(root: Path, fixture: Path) -> dict[str, object]:
     second = projector.action(request=request)
     if first != second:
         raise ValueError("clean-transcript projection is nondeterministic")
-    first_json = serialize_contract(first) + "\n"
-    second_json = serialize_contract(second) + "\n"
+    first_json = CanonicalJsonSerializer.serialize_text(first) + "\n"
+    second_json = CanonicalJsonSerializer.serialize_text(second) + "\n"
     if first_json.encode("utf-8") != second_json.encode("utf-8"):
         raise ValueError("clean-transcript serialization is nondeterministic")
     serialized = json.loads(first_json)

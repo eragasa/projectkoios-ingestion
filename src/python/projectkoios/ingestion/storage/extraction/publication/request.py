@@ -8,8 +8,8 @@ from typing import ClassVar
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import ExtractionResult
-from projectkoios.ingestion.serialization import serialize_contract
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +33,9 @@ class ExtractionPublicationRequest(
     ) -> ExtractionPublicationRequest:
         if type(extraction) is not ExtractionResult:
             raise TypeError("extraction must be an ExtractionResult")
-        payload = serialize_contract(extraction).encode("utf-8")
+        payload = CanonicalJsonSerializer.serialize_text(extraction).encode(
+            "utf-8"
+        )
         return cls(
             request_id=stable_id(
                 "extraction-publication-request",
@@ -48,7 +50,9 @@ class ExtractionPublicationRequest(
     def __post_init__(self) -> None:
         if type(self.extraction) is not ExtractionResult:
             raise TypeError("extraction must be an ExtractionResult")
-        payload = serialize_contract(self.extraction).encode("utf-8")
+        payload = CanonicalJsonSerializer.serialize_text(
+            self.extraction
+        ).encode("utf-8")
         expected = stable_id(
             "extraction-publication-request",
             self.CONTRACT_VERSION,

@@ -10,14 +10,13 @@ import pytest
 from projectkoios.ingestion import (
     CONTRACT_VERSION,
     build_extraction_cache_key,
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
     _publish_artifacts,
     main,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
     PyMuPdfExtractor,
@@ -129,7 +128,9 @@ def test__pymupdf_extractor__emits_content_addressed_image_reference() -> None:
     assert {warning.code for warning in first.warnings} == {
         "pdf.low_text_density"
     }
-    serialized_block = contract_dict(first)["document"]["pages"][0]["blocks"][0]
+    serialized_block = CanonicalJsonSerializer.project_object(first)[
+        "document"
+    ]["pages"][0]["blocks"][0]
     assert serialized_block["asset_media_type"] == "image/png"
 
 
@@ -177,9 +178,9 @@ def test__pymupdf_extractor__preserves_image_mask_reference() -> None:
     assert block.asset_mask_id == (
         second.document.pages[0].blocks[0].asset_mask_id
     )
-    assert serialize_contract(first.document) == serialize_contract(
-        second.document
-    )
+    assert CanonicalJsonSerializer.serialize_text(
+        first.document
+    ) == CanonicalJsonSerializer.serialize_text(second.document)
 
 
 def test__pymupdf_extractor__declares_unrotated_cropbox_coordinates() -> None:
@@ -268,7 +269,9 @@ def test__pymupdf_extractor__extracts_immutable_toc_evidence() -> None:
     assert entries[1].destination.printed_page_label == "p-2"
     assert entries[0].entry_id == second.document.table_of_contents[0].entry_id
     assert entries[0].entry_id in first.manifest.object_ids
-    serialized_entry = contract_dict(first)["document"]["table_of_contents"][0]
+    serialized_entry = CanonicalJsonSerializer.project_object(first)[
+        "document"
+    ]["table_of_contents"][0]
     assert serialized_entry["title"] == "Introduction"
     with pytest.raises(FrozenInstanceError):
         entries[0].title = "Changed"  # type: ignore[misc]

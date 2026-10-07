@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.layout.proposal.kind import LayoutRegionKind
 from projectkoios.ingestion.layout.proposal.region import LayoutRegionProposal
 from projectkoios.ingestion.layout.review.actionizer import (
@@ -28,7 +29,6 @@ from projectkoios.ingestion.layout.review.overlap import (
     LayoutBlockRegionOverlap,
 )
 from projectkoios.ingestion.layout.review.request import LayoutReviewRequest
-from projectkoios.ingestion.serialization import serialize_contract
 
 from tests.projectkoios.ingestion.layout.review.layout_review_support import (
     LayoutReviewFixture,
@@ -50,7 +50,9 @@ def test__layout_review__selects_incomplete_region_coverage() -> None:
     assert review_case.requires_review is True
     replayed = DeterministicLayoutReviewActionizer().action(request=request)
     assert review_case == replayed
-    assert serialize_contract(review_case) == serialize_contract(replayed)
+    assert CanonicalJsonSerializer.serialize_text(
+        review_case
+    ) == CanonicalJsonSerializer.serialize_text(replayed)
 
 
 def test__layout_review_request__rejects_excessive_comparisons() -> None:
@@ -58,13 +60,16 @@ def test__layout_review_request__rejects_excessive_comparisons() -> None:
     exact_configuration = LayoutReviewConfiguration(
         max_comparisons=2,
     )
-    assert LayoutReviewRequest.create(
-        layout=request.layout,
-        render=request.render,
-        proposal_source=adapter_result.proposal_source,
-        proposals=adapter_result.proposals,
-        configuration=exact_configuration,
-    ).configuration.max_comparisons == 2
+    assert (
+        LayoutReviewRequest.create(
+            layout=request.layout,
+            render=request.render,
+            proposal_source=adapter_result.proposal_source,
+            proposals=adapter_result.proposals,
+            configuration=exact_configuration,
+        ).configuration.max_comparisons
+        == 2
+    )
 
     with pytest.raises(LayoutReviewLimitError, match="max_comparisons"):
         LayoutReviewRequest.create(
@@ -142,9 +147,7 @@ def test__layout_review_case__rejects_reordered_and_substituted_overlaps() -> (
             max_overlaps=4,
         ),
     )
-    case = DeterministicLayoutReviewActionizer().action(
-        request=bounded_request
-    )
+    case = DeterministicLayoutReviewActionizer().action(request=bounded_request)
     covered = case.block_reviews[0]
     assert len(covered.overlaps) == 2
 

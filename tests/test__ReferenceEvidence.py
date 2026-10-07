@@ -10,7 +10,8 @@ from projectkoios.ingestion import (
     IngestionStatus,
 )
 from projectkoios.ingestion.clean_transcript import CleanTranscriptStatus
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.reference_evidence import (
     REFERENCE_EVIDENCE_CONTRACT_VERSION,
     REFERENCE_EVIDENCE_MAX_BYTES,
@@ -234,23 +235,23 @@ def test__reference_evidence__strict_parse_rejects_external_mutation(
     value = json.loads(payload)
     if mutation == "unknown_root_field":
         value["external"] = True
-        payload = canonical_json(value).encode()
+        payload = CanonicalJsonSerializer.serialize_text(value).encode()
     elif mutation == "removed_generation_key":
         value["transcript"]["artifact_generation"] = 1
-        payload = canonical_json(value).encode()
+        payload = CanonicalJsonSerializer.serialize_text(value).encode()
     elif mutation == "removed_contract_key":
         value["transcript"]["contract_version"] = "1.0"
-        payload = canonical_json(value).encode()
+        payload = CanonicalJsonSerializer.serialize_text(value).encode()
     elif mutation == "unsupported_version":
         value["contract_version"] = "0.2.0"
-        payload = canonical_json(value).encode()
+        payload = CanonicalJsonSerializer.serialize_text(value).encode()
     elif mutation == "noncanonical":
         payload += b"\n"
     elif mutation == "duplicate_field":
         payload = payload[:-1] + b',"schema_version":1}'
     else:
         value["derivation_audit"]["status"] = "failed"
-        payload = canonical_json(value).encode()
+        payload = CanonicalJsonSerializer.serialize_text(value).encode()
 
     with pytest.raises(ReferenceEvidenceParseError, match=message):
         parse_reference_evidence(payload)

@@ -18,9 +18,9 @@ from projectkoios.ingestion import (
     SourceDocument,
     build_pdf_extraction_artifacts,
     extract_pdf_bytes_artifacts,
-    serialize_contract,
 )
 from projectkoios.ingestion.cli import ingest_pdf_artifacts
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf import artifacts as artifact_module
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
@@ -73,7 +73,9 @@ def test__byte_api_returns_owner_built_bounded_artifacts_without_writes(
     )
     assert (
         bundle.artifacts[0].content
-        == (serialize_contract(bundle.result) + "\n").encode()
+        == (
+            CanonicalJsonSerializer.serialize_text(bundle.result) + "\n"
+        ).encode()
     )
     assert b"Page 1 exact text" in bundle.artifacts[1].content
     assert b"Page 2 exact text" in bundle.artifacts[2].content
@@ -254,9 +256,9 @@ def test__semantic_output_and_artifact_shape_are_repeatable() -> None:
         artifact_limits=first.artifact_limits,
     )
 
-    assert serialize_contract(first.result.document) == serialize_contract(
-        second.result.document
-    )
+    assert CanonicalJsonSerializer.serialize_text(
+        first.result.document
+    ) == CanonicalJsonSerializer.serialize_text(second.result.document)
     assert tuple(
         (item.relative_path, item.media_type) for item in first.artifacts
     ) == tuple(

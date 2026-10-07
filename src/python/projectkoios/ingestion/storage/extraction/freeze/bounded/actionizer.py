@@ -6,11 +6,11 @@ from io import BytesIO
 
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.cache import deserialize_extraction_result
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import ExtractionResult, SourceDocument
 from projectkoios.ingestion.pdf.adapters.errors import (
     PdfDependencyUnavailableError,
 )
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
@@ -169,7 +169,7 @@ class BoundedExtractionFreezeActionizer(
                 ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE,
                 "extraction_identity_differs",
             )
-        content = serialize_contract(extraction).encode()
+        content = CanonicalJsonSerializer.serialize_text(extraction).encode()
         if not content or len(content) > request.MAXIMUM_ARTIFACT_BYTES:
             return self._failed(
                 request,
@@ -210,7 +210,10 @@ class BoundedExtractionFreezeActionizer(
                 ExtractionActionDisposition.STOP_INVALID_EVIDENCE,
                 "frozen_extraction_artifact_invalid",
             )
-        if serialize_contract(extraction).encode() != content:
+        if (
+            CanonicalJsonSerializer.serialize_text(extraction).encode()
+            != content
+        ):
             return self._failed(
                 request,
                 ExtractionActionDisposition.STOP_INVALID_EVIDENCE,

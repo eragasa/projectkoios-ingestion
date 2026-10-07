@@ -13,8 +13,6 @@ from projectkoios.ingestion import (
     DeterministicEquationCandidateDetector,
     EquationIndexTier,
     EquationRecognitionStatus,
-    PdfBatchItem,
-    PdfBatchPlan,
     PyMuPdfExtractor,
     SourceDocument,
     build_equation_index,
@@ -47,6 +45,9 @@ from projectkoios.ingestion.integrations.pix2tex.resource import (
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
@@ -211,7 +212,10 @@ def test__equation_enrichment_batch__plans_applies_and_replays(
         ),
     )
     plan_path = tmp_path / "plan.json"
-    plan_path.write_text(plan.to_json(), encoding="utf-8")
+    plan_path.write_text(
+        PdfBatchPlanJsonContract().serialize_text(plan),
+        encoding="utf-8",
+    )
     ingestion = tmp_path / "ingestion"
     raw_arguments = [
         str(plan_path),

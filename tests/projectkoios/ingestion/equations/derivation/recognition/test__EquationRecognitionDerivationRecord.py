@@ -8,7 +8,7 @@ from projectkoios.ingestion.equations.derivation.recognition.record import (
 from projectkoios.ingestion.equations.derivation.recognition.result import (
     EquationRecognitionDerivationResult,
 )
-from projectkoios.ingestion.serialization import contract_dict
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 
 from tests.equation_recognition_derivation_support import artifact, request
 
@@ -38,7 +38,7 @@ def test__recognition_derivation_record__rehydrates_typed_trace() -> None:
         recognition=recognition,
     )
     record = EquationRecognitionDerivationRecord.create(result)
-    serialized = contract_dict(record)
+    serialized = CanonicalJsonSerializer.project_object(record)
 
     assert EquationRecognitionDerivationRecord.from_dict(serialized) == record
 

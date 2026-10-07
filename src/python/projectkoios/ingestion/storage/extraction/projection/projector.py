@@ -14,7 +14,8 @@ from projectkoios.ingestion.base.projector.identity.model import (
 from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
 )
@@ -177,7 +178,8 @@ class ExtractionProjectionProjector(
                 "extraction publication payload is not canonical JSON"
             ) from error
         if type(value) is not dict or (
-            canonical_json(value).encode("utf-8") != source.payload
+            CanonicalJsonSerializer.serialize_text(value).encode("utf-8")
+            != source.payload
         ):
             raise ProjectionPayloadError(
                 "extraction publication payload is not canonical JSON"

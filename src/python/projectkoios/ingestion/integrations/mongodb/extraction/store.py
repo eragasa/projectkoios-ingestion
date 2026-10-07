@@ -20,7 +20,6 @@ from projectkoios.ingestion.base.projector.identity.error import (
 from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
-from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.integrations.disk.extraction.store import (
     DiskExtractionPublicationStore,
 )
@@ -33,6 +32,7 @@ from projectkoios.ingestion.integrations.mongodb.extraction.materialization.erro
 from projectkoios.ingestion.integrations.mongodb.extraction.materializer import (  # noqa: E501
     MongoExtractionProjectionMaterializer,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
@@ -437,7 +437,9 @@ class MongoExtractionPublicationStore(
                         )
                     try:
                         content_sha256 = SHA256Fingerprinter.fingerprint(
-                            content=canonical_json(document).encode("utf-8")
+                            content=CanonicalJsonSerializer.serialize_text(
+                                document
+                            ).encode("utf-8")
                         )
                     except (TypeError, ValueError) as error:
                         raise ExtractionProjectionInventoryReaderError(

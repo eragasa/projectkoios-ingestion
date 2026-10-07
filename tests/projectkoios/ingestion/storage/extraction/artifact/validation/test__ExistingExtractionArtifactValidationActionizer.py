@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import ExtractionResult
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
     ExtractionActionDisposition,
@@ -59,7 +59,7 @@ def request_for(
     *,
     document_id: str | None = None,
 ) -> ExistingExtractionArtifactValidationRequest:
-    payload = serialize_contract(extraction).encode()
+    payload = CanonicalJsonSerializer.serialize_text(extraction).encode()
     publication = ExtractionPublicationRequest.create(extraction=extraction)
     return ExistingExtractionArtifactValidationRequest.create(
         artifact_reference="artifact:fixture",
@@ -87,7 +87,9 @@ def request_for(
 def test__artifact_validation_actionizer__returns_compact_exact_evidence(
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = request_for(extraction_result, content)
     actionizer = ExistingExtractionArtifactValidationActionizer(
         reader=MemoryReader(content)
@@ -107,7 +109,9 @@ def test__artifact_validation_actionizer__returns_compact_exact_evidence(
 def test__artifact_validation_request__separates_request_and_idempotency(
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     first = request_for(extraction_result, content)
     second = ExistingExtractionArtifactValidationRequest.create(
         artifact_reference="artifact:fixture-copy",
@@ -134,7 +138,9 @@ def test__artifact_validation_request__separates_request_and_idempotency(
 def test__artifact_validation_actionizer__stops_on_changed_bytes(
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = request_for(extraction_result, content)
     actionizer = ExistingExtractionArtifactValidationActionizer(
         reader=MemoryReader(content + b"changed")
@@ -152,7 +158,9 @@ def test__artifact_validation_actionizer__stops_on_changed_bytes(
 def test__artifact_validation_actionizer__stops_on_identity_ambiguity(
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = request_for(
         extraction_result,
         content,
@@ -193,7 +201,9 @@ def test__artifact_validation_actionizer__stops_on_invalid_exact_artifact(
 def test__artifact_validation_actionizer__preserves_reader_disposition(
     extraction_result: ExtractionResult,
 ) -> None:
-    content = (serialize_contract(extraction_result) + "\n").encode()
+    content = (
+        CanonicalJsonSerializer.serialize_text(extraction_result) + "\n"
+    ).encode()
     request = request_for(extraction_result, content)
     error = ExtractionArtifactReaderError(
         code="artifact_temporarily_unavailable",

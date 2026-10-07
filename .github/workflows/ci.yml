@@ -213,6 +213,19 @@ jobs:
               "projectkoios.ingestion.reconciliation.segment.native.line",
               "projectkoios.ingestion.reconciliation.validation.request",
               "projectkoios.ingestion.reconciliation.validation.result",
+              "projectkoios.ingestion.json.canonical",
+              "projectkoios.ingestion.json.contract",
+              "projectkoios.ingestion.json.error",
+              "projectkoios.ingestion.json.limits.definition",
+              "projectkoios.ingestion.json.limits.error",
+              "projectkoios.ingestion.json.parser",
+              "projectkoios.ingestion.json.serializer",
+              "projectkoios.ingestion.json.value",
+              "projectkoios.ingestion.pdf.batch.item",
+              "projectkoios.ingestion.pdf.batch.json",
+              "projectkoios.ingestion.pdf.batch.limits.definition",
+              "projectkoios.ingestion.pdf.batch.limits.error",
+              "projectkoios.ingestion.pdf.batch.plan",
               "projectkoios.ingestion.integrations.layout_parser.actionizer",
               "projectkoios.ingestion.integrations.layout_parser.adaptation",
               "projectkoios.ingestion.integrations.layout_parser.configuration",
@@ -290,6 +303,8 @@ jobs:
               import_module(module_name)
 
           removed_modules = (
+              "projectkoios.ingestion.batch",
+              "projectkoios.ingestion.serialization",
               "projectkoios.ingestion.integrations.mongodb.extraction.index_readiness",
               "projectkoios.ingestion.integrations.sqlite.processing_state",
               "projectkoios.ingestion.storage.processing_state",
@@ -371,6 +386,12 @@ jobs:
                   raise AssertionError(f"legacy module remains: {module_name}")
 
           removed_package_exports = (
+              ("projectkoios.ingestion", "PdfBatchItem"),
+              ("projectkoios.ingestion", "PdfBatchPlan"),
+              ("projectkoios.ingestion", "contract_dict"),
+              ("projectkoios.ingestion", "serialize_contract"),
+              ("projectkoios.ingestion.identity", "canonical_json"),
+              ("projectkoios.ingestion.identity", "to_json_value"),
               ("projectkoios.ingestion", "ArticleStructureAnalyzer"),
               (
                   "projectkoios.ingestion",

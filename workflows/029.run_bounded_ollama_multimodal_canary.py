@@ -25,15 +25,12 @@ from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.request import (
     OllamaMultimodalRegionProcessingRequest,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.pdf.models import PageRegionSelection
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
-)
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 SOURCE_SHA256 = (
@@ -284,7 +281,9 @@ def prepare() -> tuple[
         "height_pixels": region.height_pixels,
         "request_id": request.request_id,
         "cache_key": cache_key.cache_key,
-        "processor_identity": contract_dict(processor_identity),
+        "processor_identity": CanonicalJsonSerializer.project_object(
+            processor_identity
+        ),
         "task": request.task_kind.value,
         "output_policy": {
             "automated": True,
@@ -385,7 +384,9 @@ def run(*, apply: bool) -> dict[str, object]:
             }
 
         result = active_processor.action(request=request)
-        result_bytes = (serialize_contract(result) + "\n").encode()
+        result_bytes = (
+            CanonicalJsonSerializer.serialize_text(result) + "\n"
+        ).encode()
         result_status = create_once(OUTPUT / "result.json", result_bytes)
         proposal_count = sum(
             item.proposal is not None for item in result.selection_results

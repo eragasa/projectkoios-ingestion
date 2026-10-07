@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from projectkoios.ingestion.identity import canonical_json, to_json_value
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
@@ -26,9 +26,9 @@ def test__sha256_hash__rejects_noncanonical_values(value: str) -> None:
 def test__sha256_hash__serializes_as_builtin_string() -> None:
     value = SHA256Hash("0" * 64)
 
-    serialized = to_json_value(value)
+    serialized = CanonicalJsonSerializer.project(value)
     assert type(serialized) is str
-    assert canonical_json({"sha256": value}) == (
+    assert CanonicalJsonSerializer.serialize_text({"sha256": value}) == (
         '{"sha256":"' + ("0" * 64) + '"}'
     )
 

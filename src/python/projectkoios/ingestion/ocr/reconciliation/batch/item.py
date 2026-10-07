@@ -6,10 +6,11 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.reconciliation.batch.page import (
     SelectiveOCRReconciliationPage,
 )
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 _MAX_PAGES_PER_ITEM = 1_024
@@ -74,7 +75,9 @@ class SelectiveOCRReconciliationItem(AbstractImmutableDataObject):
         if type(pages) is not list:
             raise TypeError("reconciliation pages must be an array")
         return cls(
-            source=PdfBatchItem.from_dict(value["source"]),
+            source=PdfBatchPlanJsonContract.item_from_json_value(
+                value["source"]
+            ),
             extraction_sha256=extraction_sha256,
             ocr_directory=PurePosixPath(ocr_directory),
             output_directory=PurePosixPath(output_directory),

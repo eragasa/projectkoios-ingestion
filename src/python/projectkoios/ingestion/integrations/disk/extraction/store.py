@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
@@ -142,7 +142,9 @@ class DiskExtractionPublicationStore(
     ) -> ExtractionPublicationResult:
         if type(request) is not ExtractionPublicationRequest:
             raise TypeError("request must be an ExtractionPublicationRequest")
-        payload = serialize_contract(request.extraction).encode("utf-8")
+        payload = CanonicalJsonSerializer.serialize_text(
+            request.extraction
+        ).encode("utf-8")
         if not payload or len(payload) > self.MAX_PAYLOAD_BYTES:
             raise ExtractionPublicationError(
                 "extraction publication payload size is out of bounds"
@@ -328,7 +330,9 @@ class DiskExtractionPublicationStore(
             os.close(descriptor)
 
     def _append_record(self, record: ExtractionPublicationRecord) -> None:
-        line = (serialize_contract(record) + "\n").encode("utf-8")
+        line = (CanonicalJsonSerializer.serialize_text(record) + "\n").encode(
+            "utf-8"
+        )
         if len(line) > self.MAX_RECORD_BYTES:
             raise ExtractionPublicationError(
                 "publication journal record is too large"

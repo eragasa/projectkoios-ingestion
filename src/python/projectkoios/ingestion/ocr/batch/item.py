@@ -6,8 +6,9 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 _MAX_PAGES_PER_ITEM = 1_024
@@ -63,7 +64,9 @@ class SelectiveOCRItem(AbstractImmutableDataObject):
         if not isinstance(pages, list):
             raise TypeError("pages must be an array")
         return cls(
-            source=PdfBatchItem.from_dict(value["source"]),
+            source=PdfBatchPlanJsonContract.item_from_json_value(
+                value["source"]
+            ),
             extraction_sha256=extraction_sha256,
             output_directory=PurePosixPath(output_directory),
             pages=tuple(SelectiveOCRPage.from_dict(page) for page in pages),

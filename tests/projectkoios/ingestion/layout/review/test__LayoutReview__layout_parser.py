@@ -21,12 +21,12 @@ from projectkoios.ingestion.integrations.layout_parser.limits.error import (
 from projectkoios.ingestion.integrations.layout_parser.request import (
     LayoutParserProposalRequest,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.layout.limits.definition import (
     MAX_LAYOUT_COORDINATE_MAGNITUDE,
 )
 from projectkoios.ingestion.layout.limits.error import LayoutLimitError
 from projectkoios.ingestion.layout.proposal.kind import LayoutRegionKind
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 from tests.projectkoios.ingestion.layout.review.layout_review_support import (
@@ -55,7 +55,9 @@ def test__layout_parser_adapter__retains_lineage_without_vendor_import() -> (
     assert adapter_result.proposal_source.resource_sha256 == "b" * 64
     assert len(adapter_result.proposals) == 1
     assert adapter_result.proposals[0].kind is LayoutRegionKind.TEXT
-    assert serialize_contract(adapter_result) == serialize_contract(
+    assert CanonicalJsonSerializer.serialize_text(
+        adapter_result
+    ) == CanonicalJsonSerializer.serialize_text(
         LayoutParserRegionProposalActionizer().action(
             request=adapter_result.request
         )
@@ -229,8 +231,7 @@ def test__layout_parser_configuration__bounds_aggregate_label_text(
 ) -> None:
     label_mapping = tuple(
         (
-            f"{index:03d}"
-            + "x" * (MAX_LAYOUT_PARSER_LABEL_CHARACTERS - 3),
+            f"{index:03d}" + "x" * (MAX_LAYOUT_PARSER_LABEL_CHARACTERS - 3),
             LayoutRegionKind.TEXT,
         )
         for index in range(mapping_count)

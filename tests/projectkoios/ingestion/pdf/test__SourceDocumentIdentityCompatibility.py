@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from projectkoios.ingestion.corpus import prepare_pdf_corpus
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import SourceDocument
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 _FIXTURE_CONTENT = b"%PDF-1.7\nsource identity fixture\n"
@@ -39,7 +39,7 @@ def test_source_document_preserves_flat_exact_byte_evidence() -> None:
     assert source.content_hash == _FIXTURE_SHA256
     assert source.hash_algorithm == "sha256"
     assert source.byte_length == len(_FIXTURE_CONTENT)
-    assert serialize_contract(source) == (
+    assert CanonicalJsonSerializer.serialize_text(source) == (
         '{"blob_id":"blob:sha256:'
         + _FIXTURE_SHA256
         + '","byte_length":33,"content_hash":"'

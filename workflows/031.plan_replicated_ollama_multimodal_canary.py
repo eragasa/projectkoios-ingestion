@@ -15,7 +15,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base import (
     OllamaMultimodalRegionProcessor,
 )
-from projectkoios.ingestion.serialization import contract_dict
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 PREPARATION = Path(
@@ -230,7 +230,7 @@ def processor_identity() -> dict[str, object]:
         connect_timeout_seconds=5.0,
         read_timeout_seconds=300.0,
     )
-    return contract_dict(
+    return CanonicalJsonSerializer.project_object(
         OllamaMultimodalRegionProcessor(configuration=configuration).identity()
     )
 

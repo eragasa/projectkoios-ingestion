@@ -7,7 +7,6 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from projectkoios.ingestion.batch import PdfBatchPlan
 from projectkoios.ingestion.cache import _require_bounded_json_nesting
 from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
@@ -49,10 +48,11 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
 from projectkoios.ingestion.integrations.pix2tex.resource import (
     Pix2TexResourceBinding,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
@@ -327,7 +327,9 @@ def main(arguments: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(arguments)
     try:
-        plan = PdfBatchPlan.from_json(args.plan.read_text(encoding="utf-8"))
+        plan = PdfBatchPlanJsonContract().parse_text(
+            args.plan.read_text(encoding="utf-8")
+        )
         resolved = _resolve_items(
             plan,
             source_root=args.source_root,
@@ -402,7 +404,9 @@ def main(arguments: list[str] | None = None) -> int:
             assembly = DeterministicEquationAssembler(
                 renderer=PyMuPdfRegionRenderer()
             ).assemble(detection, payload)
-            assembly_text = serialize_contract(assembly) + "\n"
+            assembly_text = (
+                CanonicalJsonSerializer.serialize_text(assembly) + "\n"
+            )
             if target.existing:
                 if target.assembly.read_text(encoding="utf-8") != assembly_text:
                     raise ValueError(
@@ -435,9 +439,16 @@ def main(arguments: list[str] | None = None) -> int:
             index = build_equation_index(assembly, recognition)
             publication = target.publication_request(
                 assembly_content=assembly_text,
-                recognition_content=serialize_contract(recognition) + "\n",
-                index_content=serialize_contract(index) + "\n",
-                derivation_content=serialize_contract(derivation) + "\n",
+                recognition_content=CanonicalJsonSerializer.serialize_text(
+                    recognition
+                )
+                + "\n",
+                index_content=CanonicalJsonSerializer.serialize_text(index)
+                + "\n",
+                derivation_content=CanonicalJsonSerializer.serialize_text(
+                    derivation
+                )
+                + "\n",
             )
             parent = target.assembly.parent
             if parent.resolve() != parent:

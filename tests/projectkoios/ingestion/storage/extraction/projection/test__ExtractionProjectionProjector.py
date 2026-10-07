@@ -10,9 +10,8 @@ from projectkoios.ingestion.base.projector.payload.error import (
     ProjectionPayloadError,
 )
 from projectkoios.ingestion.base.projector.request import ProjectionRequest
-from projectkoios.ingestion.identity import canonical_json
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import ExtractionResult
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.collection import (
     ExtractionProjectionCollection,
@@ -42,7 +41,9 @@ def _evidence(
     payload: bytes | None = None,
     record_document_id: str | None = None,
 ) -> ExtractionPublicationEvidence:
-    exact_payload = payload or serialize_contract(extraction).encode("utf-8")
+    exact_payload = payload or CanonicalJsonSerializer.serialize_text(
+        extraction
+    ).encode("utf-8")
     request = ExtractionPublicationRequest.create(extraction=extraction)
     record = ExtractionPublicationRecord.create(
         sequence=sequence,
@@ -110,7 +111,9 @@ def test__extraction_projection_projector__is_deterministic_and_complete(
 def test__extraction_projection_projector__rejects_noncanonical_payload(
     extraction_result: ExtractionResult,
 ) -> None:
-    value = json.loads(serialize_contract(extraction_result))
+    value = json.loads(
+        CanonicalJsonSerializer.serialize_text(extraction_result)
+    )
     noncanonical = json.dumps(value, indent=2).encode("utf-8")
     evidence = _evidence(extraction_result, payload=noncanonical)
 
@@ -121,9 +124,11 @@ def test__extraction_projection_projector__rejects_noncanonical_payload(
 def test__extraction_projection_projector__classifies_structural_payload_error(
     extraction_result: ExtractionResult,
 ) -> None:
-    value = json.loads(serialize_contract(extraction_result))
+    value = json.loads(
+        CanonicalJsonSerializer.serialize_text(extraction_result)
+    )
     del value["document"]["pages"][0]["blocks"]
-    payload = canonical_json(value).encode("utf-8")
+    payload = CanonicalJsonSerializer.serialize_text(value).encode("utf-8")
     evidence = _evidence(extraction_result, payload=payload)
 
     with pytest.raises(
@@ -136,9 +141,11 @@ def test__extraction_projection_projector__classifies_structural_payload_error(
 def test__extraction_projection_projector__separates_identity_disagreement(
     extraction_result: ExtractionResult,
 ) -> None:
-    value = json.loads(serialize_contract(extraction_result))
+    value = json.loads(
+        CanonicalJsonSerializer.serialize_text(extraction_result)
+    )
     value["document"]["document_id"] = "document:sha256:" + ("0" * 64)
-    payload = canonical_json(value).encode("utf-8")
+    payload = CanonicalJsonSerializer.serialize_text(value).encode("utf-8")
     evidence = _evidence(extraction_result, payload=payload)
 
     with pytest.raises(

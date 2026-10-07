@@ -6,10 +6,10 @@ import json
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.private_page_span.reference import (
     PrivatePdfPageSpanReference,
 )
-from projectkoios.ingestion.serialization import serialize_contract
 
 
 @pytest.mark.parametrize(
@@ -137,7 +137,7 @@ def test_reference_is_immutable_and_serializes_as_flat_owner_metadata() -> None:
 
     with pytest.raises(FrozenInstanceError):
         reference.owner = "forged"  # type: ignore[misc]
-    assert json.loads(serialize_contract(reference)) == {
+    assert json.loads(CanonicalJsonSerializer.serialize_text(reference)) == {
         "contract_version": "1.0",
         "first_page_number": 1,
         "last_page_number": 32,

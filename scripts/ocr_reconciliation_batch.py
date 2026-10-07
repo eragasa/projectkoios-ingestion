@@ -17,6 +17,7 @@ from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
     _publish_artifacts,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.ocr.batch.publication import SelectiveOCRPublication
 from projectkoios.ingestion.ocr.reconciliation.batch.item import (
     SelectiveOCRReconciliationItem,
@@ -35,10 +36,6 @@ from projectkoios.ingestion.reconciliation.reconciler import (
 )
 from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
-)
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
@@ -316,9 +313,9 @@ def _validate_existing(
         _MAX_RECONCILIATION_PUBLICATION_BYTES,
         "reconciliation publication",
     )
-    if _load_json(content, "reconciliation publication") != contract_dict(
-        expected
-    ):
+    if _load_json(
+        content, "reconciliation publication"
+    ) != CanonicalJsonSerializer.project_object(expected):
         raise ValueError("existing reconciliation publication is inconsistent")
 
 
@@ -436,7 +433,10 @@ def main(arguments: list[str] | None = None) -> int:
                         (
                             ArtifactPublicationItem(
                                 path=page.output_artifact,
-                                text=serialize_contract(publication) + "\n",
+                                text=CanonicalJsonSerializer.serialize_text(
+                                    publication
+                                )
+                                + "\n",
                             ),
                         )
                     )

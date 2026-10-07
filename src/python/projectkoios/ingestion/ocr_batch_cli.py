@@ -9,6 +9,7 @@ import stat
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 from projectkoios.ingestion.cache import _require_bounded_json_nesting
 from projectkoios.ingestion.cli import (
@@ -18,6 +19,7 @@ from projectkoios.ingestion.cli import (
     extract_pdf_evidence,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
@@ -36,10 +38,6 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
 from projectkoios.ingestion.pdf.models import PageRegionSelection
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
-)
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
@@ -425,8 +423,9 @@ def _validate_existing_result(
         or value.get("source_sha256") != item.source.sha256
         or value.get("extraction_sha256") != item.extraction_sha256
         or value.get("page_index") != page.page_index
-        or request_value != contract_dict(request)
-        or processor_value != contract_dict(processor_identity)
+        or request_value != CanonicalJsonSerializer.project_object(request)
+        or processor_value
+        != CanonicalJsonSerializer.project_object(processor_identity)
         or result.get("cache_key")
         != build_ocr_cache_key(
             request=request,
@@ -600,9 +599,11 @@ def main(arguments: list[str] | None = None) -> int:
                 raise ValueError(
                     "selective OCR extraction changed after preflight"
                 )
-            if item.extraction_value.get("document") != contract_dict(
-                extraction
-            ).get("document"):
+            if item.extraction_value.get(
+                "document"
+            ) != CanonicalJsonSerializer.project_object(extraction).get(
+                "document"
+            ):
                 raise ValueError("selective OCR extraction replay changed")
             for page in item.pages:
                 current_artifact = _safe_output_artifact(
@@ -643,11 +644,17 @@ def main(arguments: list[str] | None = None) -> int:
                         [
                             ArtifactPublicationItem(
                                 path=page.artifact,
-                                text=serialize_contract(publication) + "\n",
+                                text=CanonicalJsonSerializer.serialize_text(
+                                    publication
+                                )
+                                + "\n",
                             )
                         ]
                     )
-                    value = contract_dict(publication)
+                    value = cast(
+                        dict[str, object],
+                        CanonicalJsonSerializer.project_object(publication),
+                    )
                     action = "created"
                 completed.append(
                     _summary(

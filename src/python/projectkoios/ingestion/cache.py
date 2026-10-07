@@ -14,7 +14,10 @@ from projectkoios.ingestion.cache_identity import (
     EXTRACTION_CACHE_FORMAT_VERSION,
     build_extraction_cache_key,
 )
-from projectkoios.ingestion.identity import canonical_json, sha256_digest
+from projectkoios.ingestion.identity import sha256_digest
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
+from projectkoios.ingestion.json.error import JsonSerializationError
+from projectkoios.ingestion.json.limits.error import JsonLimitError
 from projectkoios.ingestion.models import (
     CONTRACT_VERSION,
     ExtractedBlock,
@@ -29,7 +32,6 @@ from projectkoios.ingestion.models import (
     TableOfContentsEntry,
     WarningSeverity,
 )
-from projectkoios.ingestion.serialization import contract_dict
 
 _ENTRY_SUFFIX = ".json"
 _MAX_JSON_NESTING = 512
@@ -147,8 +149,16 @@ class FilesystemExtractionCache(ExtractionCache):
         self._require_platform_capabilities()
         key_hash = self._key_hash(cache_key)
         try:
-            serialized_result = contract_dict(result)
-        except (TypeError, RecursionError) as error:
+            serialized_result = CanonicalJsonSerializer.project_object(result)
+        except JsonSerializationError as error:
+            if isinstance(error.__cause__, UnicodeError):
+                raise ValueError(
+                    "result contains a string that is not valid UTF-8"
+                ) from error
+            raise ValueError(
+                "result cannot be represented as a cache contract"
+            ) from error
+        except (JsonLimitError, RecursionError, TypeError) as error:
             raise ValueError(
                 "result cannot be represented as a cache contract"
             ) from error
@@ -169,7 +179,9 @@ class FilesystemExtractionCache(ExtractionCache):
             raise ValueError("cache_key must match the extraction manifest")
         try:
             result_payload_hash = sha256_digest(
-                canonical_json(serialized_result).encode("utf-8")
+                CanonicalJsonSerializer.serialize_text(
+                    serialized_result
+                ).encode("utf-8")
             )
         except UnicodeEncodeError as error:
             raise ValueError(
@@ -188,7 +200,9 @@ class FilesystemExtractionCache(ExtractionCache):
             "result": serialized_result,
         }
         try:
-            payload = (canonical_json(envelope) + "\n").encode("utf-8")
+            payload = (
+                CanonicalJsonSerializer.serialize_text(envelope) + "\n"
+            ).encode("utf-8")
         except UnicodeEncodeError as error:
             raise ValueError(
                 "cache envelope contains a string that is not valid UTF-8"
@@ -446,11 +460,22 @@ class FilesystemExtractionCache(ExtractionCache):
         result_value = envelope["result"]
         try:
             actual_payload_hash = sha256_digest(
-                canonical_json(result_value).encode("utf-8")
+                CanonicalJsonSerializer.serialize_text(result_value).encode(
+                    "utf-8"
+                )
             )
         except UnicodeEncodeError as error:
             raise ExtractionCacheCorruptionError(
                 "cache entry result contains a string that is not valid UTF-8"
+            ) from error
+        except JsonSerializationError as error:
+            if isinstance(error.__cause__, UnicodeError):
+                raise ExtractionCacheCorruptionError(
+                    "cache entry result contains a string that is not "
+                    "valid UTF-8"
+                ) from error
+            raise ExtractionCacheCorruptionError(
+                "cache entry result cannot be canonicalized"
             ) from error
         except (RecursionError, ValueError) as error:
             raise ExtractionCacheCorruptionError(
