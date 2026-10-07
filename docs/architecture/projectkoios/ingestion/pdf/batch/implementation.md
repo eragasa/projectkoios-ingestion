@@ -69,11 +69,14 @@ rather than calling `json.loads()` or `json.dumps()` directly.
 
 ### `limits`
 
-`limits/definition.py` owns the two existing resource bounds:
+`limits/definition.py` owns the two existing record bounds:
 
 - `MAX_PDF_BATCH_ITEMS = 256`; and
 - `MAX_PDF_BATCH_TEXT_CHARACTERS = 4_096` for each bounded identity,
   path, or locator field.
+
+It also owns the concrete version-1 JSON byte, depth, item, string, aggregate
+string, and numeric-token ceilings composed by `PdfBatchPlanJsonContract`.
 
 `limits/error.py` owns `PdfBatchLimitError`, a `ValueError` subclass. It is used
 only when one of those resource bounds is exceeded. Structural, type, path,
@@ -113,9 +116,12 @@ Python module paths. The version-1 wire format is retained as stable; the
 repository-internal Python import path is explicitly treated as unstable for
 this hierarchy correction.
 
-This hierarchy slice does not opportunistically strengthen duplicate-key or
-JSON-constant parsing. Such parser hardening would be a separate wire-format
-change with replay evidence.
+The shared boundary deliberately rejects duplicate object keys, non-RFC
+numeric constants, and omitted item fields that the former direct
+`json.loads()` reconstruction accepted. This is recorded as parser-acceptance
+hardening rather than hidden as a path-move side effect. Focused tests cover
+these cases, while representative and complete 256-item serializer replay
+prove that emitted version-1 bytes are unchanged.
 
 ## Consumer boundaries
 

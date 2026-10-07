@@ -7,11 +7,13 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 from projectkoios.ingestion import ocr_batch_cli
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 pymupdf = pytest.importorskip("pymupdf")
@@ -65,7 +67,10 @@ def test__selective_ocr_batch__is_dry_run_create_once_and_resumable(
     )
     native_plan = PdfBatchPlan(schema_version=1, items=(source,))
     native_plan_path = tmp_path / "native-plan.json"
-    native_plan_path.write_text(native_plan.to_json(), encoding="utf-8")
+    native_plan_path.write_text(
+        PdfBatchPlanJsonContract().serialize_text(native_plan),
+        encoding="utf-8",
+    )
     ingestion_root = tmp_path / "ingestion"
     assert (
         ingest_batch(

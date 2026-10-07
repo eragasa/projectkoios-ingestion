@@ -1,9 +1,9 @@
 from pathlib import PurePosixPath
 
-from projectkoios.ingestion.batch import PdfBatchItem
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
 from projectkoios.ingestion.ocr.batch.plan import SelectiveOCRPlan
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
 
 
 def test__selective_ocr_plan__round_trips_exact_json() -> None:

@@ -37,7 +37,6 @@ from projectkoios.ingestion import (
     TableDetectionResult,
     TablePageRuleEvidence,
     build_equation_index,
-    serialize_contract,
 )
 from projectkoios.ingestion.articles.structure.actionizer import (
     DeterministicArticleStructureActionizer,
@@ -62,6 +61,7 @@ from projectkoios.ingestion.integrations.pix2tex.recognizer import (
 from projectkoios.ingestion.integrations.sqlite.processing.state.store import (
     SqliteProcessingStateStore,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
@@ -222,7 +222,9 @@ def atomic_json(path: Path, value: object) -> None:
 
 
 def owner_json(path: Path, value: object) -> None:
-    atomic_bytes(path, (serialize_contract(value) + "\n").encode())
+    atomic_bytes(
+        path, (CanonicalJsonSerializer.serialize_text(value) + "\n").encode()
+    )
 
 
 def connect() -> AbstractProcessingStateStore:

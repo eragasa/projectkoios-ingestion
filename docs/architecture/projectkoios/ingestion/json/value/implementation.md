@@ -15,10 +15,15 @@ floats, strings, arrays, and string-keyed objects.
 - JSON scalar values.
 
 Projection rejects unsupported objects, non-string mapping keys, key collisions,
-non-finite floats, cycles, and configured depth/item/string limits before a
-serializer or stable-ID hash consumes the result. Signed zero normalization is
-owned by the domain value when identity semantics require it; the generic
-projector does not alter valid numbers.
+cycles, and configured depth/item/string limits before a serializer or
+stable-ID hash consumes the result. It rejects non-finite floats by default.
+The explicit `allow_non_finite` option exists only for the established
+`CanonicalJsonSerializer` compatibility profile because existing stable-ID
+callers construct deterministic evidence for malformed non-finite geometry.
+Typed external JSON parsing and every reversible `JsonContract` keep this
+option disabled. Signed zero normalization is owned by the domain value when
+identity semantics require it; the generic projector does not alter valid
+numbers.
 
 The projector performs no JSON text parsing or formatting and imports no domain
 record. It raises `JsonSerializationError` for unsupported values and

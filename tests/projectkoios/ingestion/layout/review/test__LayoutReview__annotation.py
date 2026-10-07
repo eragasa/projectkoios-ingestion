@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import FrozenInstanceError
 
 import pytest
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.layout.annotation.collection import (
     LayoutAnnotationCollection,
 )
@@ -26,7 +27,6 @@ from projectkoios.ingestion.layout.annotation.region import (
     LayoutRegionAnnotation,
 )
 from projectkoios.ingestion.layout.proposal.kind import LayoutRegionKind
-from projectkoios.ingestion.serialization import serialize_contract
 
 from tests.projectkoios.ingestion.layout.review.layout_review_support import (
     LayoutReviewFixture,
@@ -76,7 +76,9 @@ def test__layout_annotation__records_correction_without_accepting_it() -> None:
         order_edges=(order,),
         failures=(failure,),
     )
-    assert serialize_contract(annotation) == serialize_contract(replayed)
+    assert CanonicalJsonSerializer.serialize_text(
+        annotation
+    ) == CanonicalJsonSerializer.serialize_text(replayed)
     with pytest.raises(FrozenInstanceError):
         annotation.annotator_id = "changed"  # type: ignore[misc]
 

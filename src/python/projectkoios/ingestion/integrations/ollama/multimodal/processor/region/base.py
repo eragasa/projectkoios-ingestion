@@ -6,7 +6,6 @@ import math
 from typing import Any
 
 from projectkoios.base import DataObjectActionizer
-from projectkoios.ingestion.identity import canonical_json
 from projectkoios.ingestion.integrations.ollama.base import (
     OLLAMA_BACKEND_NAME,
     OllamaHttpResponse,
@@ -42,6 +41,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 from projectkoios.ingestion.integrations.ollama.transport.http import (
     LoopbackOllamaHttpTransport,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 
 from .identity import OllamaMultimodalRegionProcessorIdentity
 from .model_list.model import OllamaModelDescriptor
@@ -550,7 +550,7 @@ class OllamaMultimodalRegionProcessor(
 
     @staticmethod
     def _json_bytes(value: object) -> bytes:
-        return canonical_json(value).encode("utf-8")
+        return CanonicalJsonSerializer.serialize_text(value).encode("utf-8")
 
     @staticmethod
     def _chat_body(

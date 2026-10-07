@@ -7,9 +7,13 @@ flowchart LR
     TextLimit["MAX_PDF_BATCH_TEXT_CHARACTERS"]
     ItemLimit["MAX_PDF_BATCH_ITEMS"]
     Records["PDF batch records"]
+    Wire["version-1 JSON bytes and structure"]
+    WireLimits["PDF batch JSON limits"]
 
     Text --> TextLimit --> Records
     Items --> ItemLimit --> Records
+    Wire --> WireLimits --> Records
 ```
 
-The constants bound retained record content independently of JSON formatting.
+The record constants bound retained content independently of JSON formatting;
+the wire constants bound parsing and serialization resources.

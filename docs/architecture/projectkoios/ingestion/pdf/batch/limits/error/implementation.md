@@ -1,7 +1,8 @@
 # `pdf.batch.limits.error` implementation
 
 `PdfBatchLimitError` is a `ValueError` subclass used when an item or plan exceeds
-`MAX_PDF_BATCH_TEXT_CHARACTERS` or `MAX_PDF_BATCH_ITEMS`.
+`MAX_PDF_BATCH_TEXT_CHARACTERS` or `MAX_PDF_BATCH_ITEMS`, or when the version-1
+wire document exceeds a PDF-batch JSON limit.
 
 `PdfBatchPlanJsonContract` translates a generic `JsonLimitError` to this error
 only when the exceeded bound is part of the PDF batch wire boundary. Structural

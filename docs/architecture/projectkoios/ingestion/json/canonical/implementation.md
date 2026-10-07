@@ -7,7 +7,9 @@
 - lexicographically sorted object keys;
 - separators `(",", ":")`;
 - no indentation; and
-- no terminal newline.
+- no terminal newline; and
+- the existing internal non-finite spellings (`NaN`, `Infinity`, and
+  `-Infinity`) retained only for stable-ID and artifact-byte compatibility.
 
 It replaces generic JSON responsibilities currently split between
 `identity.py` and `serialization.py`. It is a one-way serializer, not a
@@ -33,7 +35,9 @@ namespaces.
 
 Before migration, every existing caller of `canonical_json()`,
 `serialize_contract()`, and `contract_dict()` is replayed through both paths.
-Accepted inputs must produce byte-identical output. Inputs newly rejected for
-non-string mapping keys, collisions, cycles, non-finite values, or exceeded
-bounds require evidence that no existing stable identity or published artifact
-uses them. Otherwise the stricter behavior is a separately versioned change.
+Accepted inputs must produce byte-identical output. Inputs newly rejected for non-string mapping keys, collisions, cycles, or
+exceeded bounds require evidence that no existing stable identity or published
+artifact uses them. Existing malformed-geometry tests proved that non-finite
+values already participate in stable-ID construction, so this one-way profile
+retains their exact historical bytes. `JsonParser` and every reversible
+`JsonContract` continue to reject non-finite external JSON.

@@ -5,6 +5,7 @@ explicit values for every byte-affecting choice:
 
 - `ensure_ascii`;
 - `sort_keys`;
+- explicit non-finite-number allowance;
 - `indent` or compact mode;
 - compact separators when indentation is absent;
 - terminal newline presence; and
@@ -21,7 +22,11 @@ It does not infer “canonical” or “pretty” behavior from a caller or reco
 
 The module provides reviewed constructors for the three inventoried formatting
 profiles, but each concrete `JsonContract` still declares which profile it
-uses. A profile constructor is formatting reuse, not a wire schema.
+uses. Those constructors reject non-finite values. A profile constructor is
+formatting reuse, not a wire schema. The one-way
+`CanonicalJsonSerializer` constructs an explicit compatibility configuration
+that retains the prior `NaN`/`Infinity` bytes used by internal malformed-value
+identity evidence; no external parser or reversible contract uses it.
 
 Serialization failures raise `JsonSerializationError`; output resource failures
 raise `JsonLimitError`. The serializer does not hash, publish, or write content.

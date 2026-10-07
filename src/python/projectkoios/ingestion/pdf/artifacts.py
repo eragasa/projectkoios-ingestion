@@ -6,6 +6,7 @@ from pathlib import PurePosixPath
 
 from projectkoios.ingestion.cache import deserialize_extraction_result
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import (
     ExtractedPage,
     ExtractionResult,
@@ -19,7 +20,6 @@ from projectkoios.ingestion.pdf.adapters.pymupdf.extraction import (
 from projectkoios.ingestion.pdf.extraction.contracts import (
     PdfExtractionConfiguration,
 )
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
@@ -481,9 +481,9 @@ def read_pdf_extraction_transcript(
     try:
         raw_text = raw_artifact.content.decode("utf-8", errors="strict")
         result = deserialize_extraction_result(raw_text)
-        canonical_content = (serialize_contract(result) + "\n").encode(
-            "utf-8", errors="strict"
-        )
+        canonical_content = (
+            CanonicalJsonSerializer.serialize_text(result) + "\n"
+        ).encode("utf-8", errors="strict")
     except (TypeError, UnicodeError, ValueError) as error:
         raise PdfExtractionArtifactMalformedError(
             f"raw extraction artifact is malformed: {error}"
@@ -610,9 +610,9 @@ def _artifact_payloads(
             "PDF extraction artifact count exceeds max_artifacts"
         )
     try:
-        raw_extraction = (serialize_contract(result) + "\n").encode(
-            "utf-8", errors="strict"
-        )
+        raw_extraction = (
+            CanonicalJsonSerializer.serialize_text(result) + "\n"
+        ).encode("utf-8", errors="strict")
     except (TypeError, ValueError, UnicodeError) as error:
         raise PdfExtractionArtifactValidationError(
             "raw extraction result is not canonical UTF-8 evidence"

@@ -7,9 +7,11 @@ from pathlib import Path, PurePosixPath
 from typing import ClassVar
 
 import pytest
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.transcript_batch import TranscriptBatchPlan
 from projectkoios.ingestion.transcript_plan_cli import main as transcript_plan
@@ -55,7 +57,10 @@ class TranscriptBatchFixture:
             ),
         )
         source_plan_path = tmp_path / "source-plan.json"
-        source_plan_path.write_text(source_plan.to_json(), encoding="utf-8")
+        source_plan_path.write_text(
+            PdfBatchPlanJsonContract().serialize_text(source_plan),
+            encoding="utf-8",
+        )
         ingestion = tmp_path / "ingestion"
         assert (
             ingest_batch(

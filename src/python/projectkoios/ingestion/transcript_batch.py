@@ -15,7 +15,6 @@ from projectkoios.ingestion.articles.structure.actionizer import (
 from projectkoios.ingestion.articles.structure.request import (
     ArticleStructureRequest,
 )
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.clean_transcript import (
     CleanTranscriptConfiguration,
     CleanTranscriptRequest,
@@ -32,10 +31,13 @@ from projectkoios.ingestion.equations.detection import (
 )
 from projectkoios.ingestion.figures import DeterministicFigureCandidateDetector
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.layout import DeterministicLayoutProcessor
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,
@@ -43,10 +45,6 @@ from projectkoios.ingestion.provenance import (
 from projectkoios.ingestion.reference_evidence import (
     build_reference_evidence,
     serialize_reference_evidence,
-)
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
@@ -574,7 +572,7 @@ def execute_transcript_batch_item(
             "raw extraction artifact changed after preflight"
         )
     existing_extraction = _strict_json_object(extraction_bytes.decode("utf-8"))
-    replayed_extraction = contract_dict(extraction)
+    replayed_extraction = CanonicalJsonSerializer.project_object(extraction)
     if existing_extraction.get("document") != replayed_extraction["document"]:
         raise TranscriptBatchError(
             "raw extraction document changed after preflight"
@@ -594,7 +592,7 @@ def execute_transcript_batch_item(
         BytesIO(payload),
         layouts,
     )
-    equation_text = serialize_contract(equations) + "\n"
+    equation_text = CanonicalJsonSerializer.serialize_text(equations) + "\n"
     if equation_text.encode("utf-8") != _read_artifact(
         source.detection_artifact
     ):
@@ -661,8 +659,8 @@ def execute_transcript_batch_item(
     )
     audit.require_valid()
 
-    clean_json = serialize_contract(clean) + "\n"
-    audit_json = serialize_contract(audit) + "\n"
+    clean_json = CanonicalJsonSerializer.serialize_text(clean) + "\n"
+    audit_json = CanonicalJsonSerializer.serialize_text(audit) + "\n"
     reference_evidence = build_reference_evidence(
         extraction_result=extraction,
         extraction_artifact=extraction_bytes,

@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from projectkoios.ingestion.cache import deserialize_extraction_result
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.layout import (
     DeterministicLayoutProcessor,
     LayoutConfiguration,
 )
-from projectkoios.ingestion.serialization import contract_dict
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 ROOT = Path(
@@ -338,7 +338,9 @@ def plan() -> dict[str, object]:
         ):
             raise RuntimeError("selected native page changed during planning")
         layout = processor.analyze_page(extraction.document.source, page)
-        layout_content = json_bytes(contract_dict(layout))
+        layout_content = json_bytes(
+            CanonicalJsonSerializer.project_object(layout)
+        )
         relative_layout = (
             Path("layout")
             / candidate.source_sha256

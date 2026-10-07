@@ -25,10 +25,10 @@ from projectkoios.ingestion.articles.structure.actionizer import (
 from projectkoios.ingestion.articles.structure.request import (
     ArticleStructureRequest,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
     DeterministicTableStructureReconstructor,
@@ -571,7 +571,7 @@ def test__structured_transcription__preserves_golden_identity_and_bytes() -> (
         "00a8ee5d8f354c6f73a4d028974d6a8a3af6804745e42279c1097282307e91b0"
     )
     assert SHA256Verifier.verify(
-        content=serialize_contract(result).encode("utf-8"),
+        content=CanonicalJsonSerializer.serialize_text(result).encode("utf-8"),
         expected="a445d788ef02eb761792358d874cd321616035e5523be4c54f45fc05885834b3",
     )
 

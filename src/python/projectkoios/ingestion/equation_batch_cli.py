@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cache import _require_bounded_json_nesting
 from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
@@ -22,13 +21,13 @@ from projectkoios.ingestion.equations.detection import (
     DeterministicEquationCandidateDetector,
     EquationDetectionResult,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.serialization import (
-    contract_dict,
-    serialize_contract,
-)
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.artifact import ArtifactPublicationItem
@@ -241,7 +240,7 @@ def _derive(
     ):
         raise ValueError("raw extraction artifact changed after preflight")
     existing_extraction = json.loads(extraction_bytes)
-    replayed_extraction = contract_dict(extraction)
+    replayed_extraction = CanonicalJsonSerializer.project_object(extraction)
     if existing_extraction.get("document") != replayed_extraction["document"]:
         raise ValueError("raw extraction document changed after preflight")
     detection = DeterministicEquationCandidateDetector(
@@ -251,8 +250,8 @@ def _derive(
         BytesIO(payload),
     )
     retrieval = EquationRetrievalArtifact.from_detection(detection)
-    detection_text = serialize_contract(detection) + "\n"
-    retrieval_text = serialize_contract(retrieval) + "\n"
+    detection_text = CanonicalJsonSerializer.serialize_text(detection) + "\n"
+    retrieval_text = CanonicalJsonSerializer.serialize_text(retrieval) + "\n"
     action = "created"
     if item.existing:
         if (
@@ -318,7 +317,9 @@ def main(arguments: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(arguments)
     try:
-        plan = PdfBatchPlan.from_json(args.plan.read_text(encoding="utf-8"))
+        plan = PdfBatchPlanJsonContract().parse_text(
+            args.plan.read_text(encoding="utf-8")
+        )
         resolved = _resolve_items(
             plan,
             source_root=args.source_root,

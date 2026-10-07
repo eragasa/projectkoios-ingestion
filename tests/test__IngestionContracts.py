@@ -32,12 +32,11 @@ from projectkoios.ingestion import (
     TableStructureReconstructor,
     TesseractOCRProcessor,
     WarningSeverity,
-    contract_dict,
-    serialize_contract,
 )
 from projectkoios.ingestion.figures.relevance.processor.base import (
     FigureRelevanceProcessor,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.reconciliation.reconciler import (
     DeterministicOCRReconciler,
 )
@@ -316,9 +315,9 @@ def test__serialization__is_deterministic_and_json_compatible() -> None:
         table_of_contents=(entry,),
     )
 
-    first = serialize_contract(document)
-    second = serialize_contract(document)
-    values = contract_dict(document)
+    first = CanonicalJsonSerializer.serialize_text(document)
+    second = CanonicalJsonSerializer.serialize_text(document)
+    values = CanonicalJsonSerializer.project_object(document)
 
     assert first == second
     assert values["contract_version"] == "2.2"

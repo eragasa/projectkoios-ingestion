@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 from projectkoios.ingestion.storage.extraction.projection.collection import (
@@ -105,11 +106,13 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
         projected = dict(value)
         # Hash the actual projected content before adding the marker. This
         # avoids a recursive digest while binding every domain field.
-        content_sha256 = cls._digest(canonical_json(projected))
+        content_sha256 = cls._digest(
+            CanonicalJsonSerializer.serialize_text(projected)
+        )
         projected[_CONTENT_DIGEST_FIELD] = content_sha256
         # Hash the final stored form separately. Inventory readers must compute
         # this digest from observed content rather than trusting the marker.
-        serialized = canonical_json(projected)
+        serialized = CanonicalJsonSerializer.serialize_text(projected)
         canonical_sha256 = cls._digest(serialized)
         return cls(
             projection_document_id=stable_id(
@@ -147,7 +150,8 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
             raise ValueError("projected document JSON is invalid") from error
         if (
             type(value) is not dict
-            or canonical_json(value) != self.document_json
+            or CanonicalJsonSerializer.serialize_text(value)
+            != self.document_json
         ):
             raise ValueError("projected document JSON is not canonical")
         if (
@@ -158,7 +162,9 @@ class ExtractionProjectionDocument(AbstractImmutableDataObject):
             raise ValueError("projected document fields are inconsistent")
         base_value = dict(value)
         del base_value[_CONTENT_DIGEST_FIELD]
-        expected_content = self._digest(canonical_json(base_value))
+        expected_content = self._digest(
+            CanonicalJsonSerializer.serialize_text(base_value)
+        )
         expected_canonical = self._digest(self.document_json)
         if (
             type(self.document_id) is not str

@@ -29,10 +29,10 @@ from projectkoios.ingestion import (
     build_extraction_cache_key,
 )
 from projectkoios.ingestion.identity import (
-    canonical_json,
     sha256_digest,
     stable_id,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 
 
 def _result(
@@ -168,12 +168,14 @@ def _read_envelope(root: Path, key: str) -> dict[str, Any]:
 
 
 def _write_envelope(root: Path, key: str, value: dict[str, Any]) -> None:
-    _entry_path(root, key).write_text(canonical_json(value) + "\n")
+    _entry_path(root, key).write_text(
+        CanonicalJsonSerializer.serialize_text(value) + "\n"
+    )
 
 
 def _rehash_result(envelope: dict[str, Any]) -> None:
     envelope["result_payload_hash"] = sha256_digest(
-        canonical_json(envelope["result"]).encode()
+        CanonicalJsonSerializer.serialize_text(envelope["result"]).encode()
     )
 
 

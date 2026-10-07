@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     _HARD_MAX_SELECTIONS,
     _HARD_MAX_TOTAL_IMAGE_BYTES,
@@ -15,6 +15,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMultimodalTaskKind,
     OllamaPromptRecord,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ class OllamaMultimodalRegionProcessingRequest(
         cls,
         selections: tuple[OllamaMultimodalSelection, ...],
     ) -> OllamaPromptRecord:
-        manifest = canonical_json(
+        manifest = CanonicalJsonSerializer.serialize_text(
             [
                 {
                     "index": index,

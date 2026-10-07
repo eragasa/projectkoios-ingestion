@@ -1,6 +1,6 @@
 from pathlib import Path, PurePosixPath
 
-from projectkoios.ingestion.batch import PdfBatchItem
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
@@ -21,11 +21,11 @@ from projectkoios.ingestion.ocr.result.ocr import OCRResult
 from projectkoios.ingestion.ocr.result.selection import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection import OCRSelection
 from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
 )
-from projectkoios.ingestion.serialization import contract_dict
 
 
 def test__selective_ocr_publication__binds_plan_and_result() -> None:
@@ -108,6 +108,8 @@ def test__selective_ocr_publication__binds_plan_and_result() -> None:
     assert publication.source_sha256 == source.content_hash
     assert publication.extraction_sha256 == "d" * 64
     assert (
-        SelectiveOCRPublication.from_dict(contract_dict(publication))
+        SelectiveOCRPublication.from_dict(
+            CanonicalJsonSerializer.project_object(publication)
+        )
         == publication
     )

@@ -4,7 +4,6 @@ import os
 from pathlib import Path, PurePosixPath
 
 import pytest
-from projectkoios.ingestion import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion import corpus as corpus_module
 from projectkoios.ingestion.corpus import (
     PdfCorpusError,
@@ -15,6 +14,8 @@ from projectkoios.ingestion.corpus import (
     publish_pdf_corpus_plans,
     validate_pdf_corpus,
 )
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 
 
 def _item(index: int, *, byte_size: int = 1) -> PdfBatchItem:

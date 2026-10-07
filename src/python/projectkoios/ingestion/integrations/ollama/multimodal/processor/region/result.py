@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from projectkoios.base import DataObjectActionResult
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
 from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaMetadataResponseIdentity,
     OllamaMetadataStage,
@@ -21,6 +21,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
     OllamaPromptRecord,
     OllamaRawResponseIdentity,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.hash import SHA256Hash
 
 from .identity import OllamaMultimodalRegionProcessorIdentity
@@ -209,7 +210,10 @@ class OllamaMultimodalRegionProcessingResult(
             }
             for index, item in enumerate(results)
         ]
-        if manifest != expected or manifest_text != canonical_json(expected):
+        if (
+            manifest != expected
+            or manifest_text != CanonicalJsonSerializer.serialize_text(expected)
+        ):
             raise ValueError(
                 "result coverage does not match prompt evidence manifest"
             )

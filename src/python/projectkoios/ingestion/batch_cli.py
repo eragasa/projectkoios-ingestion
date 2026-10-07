@@ -6,7 +6,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cli import (
     ArtifactPublicationError,
     ExtractionCacheOperationError,
@@ -14,6 +13,9 @@ from projectkoios.ingestion.cli import (
     ingest_pdf_artifacts,
 )
 from projectkoios.ingestion.models import ExtractionResult
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
@@ -166,7 +168,9 @@ def main(arguments: list[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(arguments)
     try:
-        plan = PdfBatchPlan.from_json(args.plan.read_text(encoding="utf-8"))
+        plan = PdfBatchPlanJsonContract().parse_text(
+            args.plan.read_text(encoding="utf-8")
+        )
         resolved = _resolve_items(
             plan,
             source_root=args.source_root,

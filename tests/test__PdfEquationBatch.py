@@ -5,9 +5,11 @@ import shutil
 from pathlib import Path, PurePosixPath
 
 import pytest
-from projectkoios.ingestion import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.equation_batch_cli import main as equation_batch
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pdf"
@@ -35,7 +37,10 @@ def _setup(tmp_path: Path) -> tuple[Path, Path, Path]:
     source.mkdir()
     shutil.copyfile(FIXTURES / "equations.pdf", source / "equations.pdf")
     plan = tmp_path / "plan.json"
-    plan.write_text(_plan(payload).to_json(), encoding="utf-8")
+    plan.write_text(
+        PdfBatchPlanJsonContract().serialize_text(_plan(payload)),
+        encoding="utf-8",
+    )
     ingestion = tmp_path / "ingestion"
     assert (
         ingest_batch(

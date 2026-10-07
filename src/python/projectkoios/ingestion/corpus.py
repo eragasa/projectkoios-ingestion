@@ -12,7 +12,6 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.cache import deserialize_extraction_result
 from projectkoios.ingestion.models import ExtractionResult
 from projectkoios.ingestion.pdf import (
@@ -26,6 +25,9 @@ from projectkoios.ingestion.pdf import (
     build_pdf_extraction_artifacts,
     read_pdf_extraction_transcript,
 )
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
@@ -183,7 +185,7 @@ def publish_pdf_corpus_plans(
     _require_content_addressed_items(plans)
     _require_corpus_plan_bounds(plans, limits or PdfCorpusLimits())
     expected = {
-        _plan_filename(index): plan.to_json().encode("utf-8")
+        _plan_filename(index): PdfBatchPlanJsonContract().serialize_bytes(plan)
         for index, plan in enumerate(plans, start=1)
     }
     if any(len(content) > _MAX_PLAN_BYTES for content in expected.values()):
@@ -257,7 +259,7 @@ def load_pdf_corpus_plans(
         try:
             text = content.decode("utf-8", errors="strict")
             json.loads(text, object_pairs_hook=_unique_json_object)
-            plan = PdfBatchPlan.from_json(text)
+            plan = PdfBatchPlanJsonContract().parse_text(text)
         except (UnicodeDecodeError, ValueError) as error:
             raise PdfCorpusError("corpus plan is malformed") from error
         item_count, total_source_bytes = _extend_corpus_plan_bounds(

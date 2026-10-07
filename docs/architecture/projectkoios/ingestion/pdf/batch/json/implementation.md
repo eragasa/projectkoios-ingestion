@@ -72,5 +72,11 @@ The inherited precise operations are:
 - `parse_text(content)`; and
 - `parse_bytes(content)`.
 
+The contract also exposes `item_from_json_value(value)` for typed durable JSON
+families, such as selective OCR plans, that embed the exact PDF source item
+shape. This keeps item-object reconstruction with its JSON owner rather than
+adding `from_dict()` to the record or importing a private helper across
+modules.
+
 The records expose no `to_json()`, `from_json()`, or `from_dict()` compatibility
 methods. Consumers import and invoke this defining JSON owner directly.

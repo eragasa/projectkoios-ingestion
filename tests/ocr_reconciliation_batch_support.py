@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
 
-from projectkoios.ingestion.batch import PdfBatchItem
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.models import SourceDocument
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
@@ -27,6 +27,7 @@ from projectkoios.ingestion.ocr.result.ocr import OCRResult
 from projectkoios.ingestion.ocr.result.selection import OCRSelectionResult
 from projectkoios.ingestion.ocr.selection import OCRSelection
 from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
 from projectkoios.ingestion.pdf.models import (
     RegionRenderConfiguration,
     RenderedRegion,
@@ -38,7 +39,6 @@ from projectkoios.ingestion.reconciliation.request import (
     OCRReconciliationRequest,
 )
 from projectkoios.ingestion.reconciliation.result import OCRReconciliationResult
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
@@ -123,7 +123,9 @@ def reconciliation_fixture() -> tuple[
         result=result,
     )
     ocr_digest = SHA256Fingerprinter.fingerprint(
-        content=(serialize_contract(ocr_publication) + "\n").encode()
+        content=(
+            CanonicalJsonSerializer.serialize_text(ocr_publication) + "\n"
+        ).encode()
     )
     page = SelectiveOCRReconciliationPage(
         page_index=0,

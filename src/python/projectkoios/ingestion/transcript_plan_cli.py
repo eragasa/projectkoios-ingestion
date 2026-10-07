@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from projectkoios.ingestion.batch import PdfBatchPlan
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
 from projectkoios.ingestion.transcript_batch import (
     TranscriptBatchPublicationError,
     build_transcript_batch_plan,
@@ -29,7 +29,7 @@ def main(arguments: list[str] | None = None) -> int:
     try:
         if args.source_plan.is_symlink() or not args.source_plan.is_file():
             raise ValueError("source plan must be a safe regular file")
-        source_plan = PdfBatchPlan.from_json(
+        source_plan = PdfBatchPlanJsonContract().parse_text(
             args.source_plan.read_text(encoding="utf-8")
         )
         plan = build_transcript_batch_plan(

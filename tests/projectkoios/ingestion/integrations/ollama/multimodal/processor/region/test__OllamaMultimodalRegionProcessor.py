@@ -16,7 +16,6 @@ from conftest import (
     _structured_output,
 )
 from projectkoios.base import DataObjectActionizer
-from projectkoios.ingestion import serialize_contract
 from projectkoios.ingestion.integrations.ollama.base import (
     OllamaHttpResponse,
     OllamaRequestOptions,
@@ -33,6 +32,7 @@ from projectkoios.ingestion.integrations.ollama.multimodal.base import (
 from projectkoios.ingestion.integrations.ollama.multimodal.processor.region.base import (  # noqa: E501
     OllamaMultimodalRegionProcessor,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
 
@@ -86,7 +86,9 @@ def test__successful_complete_proposals_preserve_order_and_provenance() -> None:
     assert result.model_verification.limitation == (
         "non_atomic_tag_to_chat_binding"
     )
-    assert serialize_contract(result) == serialize_contract(result)
+    assert CanonicalJsonSerializer.serialize_text(
+        result
+    ) == CanonicalJsonSerializer.serialize_text(result)
 
 
 def test__chat_binds_exact_images_prompt_schema_and_options() -> None:

@@ -76,9 +76,12 @@ All untrusted JSON is bounded before recursive standard-library parsing:
 7. pass the closed `JsonValue` to the concrete record decoder.
 
 Serialization projects values iteratively or with an explicit depth bound,
-rejects cycles and unsupported values, requires finite floats, and enforces the
-configured output-byte limit before returning content. External values must be
-bounded before canonical bytes are supplied to stable-ID hashing.
+rejects cycles and unsupported values, and enforces the configured output-byte
+limit before returning content. Generic serializers and reversible contracts
+require finite floats. The one-way canonical compatibility profile alone
+retains historical non-finite bytes used by internal malformed-geometry
+identity evidence. External values must be bounded before canonical bytes are
+supplied to stable-ID hashing.
 
 ## Formatting and replay
 
@@ -86,6 +89,7 @@ bounded before canonical bytes are supplied to stable-ID hashing.
 contract selects every byte-affecting option:
 
 - key sorting;
+- non-finite-number policy;
 - indentation;
 - separators;
 - ASCII escaping;

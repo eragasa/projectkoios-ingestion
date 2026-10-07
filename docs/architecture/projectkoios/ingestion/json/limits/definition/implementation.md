@@ -3,7 +3,7 @@
 `JsonLimits` is a frozen dataclass whose positive integer fields are:
 
 - `maximum_utf8_bytes`;
-- `maximum_depth`;
+- `maximum_container_depth`;
 - `maximum_items`;
 - `maximum_string_bytes`;
 - `maximum_total_string_bytes`; and
@@ -14,10 +14,19 @@ above repository hard ceilings. Aggregate string bytes cannot exceed total
 UTF-8 bytes, and individual string bytes cannot exceed aggregate string bytes.
 
 Hard-ceiling constants are implementation safety boundaries, not domain wire
-limits. Their initial values must cover every inventoried existing boundary,
-including the one-gigabyte page-projection artifact ceiling, while preventing
-new unbounded configurations. Exact values are selected during implementation
-after measuring current fixtures and are documented with the evidence used.
+limits. Their implemented values are:
+
+- `MAX_JSON_UTF8_BYTES = 1_000_000_000`;
+- `MAX_JSON_CONTAINER_DEPTH = 512`;
+- `MAX_JSON_ITEMS = 100_000_000`;
+- `MAX_JSON_STRING_BYTES = 1_000_000_000`;
+- `MAX_JSON_TOTAL_STRING_BYTES = 1_000_000_000`; and
+- `MAX_JSON_NUMBER_CHARACTERS = 4_096`.
+
+The byte ceiling covers the inventoried one-gigabyte page-projection artifact
+boundary. These are outer repository safety bounds; each external document
+family declares substantially narrower operational limits where its schema
+permits them.
 
 No implicit `DEFAULT_JSON_LIMITS` value is provided. A caller must make its
 resource policy explicit.

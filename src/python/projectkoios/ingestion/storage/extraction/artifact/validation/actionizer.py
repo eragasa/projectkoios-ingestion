@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.cache import deserialize_extraction_result
-from projectkoios.ingestion.serialization import serialize_contract
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 from projectkoios.ingestion.storage.extraction.actions.disposition import (
@@ -85,7 +85,9 @@ class ExistingExtractionArtifactValidationActionizer(
             publication_request = ExtractionPublicationRequest.create(
                 extraction=extraction
             )
-            payload = serialize_contract(extraction).encode("utf-8")
+            payload = CanonicalJsonSerializer.serialize_text(extraction).encode(
+                "utf-8"
+            )
         except TypeError, UnicodeError, ValueError:
             return self._failed(
                 request=request,

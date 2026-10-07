@@ -16,6 +16,7 @@ from projectkoios.ingestion import (
     TesseractLanguageBinding,
     TesseractOCRProcessor,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.ocr.configuration import OCRConfiguration
 from projectkoios.ingestion.ocr.image.page import OCRPageImage
 from projectkoios.ingestion.ocr.request import OCRRequest
@@ -25,7 +26,6 @@ from projectkoios.ingestion.ocr.status.selection import OCRSelectionStatus
 from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
     PyMuPdfRegionRenderer,
 )
-from projectkoios.ingestion.serialization import serialize_contract
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
@@ -299,7 +299,9 @@ def _run_pipeline(
         warning_count += len(selection_result.warnings)
         result_digests.append(
             SHA256Fingerprinter.fingerprint(
-                content=serialize_contract(result).encode("utf-8")
+                content=CanonicalJsonSerializer.serialize_text(result).encode(
+                    "utf-8"
+                )
             )
         )
     aggregate_digest = SHA256Fingerprinter.fingerprint(

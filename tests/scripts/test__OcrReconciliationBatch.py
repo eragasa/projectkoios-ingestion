@@ -6,7 +6,6 @@ import sys
 from pathlib import Path, PurePosixPath
 
 import pytest
-from projectkoios.ingestion.batch import PdfBatchItem, PdfBatchPlan
 from projectkoios.ingestion.batch_cli import main as ingest_batch
 from projectkoios.ingestion.ocr.batch.item import SelectiveOCRItem
 from projectkoios.ingestion.ocr.batch.page import SelectiveOCRPage
@@ -21,6 +20,9 @@ from projectkoios.ingestion.ocr.reconciliation.batch.plan import (
     SelectiveOCRReconciliationPlan,
 )
 from projectkoios.ingestion.ocr_batch_cli import main as selective_ocr_batch
+from projectkoios.ingestion.pdf.batch.item import PdfBatchItem
+from projectkoios.ingestion.pdf.batch.json import PdfBatchPlanJsonContract
+from projectkoios.ingestion.pdf.batch.plan import PdfBatchPlan
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.verifier import SHA256Verifier
 
@@ -78,7 +80,9 @@ def test__ocr_reconciliation_batch__is_dry_run_create_once_and_resumable(
     )
     native_plan_path = tmp_path / "native-plan.json"
     native_plan_path.write_text(
-        PdfBatchPlan(schema_version=1, items=(source,)).to_json(),
+        PdfBatchPlanJsonContract().serialize_text(
+            PdfBatchPlan(schema_version=1, items=(source,))
+        ),
         encoding="utf-8",
     )
     ingestion_root = tmp_path / "ingestion"

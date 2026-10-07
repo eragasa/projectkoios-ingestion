@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import ClassVar
 
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
-from projectkoios.ingestion.identity import canonical_json, stable_id
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.storage.extraction.projection.index.readiness.evidence.index import (  # noqa: E501
     ExtractionProjectionIndexEvidence,
@@ -51,7 +52,9 @@ class ExtractionProjectionIndexReadinessEvidence(AbstractImmutableDataObject):
             tuple(item.index_evidence_id for item in indexes),
         )
         digest = SHA256Fingerprinter.fingerprint(
-            content=canonical_json(values).encode("utf-8")
+            content=CanonicalJsonSerializer.serialize_text(values).encode(
+                "utf-8"
+            )
         )
         return cls(
             readiness_id=stable_id(
@@ -101,7 +104,9 @@ class ExtractionProjectionIndexReadinessEvidence(AbstractImmutableDataObject):
             tuple(item.index_evidence_id for item in self.indexes),
         )
         digest = SHA256Fingerprinter.fingerprint(
-            content=canonical_json(values).encode("utf-8")
+            content=CanonicalJsonSerializer.serialize_text(values).encode(
+                "utf-8"
+            )
         )
         if self.canonical_sha256 != digest:
             raise ValueError("index-readiness evidence digest is inconsistent")
