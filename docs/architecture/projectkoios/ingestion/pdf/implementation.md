@@ -5,6 +5,15 @@ concrete PyMuPDF execution:
 
 ```text
 pdf/
+  batch/
+    __init__.py        # namespace only
+    item.py            # immutable checksummed PDF source declaration
+    plan.py            # ordered bounded plan record
+    json.py            # typed version-1 PDF batch JSON boundary
+    limits/
+      __init__.py      # namespace only
+      definition.py    # item-count and text-length bounds
+      error.py         # typed batch-limit failure
   extraction/
     __init__.py        # namespace only
     contracts.py       # neutral configuration and limits
@@ -21,10 +30,18 @@ pdf/
 
 Package initializers below the two established public facades are namespace
 markers, not export-all facades. Internal callers import concrete defining
-modules. For this bounded correction, the existing explicit
+modules. The new `pdf.batch` package has no facade export: moved batch records
+are removed from the ingestion root and consumers use their defining leaves.
+For the earlier extraction correction, the existing explicit
 `PyMuPdfExtractor` exports at `projectkoios.ingestion` and
 `projectkoios.ingestion.pdf` remain compatibility surfaces. No new facade
 export is added; facade removal requires a later compatibility migration.
+
+`pdf.batch` owns immutable portable source items, ordered bounded plans, and
+the PDF-specific `PdfBatchPlanJsonContract`. Shared bounded JSON mechanics come
+from `ingestion.json`. The batch package performs no file discovery, source
+reads, extraction, publication, or Workflow lifecycle. Its version-1 serializer
+bytes remain unchanged through the hierarchy migration.
 
 `pdf.extraction` owns neutral configuration and limit contracts, immutable
 requests/results, and deterministic actions over normalized backend evidence.
@@ -63,6 +80,18 @@ Valid geometry and native block order remain unchanged.
 6. Replay Simon physical page 80 and chunk 008 before resuming any later book.
 7. Resume the sequential seven-book queue only if extraction and downstream
    detection accept the missing-geometry evidence path.
+
+## PDF batch extension sequence
+
+The later batch-record hierarchy extension is separately bounded:
+
+1. Review the `pdf.batch` ownership design and exact structural path map.
+2. Move item, plan, and limit ownership without changing version-1 JSON bytes.
+3. Update all consumers to direct defining-leaf imports and remove root exports.
+4. Delete the flat `batch.py` without a compatibility facade.
+5. Split plan-record tests from command-boundary tests.
+6. Verify focused and full tests, documentation, distributions, clean-wheel
+   imports, command smoke, and representative byte replay.
 
 This migration does not add OCR, semantic reconciliation, figure descriptions,
 model selection, Search eligibility, indexing, or product routing.

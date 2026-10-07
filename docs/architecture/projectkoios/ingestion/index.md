@@ -5,9 +5,11 @@ processing. It exposes stable ingestion contracts while keeping format-neutral
 policy separate from optional format/backend integrations. The
 [`documents`](documents/index.md) and [`transcripts`](transcripts/index.md)
 packages define the nominal document, page, and block hierarchy. Shared
-identity roots belong to [`base`](base/index.md). Canonical SHA-256 values,
-fingerprinting, and verification belong to [`sha256`](sha256/index.md).
-External runtime adapters belong to [`integrations`](integrations/index.md).
+identity roots belong to [`base`](base/index.md). Bounded JSON values,
+parsing, serialization, and typed JSON document boundaries belong to
+[`json`](json/index.md). Canonical SHA-256 values, fingerprinting, and
+verification belong to [`sha256`](sha256/index.md). External runtime adapters
+belong to [`integrations`](integrations/index.md).
 Deterministic layout evidence and non-authoritative failure review belong to
 [`layout`](layout/index.md). The backend-neutral [`storage`](storage/index.md)
 boundaries publish exact extraction

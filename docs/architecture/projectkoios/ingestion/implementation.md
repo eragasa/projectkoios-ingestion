@@ -8,7 +8,10 @@ Nominal document roots belong to `documents`; nominal transcript, page, and
 block specializations belong to `transcripts`. Concrete clean transcript types
 retain their established module while implementing that hierarchy. Shared
 immutable identity records specialize `AbstractIdentity` from `ingestion.base`.
-External runtime adapters, including Ollama, belong to `integrations`.
+Reusable bounded JSON mechanics and typed `JsonContract[T]` composition belong
+to `ingestion.json`; domain packages retain their own field schemas and record
+invariants. External runtime adapters, including Ollama, belong to
+`integrations`.
 
 Backend-neutral PDF extraction actions belong to `pdf.extraction`; concrete
 PyMuPDF extraction and rendering belong to `pdf.adapters.pymupdf`. Transcript
