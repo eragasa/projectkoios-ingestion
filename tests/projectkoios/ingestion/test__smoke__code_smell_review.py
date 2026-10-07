@@ -27,6 +27,20 @@ from projectkoios.ingestion.base.actionizer.result import (
     AbstractDataObjectActionResult,
 )
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
+from projectkoios.ingestion.integrations.layout_parser.actionizer import (
+    LayoutParserRegionProposalActionizer,
+)
+from projectkoios.ingestion.integrations.layout_parser.request import (
+    LayoutParserProposalRequest,
+)
+from projectkoios.ingestion.integrations.layout_parser.result import (
+    LayoutParserProposalResult,
+)
+from projectkoios.ingestion.layout.review.actionizer import (
+    DeterministicLayoutReviewActionizer,
+)
+from projectkoios.ingestion.layout.review.request import LayoutReviewRequest
+from projectkoios.ingestion.layout.review.result import LayoutReviewCase
 from projectkoios.ingestion.structure import StructureAnalysis
 
 pytestmark = pytest.mark.smoke
@@ -48,6 +62,13 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "storage",
     _SOURCE_ROOT / "integrations/mongodb",
     _SOURCE_ROOT / "integrations/sqlite",
+    _SOURCE_ROOT / "integrations/layout_parser",
+    _SOURCE_ROOT / "layout/annotation",
+    _SOURCE_ROOT / "layout/limits",
+    _SOURCE_ROOT / "layout/proposal",
+    _SOURCE_ROOT / "layout/render",
+    _SOURCE_ROOT / "layout/review",
+    _SOURCE_ROOT / "layout/validation",
     _SOURCE_ROOT / "documents/structure",
     _SOURCE_ROOT / "figures/relevance",
     _SOURCE_ROOT / "ocr",
@@ -59,9 +80,25 @@ _MIGRATED_SCOPES = (
 _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
     _SOURCE_ROOT / "articles/structure",
     _SOURCE_ROOT / "figures/relevance",
+    _SOURCE_ROOT / "integrations/layout_parser",
+    _SOURCE_ROOT / "layout/annotation",
+    _SOURCE_ROOT / "layout/limits",
+    _SOURCE_ROOT / "layout/proposal",
+    _SOURCE_ROOT / "layout/render",
+    _SOURCE_ROOT / "layout/review",
+    _SOURCE_ROOT / "layout/validation",
     _SOURCE_ROOT / "transcription",
 )
-_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (_SOURCE_ROOT / "transcription",)
+_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
+    _SOURCE_ROOT / "integrations/layout_parser",
+    _SOURCE_ROOT / "layout/annotation",
+    _SOURCE_ROOT / "layout/limits",
+    _SOURCE_ROOT / "layout/proposal",
+    _SOURCE_ROOT / "layout/render",
+    _SOURCE_ROOT / "layout/review",
+    _SOURCE_ROOT / "layout/validation",
+    _SOURCE_ROOT / "transcription",
+)
 _EXTERNAL_MODULE_FUNCTIONS = frozenset(
     {
         (
@@ -121,6 +158,28 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=DeterministicArticleStructureActionizer,
         actionizer_base=ConfigurableDataObjectActionizer,
         result_type=StructureAnalysis,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="layout_parser_region_proposal",
+        request_type=LayoutParserProposalRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=LayoutParserRegionProposalActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=LayoutParserProposalResult,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="layout_review",
+        request_type=LayoutReviewRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=DeterministicLayoutReviewActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=LayoutReviewCase,
         result_base=AbstractDataObjectActionResult,
         configuration_field="configuration",
         stateless_actionizer=True,
