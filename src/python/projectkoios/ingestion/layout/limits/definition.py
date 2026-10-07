@@ -1,0 +1,5 @@
+"""Shared finite limits for layout identities and numeric values."""
+
+MAX_LAYOUT_IDENTITY_FIELD_CHARACTERS = 1_024
+MAX_LAYOUT_PAGE_INDEX = 10_000_000
+MAX_LAYOUT_COORDINATE_MAGNITUDE = 1_000_000_000.0
