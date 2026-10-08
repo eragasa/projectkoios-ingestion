@@ -14,6 +14,9 @@ from projectkoios.ingestion.artifact.managed.limits.error import (
 from projectkoios.ingestion.artifact.managed.reference import (
     ManagedArtifactReference,
 )
+from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -21,6 +24,7 @@ class ManagedArtifactReferenceInventory:
     """Own one sorted, unique, bounded managed-reference collection."""
 
     _references: tuple[ManagedArtifactReference, ...] = field(repr=True)
+    inventory_id: str = field(init=False)
 
     def __init__(self, *references: ManagedArtifactReference) -> None:
         values = tuple(references)
@@ -44,7 +48,23 @@ class ManagedArtifactReferenceInventory:
             raise ManagedArtifactLimitError(
                 "managed artifact aggregate bytes exceed their limit"
             )
+        member_identity_digest = SHA256Fingerprinter.fingerprint_chunks(
+            chunks=(
+                CanonicalJsonSerializer.serialize_bytes(value.artifact_id)
+                for value in values
+            )
+        )
         object.__setattr__(self, "_references", values)
+        object.__setattr__(
+            self,
+            "inventory_id",
+            stable_id(
+                "managed-artifact-reference-inventory",
+                len(values),
+                self.aggregate_byte_length,
+                member_identity_digest,
+            ),
+        )
 
     def __bool__(self) -> bool:
         return bool(self._references)

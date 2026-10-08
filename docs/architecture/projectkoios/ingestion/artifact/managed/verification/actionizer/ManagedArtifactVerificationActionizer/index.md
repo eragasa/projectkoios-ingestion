@@ -1,3 +1,5 @@
 # `ManagedArtifactVerificationActionizer`
 
-Abstract effectful action `ManagedArtifactVerificationRequest -> ManagedArtifactVerificationResult`. A configured provider resolves each identity, streams bounded bytes through digest/length/signature checks, releases payload bytes, and returns backend-neutral evidence.
+Concrete effectful action `ManagedArtifactVerificationRequest -> ManagedArtifactVerificationResult`. It consumes bounded transient provider chunks, verifies digest, length, media signature, aggregate bounds, and exact coverage, then releases payload bytes and returns backend-neutral evidence.
+
+See the [implementation](implementation.md) and [schematic](schematic.md).
