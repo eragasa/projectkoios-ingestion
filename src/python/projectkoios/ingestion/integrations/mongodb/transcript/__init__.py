@@ -1,0 +1,1 @@
+"""MongoDB transcript adapter ownership."""

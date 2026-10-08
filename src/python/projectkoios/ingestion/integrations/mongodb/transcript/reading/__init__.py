@@ -1,0 +1,1 @@
+"""MongoDB reading adapter ownership."""

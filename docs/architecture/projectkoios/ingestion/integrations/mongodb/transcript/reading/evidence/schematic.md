@@ -1,41 +1,42 @@
 # MongoDB reading-evidence schematic
 
 ```text
-ReadingEvidenceProjectionResult
+MongoReadingEvidenceIndexReadinessActionizer
+  create or exactly verify configured scope indexes
              |
              v
-MongoReadingEvidenceMaterializationRequest
-             |
-             v
-create-once generation-scoped records
- documents -> pages -> blocks/evidence -> references
- in bounded batches; no generation-wide transaction
-             |
-             v
-reconstruct + independently verify
-             |
-             v
-create immutable MongoReadingEvidenceCompletionManifest last
-             |
-             v
-MongoReadingEvidenceSourceActionizer
- only current-schema completed generations are visible
+MongoDB physical collections ready for bounded access
 ```
 
 ```text
-old schema + frozen source inventory + typed adjacent-step registry
+ReadingEvidenceReadModel (already projected, backend-neutral)
              |
              v
-bounded side-by-side migration requests/results
+MongoReadingEvidenceMaterializer
+  validate capability/target and BSON bounds
+  create or exactly replay child members
+  create or exactly replay completion member last
              |
              v
-independent source/target inventory and equivalence verification
-             |
-             v
-conditional create-once migration completion manifest
-             |
-             v
-separately authorized reader cutover
+MongoDB physical collections
 ```
 
-Workflow owns iteration, retry, checkpoint, cleanup, cutover, and rollback decisions.
+```text
+MongoReadingEvidenceSourceActionizer
+             |
+             v
+MongoReadingEvidenceReadModelReader
+  require completion member
+  bounded exact generation reads
+             |
+             v
+ReadingEvidenceReadModel (backend-neutral)
+             |
+             v
+ReadingEvidenceReadModelVerifier (pure, backend-neutral)
+             |
+             v
+ReadingEvidenceSourceResult
+```
+
+MongoDB owns transport and physical persistence only. Workflow owns lifecycle and migration orchestration.

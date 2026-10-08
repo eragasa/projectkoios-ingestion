@@ -1,3 +1,3 @@
 # `MongoReadingEvidenceConfiguration`
 
-Frozen provider configuration for current schema identity, collection names, read/write batch sizes, per-record/document/generation limits, read concerns, write concerns, and retry-independent timeouts. It contains no credentials, migration approval, or domain policy.
+Frozen provider configuration composing the backend-neutral physical collection mapping with a bounded MongoDB cursor batch size and deterministic scope-index name. It contains no credentials, connection locator, migration approval, or domain policy.
