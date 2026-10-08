@@ -1,0 +1,1 @@
+"""Managed artifact resource limits."""

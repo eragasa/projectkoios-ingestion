@@ -2,7 +2,7 @@
 
 ## Status and clean-break boundary
 
-Architecture-only rewrite. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
+Clean rewrite. Foundational values and exact producer-input records are implemented; canonical projection, persistence, migration, and page projection remain separate slices. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
 
 ## Exact producer input
 
@@ -19,13 +19,15 @@ Architecture-only rewrite. Prototype code remains executable discovery material 
 
 The request contains no canonical output pages. Producer document/source/page identities must agree before any join or identity derivation.
 
+Figure, table, and equation records compose `ReadingProducerLineage`, which owns shared source-object/page/span/warning/artifact/producer validation. Figure and table records additionally compose `ReadingVisualAssessment`, which owns typed associations and confidence/status/review state. Derived identities use `init=False` fields and are computed after semantic validation; future persistence decoders must compare stored identity text with the reconstructed value at the external boundary rather than accepting an identity as constructor input.
+
 ## Deterministic projection
 
 `ReadingEvidenceProjectionActionizer` is the sole normal constructor of complete `ReadingEvidenceDocument` values. It performs no I/O.
 
 For text items:
 
-1. accept only configured structured item kinds `PROSE` and `HEADING`;
+1. accept only configured structured item kinds `PARAGRAPH` and `HEADING`;
 2. resolve every structured source-block identity to exactly one `ReadingCleanTextProducerEvidence` on the same page and selected page stream;
 3. require resolved records to be contiguous in clean-text producer order and unused by another emitted text item;
 4. derive output text as the exact clean texts joined with one `"\n"` separator in producer order;
@@ -47,6 +49,11 @@ Unmatched required structured items, multiply matched producer records, page dis
 - `ReadingTableBoundaryKind`: `RULED`, `UNRULED`, `MIXED`.
 - `ReadingEquationRecognitionStatus`: `NOT_REQUESTED`, `DEFERRED`, `SUCCEEDED`, `FAILED`.
 - `ReadingEquationSelectionDisposition`: `PRIMARY`, `AUXILIARY`, `REJECTED`.
+- `ReadingTextTransformationKind`: `DEHYPHENATION`, `GLYPH_SUBSTITUTION`, `PAGE_ARTIFACT_REMOVAL`, `UNICODE_NORMALIZATION`, and `WHITESPACE_NORMALIZATION`.
+
+`ReadingTextStreamEvidence` retains exact upstream and producer identities, optional OCR composition identity, automated state, accepted state, and review status with the content digest and byte count. Empty native streams remain valid exact evidence. `ReadingTextSelection` copies the selected producer and composition identities while retaining every alternative stream.
+
+`ReadingSourceSpanEvidence` uses normalized `ReadingBoundingBox` values. Invalid producer geometry is represented by no box and a typed geometry-warning identity; source spans, source labels, and associations preserve declared source order.
 
 Role-specific fields use role-specific semantic inventories or typed identity values; the generic identity inventory cannot substitute for grammar validation.
 
@@ -54,7 +61,7 @@ Role-specific fields use role-specific semantic inventories or typed identity va
 
 ## Identity
 
-All external values and aggregate work are bounded and semantically validated before hashing. Each typed identity material is serialized once through the canonical one-way serializer and those exact bytes are fingerprinted by `SHA256Fingerprinter`. Prototype paths, IDs, JSON bytes, database names, and provider configuration do not participate.
+All external values and aggregate work are bounded and semantically validated before hashing. `ReadingEvidenceIdentity` pairs syntax-valid identity text with one closed `ReadingEvidenceIdentityKind`; `ReadingEvidenceIdentityDerivation` serializes each typed identity material once through the canonical one-way serializer and fingerprints those exact bytes with `SHA256Fingerprinter`. Prototype paths, IDs, JSON bytes, database names, and provider configuration do not participate.
 
 ## Source and persistence
 
