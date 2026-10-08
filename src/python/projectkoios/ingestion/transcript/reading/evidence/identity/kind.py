@@ -1,0 +1,35 @@
+"""Closed reading evidence identity roles."""
+
+from enum import StrEnum
+
+
+class ReadingEvidenceIdentityKind(StrEnum):
+    """Semantic roles carried by bounded reading evidence identities."""
+
+    ASSEMBLY = "assembly"
+    ASSOCIATION = "association"
+    CANDIDATE = "candidate"
+    CLEAN_TEXT = "clean_text"
+    COMPOSITION = "composition"
+    DOCUMENT = "document"
+    DOCUMENT_PRODUCER = "document_producer"
+    EQUATION = "equation"
+    EXTRACTION_RESULT = "extraction_result"
+    FIGURE = "figure"
+    OCR_RESULT = "ocr_result"
+    PAGE_LOCATION = "page_location"
+    PAGE_TEXT = "page_text"
+    PRODUCER = "producer"
+    PRODUCER_LINEAGE = "producer_lineage"
+    REGION = "region"
+    SOURCE = "source"
+    SOURCE_BLOCK = "source_block"
+    SOURCE_OBJECT = "source_object"
+    SOURCE_SPAN = "source_span"
+    STRUCTURED_ITEM = "structured_item"
+    TABLE = "table"
+    TEXT_SELECTION = "text_selection"
+    TEXT_STREAM = "text_stream"
+    TRANSFORMATION = "transformation"
+    VISUAL_ASSESSMENT = "visual_assessment"
+    WARNING = "warning"
