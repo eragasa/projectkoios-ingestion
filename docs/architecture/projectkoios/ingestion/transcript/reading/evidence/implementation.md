@@ -2,7 +2,7 @@
 
 ## Status and clean-break boundary
 
-Clean rewrite. Foundational values and exact producer-input records are implemented; canonical projection, persistence, migration, and page projection remain separate slices. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
+Clean rewrite. Foundational values, exact producer-input records, and the pure current structured-item and clean-text producer actions are implemented; canonical projection, persistence, migration, and page projection remain separate slices. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
 
 ## Exact producer input
 
@@ -18,6 +18,14 @@ Clean rewrite. Foundational values and exact producer-input records are implemen
 - immutable `ReadingEvidenceProjectionConfiguration` and limits.
 
 The request contains no canonical output pages. Producer document/source/page identities must agree before any join or identity derivation.
+
+## Current producer actions
+
+`ReadingStructuredItemProducerActionizer` projects one exact current `StructuredTranscriptionResult` and complete page-text producer inventory into structured-item evidence. It omits page anchors, maps only the closed prose/heading/figure/table/equation vocabulary, converts source join keys into typed identities, and derives contiguous order independently per page. Its immutable result binds the source transcription identity and every page-text producer identity.
+
+`ReadingCleanTextProducerActionizer` projects one exact current `CleanTranscript` and complete page-text producer inventory into clean-text evidence. Each block is bound to the explicit selected page stream. The action reconstructs non-overlapping raw-coordinate transformations for current dehyphenation, control/soft-hyphen sanitation, and whitespace normalization, then requires exact replay to the retained clean text. Unsupported or stale transformation evidence fails closed. Its immutable result binds the source clean-transcript identity and every page-text producer identity.
+
+These actions are current producers, not compatibility adapters or legacy decoders. They perform no I/O, preserve no prototype wire bytes, and do not construct canonical reading pages.
 
 Figure, table, and equation records compose `ReadingProducerLineage`, which owns shared source-object/page/span/warning/artifact/producer validation. Figure and table records additionally compose `ReadingVisualAssessment`, which owns typed associations and confidence/status/review state. Derived identities use `init=False` fields and are computed after semantic validation; future persistence decoders must compare stored identity text with the reconstructed value at the external boundary rather than accepting an identity as constructor input.
 
