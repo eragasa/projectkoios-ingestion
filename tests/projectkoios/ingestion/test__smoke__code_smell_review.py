@@ -91,6 +91,24 @@ from projectkoios.ingestion.reference.page.location.result import (
     ReferencePageLocatorResult,
 )
 from projectkoios.ingestion.structure import StructureAnalysis
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.production.actionizer import (  # noqa: E501
+    ReadingStructuredItemProducerActionizer,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.production.request import (  # noqa: E501
+    ReadingStructuredItemProductionRequest,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.production.result import (  # noqa: E501
+    ReadingStructuredItemProductionResult,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.text.production.actionizer import (  # noqa: E501
+    ReadingCleanTextProducerActionizer,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.text.production.request import (  # noqa: E501
+    ReadingCleanTextProductionRequest,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.text.production.result import (  # noqa: E501
+    ReadingCleanTextProductionResult,
+)
 
 pytestmark = pytest.mark.smoke
 
@@ -127,6 +145,7 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "reference/page/location",
     _SOURCE_ROOT / "tables/structure",
     _SOURCE_ROOT / "textbooks",
+    _SOURCE_ROOT / "transcript/reading/evidence",
     _SOURCE_ROOT / "transcription",
 )
 _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
@@ -142,6 +161,7 @@ _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
     _SOURCE_ROOT / "reference/claim",
     _SOURCE_ROOT / "reference/evidence",
     _SOURCE_ROOT / "reference/page/location",
+    _SOURCE_ROOT / "transcript/reading/evidence",
     _SOURCE_ROOT / "transcription",
 )
 _NO_STATIC_UTILITY_METHOD_SCOPES = (
@@ -154,6 +174,7 @@ _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
     _SOURCE_ROOT / "reference/claim",
     _SOURCE_ROOT / "reference/evidence",
     _SOURCE_ROOT / "reference/page/location",
+    _SOURCE_ROOT / "transcript/reading/evidence",
 )
 _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "integrations/layout_parser",
@@ -166,6 +187,7 @@ _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "reference/claim",
     _SOURCE_ROOT / "reference/evidence",
     _SOURCE_ROOT / "reference/page/location",
+    _SOURCE_ROOT / "transcript/reading/evidence",
     _SOURCE_ROOT / "transcription",
 )
 _EXTERNAL_MODULE_FUNCTIONS = frozenset(
@@ -300,6 +322,26 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=ReferenceEvidenceVerificationActionizer,
         actionizer_base=DataObjectActionizer,
         result_type=ReferenceEvidenceVerificationResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reading_structured_item_production",
+        request_type=ReadingStructuredItemProductionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReadingStructuredItemProducerActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReadingStructuredItemProductionResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reading_clean_text_production",
+        request_type=ReadingCleanTextProductionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReadingCleanTextProducerActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReadingCleanTextProductionResult,
         result_base=AbstractDataObjectActionResult,
         stateless_actionizer=True,
     ),

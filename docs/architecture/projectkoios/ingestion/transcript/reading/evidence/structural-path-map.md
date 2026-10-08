@@ -6,8 +6,8 @@
 |---|---|
 | workflow page composition | `transcript/reading/evidence/projection/actionizer.py::ReadingEvidenceProjectionActionizer` |
 | native/OCR page selection | `input/page/evidence.py::ReadingPageTextProducerEvidence` and `input/page/inventory.py` |
-| prototype structured role/order | `ReadingStructuredItemProducerEvidenceInventory` joined by the projector |
-| prototype clean transcript blocks | `ReadingCleanTextProducerEvidenceInventory` plus `ReadingTextBlockProjectionBasis` |
+| current structured role/order | `input/structure/production/actionizer.py::ReadingStructuredItemProducerActionizer`, producing `ReadingStructuredItemProducerEvidenceInventory` |
+| current clean transcript blocks | `input/text/production/actionizer.py::ReadingCleanTextProducerActionizer`, producing `ReadingCleanTextProducerEvidenceInventory` with exact replayable transformations |
 | workflow-local figure records | `input/figure/evidence.py::ReadingFigureProducerEvidence` and `input/figure/inventory.py` |
 | workflow-local table records | `input/table/evidence.py::ReadingTableProducerEvidence` and `input/table/inventory.py` |
 | workflow-local equation records | `input/equation/evidence.py::ReadingEquationProducerEvidence` and `input/equation/inventory.py` |
@@ -30,6 +30,27 @@
 | shared visual/equation producer lineage | `input/producer/lineage.py::ReadingProducerLineage` |
 | shared figure/table assessment | `input/visual/assessment.py::ReadingVisualAssessment` |
 | reading domain and limit failures | `error.py::ReadingEvidenceError` and `limits/error.py::ReadingEvidenceLimitError` |
+
+## Current producer defining leaves
+
+| Semantic owner | Defining leaf |
+|---|---|
+| structured-item production request | `input/structure/production/request.py::ReadingStructuredItemProductionRequest` |
+| current structured-item producer action | `input/structure/production/actionizer.py::ReadingStructuredItemProducerActionizer` |
+| structured-item production result | `input/structure/production/result.py::ReadingStructuredItemProductionResult` |
+| clean-text production request | `input/text/production/request.py::ReadingCleanTextProductionRequest` |
+| current clean-text producer action | `input/text/production/actionizer.py::ReadingCleanTextProducerActionizer` |
+| exact current transformation replay | `input/text/production/transformation.py::derive_reading_clean_text_transformations` |
+| clean-text production result | `input/text/production/result.py::ReadingCleanTextProductionResult` |
+
+These are new current producer boundaries; no production source path was moved or preserved as a compatibility façade.
+
+## Producer test-support path map
+
+| Previous test-owned path | Current semantic owner |
+|---|---|
+| `tests/test__CleanTranscript.py::_pdf` | `tests/clean_transcript_support.py::CleanTranscriptSourceFixture.pdf_bytes` |
+| `tests/test__CleanTranscript.py::_pipeline` | `tests/clean_transcript_support.py::CleanTranscriptSourceFixture.build` |
 
 ## Foundation reduction path map
 

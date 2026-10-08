@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from io import BytesIO
-from typing import Any
 
 import pytest
 from projectkoios.base import (
@@ -22,139 +20,18 @@ from projectkoios.ingestion import (
     DerivationAuditStatus,
     DerivationAuditValidator,
     DeterministicCleanTranscriptProjector,
-    DeterministicEquationCandidateDetector,
-    DeterministicFigureCandidateDetector,
-    DeterministicLayoutProcessor,
-    DeterministicTableCandidateDetector,
     PageNumberMethod,
     PageNumberOutcome,
     PublisherFrontMatterKind,
-    PyMuPdfExtractor,
-    SourceDocument,
-)
-from projectkoios.ingestion.articles.structure.actionizer import (
-    DeterministicArticleStructureActionizer,
-)
-from projectkoios.ingestion.articles.structure.request import (
-    ArticleStructureRequest,
-)
-from projectkoios.ingestion.pdf.adapters.pymupdf.rendering import (
-    PyMuPdfRegionRenderer,
-)
-from projectkoios.ingestion.tables.structure.reconstructor.deterministic import (  # noqa: E501
-    DeterministicTableStructureReconstructor,
-)
-from projectkoios.ingestion.transcription.composer.deterministic import (
-    DeterministicStructuredTranscriptionComposer,
-)
-from projectkoios.ingestion.transcription.request.structured import (
-    StructuredTranscriptionRequest,
 )
 
-pymupdf: Any = pytest.importorskip("pymupdf")
-
-
-def _pdf() -> bytes:
-    document = pymupdf.open()
-    bodies = (
-        (
-            "electronic-\nstructure remains ambiguous",
-            "Copyright 2026 Example Publisher",
-            "private X glyph",
-            "100",
-        ),
-        (
-            "A tight-binding reference appears here.",
-            "The tight-\nbinding model is retained.",
-        ),
-        (
-            "An international reference appears here.",
-            "The inter-\nnational result is joined.",
-        ),
-    )
-    for page_index, lines in enumerate(bodies):
-        page = document.new_page(width=420, height=420)
-        page.insert_text((30, 25), "Repeated Journal Header", fontsize=9)
-        for line_index, text in enumerate(lines):
-            y0 = 90 + line_index * 55
-            page.insert_textbox(
-                (30, y0, 380, y0 + 45),
-                text,
-                fontsize=11,
-            )
-        page.insert_text((205, 400), str(page_index + 1), fontsize=9)
-    payload = document.tobytes()
-    document.close()
-    return payload
-
-
-def _pipeline(*, replacement_split: str | None = None):
-    payload = _pdf()
-    source = SourceDocument.from_bytes(
-        payload,
-        source_id="fixture:clean-transcript",
-        media_type="application/pdf",
-        locator="memory://clean-transcript.pdf",
-    )
-    extraction = PyMuPdfExtractor().extract(source, BytesIO(payload))
-    document = extraction.document
-    pages = []
-    private_block_id = None
-    for page in document.pages:
-        blocks = []
-        for block in page.blocks:
-            if (
-                replacement_split is not None
-                and block.text is not None
-                and "electronic-\nstructure" in block.text
-            ):
-                block = replace(block, text=replacement_split)
-            if block.text is not None and "private X glyph" in block.text:
-                private_block_id = block.block_id
-                block = replace(block, text=block.text.replace("X", "\ue000"))
-            blocks.append(block)
-        pages.append(replace(page, blocks=tuple(blocks)))
-    assert private_block_id is not None
-    document = replace(document, pages=tuple(pages))
-    extraction = replace(extraction, document=document)
-    layouts = DeterministicLayoutProcessor().analyze(document)
-    structure = DeterministicArticleStructureActionizer().action(
-        request=ArticleStructureRequest.create(
-            document=document, layouts=layouts
-        )
-    )
-    equations = DeterministicEquationCandidateDetector(
-        region_renderer=PyMuPdfRegionRenderer()
-    ).detect_with_layout(document, BytesIO(payload), layouts)
-    table_detection = DeterministicTableCandidateDetector(
-        region_renderer=PyMuPdfRegionRenderer(
-            max_total_pixels=100_000_000,
-            max_total_raster_bytes=100_000_000,
-        )
-    ).detect_with_layout(document, BytesIO(payload), layouts)
-    tables = DeterministicTableStructureReconstructor().reconstruct(
-        table_detection
-    )
-    figures = DeterministicFigureCandidateDetector(
-        region_renderer=PyMuPdfRegionRenderer(
-            max_total_pixels=100_000_000,
-            max_total_raster_bytes=100_000_000,
-        )
-    ).detect_with_layout(document, BytesIO(payload), layouts)
-    transcription = DeterministicStructuredTranscriptionComposer().action(
-        request=StructuredTranscriptionRequest.create(
-            document=document,
-            structure_analysis=structure,
-            equation_detection_result=equations,
-            table_structure_result=tables,
-            figure_detection_result=figures,
-        )
-    )
-    return payload, extraction, layouts, transcription, private_block_id
+from tests.clean_transcript_support import CleanTranscriptSourceFixture
 
 
 def test__clean_transcript__is_one_deterministic_action_family() -> None:
-    _, _, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
     projector = DeterministicCleanTranscriptProjector()
     request = CleanTranscriptRequest.create(
         transcription_result=transcription,
@@ -177,7 +54,9 @@ def test__clean_transcript__is_one_deterministic_action_family() -> None:
 
 
 def test__clean_transcript__rejects_removed_format_keys() -> None:
-    _, _, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
     projector = DeterministicCleanTranscriptProjector()
     request = CleanTranscriptRequest.create(
         transcription_result=transcription,
@@ -201,7 +80,9 @@ def test__clean_transcript__rejects_removed_format_keys() -> None:
 
 
 def test__clean_transcript__uses_positive_dehyphenation_evidence() -> None:
-    _, _, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
 
     result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
@@ -238,7 +119,9 @@ def test__clean_transcript__uses_positive_dehyphenation_evidence() -> None:
 def test__clean_transcript__known_bad_compounds_never_join_without_evidence(
     source_split: str, wrong_join: str
 ) -> None:
-    _, _, layouts, transcription, _ = _pipeline(replacement_split=source_split)
+    source = CleanTranscriptSourceFixture.build(replacement_split=source_split)
+    layouts = source.layouts
+    transcription = source.transcription
 
     result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
@@ -254,7 +137,9 @@ def test__clean_transcript__known_bad_compounds_never_join_without_evidence(
 
 
 def test__clean_transcript__does_not_exclude_plot_axis_number() -> None:
-    _, _, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
 
     result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
@@ -282,7 +167,10 @@ def test__clean_transcript__does_not_exclude_plot_axis_number() -> None:
 
 
 def test__clean_transcript__retains_private_use_glyph_with_locator() -> None:
-    _, _, layouts, transcription, private_block_id = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
+    private_block_id = source.private_block_id
 
     result = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
@@ -303,7 +191,9 @@ def test__clean_transcript__retains_private_use_glyph_with_locator() -> None:
 
 
 def test__clean_transcript__types_publisher_material_without_deleting() -> None:
-    _, _, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    layouts = source.layouts
+    transcription = source.transcription
 
     included = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
@@ -341,7 +231,11 @@ def test__clean_transcript__types_publisher_material_without_deleting() -> None:
 
 
 def test__clean_transcript__passes_transitive_derivation_audit() -> None:
-    payload, extraction, layouts, transcription, _ = _pipeline()
+    source = CleanTranscriptSourceFixture.build()
+    payload = source.payload
+    extraction = source.extraction
+    layouts = source.layouts
+    transcription = source.transcription
     artifact = DeterministicCleanTranscriptProjector().project(
         transcription, layouts
     )
