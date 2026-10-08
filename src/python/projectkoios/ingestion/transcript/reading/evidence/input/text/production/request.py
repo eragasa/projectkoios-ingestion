@@ -12,6 +12,9 @@ from projectkoios.ingestion.transcript.reading.evidence.error import (
 from projectkoios.ingestion.transcript.reading.evidence.input.page.inventory import (  # noqa: E501
     ReadingPageTextProducerEvidenceInventory,
 )
+from projectkoios.ingestion.transcription.result.structured import (
+    StructuredTranscriptionResult,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,11 +22,23 @@ class ReadingCleanTextProductionRequest(DataObjectActionRequest):
     """Bind one current clean transcript to exact page-text evidence."""
 
     transcript: CleanTranscript
+    transcription: StructuredTranscriptionResult
     page_text: ReadingPageTextProducerEvidenceInventory
 
     def __post_init__(self) -> None:
         if type(self.transcript) is not CleanTranscript:
             raise TypeError("transcript must be CleanTranscript")
+        if type(self.transcription) is not StructuredTranscriptionResult:
+            raise TypeError(
+                "transcription must be StructuredTranscriptionResult"
+            )
+        if (
+            self.transcript.transcription_result_id
+            != self.transcription.result_id
+        ):
+            raise ReadingEvidenceError(
+                "clean transcript must bind the exact transcription result"
+            )
         if type(self.page_text) is not ReadingPageTextProducerEvidenceInventory:
             raise TypeError(
                 "page_text must be ReadingPageTextProducerEvidenceInventory"

@@ -2,7 +2,7 @@
 
 ## Status and clean-break boundary
 
-Clean rewrite. Foundational values, exact producer-input records, and the pure current structured-item and clean-text producer actions are implemented; canonical projection, persistence, migration, and page projection remain separate slices. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
+Clean rewrite. Foundational values, exact producer-input records, current structured-item and clean-text producers, canonical document/page/block values, independent inventory reconciliation, and the pure `ReadingEvidenceProjectionActionizer` are implemented. Persistence, migration, and page projection remain separate slices. Prototype code remains executable discovery material until replaced, but it is not authoritative for API, wire format, identity, or persistence. Every new package initializer is a docstring-only marker; defining leaves are imported directly.
 
 ## Exact producer input
 
@@ -17,21 +17,21 @@ Clean rewrite. Foundational values, exact producer-input records, and the pure c
 - one expected inventory; and
 - immutable `ReadingEvidenceProjectionConfiguration` and limits.
 
-The request contains no canonical output pages. Producer document/source/page identities must agree before any join or identity derivation.
+The request contains no canonical output pages. Producer document/source/page identities and each clean record's exact selected page stream must agree before any join or identity derivation. The managed inventory must equal—rather than merely contain—the source and retained-producer references.
 
 ## Current producer actions
 
 `ReadingStructuredItemProducerActionizer` projects one exact current `StructuredTranscriptionResult` and complete page-text producer inventory into structured-item evidence. It omits page anchors, maps only the closed prose/heading/figure/table/equation vocabulary, converts source join keys into typed identities, and derives contiguous order independently per page. Its immutable result binds the source transcription identity and every page-text producer identity.
 
-`ReadingCleanTextProducerActionizer` projects one exact current `CleanTranscript` and complete page-text producer inventory into clean-text evidence. Each block is bound to the explicit selected page stream. The action reconstructs non-overlapping raw-coordinate transformations for current dehyphenation, control/soft-hyphen sanitation, and whitespace normalization, then requires exact replay to the retained clean text. Unsupported or stale transformation evidence fails closed. Its immutable result binds the source clean-transcript identity and every page-text producer identity.
+`ReadingCleanTextProducerActionizer` projects one exact current `CleanTranscript`, its exact `StructuredTranscriptionResult`, and complete page-text producer inventory into clean-text evidence. Each block is bound to the explicit selected page stream. The action reconstructs non-overlapping raw-coordinate transformations for current dehyphenation, control/soft-hyphen sanitation, and whitespace normalization, then requires exact replay to the retained clean text. It also normalizes valid source geometry against the exact extracted page dimensions and replaces invalid geometry with `bounding_box=None` plus a linked warning identity. Unsupported or stale transformation or source evidence fails closed. Its immutable result binds the source clean-transcript identity and every page-text producer identity.
 
-These actions are current producers, not compatibility adapters or legacy decoders. They perform no I/O, preserve no prototype wire bytes, and do not construct canonical reading pages.
+These actions are current producers, not compatibility adapters or legacy decoders. They perform no I/O, preserve no prototype wire bytes, and do not construct canonical reading pages. Structured source-block sequences preserve producer-declared order through `ReadingSourceBlockIdentityInventory`; they are not identity-sorted.
 
 Figure, table, and equation records compose `ReadingProducerLineage`, which owns shared source-object/page/span/warning/artifact/producer validation. Figure and table records additionally compose `ReadingVisualAssessment`, which owns typed associations and confidence/status/review state. Derived identities use `init=False` fields and are computed after semantic validation; future persistence decoders must compare stored identity text with the reconstructed value at the external boundary rather than accepting an identity as constructor input.
 
 ## Deterministic projection
 
-`ReadingEvidenceProjectionActionizer` is the sole normal constructor of complete `ReadingEvidenceDocument` values. It performs no I/O.
+`ReadingEvidenceProjectionActionizer` is the sole normal constructor of complete `ReadingEvidenceDocument` values. It performs no I/O. Canonical values are split by semantic ownership across `block/`, `caption/`, `page/`, `document/`, `lineage/`, `limitation/`, `inventory/`, and `reconciliation/` defining leaves. Projection identities are hierarchical: large bounded inventories are fingerprinted once, and request/document/result identities consume only their small typed aggregate identities.
 
 For text items:
 
@@ -65,7 +65,7 @@ Unmatched required structured items, multiply matched producer records, page dis
 
 Role-specific fields use role-specific semantic inventories or typed identity values; the generic identity inventory cannot substitute for grammar validation.
 
-`ReadingEvidencePage` binds page location, streams, selection, and ordered blocks. `ReadingEvidenceDocument` binds source identity, complete page inventory, retained auxiliary evidence, managed references, exact producer lineage, and limitations. `ReadingEvidenceInventory` is recomputed observationally. `ReadingEvidenceReconciliation` compares it with `ExpectedReadingEvidenceInventory`; expected values cannot self-certify completion.
+`ReadingEvidencePage` binds page location, streams, selection, and ordered blocks. `ReadingEvidenceDocument` binds source identity, complete page inventory, retained auxiliary evidence, managed references, exact producer lineage, and limitations. Its cross-component validation is owned by `document/validation.py`; it reconstructs producer inventory identities, requires every placed visual/equation block's exact producer in retained evidence, and enforces exact managed-reference closure. `ReadingEvidenceInventory` is recomputed observationally. `ReadingEvidenceReconciliation` compares it with `ExpectedReadingEvidenceInventory`; expected values cannot self-certify completion, and mismatch fields are retained in canonical lexical order.
 
 ## Identity
 

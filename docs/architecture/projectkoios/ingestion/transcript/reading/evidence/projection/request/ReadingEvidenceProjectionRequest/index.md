@@ -1,3 +1,3 @@
 # `ReadingEvidenceProjectionRequest`
 
-Single immutable bounded request binding document/page-text, structured-item, clean-text, figure, table, and equation producer inventories; managed references; expected inventory; configuration; and limits. It contains no projected pages, prototype values, paths, backend handles, or Workflow state.
+Single immutable bounded request containing exact producer inventories, references, independent expectation, configuration, and limits. Validation binds every clean record to the selected stream of its exact page, requires producer source lineage to match the document, and admits exactly the source and retained-producer managed references—never unrelated artifacts.

@@ -45,6 +45,58 @@
 
 These are new current producer boundaries; no production source path was moved or preserved as a compatibility façade.
 
+## Canonical projection defining leaves
+
+| Semantic owner | Defining leaf |
+|---|---|
+| ordered block vocabulary | `block/kind.py::ReadingEvidenceBlockKind` |
+| exact paragraph/heading derivation | `block/text/evidence.py::ReadingTextEvidenceBlock`, `block/text/source.py::ReadingTextBlockSourceInventory`, and `block/text/projection.py` |
+| ordered visual/equation blocks | `block/figure/evidence.py`, `block/figure/projection.py`, `block/table/evidence.py`, `block/table/projection.py`, `block/equation/evidence.py`, and `block/equation/projection.py` |
+| heterogeneous page block order | `block/inventory.py::ReadingEvidenceBlockInventory` |
+| unique caption selection | `caption/evidence.py::ReadingCaptionEvidence`, `caption/basis.py`, and `caption/selection.py` |
+| complete canonical pages | `page/evidence.py::ReadingEvidencePage`, `page/inventory.py`, and `projection/page.py::ReadingEvidencePageProjection` |
+| exact aggregate lineage | `lineage/definition.py::ReadingEvidenceLineage` |
+| typed limitations | `limitation/code.py`, `limitation/affected.py`, `limitation/definition.py`, and `limitation/inventory.py` |
+| canonical document aggregate | `document/definition.py::ReadingEvidenceDocument` and `document/validation.py::validate_reading_evidence_document_components` |
+| expected and observed inventories | `inventory/measures.py`, `inventory/expected.py`, and `inventory/definition.py` |
+| exact reconciliation | `reconciliation/field.py`, `reconciliation/mismatch.py`, and `reconciliation/definition.py` |
+| immutable action contract | `projection/request.py`, `projection/validation.py`, `projection/actionizer.py`, and `projection/result.py` |
+| limitation derivation | `projection/limitation.py::derive_reading_evidence_limitations` |
+| hierarchical projection identities | `projection/identity.py::ReadingEvidenceProjectionIdentityDerivation` |
+
+## Projector implementation reduction
+
+| Previous implementation owner | Reduced semantic owner |
+|---|---|
+| `document/definition.py::ReadingEvidenceDocument.__post_init__` cross-component validation | `document/validation.py::validate_reading_evidence_document_components` |
+
+## Planned documentation path corrections
+
+| Previous planned documentation path | Implemented defining-leaf documentation path |
+|---|---|
+| `block/text/ReadingTextEvidenceBlock/` | `block/text/evidence/ReadingTextEvidenceBlock/` |
+| `block/figure/ReadingFigureEvidenceBlock/` | `block/figure/evidence/ReadingFigureEvidenceBlock/` |
+| `block/table/ReadingTableEvidenceBlock/` | `block/table/evidence/ReadingTableEvidenceBlock/` |
+| `block/equation/ReadingEquationEvidenceBlock/` | `block/equation/evidence/ReadingEquationEvidenceBlock/` |
+| `caption/ReadingCaptionEvidence/` | `caption/evidence/ReadingCaptionEvidence/` |
+| `document/ReadingEvidenceDocument/` | `document/definition/ReadingEvidenceDocument/` |
+| `page/evidence/ReadingEvidencePageInventory/` | `page/inventory/ReadingEvidencePageInventory/` |
+| `inventory/ReadingEvidenceInventory/` | `inventory/definition/ReadingEvidenceInventory/` |
+| `limitation/ReadingEvidenceLimitation/` | `limitation/definition/ReadingEvidenceLimitation/` |
+| `limitation/ReadingEvidenceLimitationInventory/` | `limitation/inventory/ReadingEvidenceLimitationInventory/` |
+| `lineage/ReadingEvidenceLineage/` | `lineage/definition/ReadingEvidenceLineage/` |
+| `reconciliation/ReadingEvidenceReconciliation/` | `reconciliation/definition/ReadingEvidenceReconciliation/` |
+
+These are documentation-path corrections from an unimplemented plan, not compatibility moves. No production source path existed at the old locations.
+
+## Producer contract corrections required by projection
+
+| Previous current-producer representation | Correct defining owner |
+|---|---|
+| identity-sorted structured source-block membership | `input/structure/source.py::ReadingSourceBlockIdentityInventory`, preserving producer order |
+| clean text without source spans | `input/text/evidence.py::ReadingCleanTextProducerEvidence`, with normalized spans and linked geometry warnings |
+| clean production request without exact transcription geometry | `input/text/production/request.py::ReadingCleanTextProductionRequest`, binding the exact `StructuredTranscriptionResult` |
+
 ## Producer test-support path map
 
 | Previous test-owned path | Current semantic owner |

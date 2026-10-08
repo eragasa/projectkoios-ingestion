@@ -13,14 +13,14 @@ from projectkoios.ingestion.transcript.reading.evidence.identity.definition impo
 from projectkoios.ingestion.transcript.reading.evidence.identity.derivation import (  # noqa: E501
     ReadingEvidenceIdentityDerivation,
 )
-from projectkoios.ingestion.transcript.reading.evidence.identity.inventory import (  # noqa: E501
-    ReadingEvidenceIdentityInventory,
-)
 from projectkoios.ingestion.transcript.reading.evidence.identity.kind import (
     ReadingEvidenceIdentityKind,
 )
 from projectkoios.ingestion.transcript.reading.evidence.input.structure.kind import (  # noqa: E501
     ReadingStructuredItemKind,
+)
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.source import (  # noqa: E501
+    ReadingSourceBlockIdentityInventory,
 )
 from projectkoios.ingestion.transcript.reading.evidence.limits.definition import (  # noqa: E501
     READING_EVIDENCE_LIMITS,
@@ -41,7 +41,7 @@ class ReadingStructuredItemProducerEvidence:
     page_location: ReadingPageLocation
     order_index: int
     kind: ReadingStructuredItemKind
-    source_block_ids: ReadingEvidenceIdentityInventory
+    source_block_ids: ReadingSourceBlockIdentityInventory
     source_object_id: ReadingEvidenceIdentity | None
     producer_id: ReadingEvidenceIdentity
     producer_version: str
@@ -55,14 +55,12 @@ class ReadingStructuredItemProducerEvidence:
         )
         if not isinstance(self.kind, ReadingStructuredItemKind):
             raise TypeError("kind must be ReadingStructuredItemKind")
-        if type(
-            self.source_block_ids
-        ) is not ReadingEvidenceIdentityInventory or (
-            self.source_block_ids.kind
-            is not ReadingEvidenceIdentityKind.SOURCE_BLOCK
+        if (
+            type(self.source_block_ids)
+            is not ReadingSourceBlockIdentityInventory
         ):
             raise TypeError(
-                "source_block_ids must be a source-block identity inventory"
+                "source_block_ids must be ReadingSourceBlockIdentityInventory"
             )
         if self.kind in _TEXT_KINDS:
             if not self.source_block_ids or self.source_object_id is not None:

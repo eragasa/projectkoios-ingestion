@@ -1,3 +1,3 @@
 # `ExpectedReadingEvidenceInventory`
 
-Typed bounded independently frozen expectation for producer/document/page/stream/block/visual/equation/reference counts and digests. Required fields are complete for the current contract and cannot self-certify projection completion.
+Typed independently frozen complete expectation that projection must not derive from its own output. Tests construct expected counts and semantic digests from an explicit fixture oracle and do not call the observed-inventory implementation.

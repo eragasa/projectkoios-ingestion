@@ -16,6 +16,9 @@ from projectkoios.ingestion.transcript.reading.evidence.input.structure.inventor
 from projectkoios.ingestion.transcript.reading.evidence.input.structure.kind import (  # noqa: E501
     ReadingStructuredItemKind,
 )
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.source import (  # noqa: E501
+    ReadingSourceBlockIdentityInventory,
+)
 from projectkoios.ingestion.transcript.reading.evidence.input.text.evidence import (  # noqa: E501
     ReadingCleanTextProducerEvidence,
 )
@@ -57,6 +60,10 @@ def test__clean_text_producer__binds_text_digests_and_transformations(
         raw_text=raw_text,
         clean_text="effective",
         transformations=ReadingTextTransformationInventory(transformation),
+        source_spans=reading_evidence_fixture.text_source_spans(),
+        warning_ids=ReadingEvidenceIdentityInventory(
+            ReadingEvidenceIdentityKind.WARNING
+        ),
         producer_id=reading_evidence_fixture.identity(
             ReadingEvidenceIdentityKind.PRODUCER, "clean"
         ),
@@ -83,6 +90,10 @@ def test__clean_text_inventory__requires_contiguous_page_order(
         raw_text="text",
         clean_text="text",
         transformations=ReadingTextTransformationInventory(),
+        source_spans=reading_evidence_fixture.text_source_spans(),
+        warning_ids=ReadingEvidenceIdentityInventory(
+            ReadingEvidenceIdentityKind.WARNING
+        ),
         producer_id=reading_evidence_fixture.identity(
             ReadingEvidenceIdentityKind.PRODUCER, "clean"
         ),
@@ -129,6 +140,10 @@ def test__clean_text_producer__requires_exact_transformation_replay(
             raw_text="raw",
             clean_text="clean",
             transformations=ReadingTextTransformationInventory(),
+            source_spans=reading_evidence_fixture.text_source_spans(),
+            warning_ids=ReadingEvidenceIdentityInventory(
+                ReadingEvidenceIdentityKind.WARNING
+            ),
             producer_id=reading_evidence_fixture.identity(
                 ReadingEvidenceIdentityKind.PRODUCER, "clean"
             ),
@@ -159,6 +174,10 @@ def test__clean_text_producer__rejects_out_of_range_transformation(
             raw_text="x",
             clean_text="x",
             transformations=ReadingTextTransformationInventory(transformation),
+            source_spans=reading_evidence_fixture.text_source_spans(),
+            warning_ids=ReadingEvidenceIdentityInventory(
+                ReadingEvidenceIdentityKind.WARNING
+            ),
             producer_id=reading_evidence_fixture.identity(
                 ReadingEvidenceIdentityKind.PRODUCER, "clean"
             ),
@@ -166,12 +185,26 @@ def test__clean_text_producer__rejects_out_of_range_transformation(
         )
 
 
+def test__source_block_inventory__preserves_declared_order(
+    reading_evidence_fixture: ReadingEvidenceFoundationFixture,
+) -> None:
+    first = reading_evidence_fixture.identity(
+        ReadingEvidenceIdentityKind.SOURCE_BLOCK, "z-first"
+    )
+    second = reading_evidence_fixture.identity(
+        ReadingEvidenceIdentityKind.SOURCE_BLOCK, "a-second"
+    )
+
+    inventory = ReadingSourceBlockIdentityInventory(first, second)
+
+    assert tuple(inventory) == (first, second)
+
+
 def test__structured_item__separates_text_and_visual_join_keys(
     reading_evidence_fixture: ReadingEvidenceFoundationFixture,
 ) -> None:
     page = reading_evidence_fixture.page()
-    block_ids = ReadingEvidenceIdentityInventory(
-        ReadingEvidenceIdentityKind.SOURCE_BLOCK,
+    block_ids = ReadingSourceBlockIdentityInventory(
         reading_evidence_fixture.identity(
             ReadingEvidenceIdentityKind.SOURCE_BLOCK, "paragraph"
         ),
@@ -192,9 +225,7 @@ def test__structured_item__separates_text_and_visual_join_keys(
         page_location=page,
         order_index=1,
         kind=ReadingStructuredItemKind.FIGURE,
-        source_block_ids=ReadingEvidenceIdentityInventory(
-            ReadingEvidenceIdentityKind.SOURCE_BLOCK
-        ),
+        source_block_ids=ReadingSourceBlockIdentityInventory(),
         source_object_id=reading_evidence_fixture.identity(
             ReadingEvidenceIdentityKind.SOURCE_OBJECT, "figure"
         ),
@@ -229,9 +260,7 @@ def test__structured_item_inventory__requires_contiguous_page_order(
         page_location=reading_evidence_fixture.page(),
         order_index=1,
         kind=ReadingStructuredItemKind.FIGURE,
-        source_block_ids=ReadingEvidenceIdentityInventory(
-            ReadingEvidenceIdentityKind.SOURCE_BLOCK
-        ),
+        source_block_ids=ReadingSourceBlockIdentityInventory(),
         source_object_id=reading_evidence_fixture.identity(
             ReadingEvidenceIdentityKind.SOURCE_OBJECT, "figure"
         ),

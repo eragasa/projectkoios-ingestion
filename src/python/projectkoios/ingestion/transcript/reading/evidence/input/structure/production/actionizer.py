@@ -27,6 +27,9 @@ from projectkoios.ingestion.transcript.reading.evidence.input.structure.producti
 from projectkoios.ingestion.transcript.reading.evidence.input.structure.production.result import (  # noqa: E501
     ReadingStructuredItemProductionResult,
 )
+from projectkoios.ingestion.transcript.reading.evidence.input.structure.source import (  # noqa: E501
+    ReadingSourceBlockIdentityInventory,
+)
 from projectkoios.ingestion.transcription.kind.item import TranscriptionItemKind
 
 
@@ -81,16 +84,11 @@ class ReadingStructuredItemProducerActionizer(
                 ReadingStructuredItemKind.HEADING,
             )
             source_blocks = tuple(
-                sorted(
-                    (
-                        ReadingEvidenceIdentity(
-                            kind=ReadingEvidenceIdentityKind.SOURCE_BLOCK,
-                            value=value,
-                        )
-                        for value in item.source_block_ids
-                    ),
-                    key=lambda value: value.value,
+                ReadingEvidenceIdentity(
+                    kind=ReadingEvidenceIdentityKind.SOURCE_BLOCK,
+                    value=value,
                 )
+                for value in item.source_block_ids
             )
             records.append(
                 ReadingStructuredItemProducerEvidence(
@@ -99,8 +97,7 @@ class ReadingStructuredItemProducerActionizer(
                     ].streams.page_location,
                     order_index=order_index,
                     kind=kind,
-                    source_block_ids=ReadingEvidenceIdentityInventory(
-                        ReadingEvidenceIdentityKind.SOURCE_BLOCK,
+                    source_block_ids=ReadingSourceBlockIdentityInventory(
                         *(source_blocks if is_text else ()),
                     ),
                     source_object_id=(

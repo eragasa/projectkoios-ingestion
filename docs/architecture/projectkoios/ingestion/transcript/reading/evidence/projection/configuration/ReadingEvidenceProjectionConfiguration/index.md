@@ -1,3 +1,3 @@
 # `ReadingEvidenceProjectionConfiguration`
 
-Frozen projection policy selecting the explicit text-block basis, admissible producer statuses, caption-selection rule, equation disposition/gate rule, and hard limits. It contains no backend, path, Workflow, or migration configuration.
+Frozen policy selecting text basis, caption rule, admitted visual states, primary equation disposition, and hard limits.
