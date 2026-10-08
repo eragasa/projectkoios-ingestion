@@ -1,9 +1,6 @@
 # `projectkoios.ingestion.transcript` implementation
 
-The package initializer defines the transcript-owned namespace without
-re-exporting child classes. Canonical implementations are imported from their
-defining child modules and surfaced through an established root facade only
-when that public API is separately intentional.
+The package initializer is a docstring-only transcript ownership marker. Canonical implementations are imported directly from defining leaves; no root façade or compatibility alias is planned for the rewrite.
 
 ```mermaid
 flowchart TD
@@ -11,13 +8,8 @@ flowchart TD
     Namespace --> Batch["batch package"]
     Namespace --> Evidence["evidence package"]
     Evidence --> Selection["selection package"]
+    Namespace --> Reading["reading package"]
+    Reading --> ReadingEvidence["canonical reading evidence"]
 ```
 
-`transcript.batch` owns composition, planning, and publication for transcript
-runs. `transcript.evidence` owns transcript-derived evidence operations. Neither
-package owns PDF backend implementation, source routing, rights policy, Search,
-or indexing.
-
-No compatibility alias is added inside namespace-only package initializers.
-Any established root API retained during a source move remains explicit and is
-reviewed separately from internal ownership.
+`transcript.batch` owns transcript-run planning/execution/publication. `transcript.evidence` owns bounded transcript-derived selection. `transcript.reading.evidence` owns the clean canonical projection consumed by page projection. MongoDB integration owns current-schema storage and migration. None owns PDF backend implementation, source routing, rights policy, Search, ranking, or indexing.

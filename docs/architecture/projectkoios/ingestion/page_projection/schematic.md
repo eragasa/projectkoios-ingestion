@@ -1,27 +1,16 @@
-# `ingestion.page_projection` schematic
+# `ingestion.page_projection` prototype schematic
 
 ```text
-explicit document metadata + source PDF + composed baseline
-                         |
-reading transcript + summary + private PNG evidence
+prototype paths + transcript/summary/baseline/media files
                          |
                          v
-              validate_page_projection
-                         |
-        +----------------+----------------+
-        |                                 |
-        v                                 v
-path-free validation report     immutable text + caption pages
-        |                                 |
-        +----------------+----------------+
+flat validation/loading module
                          |
                          v
-       load_owner_validated_page_projection
+feasibility evidence only
                          |
                          v
-       downstream explicit admission plan
+clean typed reading-evidence and page-projection design
 ```
 
-Equation evidence, proposals, media paths, and media bytes stop at owner
-validation and are not members of the downstream page types. Owner-validated
-caption text remains available exactly once without its media path.
+No prototype input, report, identity, or filesystem contract crosses into the clean runtime architecture. Database data is retained only through explicit MongoDB schema migration.
