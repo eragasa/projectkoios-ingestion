@@ -2,17 +2,18 @@
 
 ```mermaid
 flowchart LR
-    Owners["ingestion owner artifacts"]
-    Transcript["structured and clean transcripts"]
-    Package["transcript package"]
-    Batch["transcript.batch"]
-    Evidence["transcript.evidence"]
+    Producers["typed extraction and evidence producers"]
+    Structured["structured-item producer evidence"]
+    Clean["clean-text producer evidence"]
+    Reading["transcript.reading.evidence"]
+    Mongo["Mongo materialization/source/migration"]
+    Page["page.projection"]
 
-    Owners --> Batch
-    Batch --> Transcript
-    Transcript --> Evidence
-    Package --> Batch
-    Package --> Evidence
+    Producers --> Reading
+    Structured --> Reading
+    Clean --> Reading
+    Reading --> Mongo
+    Mongo --> Page
 ```
 
-The package is an ownership boundary, not a second transcript representation.
+The package is an ownership boundary, not a compatibility representation for prototype transcript files or Python values.

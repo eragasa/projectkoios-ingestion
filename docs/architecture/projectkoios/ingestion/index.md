@@ -8,7 +8,9 @@ packages define the nominal document, page, and block hierarchy. Shared
 identity roots belong to [`base`](base/index.md). Bounded JSON values,
 parsing, serialization, and typed JSON document boundaries belong to
 [`json`](json/index.md). Canonical SHA-256 values, fingerprinting, and
-verification belong to [`sha256`](sha256/index.md). External runtime adapters
+verification belong to [`sha256`](sha256/index.md). Exact backend-neutral
+references to large externally managed bytes belong to
+[`artifact`](artifact/index.md). External runtime adapters
 belong to [`integrations`](integrations/index.md).
 Deterministic layout evidence and non-authoritative failure review belong to
 [`layout`](layout/index.md). Ingestion-owned evidence for reference sources
@@ -21,8 +23,11 @@ backend query objects. Backend-neutral OCR evidence belongs to
 comparison belongs to [`reconciliation`](reconciliation/index.md). Deterministic
 structured composition belongs to [`transcription`](transcription/index.md),
 whose marker-only subpackages own requests, derivations, items, omissions,
-results, validation records, and cache identity. The
-[`page_projection`](page_projection/index.md) module validates owner reading
-artifacts and exposes immutable citation-aligned text-only pages without
-exposing equations or media. This package does not own cross-repository routing,
-product policy, Search indexes, or downstream authoring.
+results, validation records, and cache identity. Canonical rebuildable
+reading-scale evidence belongs to
+[`transcript.reading.evidence`](transcript/reading/evidence/index.md). The
+[`page_projection`](page_projection/index.md) module is a feasibility prototype,
+not a compatibility contract; the clean target is pure
+[`page.projection`](page/projection/index.md). MongoDB schema retention is handled
+only by explicit side-by-side database migration. This package does not own
+cross-repository routing, product policy, Search indexes, or downstream authoring.

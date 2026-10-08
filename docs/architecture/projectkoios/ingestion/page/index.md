@@ -1,0 +1,8 @@
+# `projectkoios.ingestion.page`
+
+Planned backend-neutral ownership package for page-domain operations. It owns
+no exports, adapters, compatibility aliases, storage selection, or Search
+policy.
+
+[`projection`](projection/index.md) owns the planned backend-neutral
+page-projection source and action contracts.

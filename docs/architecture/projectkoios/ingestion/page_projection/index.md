@@ -1,9 +1,7 @@
 # `projectkoios.ingestion.page_projection`
 
-This public module owns validation and typed loading of reading-scale page
-projections. It binds explicit document metadata to owner validation evidence
-and exposes only citation-aligned paragraph, heading, and owner-validated
-figure-caption text to downstream consumers.
+Prototype feasibility module for reading-scale page projection. Its Python API, path model, JSONL/report formats, identities, and thresholds are not contracts and receive no compatibility layer.
 
-It does not own Search plans, indexing, database publication, directory
-discovery, equation acceptance, or media retrieval.
+The clean replacement is [`page.projection`](../page/projection/index.md), which consumes current canonical [`transcript.reading.evidence`](../transcript/reading/evidence/index.md) and managed artifact verification evidence. The prototype module is deleted after consumer migration; no façade replaces it.
+
+Database retention across schema changes is provided only by the explicit MongoDB reading-evidence migration hierarchy.
