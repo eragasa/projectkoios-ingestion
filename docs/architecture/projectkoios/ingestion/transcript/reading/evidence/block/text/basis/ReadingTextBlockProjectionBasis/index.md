@@ -1,3 +1,3 @@
 # `ReadingTextBlockProjectionBasis`
 
-Closed text derivation basis with one initial value: `CLEAN_PRODUCER_EXACT`. Text comes from exact `ReadingCleanTextProducerEvidence`; semantic role/order comes from the uniquely joined `ReadingStructuredItemProducerEvidence`.
+Closed text derivation basis whose current value requires exact clean producer evidence.

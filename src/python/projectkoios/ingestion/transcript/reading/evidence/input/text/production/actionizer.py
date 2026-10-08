@@ -6,6 +6,9 @@ from projectkoios.base import DataObjectActionizer
 from projectkoios.ingestion.transcript.reading.evidence.identity.definition import (  # noqa: E501
     ReadingEvidenceIdentity,
 )
+from projectkoios.ingestion.transcript.reading.evidence.identity.derivation import (  # noqa: E501
+    ReadingEvidenceIdentityDerivation,
+)
 from projectkoios.ingestion.transcript.reading.evidence.identity.inventory import (  # noqa: E501
     ReadingEvidenceIdentityInventory,
 )
@@ -26,6 +29,15 @@ from projectkoios.ingestion.transcript.reading.evidence.input.text.production.re
 )
 from projectkoios.ingestion.transcript.reading.evidence.input.text.production.transformation import (  # noqa: E501
     derive_reading_clean_text_transformations,
+)
+from projectkoios.ingestion.transcript.reading.evidence.span.evidence import (
+    ReadingSourceSpanEvidence,
+)
+from projectkoios.ingestion.transcript.reading.evidence.span.geometry import (
+    ReadingBoundingBox,
+)
+from projectkoios.ingestion.transcript.reading.evidence.span.inventory import (
+    ReadingSourceSpanEvidenceInventory,
 )
 
 
@@ -48,6 +60,11 @@ class ReadingCleanTextProducerActionizer(
         if type(request) is not ReadingCleanTextProductionRequest:
             raise TypeError("request must be ReadingCleanTextProductionRequest")
         transcript = request.transcript
+        source_document = request.transcription.transcription_input.document
+        source_id = ReadingEvidenceIdentity(
+            kind=ReadingEvidenceIdentityKind.SOURCE,
+            value=source_document.source.source_id,
+        )
         page_text = tuple(request.page_text)
         producer_id = ReadingEvidenceIdentity(
             kind=ReadingEvidenceIdentityKind.PRODUCER,
@@ -59,6 +76,53 @@ class ReadingCleanTextProducerActionizer(
             order_index = page_orders.get(block.page_index, 0)
             page_orders[block.page_index] = order_index + 1
             page = page_text[block.page_index]
+            source_page = source_document.pages[block.page_index]
+            spans: list[ReadingSourceSpanEvidence] = []
+            warnings: list[ReadingEvidenceIdentity] = []
+            for span_index, span in enumerate(block.source_spans):
+                bounding_box = None
+                geometry_warning_id = None
+                if span.bounding_box is not None:
+                    x0, y0, x1, y1 = (
+                        float(value) for value in span.bounding_box
+                    )
+                    normalized = (
+                        x0 / source_page.width,
+                        y0 / source_page.height,
+                        x1 / source_page.width,
+                        y1 / source_page.height,
+                    )
+                    if (
+                        0.0 <= normalized[0] < normalized[2] <= 1.0
+                        and 0.0 <= normalized[1] < normalized[3] <= 1.0
+                    ):
+                        bounding_box = ReadingBoundingBox(*normalized)
+                    else:
+                        geometry_warning_id = (
+                            ReadingEvidenceIdentityDerivation.derive(
+                                kind=ReadingEvidenceIdentityKind.WARNING,
+                                prefix="reading-clean-text-geometry-warning",
+                                material={
+                                    "source_block_id": block.block_id,
+                                    "span_index": span_index,
+                                    "bounding_box": list(span.bounding_box),
+                                    "page_width": source_page.width,
+                                    "page_height": source_page.height,
+                                },
+                            )
+                        )
+                        warnings.append(geometry_warning_id)
+                spans.append(
+                    ReadingSourceSpanEvidence(
+                        source_id=source_id,
+                        page_location=page.streams.page_location,
+                        bounding_box=bounding_box,
+                        geometry_warning_id=geometry_warning_id,
+                        start_offset=span.start_offset,
+                        end_offset=span.end_offset,
+                    )
+                )
+            warning_ids = tuple(sorted(warnings, key=lambda value: value.value))
             records.append(
                 ReadingCleanTextProducerEvidence(
                     selected_stream_id=page.selection.selected_stream_id,
@@ -73,6 +137,11 @@ class ReadingCleanTextProducerActionizer(
                     transformations=derive_reading_clean_text_transformations(
                         block=block,
                         transcript=transcript,
+                    ),
+                    source_spans=ReadingSourceSpanEvidenceInventory(*spans),
+                    warning_ids=ReadingEvidenceIdentityInventory(
+                        ReadingEvidenceIdentityKind.WARNING,
+                        *warning_ids,
                     ),
                     producer_id=producer_id,
                     producer_version=transcript.processor_version,

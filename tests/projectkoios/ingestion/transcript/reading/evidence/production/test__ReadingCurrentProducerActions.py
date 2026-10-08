@@ -1,10 +1,17 @@
 """Current structured-item and clean-text producer action tests."""
 
+from dataclasses import replace
+
 import pytest
 from projectkoios.base import (
     DataObjectActionizer,
     DataObjectActionRequest,
     DataObjectActionResult,
+)
+from projectkoios.ingestion.clean_transcript import (
+    CleanTranscript,
+    CleanTranscriptBlock,
+    CleanTranscriptPage,
 )
 from projectkoios.ingestion.transcript.reading.evidence.error import (
     ReadingEvidenceError,
@@ -104,6 +111,7 @@ def test__clean_text_producer__binds_selected_stream_and_exact_replay(
     fixture = reading_current_producer_fixture
     request = ReadingCleanTextProductionRequest(
         transcript=fixture.transcript,
+        transcription=fixture.source.transcription,
         page_text=fixture.page_text,
     )
     actionizer = ReadingCleanTextProducerActionizer()
@@ -129,6 +137,12 @@ def test__clean_text_producer__binds_selected_stream_and_exact_replay(
         assert (
             record.transformations.apply(record.raw_text) == record.clean_text
         )
+        assert len(record.source_spans) > 0
+        assert all(
+            span.page_location == record.page_location
+            and span.source_id.kind is ReadingEvidenceIdentityKind.SOURCE
+            for span in record.source_spans
+        )
         transformation_kinds.update(
             value.kind for value in record.transformations
         )
@@ -143,6 +157,7 @@ def test__clean_text_producer__types_sanitation_and_whitespace_edits() -> None:
     result = ReadingCleanTextProducerActionizer().action(
         request=ReadingCleanTextProductionRequest(
             transcript=fixture.transcript,
+            transcription=fixture.source.transcription,
             page_text=fixture.page_text,
         )
     )
@@ -161,6 +176,79 @@ def test__clean_text_producer__types_sanitation_and_whitespace_edits() -> None:
     )
 
 
+def test__clean_text_producer__omits_invalid_geometry_with_warning(
+    reading_current_producer_fixture: ReadingCurrentProducerFixture,
+) -> None:
+    fixture = reading_current_producer_fixture
+    original = fixture.transcript
+    original_block = original.blocks[0]
+    source_span = original_block.source_spans[0]
+    invalid_span = replace(source_span, bounding_box=(-1.0, 0.0, 1.0, 1.0))
+    block = CleanTranscriptBlock.create(
+        block_id=original_block.block_id,
+        page_index=original_block.page_index,
+        printed_page_label=original_block.printed_page_label,
+        order_index=original_block.order_index,
+        raw_text=original_block.raw_text,
+        clean_text=original_block.clean_text,
+        source_spans=(invalid_span, *original_block.source_spans[1:]),
+        transformations=original_block.transformations,
+        dehyphenation_decision_ids=original_block.dehyphenation_decision_ids,
+        page_number_classification_id=(
+            original_block.page_number_classification_id
+        ),
+        publisher_classification_id=(
+            original_block.publisher_classification_id
+        ),
+        private_use_finding_ids=original_block.private_use_finding_ids,
+    )
+    blocks = (block, *original.blocks[1:])
+    pages = tuple(
+        CleanTranscriptPage.create(
+            page_index=page.page_index,
+            printed_page_label=page.printed_page_label,
+            block_record_ids=tuple(
+                block.record_id
+                if record_id == original_block.record_id
+                else record_id
+                for record_id in page.block_record_ids
+            ),
+            text=page.text,
+        )
+        for page in original.pages
+    )
+    transcript = CleanTranscript.create(
+        transcription_result=fixture.source.transcription,
+        layouts=fixture.source.layouts,
+        pages=pages,
+        blocks=blocks,
+        exclusions=original.exclusions,
+        dehyphenation_decisions=original.dehyphenation_decisions,
+        page_number_classifications=original.page_number_classifications,
+        publisher_front_matter=original.publisher_front_matter,
+        private_use_glyph_findings=original.private_use_glyph_findings,
+        text=original.text,
+        warnings=original.warnings,
+        processor_name=original.processor_name,
+        processor_version=original.processor_version,
+        configuration_digest=original.configuration_digest,
+    )
+
+    result = ReadingCleanTextProducerActionizer().action(
+        request=ReadingCleanTextProductionRequest(
+            transcript=transcript,
+            transcription=fixture.source.transcription,
+            page_text=fixture.page_text,
+        )
+    )
+
+    projected = tuple(result.evidence)[0]
+    projected_span = tuple(projected.source_spans)[0]
+    assert projected_span.bounding_box is None
+    assert projected_span.geometry_warning_id is not None
+    assert projected_span.geometry_warning_id in projected.warning_ids
+
+
 def test__current_producer_requests__reject_partial_page_binding(
     reading_current_producer_fixture: ReadingCurrentProducerFixture,
 ) -> None:
@@ -176,5 +264,6 @@ def test__current_producer_requests__reject_partial_page_binding(
     with pytest.raises(ReadingEvidenceError, match="equal coverage"):
         ReadingCleanTextProductionRequest(
             transcript=fixture.transcript,
+            transcription=fixture.source.transcription,
             page_text=partial,
         )

@@ -109,6 +109,15 @@ from projectkoios.ingestion.transcript.reading.evidence.input.text.production.re
 from projectkoios.ingestion.transcript.reading.evidence.input.text.production.result import (  # noqa: E501
     ReadingCleanTextProductionResult,
 )
+from projectkoios.ingestion.transcript.reading.evidence.projection.actionizer import (  # noqa: E501
+    ReadingEvidenceProjectionActionizer,
+)
+from projectkoios.ingestion.transcript.reading.evidence.projection.request import (  # noqa: E501
+    ReadingEvidenceProjectionRequest,
+)
+from projectkoios.ingestion.transcript.reading.evidence.projection.result import (  # noqa: E501
+    ReadingEvidenceProjectionResult,
+)
 
 pytestmark = pytest.mark.smoke
 
@@ -342,6 +351,16 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=ReadingCleanTextProducerActionizer,
         actionizer_base=DataObjectActionizer,
         result_type=ReadingCleanTextProductionResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reading_evidence_projection",
+        request_type=ReadingEvidenceProjectionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReadingEvidenceProjectionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReadingEvidenceProjectionResult,
         result_base=AbstractDataObjectActionResult,
         stateless_actionizer=True,
     ),

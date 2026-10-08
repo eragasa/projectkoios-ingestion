@@ -150,6 +150,21 @@ class ReadingEvidenceFoundationFixture:
             basis=ReadingTextSelectionBasis.NATIVE_EXACT,
         )
 
+    def text_source_spans(
+        self,
+        *,
+        page: ReadingPageLocation | None = None,
+    ) -> ReadingSourceSpanEvidenceInventory:
+        """Return one exact source span for clean text evidence."""
+        location = self.page() if page is None else page
+        span = ReadingSourceSpanEvidence(
+            source_id=self.identity(ReadingEvidenceIdentityKind.SOURCE, "book"),
+            page_location=location,
+            start_offset=0,
+            end_offset=12,
+        )
+        return ReadingSourceSpanEvidenceInventory(span)
+
     def source_spans(
         self,
         *,

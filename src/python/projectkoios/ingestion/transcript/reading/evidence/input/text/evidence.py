@@ -15,6 +15,9 @@ from projectkoios.ingestion.transcript.reading.evidence.identity.definition impo
 from projectkoios.ingestion.transcript.reading.evidence.identity.derivation import (  # noqa: E501
     ReadingEvidenceIdentityDerivation,
 )
+from projectkoios.ingestion.transcript.reading.evidence.identity.inventory import (  # noqa: E501
+    ReadingEvidenceIdentityInventory,
+)
 from projectkoios.ingestion.transcript.reading.evidence.identity.kind import (
     ReadingEvidenceIdentityKind,
 )
@@ -26,6 +29,9 @@ from projectkoios.ingestion.transcript.reading.evidence.limits.definition import
 )
 from projectkoios.ingestion.transcript.reading.evidence.page.location import (
     ReadingPageLocation,
+)
+from projectkoios.ingestion.transcript.reading.evidence.span.inventory import (
+    ReadingSourceSpanEvidenceInventory,
 )
 
 
@@ -40,6 +46,8 @@ class ReadingCleanTextProducerEvidence:
     raw_text: str
     clean_text: str
     transformations: ReadingTextTransformationInventory
+    source_spans: ReadingSourceSpanEvidenceInventory
+    warning_ids: ReadingEvidenceIdentityInventory
     producer_id: ReadingEvidenceIdentity
     producer_version: str
     raw_text_sha256: SHA256Hash = field(init=False)
@@ -93,6 +101,31 @@ class ReadingCleanTextProducerEvidence:
             raise ReadingEvidenceError(
                 "clean text does not match exact transformations"
             )
+        if type(
+            self.source_spans
+        ) is not ReadingSourceSpanEvidenceInventory or (not self.source_spans):
+            raise ReadingEvidenceError("clean text requires source spans")
+        if any(
+            span.page_location != self.page_location
+            or span.source_object_id is not None
+            for span in self.source_spans
+        ):
+            raise ReadingEvidenceError(
+                "clean-text source-span lineage is inconsistent"
+            )
+        if type(self.warning_ids) is not ReadingEvidenceIdentityInventory or (
+            self.warning_ids.kind is not ReadingEvidenceIdentityKind.WARNING
+        ):
+            raise TypeError("warning_ids must be a warning identity inventory")
+        warnings = set(self.warning_ids)
+        if any(
+            span.geometry_warning_id is not None
+            and span.geometry_warning_id not in warnings
+            for span in self.source_spans
+        ):
+            raise ReadingEvidenceError(
+                "clean-text geometry warning is absent from warning_ids"
+            )
         READING_EVIDENCE_LIMITS.require_text(
             self.producer_version,
             "producer_version",
@@ -120,6 +153,8 @@ class ReadingCleanTextProducerEvidence:
                     "transformation_ids": (
                         self.transformations.identity_material()
                     ),
+                    "source_spans": self.source_spans.identity_material(),
+                    "warning_ids": self.warning_ids.identity_material(),
                     "producer_id": self.producer_id.value,
                     "producer_version": self.producer_version,
                 },
