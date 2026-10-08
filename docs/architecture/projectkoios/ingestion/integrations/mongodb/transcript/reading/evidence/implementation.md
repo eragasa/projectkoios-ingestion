@@ -2,38 +2,36 @@
 
 ## Ownership
 
-This provider owns current-schema operational materialization, source reconstruction, inventories, and schema migration for `ReadingEvidenceDocument`. It does not own canonical semantics, large payload bytes, source extraction, retries, cutover approval, or Workflow lifecycle.
+This integration is a thin MongoDB front end for the backend-neutral reading-evidence storage contract owned by `projectkoios.ingestion.storage.transcript.reading.evidence`.
+
+It owns only:
+
+- physical MongoDB collection mapping and BSON byte bounds;
+- validation that an injected database capability matches the requested target;
+- create-once exact-replay writes of already-projected storage documents;
+- completion-member-last write ordering;
+- bounded queries for one exact completed generation;
+- translation of MongoDB failures into typed provider errors; and
+- provider-specific scope-index readiness.
+
+It does not own canonical record decomposition, reversible reading-evidence JSON, logical schema semantics, completion-manifest meaning, canonical reconstruction, or equivalence. Those are backend-neutral and reusable by disk, SQLite, and MongoDB adapters.
+
+## Index readiness
+
+`MongoReadingEvidenceIndexReadinessActionizer` separately creates or exactly verifies one deterministic scope index for every configured physical collection. The source reader requires those definitions before issuing document queries. Index mutation is not hidden inside materialization or reading.
 
 ## Current-schema materialization
 
-`MongoReadingEvidenceMaterializer` accepts one bounded `MongoReadingEvidenceMaterializationRequest` containing a complete successful canonical projection, explicit target generation, schema version, configuration, and authority identity. It writes immutable generation-scoped documents, pages, blocks/evidence, lineage, limitations, and managed references in dependency order.
+`MongoReadingEvidenceMaterializer` accepts a complete `ReadingEvidenceReadModel` produced by `ReadingEvidenceStorageProjector`, an exact target, physical MongoDB configuration, and authority identity. It does not inspect or reinterpret semantic payloads.
 
-Writes use bounded create-once batches and idempotent exact replay. Existing records are unchanged only when the complete canonical record matches; any conflict fails closed. There is no generation-wide transaction and no mutable staged manifest.
+It validates every projected JSON object and BSON size, writes non-completion members using create-once exact replay, and writes the already-projected completion member last. Existing `_id` with different complete content fails closed. Partial generations lack a completion member and are invisible to the normal source. Workflow owns retry and orphan cleanup.
 
-After all child records exist, the materializer reconstructs the generation through the same strict source decoder, independently recomputes its canonical inventory and identity, compares it with the projection result, and creates one immutable `MongoReadingEvidenceCompletionManifest` last. Partial generations have no completion manifest and are invisible to normal readers. Workflow owns retry and orphan cleanup.
+## Current-schema source
 
-## Source retrieval
+`MongoReadingEvidenceReadModelReader` first requires exactly one current-schema completion member, then performs bounded exact generation/document reads using manifest counts. It returns only `ReadingEvidenceStorageDocument` values assembled into `ReadingEvidenceReadModel`.
 
-`MongoReadingEvidenceSourceActionizer` accepts exact document/projection/generation expectations and requires one current-schema completion manifest. It performs bounded reads, rejects missing/extra/duplicate/conflicting records, reconstructs typed canonical values, recomputes identities/inventories, verifies the manifest, and returns `ReadingEvidenceSourceResult`.
+`MongoReadingEvidenceSourceActionizer` composes that reader with backend-neutral `ReadingEvidenceReadModelVerifier`, returning `ReadingEvidenceSourceResult`. The Mongo layer never constructs canonical domain values itself and never decodes old schemas.
 
-Core source code decodes only the current schema. It never branches on historical schema versions.
+## Migration boundary
 
-## Inventory
-
-`MongoReadingEvidenceInventoryObserver` reports completed and incomplete generations separately, exact counts/digests/schema versions, and completion-manifest coverage without changing state. Operational consumers select only current-schema completed generations.
-
-## Schema migration
-
-Database evolution is explicit and side-by-side:
-
-1. freeze an exact source inventory;
-2. create a `MongoReadingEvidenceMigrationPlan` of contiguous adjacent typed schema steps resolved through `MongoReadingEvidenceMigrationStepRegistry`;
-3. migrate one bounded identity/page batch per action request into a new target generation;
-4. inventory source and target independently;
-5. produce `MongoReadingEvidenceMigrationVerificationResult` from canonical domain equivalence plus declared intentional schema differences;
-6. use `MongoReadingEvidenceMigrationCompletionActionizer` to re-observe the target and publish the immutable completion manifest; and
-7. let Workflow perform separately authorized reader cutover.
-
-Migration never mutates source records in place, never asks core readers to decode old schemas, and never deletes source collections during cutover. Normal sources are immutable completed generations. A mutable prototype source requires a Workflow-owned write-freeze barrier; final verification re-observes the source inventory and fails on any drift before completion publication. Reader cutover is an explicit deployment configuration change referencing the target completion manifest. Rollback selects the prior completed generation/schema. Production migration and destructive cleanup require separate authorization.
-
-The prototype JSONL/report formats are not database schemas and receive no runtime decoder. If prototype-derived data already exists in MongoDB, the first migration step treats that database layout as an explicit source schema and produces only current canonical target records.
+The current MongoDB reading-evidence package implements no migration owner, migration request, inventory observer, cutover, rollback, or cleanup operation. Any future side-by-side schema migration remains an external, separately designed and authorized Workflow composition using backend-neutral reconstruction and equivalence evidence. No live database operation is part of the current implementation validation.

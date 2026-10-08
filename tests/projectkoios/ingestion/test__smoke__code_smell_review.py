@@ -180,6 +180,8 @@ _NO_STATIC_UTILITY_METHOD_SCOPES = (
     _SOURCE_ROOT / "reference/evidence/json/value.py",
 )
 _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
+    _SOURCE_ROOT / "integrations/mongodb/transcript/reading/evidence",
+    _SOURCE_ROOT / "storage/transcript/reading/evidence",
     _SOURCE_ROOT / "reference/claim",
     _SOURCE_ROOT / "reference/evidence",
     _SOURCE_ROOT / "reference/page/location",
@@ -187,6 +189,8 @@ _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
 )
 _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "integrations/layout_parser",
+    _SOURCE_ROOT / "integrations/mongodb/transcript/reading/evidence",
+    _SOURCE_ROOT / "storage/transcript/reading/evidence",
     _SOURCE_ROOT / "layout/annotation",
     _SOURCE_ROOT / "layout/limits",
     _SOURCE_ROOT / "layout/proposal",
