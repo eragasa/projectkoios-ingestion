@@ -21,6 +21,12 @@ The local smoke suite checks objective rules in each migrated source scope:
   functions;
 - registered private-import-clean scopes do not import underscore-prefixed
   members across module boundaries;
+- registered utility-clean scopes do not use `staticmethod` or `classmethod` to
+  turn classes into procedural namespaces; cohesive codecs and legacy scopes
+  remain outside that registry until separately reduced;
+- registered semantic-collection scopes expose no public raw `tuple[...]`
+  fields; private tuple storage remains an implementation detail of immutable
+  inventories;
 - every module function has a production-source reference or an explicit entry
   in `_EXTERNAL_MODULE_FUNCTIONS`, and no conditional block is empty
   scaffolding; and
@@ -35,7 +41,10 @@ public function in `_EXTERNAL_MODULE_FUNCTIONS` only when its caller genuinely
 lives outside production source, and remove stale registrations. Add a domain
 to `_NO_PRIVATE_MEMBER_FUNCTION_SCOPES` or
 `_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES` as soon as its applicable debt is
-removed. Registration is deliberately incremental: it does not misclassify
+removed. Register reduced domains or precise leaves in
+`_NO_STATIC_UTILITY_METHOD_SCOPES` and semantic collection domains in
+`_NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES`; file registrations must fail if the file
+is missing. Registration is deliberately incremental: it does not misclassify
 explicitly unmigrated processor boundaries as already actionized or turn broad
 legacy helpers into public API by renaming alone.
 
@@ -73,6 +82,13 @@ review the owned type or operation and answer these questions:
   dataclass?
 - Are identity, evidence, or configuration concepts introduced only where the
   owning action requires them?
+- Are external identity inputs bounded and semantically validated before any
+  hashing, without untyped `**values` identity bags or record-construction
+  bypasses around an actionizer?
+- Does a public domain field expose a raw tuple where an immutable semantic
+  inventory should own ordering, uniqueness, bounds, and item meaning?
+- Does a procedural `require_*` helper remain where the consuming immutable
+  value, request, or derivation can own the invariant directly?
 - Does a pipeline expose a fixed synchronous composition as one workflow
   prototask, without concealing topology, retries, leases, approvals,
   checkpoints, concurrency, or stop propagation?

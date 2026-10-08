@@ -64,9 +64,7 @@ class LayoutParserProposalConfiguration(AbstractActionConfiguration):
         for item in self.label_mapping:
             if not isinstance(item, tuple) or len(item) != 2:
                 raise TypeError("label_mapping items must be two-value tuples")
-            label = LayoutValueValidation.require_text(
-                "model label", item[0]
-            )
+            label = LayoutValueValidation.require_text("model label", item[0])
             if len(label) > MAX_LAYOUT_PARSER_LABEL_CHARACTERS:
                 raise LayoutParserLimitError(
                     "model label exceeds implementation character limit"
@@ -75,10 +73,7 @@ class LayoutParserProposalConfiguration(AbstractActionConfiguration):
                 raise ValueError("model labels must be unique")
             labels.add(label)
             label_characters += len(label)
-            if (
-                label_characters
-                > MAX_LAYOUT_PARSER_LABEL_MAPPING_CHARACTERS
-            ):
+            if label_characters > MAX_LAYOUT_PARSER_LABEL_MAPPING_CHARACTERS:
                 raise LayoutParserLimitError(
                     "label_mapping exceeds aggregate character limit"
                 )

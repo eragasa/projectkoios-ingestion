@@ -112,9 +112,10 @@ def test__layout_pixel_mapping__maps_every_quarter_turn(
         image_height=image_height,
     )
 
-    assert mapping.source_box_to_pixel_box(
-        (10.0, 10.0, 40.0, 20.0)
-    ) == expected_block_box
+    assert (
+        mapping.source_box_to_pixel_box((10.0, 10.0, 40.0, 20.0))
+        == expected_block_box
+    )
 
 
 @pytest.mark.parametrize(
@@ -266,9 +267,12 @@ def test__layout_review_request__bounds_translated_render_rounding(
             proposal_source=proposal_result.proposal_source,
             proposals=proposal_result.proposals,
         )
-        assert mapping.source_box_to_pixel_box(
-            (0.0, 0.0, 10.0, 10.0)
-        ) == (0.5, 0.5, 20.5, 20.5)
+        assert mapping.source_box_to_pixel_box((0.0, 0.0, 10.0, 10.0)) == (
+            0.5,
+            0.5,
+            20.5,
+            20.5,
+        )
         assert request.render is render
     else:
         with pytest.raises(ValueError, match="outward pixel rounding"):
@@ -311,12 +315,12 @@ def test__pymupdf_renderer__projects_exact_rotated_layout_evidence(
         media_type="application/pdf",
         locator="memory://rotated-layout-projection.pdf",
     )
-    extracted_page = PyMuPdfExtractor(
-        low_text_character_threshold=0
-    ).extract(source, BytesIO(payload)).document.pages[0]
-    layout = DeterministicLayoutProcessor().analyze_page(
-        source, extracted_page
+    extracted_page = (
+        PyMuPdfExtractor(low_text_character_threshold=0)
+        .extract(source, BytesIO(payload))
+        .document.pages[0]
     )
+    layout = DeterministicLayoutProcessor().analyze_page(source, extracted_page)
     renderer = PyMuPdfRegionRenderer(resolution_dpi=dpi)
     rendered_region = renderer.render(
         source,
@@ -381,9 +385,7 @@ def test__pymupdf_renderer__projects_exact_rotated_layout_evidence(
         ),
     )[0]
     with pytest.raises(ValueError, match="full-page"):
-        renderer.project_layout_render_evidence(
-            rendered_region=cropped_region
-        )
+        renderer.project_layout_render_evidence(rendered_region=cropped_region)
 
 
 @pytest.mark.parametrize(

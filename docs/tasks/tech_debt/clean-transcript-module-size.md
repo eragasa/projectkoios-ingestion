@@ -25,6 +25,11 @@ families were already collapsed into this canonical family.
 
 ## Desired reduction
 
+The eventual semantic owner is `projectkoios.ingestion.transcript.clean` (not
+`trainscript/clean`). It should be a package decomposed by record, projection,
+policy, and concrete wire-boundary ownership rather than a move of all 2,050
+lines into `transcript/clean.py`.
+
 Reduce the amount of code and review surface only when behavior can be deleted,
 generalized at its true owner, or made materially simpler. Preserve
 `CleanTranscript` as the canonical result and keep projection, validation,

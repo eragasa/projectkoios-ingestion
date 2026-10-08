@@ -5,10 +5,12 @@ flowchart LR
     Boundary["configured JsonLimits"]
     Operation["parse / project / serialize"]
     Error["JsonLimitError"]
+    ByteError["JsonDocumentByteLimitError"]
     Domain["optional domain error translation"]
 
     Boundary --> Operation
     Operation --> Error
+    Operation --> ByteError --> Error
     Error --> Domain
 ```
 

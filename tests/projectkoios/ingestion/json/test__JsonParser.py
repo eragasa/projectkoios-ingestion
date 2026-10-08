@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import pytest
-from projectkoios.ingestion.json.error import JsonParseError
-from projectkoios.ingestion.json.limits.error import JsonLimitError
+from projectkoios.ingestion.json.error import (
+    JsonDuplicateFieldError,
+    JsonParseError,
+)
+from projectkoios.ingestion.json.limits.error import (
+    JsonDocumentByteLimitError,
+    JsonLimitError,
+)
 from projectkoios.ingestion.json.parser import JsonParser
 
 from tests.projectkoios.ingestion.json.fixture import JsonFixture
@@ -25,8 +31,6 @@ def test__json_parser__parses_strict_text_and_bytes() -> None:
 @pytest.mark.parametrize(
     "content",
     (
-        # Duplicate fields must not use last-value-wins semantics.
-        '{"value":1,"value":2}',
         # Python's non-RFC constants are forbidden.
         '{"value":NaN}',
         # A finite token that overflows to infinity is also forbidden.
@@ -42,6 +46,11 @@ def test__json_parser__rejects_malformed_or_non_rfc_values(
         JsonParser(FIXTURE.limits()).parse_text(content)
 
 
+def test__json_parser__classifies_duplicate_fields() -> None:
+    with pytest.raises(JsonDuplicateFieldError, match="duplicate field"):
+        JsonParser(FIXTURE.limits()).parse_text('{"value":1,"value":2}')
+
+
 def test__json_parser__rejects_invalid_utf8() -> None:
     with pytest.raises(JsonParseError, match="UTF-8"):
         JsonParser(FIXTURE.limits()).parse_bytes(b'"\xff"')
@@ -55,7 +64,7 @@ def test__json_parser__applies_preparse_and_tree_limits() -> None:
         maximum_total_string_bytes=3,
     )
     assert JsonParser(exact_limits).parse_bytes(exact) == "abc"
-    with pytest.raises(JsonLimitError, match="content"):
+    with pytest.raises(JsonDocumentByteLimitError, match="content"):
         JsonParser(exact_limits).parse_bytes(exact + b" ")
 
     assert JsonParser(FIXTURE.limits(maximum_container_depth=2)).parse_text(

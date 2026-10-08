@@ -3,9 +3,10 @@
 `JsonError` is a `ValueError` subclass and the base for non-limit JSON boundary
 failures.
 
-`JsonParseError` reports malformed UTF-8 JSON, duplicate fields, forbidden
-constants, invalid numeric tokens, unbalanced containers, and unsupported parsed
-values.
+`JsonParseError` reports malformed UTF-8 JSON, forbidden constants, invalid
+numeric tokens, unbalanced containers, and unsupported parsed values.
+`JsonDuplicateFieldError` is its typed subtype for duplicate object fields so
+domain contracts never classify duplicates by matching diagnostic text.
 
 `JsonSerializationError` reports unsupported source values, cycles, invalid
 mapping keys, non-finite numbers, and UTF-8/formatter failures.

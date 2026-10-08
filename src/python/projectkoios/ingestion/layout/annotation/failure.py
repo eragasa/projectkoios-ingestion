@@ -91,9 +91,7 @@ class LayoutFailureAnnotation(AbstractImmutableDataObject):
         ):
             if not isinstance(values, tuple):
                 raise TypeError(f"{name} must be a tuple")
-            if any(
-                not isinstance(value, str) or not value for value in values
-            ):
+            if any(not isinstance(value, str) or not value for value in values):
                 raise ValueError(f"{name} must contain non-empty IDs")
             bounded_values = tuple(
                 LayoutValueValidation.require_text(name, value)

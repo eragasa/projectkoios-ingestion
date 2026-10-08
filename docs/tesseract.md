@@ -91,8 +91,8 @@ processor = TesseractOCRProcessor(
     executable=Path(os.environ["KOIOS_TESSERACT_EXECUTABLE"]),
     language_bindings=(
         TesseractLanguageBinding(
-            language="en",             # canonical semantic BCP 47 tag
-            resource_name="eng",       # Tesseract backend resource name
+            language="en",  # canonical semantic BCP 47 tag
+            resource_name="eng",  # Tesseract backend resource name
             traineddata_path=Path(
                 os.environ["KOIOS_TESSERACT_ENG_TRAINEDDATA"]
             ),

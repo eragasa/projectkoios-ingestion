@@ -7,6 +7,7 @@ serialization.
 
 - `JsonError`
 - `JsonParseError`
+- `JsonDuplicateFieldError`
 - `JsonSerializationError`
 
 ## Contents

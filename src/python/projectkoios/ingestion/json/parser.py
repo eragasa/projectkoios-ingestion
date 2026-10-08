@@ -8,11 +8,15 @@ from dataclasses import dataclass
 from typing import Any
 
 from projectkoios.ingestion.json.error import (
+    JsonDuplicateFieldError,
     JsonParseError,
     JsonSerializationError,
 )
 from projectkoios.ingestion.json.limits.definition import JsonLimits
-from projectkoios.ingestion.json.limits.error import JsonLimitError
+from projectkoios.ingestion.json.limits.error import (
+    JsonDocumentByteLimitError,
+    JsonLimitError,
+)
 from projectkoios.ingestion.json.value import JsonValue, JsonValueProjector
 
 
@@ -26,7 +30,9 @@ class JsonParser:
         if not isinstance(content, bytes):
             raise TypeError("JSON content must be bytes")
         if len(content) > self.limits.maximum_utf8_bytes:
-            raise JsonLimitError("JSON content exceeds its byte limit")
+            raise JsonDocumentByteLimitError(
+                "JSON content exceeds its byte limit"
+            )
         try:
             text = content.decode("utf-8", errors="strict")
         except UnicodeError as error:
@@ -41,7 +47,9 @@ class JsonParser:
         except UnicodeError as error:
             raise JsonParseError("JSON content is not valid UTF-8") from error
         if len(encoded) > self.limits.maximum_utf8_bytes:
-            raise JsonLimitError("JSON content exceeds its byte limit")
+            raise JsonDocumentByteLimitError(
+                "JSON content exceeds its byte limit"
+            )
         return self._parse(content)
 
     def _parse(self, text: str) -> JsonValue:
@@ -51,7 +59,7 @@ class JsonParser:
             result: dict[str, Any] = {}
             for key, value in pairs:
                 if key in result:
-                    raise JsonParseError(
+                    raise JsonDuplicateFieldError(
                         "JSON object contains a duplicate field"
                     )
                 result[key] = value

@@ -41,12 +41,8 @@ jobs:
       - name: Check owned Python formatting
         run: >-
           .venv/bin/python -m ruff format --check
-          src/python/projectkoios/ingestion/reference_evidence.py
-          src/python/projectkoios/ingestion/reference_locator.py
-          src/python/projectkoios/ingestion/reference_claim_candidate.py
-          tests/test__ReferenceEvidence.py
-          tests/test__ReferencePageLocator.py
-          tests/test__ReferenceClaimCandidate.py
+          src/python/projectkoios/ingestion/reference
+          tests/projectkoios/ingestion/reference
 
       - name: Lint all Python
         run: >-
@@ -88,9 +84,8 @@ jobs:
           from importlib import import_module
           from importlib.util import find_spec
 
-          from projectkoios.ingestion import (
+          from projectkoios.ingestion.reference.claim.candidate import (
               ReferenceClaimCandidate,
-              ReferencePageLocatorChecker,
           )
           from projectkoios.ingestion.base.data.object import AbstractDataObject
           from projectkoios.ingestion.base.inventory.identity.error import (
@@ -118,7 +113,6 @@ jobs:
               ExtractionProjectionProjector,
           )
           assert ReferenceClaimCandidate is not None
-          assert ReferencePageLocatorChecker is not None
           assert AbstractDataObject is not None
           assert InventoryIdentity is not None
           assert InventoryIdentityError is not None
@@ -221,6 +215,65 @@ jobs:
               "projectkoios.ingestion.json.parser",
               "projectkoios.ingestion.json.serializer",
               "projectkoios.ingestion.json.value",
+              "projectkoios.ingestion.reference.claim.candidate",
+              "projectkoios.ingestion.reference.claim.definition",
+              "projectkoios.ingestion.reference.claim.error",
+              "projectkoios.ingestion.reference.claim.identity",
+              "projectkoios.ingestion.reference.claim.limitation",
+              "projectkoios.ingestion.reference.claim.projection.actionizer",
+              "projectkoios.ingestion.reference.claim.projection.request",
+              "projectkoios.ingestion.reference.claim.status",
+              "projectkoios.ingestion.reference.page.location.anchor",
+              "projectkoios.ingestion.reference.page.location.definition",
+              "projectkoios.ingestion.reference.page.location.error",
+              "projectkoios.ingestion.reference.page.location.identity",
+              "projectkoios.ingestion.reference.page.location.inventory",
+              "projectkoios.ingestion.reference.page.location.limitation",
+              "projectkoios.ingestion.reference.page.location.limits.definition",
+              "projectkoios.ingestion.reference.page.location.limits.error",
+              "projectkoios.ingestion.reference.page.location.locator",
+              "projectkoios.ingestion.reference.page.location.matching.actionizer",
+              "projectkoios.ingestion.reference.page.location.matching.request",
+              "projectkoios.ingestion.reference.page.location.projection.actionizer",
+              "projectkoios.ingestion.reference.page.location.projection.request",
+              "projectkoios.ingestion.reference.page.location.result",
+              "projectkoios.ingestion.reference.page.location.status",
+              "projectkoios.ingestion.reference.page.location.verification",
+              "projectkoios.ingestion.reference.evidence.artifact",
+              "projectkoios.ingestion.reference.evidence.audit",
+              "projectkoios.ingestion.reference.evidence.completeness",
+              "projectkoios.ingestion.reference.evidence.definition",
+              "projectkoios.ingestion.reference.evidence.error",
+              "projectkoios.ingestion.reference.evidence.extraction",
+              "projectkoios.ingestion.reference.evidence.identity",
+              "projectkoios.ingestion.reference.evidence.json.artifact",
+              "projectkoios.ingestion.reference.evidence.json.audit",
+              "projectkoios.ingestion.reference.evidence.json.contract",
+              "projectkoios.ingestion.reference.evidence.json.extraction",
+              "projectkoios.ingestion.reference.evidence.json.layer",
+              "projectkoios.ingestion.reference.evidence.json.record",
+              "projectkoios.ingestion.reference.evidence.json.source",
+              "projectkoios.ingestion.reference.evidence.json.transcript",
+              "projectkoios.ingestion.reference.evidence.json.value",
+              "projectkoios.ingestion.reference.evidence.layer",
+              "projectkoios.ingestion.reference.evidence.layout",
+              "projectkoios.ingestion.reference.evidence.limitation",
+              "projectkoios.ingestion.reference.evidence.limits.definition",
+              "projectkoios.ingestion.reference.evidence.limits.error",
+              "projectkoios.ingestion.reference.evidence.lineage",
+              "projectkoios.ingestion.reference.evidence.projection.actionizer",
+              "projectkoios.ingestion.reference.evidence.projection.artifact",
+              "projectkoios.ingestion.reference.evidence.projection.lineage",
+              "projectkoios.ingestion.reference.evidence.projection.request",
+              "projectkoios.ingestion.reference.evidence.record",
+              "projectkoios.ingestion.reference.evidence.source",
+              "projectkoios.ingestion.reference.evidence.status",
+              "projectkoios.ingestion.reference.evidence.transcript",
+              "projectkoios.ingestion.reference.evidence.validation",
+              "projectkoios.ingestion.reference.evidence.verification.actionizer",
+              "projectkoios.ingestion.reference.evidence.verification.artifact",
+              "projectkoios.ingestion.reference.evidence.verification.request",
+              "projectkoios.ingestion.reference.evidence.verification.result",
               "projectkoios.ingestion.pdf.batch.item",
               "projectkoios.ingestion.pdf.batch.json",
               "projectkoios.ingestion.pdf.batch.limits.definition",
@@ -305,6 +358,11 @@ jobs:
           removed_modules = (
               "projectkoios.ingestion.batch",
               "projectkoios.ingestion.serialization",
+              "projectkoios.ingestion.reference_claim_candidate",
+              "projectkoios.ingestion.reference_evidence",
+              "projectkoios.ingestion.reference_locator",
+              "projectkoios.ingestion.reference.claim.validation",
+              "projectkoios.ingestion.reference.page.location.validation",
               "projectkoios.ingestion.integrations.mongodb.extraction.index_readiness",
               "projectkoios.ingestion.integrations.sqlite.processing_state",
               "projectkoios.ingestion.storage.processing_state",
@@ -390,6 +448,91 @@ jobs:
               ("projectkoios.ingestion", "PdfBatchPlan"),
               ("projectkoios.ingestion", "contract_dict"),
               ("projectkoios.ingestion", "serialize_contract"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_CLAIM_CANDIDATE_CONTRACT_ID",
+              ),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_CLAIM_CANDIDATE_CONTRACT_VERSION",
+              ),
+              ("projectkoios.ingestion", "ReferenceClaimCandidate"),
+              ("projectkoios.ingestion", "ReferenceClaimCandidateError"),
+              ("projectkoios.ingestion", "ReferenceClaimCandidateStatus"),
+              (
+                  "projectkoios.ingestion",
+                  "ReferenceClaimCandidateVerificationError",
+              ),
+              ("projectkoios.ingestion", "REFERENCE_LOCATOR_CONTRACT_VERSION"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_LOCATOR_MAX_ANCHOR_CHARACTERS",
+              ),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_LOCATOR_MAX_ANCHOR_TOKENS",
+              ),
+              ("projectkoios.ingestion", "REFERENCE_LOCATOR_MAX_ANCHORS"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_LOCATOR_MAX_PAGE_CHARACTERS",
+              ),
+              ("projectkoios.ingestion", "REFERENCE_LOCATOR_PROCESSOR_NAME"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_LOCATOR_PROCESSOR_VERSION",
+              ),
+              ("projectkoios.ingestion", "ReferenceLocatorError"),
+              ("projectkoios.ingestion", "ReferenceLocatorLimitError"),
+              (
+                  "projectkoios.ingestion",
+                  "ReferenceLocatorVerificationError",
+              ),
+              ("projectkoios.ingestion", "ReferencePageLocator"),
+              ("projectkoios.ingestion", "ReferencePageLocatorChecker"),
+              ("projectkoios.ingestion", "ReferencePageLocatorResult"),
+              ("projectkoios.ingestion", "ReferencePageLocatorStatus"),
+              ("projectkoios.ingestion", "reference_topic_anchor_identity"),
+              ("projectkoios.ingestion", "REFERENCE_EVIDENCE_CONTRACT_ID"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_EVIDENCE_CONTRACT_VERSION",
+              ),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_EVIDENCE_GENERATOR_NAME",
+              ),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_EVIDENCE_GENERATOR_VERSION",
+              ),
+              ("projectkoios.ingestion", "REFERENCE_EVIDENCE_MAX_BYTES"),
+              ("projectkoios.ingestion", "REFERENCE_EVIDENCE_MEDIA_TYPE"),
+              (
+                  "projectkoios.ingestion",
+                  "REFERENCE_EVIDENCE_SCHEMA_VERSION",
+              ),
+              ("projectkoios.ingestion", "ReferenceEvidenceArtifact"),
+              ("projectkoios.ingestion", "ReferenceEvidenceAudit"),
+              ("projectkoios.ingestion", "ReferenceEvidenceAuditScope"),
+              ("projectkoios.ingestion", "ReferenceEvidenceCompleteness"),
+              ("projectkoios.ingestion", "ReferenceEvidenceContractStatus"),
+              ("projectkoios.ingestion", "ReferenceEvidenceError"),
+              ("projectkoios.ingestion", "ReferenceEvidenceExtraction"),
+              ("projectkoios.ingestion", "ReferenceEvidenceLayerCount"),
+              ("projectkoios.ingestion", "ReferenceEvidenceLimitError"),
+              ("projectkoios.ingestion", "ReferenceEvidenceParseError"),
+              ("projectkoios.ingestion", "ReferenceEvidenceRecord"),
+              ("projectkoios.ingestion", "ReferenceEvidenceSource"),
+              ("projectkoios.ingestion", "ReferenceEvidenceTranscript"),
+              (
+                  "projectkoios.ingestion",
+                  "ReferenceEvidenceVerificationError",
+              ),
+              ("projectkoios.ingestion", "build_reference_evidence"),
+              ("projectkoios.ingestion", "parse_reference_evidence"),
+              ("projectkoios.ingestion", "serialize_reference_evidence"),
+              ("projectkoios.ingestion", "verify_reference_evidence"),
               ("projectkoios.ingestion.identity", "canonical_json"),
               ("projectkoios.ingestion.identity", "to_json_value"),
               ("projectkoios.ingestion", "ArticleStructureAnalyzer"),

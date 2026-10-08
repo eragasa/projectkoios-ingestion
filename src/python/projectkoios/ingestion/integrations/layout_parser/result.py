@@ -61,9 +61,7 @@ class LayoutParserProposalResult(AbstractDataObjectActionResult):
             cls.CONTRACT_VERSION,
             request.request_id,
             source.proposal_source_id,
-            tuple(
-                adaptation.adaptation_id for adaptation in adaptations
-            ),
+            tuple(adaptation.adaptation_id for adaptation in adaptations),
             actionizer,
             actionizer_release,
             request.configuration.configuration_id,
@@ -178,9 +176,7 @@ class LayoutParserProposalResult(AbstractDataObjectActionResult):
             self.CONTRACT_VERSION,
             self.request.request_id,
             self.proposal_source.proposal_source_id,
-            tuple(
-                adaptation.adaptation_id for adaptation in self.adaptations
-            ),
+            tuple(adaptation.adaptation_id for adaptation in self.adaptations),
             self.actionizer_name,
             self.actionizer_version,
             self.request.configuration.configuration_id,

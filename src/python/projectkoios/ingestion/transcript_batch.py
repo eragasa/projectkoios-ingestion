@@ -42,9 +42,14 @@ from projectkoios.ingestion.provenance import (
     DerivationAuditInput,
     DerivationAuditValidator,
 )
-from projectkoios.ingestion.reference_evidence import (
-    build_reference_evidence,
-    serialize_reference_evidence,
+from projectkoios.ingestion.reference.evidence.json.contract import (
+    ReferenceEvidenceJsonContract,
+)
+from projectkoios.ingestion.reference.evidence.projection.actionizer import (
+    ReferenceEvidenceProjectionActionizer,
+)
+from projectkoios.ingestion.reference.evidence.projection.request import (
+    ReferenceEvidenceProjectionRequest,
 )
 from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.sha256.hash import SHA256Hash
@@ -661,15 +666,19 @@ def execute_transcript_batch_item(
 
     clean_json = CanonicalJsonSerializer.serialize_text(clean) + "\n"
     audit_json = CanonicalJsonSerializer.serialize_text(audit) + "\n"
-    reference_evidence = build_reference_evidence(
-        extraction_result=extraction,
-        extraction_artifact=extraction_bytes,
-        clean_transcript=clean,
-        clean_transcript_result_bytes=clean_json.encode("utf-8"),
-        derivation_audit=audit,
-        derivation_audit_artifact=audit_json.encode("utf-8"),
+    reference_evidence = ReferenceEvidenceProjectionActionizer().action(
+        request=ReferenceEvidenceProjectionRequest(
+            extraction_result=extraction,
+            extraction_artifact=extraction_bytes,
+            clean_transcript=clean,
+            clean_transcript_result_bytes=clean_json.encode("utf-8"),
+            derivation_audit=audit,
+            derivation_audit_artifact=audit_json.encode("utf-8"),
+        )
     )
-    reference_evidence_bytes = serialize_reference_evidence(reference_evidence)
+    reference_evidence_bytes = ReferenceEvidenceJsonContract().serialize_bytes(
+        reference_evidence
+    )
     reference_evidence_json = reference_evidence_bytes.decode("utf-8")
     if structure.analysis_id is None:
         raise TranscriptBatchError("article structure has no stable identity")

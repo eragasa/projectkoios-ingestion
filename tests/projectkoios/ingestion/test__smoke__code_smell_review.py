@@ -10,7 +10,11 @@ from pathlib import Path
 from typing import get_type_hints
 
 import pytest
-from projectkoios.base import DataObjectModel
+from projectkoios.base import (
+    DataObjectActionizer,
+    DataObjectActionRequest,
+    DataObjectModel,
+)
 from projectkoios.ingestion.articles.structure.actionizer import (
     DeterministicArticleStructureActionizer,
 )
@@ -41,6 +45,51 @@ from projectkoios.ingestion.layout.review.actionizer import (
 )
 from projectkoios.ingestion.layout.review.request import LayoutReviewRequest
 from projectkoios.ingestion.layout.review.result import LayoutReviewCase
+from projectkoios.ingestion.reference.claim.candidate import (
+    ReferenceClaimCandidate,
+)
+from projectkoios.ingestion.reference.claim.projection.actionizer import (
+    ReferenceClaimCandidateProjectionActionizer,
+)
+from projectkoios.ingestion.reference.claim.projection.request import (
+    ReferenceClaimCandidateProjectionRequest,
+)
+from projectkoios.ingestion.reference.evidence.projection.actionizer import (
+    ReferenceEvidenceProjectionActionizer,
+)
+from projectkoios.ingestion.reference.evidence.projection.request import (
+    ReferenceEvidenceProjectionRequest,
+)
+from projectkoios.ingestion.reference.evidence.record import (
+    ReferenceEvidenceRecord,
+)
+from projectkoios.ingestion.reference.evidence.verification.actionizer import (
+    ReferenceEvidenceVerificationActionizer,
+)
+from projectkoios.ingestion.reference.evidence.verification.request import (
+    ReferenceEvidenceVerificationRequest,
+)
+from projectkoios.ingestion.reference.evidence.verification.result import (
+    ReferenceEvidenceVerificationResult,
+)
+from projectkoios.ingestion.reference.page.location.locator import (
+    ReferencePageLocator,
+)
+from projectkoios.ingestion.reference.page.location.matching.actionizer import (
+    ReferencePageLocationActionizer,
+)
+from projectkoios.ingestion.reference.page.location.matching.request import (
+    ReferencePageLocationRequest,
+)
+from projectkoios.ingestion.reference.page.location.projection.actionizer import (  # noqa: E501
+    ReferencePageLocatorProjectionActionizer,
+)
+from projectkoios.ingestion.reference.page.location.projection.request import (
+    ReferencePageLocatorProjectionRequest,
+)
+from projectkoios.ingestion.reference.page.location.result import (
+    ReferencePageLocatorResult,
+)
 from projectkoios.ingestion.structure import StructureAnalysis
 
 pytestmark = pytest.mark.smoke
@@ -73,6 +122,9 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "figures/relevance",
     _SOURCE_ROOT / "ocr",
     _SOURCE_ROOT / "reconciliation",
+    _SOURCE_ROOT / "reference/claim",
+    _SOURCE_ROOT / "reference/evidence",
+    _SOURCE_ROOT / "reference/page/location",
     _SOURCE_ROOT / "tables/structure",
     _SOURCE_ROOT / "textbooks",
     _SOURCE_ROOT / "transcription",
@@ -87,7 +139,21 @@ _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
     _SOURCE_ROOT / "layout/render",
     _SOURCE_ROOT / "layout/review",
     _SOURCE_ROOT / "layout/validation",
+    _SOURCE_ROOT / "reference/claim",
+    _SOURCE_ROOT / "reference/evidence",
+    _SOURCE_ROOT / "reference/page/location",
     _SOURCE_ROOT / "transcription",
+)
+_NO_STATIC_UTILITY_METHOD_SCOPES = (
+    _SOURCE_ROOT / "reference/claim",
+    _SOURCE_ROOT / "reference/page/location",
+    _SOURCE_ROOT / "reference/evidence/validation.py",
+    _SOURCE_ROOT / "reference/evidence/json/value.py",
+)
+_NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
+    _SOURCE_ROOT / "reference/claim",
+    _SOURCE_ROOT / "reference/evidence",
+    _SOURCE_ROOT / "reference/page/location",
 )
 _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "integrations/layout_parser",
@@ -97,6 +163,9 @@ _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "layout/render",
     _SOURCE_ROOT / "layout/review",
     _SOURCE_ROOT / "layout/validation",
+    _SOURCE_ROOT / "reference/claim",
+    _SOURCE_ROOT / "reference/evidence",
+    _SOURCE_ROOT / "reference/page/location",
     _SOURCE_ROOT / "transcription",
 )
 _EXTERNAL_MODULE_FUNCTIONS = frozenset(
@@ -184,6 +253,56 @@ _ACTIONIZED_OPERATIONS = (
         configuration_field="configuration",
         stateless_actionizer=True,
     ),
+    _ActionizedOperation(
+        name="reference_claim_candidate_projection",
+        request_type=ReferenceClaimCandidateProjectionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReferenceClaimCandidateProjectionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReferenceClaimCandidate,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reference_page_locator_projection",
+        request_type=ReferencePageLocatorProjectionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReferencePageLocatorProjectionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReferencePageLocator,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reference_page_location",
+        request_type=ReferencePageLocationRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReferencePageLocationActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReferencePageLocatorResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reference_evidence_projection",
+        request_type=ReferenceEvidenceProjectionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReferenceEvidenceProjectionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReferenceEvidenceRecord,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="reference_evidence_verification",
+        request_type=ReferenceEvidenceVerificationRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=ReferenceEvidenceVerificationActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=ReferenceEvidenceVerificationResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
 )
 
 
@@ -204,16 +323,15 @@ def _source_owned_paths(root: Path) -> Iterator[Path]:
 
 
 def _python_paths(scopes: tuple[Path, ...]) -> tuple[Path, ...]:
-    return tuple(
-        sorted(
-            {
-                path
-                for root in scopes
-                for path in root.rglob("*.py")
-                if "__pycache__" not in path.parts
-            }
+    paths: set[Path] = set()
+    for root in scopes:
+        candidates = (root,) if root.is_file() else root.rglob("*.py")
+        paths.update(
+            path
+            for path in candidates
+            if path.suffix == ".py" and "__pycache__" not in path.parts
         )
-    )
+    return tuple(sorted(paths))
 
 
 def _migrated_python_paths() -> tuple[Path, ...]:
@@ -248,13 +366,14 @@ def test__smoke__registered_migrated_scopes_exist() -> None:
         {
             *_MIGRATED_SCOPES,
             *_NO_PRIVATE_MEMBER_FUNCTION_SCOPES,
+            *_NO_STATIC_UTILITY_METHOD_SCOPES,
             *_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES,
         }
     )
     missing = sorted(
         str(root.relative_to(_SOURCE_ROOT))
         for root in registered_scopes
-        if not root.is_dir()
+        if not root.exists()
     )
     empty = sorted(
         str(root.relative_to(_SOURCE_ROOT))
@@ -326,6 +445,63 @@ def test__smoke__registered_scopes_have_no_private_member_functions() -> None:
                     invalid.append(
                         f"{path.relative_to(_SOURCE_ROOT)}:"
                         f"{node.lineno}:{class_node.name}.{node.name}"
+                    )
+
+    assert invalid == []
+
+
+def test__smoke__registered_scopes_have_no_static_utility_methods() -> None:
+    invalid: list[str] = []
+    for path in _python_paths(_NO_STATIC_UTILITY_METHOD_SCOPES):
+        for class_node in (
+            node
+            for node in ast.walk(ast.parse(path.read_text()))
+            if isinstance(node, ast.ClassDef)
+        ):
+            for node in class_node.body:
+                if not isinstance(
+                    node,
+                    (ast.FunctionDef, ast.AsyncFunctionDef),
+                ):
+                    continue
+                decorators = {
+                    decorator.id
+                    for decorator in node.decorator_list
+                    if isinstance(decorator, ast.Name)
+                }
+                if decorators & {"classmethod", "staticmethod"}:
+                    invalid.append(
+                        f"{path.relative_to(_SOURCE_ROOT)}:"
+                        f"{node.lineno}:{class_node.name}.{node.name}"
+                    )
+
+    assert invalid == []
+
+
+def test__smoke__registered_scopes_have_no_public_raw_tuple_fields() -> None:
+    invalid: list[str] = []
+    for path in _python_paths(_NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES):
+        for class_node in (
+            node
+            for node in ast.walk(ast.parse(path.read_text()))
+            if isinstance(node, ast.ClassDef)
+        ):
+            for node in class_node.body:
+                if (
+                    not isinstance(node, ast.AnnAssign)
+                    or not isinstance(node.target, ast.Name)
+                    or node.target.id.startswith("_")
+                ):
+                    continue
+                annotation = node.annotation
+                if (
+                    isinstance(annotation, ast.Subscript)
+                    and isinstance(annotation.value, ast.Name)
+                    and annotation.value.id == "tuple"
+                ):
+                    invalid.append(
+                        f"{path.relative_to(_SOURCE_ROOT)}:"
+                        f"{node.lineno}:{class_node.name}.{node.target.id}"
                     )
 
     assert invalid == []

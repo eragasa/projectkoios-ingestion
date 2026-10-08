@@ -31,9 +31,7 @@ def test__transcript_batch__different_existing_output_fails_closed(
     assert transcript_batch([*arguments, "--apply"]) == 0
     capsys.readouterr()
     target = (
-        fixture.ingestion
-        / "article"
-        / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+        fixture.ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
     )
     changed = target / "clean.txt"
     changed.write_text("tampered\n", encoding="utf-8")
@@ -56,9 +54,7 @@ def test__transcript_batch__incomplete_and_symlinked_sets_fail_closed(
     fixture.create_plan()
     arguments = fixture.execution_arguments()
     target = (
-        fixture.ingestion
-        / "article"
-        / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+        fixture.ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
     )
     target.mkdir(parents=True)
     (target / "clean.txt").write_text("partial\n", encoding="utf-8")
