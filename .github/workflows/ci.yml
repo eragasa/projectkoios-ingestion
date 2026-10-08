@@ -124,6 +124,15 @@ jobs:
           assert ExtractionProjectionProjector is not None
 
           required_modules = (
+              "projectkoios.ingestion.artifact.managed.inventory",
+              "projectkoios.ingestion.artifact.managed.verification.actionizer",
+              "projectkoios.ingestion.artifact.managed.verification.error",
+              "projectkoios.ingestion.artifact.managed.verification.evidence",
+              "projectkoios.ingestion.artifact.managed.verification.provider",
+              "projectkoios.ingestion.artifact.managed.verification.request",
+              "projectkoios.ingestion.artifact.managed.verification.result",
+              "projectkoios.ingestion.integrations.disk.artifact.managed.binding",
+              "projectkoios.ingestion.integrations.disk.artifact.managed.provider",
               "projectkoios.ingestion.base.actionizer.result",
               "projectkoios.ingestion.base.pipeline.actionizer",
               "projectkoios.ingestion.integrations.sqlite.processing.state.store",

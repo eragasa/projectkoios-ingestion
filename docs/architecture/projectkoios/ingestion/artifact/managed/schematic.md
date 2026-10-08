@@ -8,8 +8,14 @@ ManagedArtifactReferenceInventory
 ManagedArtifactVerificationRequest
                  |
                  v
-concrete ManagedArtifactVerificationActionizer
- resolve + bounded streaming digest/length/signature verification
+ManagedArtifactVerificationActionizer
+                 |
+                 v
+ManagedArtifactByteProvider
+ resolve + bounded transient chunks
+                 |
+                 v
+provider-neutral digest/length/signature/coverage verification
  payload bytes released
                  |
                  v

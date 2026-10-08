@@ -4,7 +4,7 @@ Concrete external runtime and persistence integrations. Core ingestion contracts
 
 Current integrations:
 
-- [`disk`](disk/index.md) — authoritative content-addressed extraction recovery;
+- [`disk`](disk/index.md) — authoritative extraction recovery and explicitly bound managed-artifact bytes;
 - [`mongodb`](mongodb/index.md) — rebuildable operational projections and explicit schema migration;
 - [`sqlite`](sqlite/processing/state/index.md) — local durable processing-state checkpoints;
 - [`pix2tex`](pix2tex/index.md) — bounded Pix2Tex equation recognition;

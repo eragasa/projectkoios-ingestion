@@ -1,0 +1,3 @@
+# `DiskManagedArtifactByteProvider` implementation
+
+Construction requires a bounded existing non-symlink directory root, exact binding inventory, and bounded authority identity. Reads require the same authority and an exact binding. The provider walks the absolute root and every bound path component descriptor-relatively with `O_NOFOLLOW`, opens intermediate components as directories, opens the final component nonblocking, checks the final descriptor is a regular file, rejects files over the exact byte bound before streaming, yields chunks no larger than requested, and closes all descriptors. Missing, unsafe, inaccessible, and over-limit conditions become `ManagedArtifactVerificationError` codes without exposing raw operating-system exceptions.

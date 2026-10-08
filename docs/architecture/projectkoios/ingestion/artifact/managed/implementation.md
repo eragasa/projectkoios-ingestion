@@ -7,15 +7,16 @@ This clean hierarchy owns the smallest shared boundary needed when large PDF/PNG
 - `ManagedArtifactMediaType` is a closed supported media vocabulary.
 - `ManagedArtifactReference` identifies exact bytes by derived identity, SHA-256, byte count, and media type without a locator.
 - `ManagedArtifactReferenceInventory` is the semantic bounded reference collection.
-- `ManagedArtifactVerificationRequest` requests exact reference coverage without payload bytes.
-- `ManagedArtifactVerificationActionizer` is the effectful resolver/verifier port implemented by concrete providers.
-- `ManagedArtifactVerificationEvidence` records observed digest, length, signature/type, and verifier identity without retaining bytes.
+- `ManagedArtifactVerificationRequest` binds exact reference coverage, provider implementation, authority, and streaming bounds without payload bytes.
+- `ManagedArtifactByteProvider` is the effectful backend-neutral port that resolves locator-free identities into bounded transient chunks.
+- `ManagedArtifactVerificationActionizer` owns provider-independent digest, length, signature, aggregate, and exact-coverage verification.
+- `ManagedArtifactVerificationEvidence` records observed digest, length, signature/type, provider identity, and verifier identity without retaining bytes.
 - `ManagedArtifactVerificationEvidenceInventory` proves exact one-to-one request coverage.
 - `ManagedArtifactVerificationResult` binds request, evidence, outcome, aggregate bytes, and result identity.
 - `ManagedArtifactLimits` owns all pre-hash, per-artifact, count, and aggregate streaming ceilings.
 
 ## Verification lifecycle
 
-A concrete verifier resolves an artifact identity using an explicitly configured provider, streams no more than the request bound through SHA-256/length/signature checks, releases payload buffers, and returns backend-neutral immutable observations. The provider may be content-addressed disk or object storage; provider configuration never enters artifact or page-projection semantic identity.
+The actionizer asks an explicitly configured provider for bounded chunks, streams those chunks through SHA-256, length, signature, and aggregate checks, releases payload buffers, and returns backend-neutral immutable observations. Providers own only resolution, authorization enforcement, bounded byte access, and provider-error translation. The first concrete provider uses an explicit disk identity-to-relative-path binding inventory and descriptor-relative no-follow opens. Provider configuration never enters artifact or page-projection semantic identity.
 
 A reference or successful verification does not establish ownership, rights, scientific acceptance, publication, or indefinite availability. Workflow owns retries and multi-request orchestration.
