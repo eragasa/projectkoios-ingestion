@@ -11,8 +11,10 @@ parsing, serialization, and typed JSON document boundaries belong to
 verification belong to [`sha256`](sha256/index.md). External runtime adapters
 belong to [`integrations`](integrations/index.md).
 Deterministic layout evidence and non-authoritative failure review belong to
-[`layout`](layout/index.md). The backend-neutral [`storage`](storage/index.md)
-boundaries publish exact extraction
+[`layout`](layout/index.md). Ingestion-owned evidence for reference sources
+belongs to [`reference`](reference/index.md), without transferring downstream
+acceptance or publication authority. The backend-neutral
+[`storage`](storage/index.md) boundaries publish exact extraction
 decompositions and persist bounded processing checkpoints without leaking
 backend query objects. Backend-neutral OCR evidence belongs to
 [`ocr`](ocr/index.md), while deterministic native/OCR stream

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 from projectkoios.ingestion.json.error import JsonSerializationError
 from projectkoios.ingestion.json.limits.definition import JsonLimits
-from projectkoios.ingestion.json.limits.error import JsonLimitError
+from projectkoios.ingestion.json.limits.error import (
+    JsonDocumentByteLimitError,
+)
 from projectkoios.ingestion.json.value import JsonValue, JsonValueProjector
 
 
@@ -110,7 +112,9 @@ class JsonSerializer:
                 f"could not serialize JSON: {error}"
             ) from error
         if len(encoded) > self.limits.maximum_utf8_bytes:
-            raise JsonLimitError("serialized JSON exceeds its byte limit")
+            raise JsonDocumentByteLimitError(
+                "serialized JSON exceeds its byte limit"
+            )
         return text
 
     def serialize_bytes(self, value: JsonValue) -> bytes:

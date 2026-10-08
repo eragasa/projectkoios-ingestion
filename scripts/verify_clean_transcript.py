@@ -33,8 +33,8 @@ _VERIFIER_INPUTS = (
     "src/python/projectkoios/ingestion/transcript_batch.py",
     "src/python/projectkoios/ingestion/provenance/audit.py",
     "src/python/projectkoios/ingestion/provenance/domains.py",
-    "src/python/projectkoios/ingestion/reference_evidence.py",
-    "src/python/projectkoios/ingestion/reference_locator.py",
+    "src/python/projectkoios/ingestion/reference/evidence",
+    "src/python/projectkoios/ingestion/reference/page/location",
 )
 _REMOVED_TOP_LEVEL_KEYS = frozenset(
     {

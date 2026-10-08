@@ -74,9 +74,7 @@ class LayoutValueValidation:
         if not math.isfinite(normalized):
             raise ValueError(f"{name} must be a finite number")
         if abs(normalized) > MAX_LAYOUT_COORDINATE_MAGNITUDE:
-            raise LayoutLimitError(
-                f"{name} exceeds coordinate magnitude limit"
-            )
+            raise LayoutLimitError(f"{name} exceeds coordinate magnitude limit")
         return 0.0 if normalized == 0.0 else normalized
 
     @staticmethod

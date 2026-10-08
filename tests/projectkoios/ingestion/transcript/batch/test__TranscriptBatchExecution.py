@@ -39,9 +39,7 @@ def test__transcript_batch__plans_publishes_and_replays_immutably(
     assert first["items"][0]["action"] == "created"
     assert first["items"][0]["audit_status"] == "passed"
     target = (
-        fixture.ingestion
-        / "article"
-        / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
+        fixture.ingestion / "article" / Path(TRANSCRIPT_OUTPUT_RELATIVE_PATH)
     )
     assert {path.name for path in target.iterdir()} == {
         "audit.json",
@@ -52,8 +50,7 @@ def test__transcript_batch__plans_publishes_and_replays_immutably(
     }
     assert oct(target.stat().st_mode & 0o777) == "0o700"
     assert all(
-        oct(path.stat().st_mode & 0o777) == "0o600"
-        for path in target.iterdir()
+        oct(path.stat().st_mode & 0o777) == "0o600" for path in target.iterdir()
     )
     manifest = json.loads((target / "manifest.json").read_text())
     clean = json.loads((target / "clean.json").read_text())
@@ -63,9 +60,7 @@ def test__transcript_batch__plans_publishes_and_replays_immutably(
     assert clean["status"] == "automated_unreviewed"
     assert dict(audit["audited_layer_counts"])["clean_transcripts"] == "1"
     assert audit["status"] == "passed"
-    first_bytes = {
-        path.name: path.read_bytes() for path in target.iterdir()
-    }
+    first_bytes = {path.name: path.read_bytes() for path in target.iterdir()}
 
     assert transcript_batch([*arguments, "--apply"]) == 0
     second = json.loads(capsys.readouterr().out)
@@ -84,9 +79,7 @@ def test__transcript_batch__predecessor_change_invalidates_plan(
         capture=capsys,
     )
     fixture.create_plan()
-    detection = (
-        fixture.ingestion / "article/derived/equations/detection.json"
-    )
+    detection = fixture.ingestion / "article/derived/equations/detection.json"
     original = detection.read_bytes()
     detection.write_bytes(original + b" ")
 

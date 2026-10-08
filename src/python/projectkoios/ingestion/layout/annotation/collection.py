@@ -144,9 +144,7 @@ class LayoutAnnotationCollection(AbstractImmutableDataObject):
             if any(value.case_id != case.case_id for value in values):
                 raise ValueError(f"{name} references another review case")
 
-        valid_block_ids = {
-            review.block_id for review in case.block_reviews
-        }
+        valid_block_ids = {review.block_id for review in case.block_reviews}
         valid_proposal_ids = set(case.proposal_ids)
         valid_region_ids = {region.region_annotation_id for region in regions}
         for region in regions:

@@ -63,19 +63,13 @@ class PyMuPdfRegionRenderer(PdfRegionRenderer):
             )
         mapping = LayoutPixelMapping.create(
             source_coordinate_system=rendered_region.coordinate_system,
-            requested_source_bounding_box=(
-                rendered_region.source_bounding_box
-            ),
+            requested_source_bounding_box=(rendered_region.source_bounding_box),
             effective_source_bounding_box=(
                 rendered_region.effective_source_bounding_box
             ),
-            pixel_to_source_matrix=(
-                rendered_region.pixel_to_source_matrix
-            ),
+            pixel_to_source_matrix=(rendered_region.pixel_to_source_matrix),
             pixel_rounding=rendered_region.pixel_rounding,
-            page_rotation_degrees=(
-                rendered_region.page_rotation_degrees
-            ),
+            page_rotation_degrees=(rendered_region.page_rotation_degrees),
             image_width=rendered_region.width_pixels,
             image_height=rendered_region.height_pixels,
         )
@@ -90,9 +84,7 @@ class PyMuPdfRegionRenderer(PdfRegionRenderer):
             renderer_version=rendered_region.processor_version,
             backend_name=rendered_region.backend_name,
             backend_version=rendered_region.backend_version,
-            renderer_configuration_id=(
-                rendered_region.configuration_digest
-            ),
+            renderer_configuration_id=(rendered_region.configuration_digest),
         )
 
     def _open_document(self, payload: bytes) -> object:

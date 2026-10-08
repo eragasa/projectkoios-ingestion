@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import pytest
 from projectkoios.ingestion.json.error import JsonSerializationError
-from projectkoios.ingestion.json.limits.error import JsonLimitError
+from projectkoios.ingestion.json.limits.error import (
+    JsonDocumentByteLimitError,
+)
 from projectkoios.ingestion.json.serializer import JsonSerializer
 
 from tests.projectkoios.ingestion.json.fixture import JsonFixture
@@ -46,5 +48,5 @@ def test__json_serializer__rejects_nonfinite_and_excessive_output() -> None:
         )
     )
     assert exact.serialize_text("abc") == content
-    with pytest.raises(JsonLimitError, match="serialized"):
+    with pytest.raises(JsonDocumentByteLimitError, match="serialized"):
         exact.serialize_text("abcd")

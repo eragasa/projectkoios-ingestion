@@ -69,9 +69,9 @@ class LayoutBlockRegionOverlap(AbstractImmutableDataObject):
         intersection_box = LayoutValueValidation.require_box(
             "intersection_box_pixels", intersection
         )
-        intersection_area = (
-            intersection_box[2] - intersection_box[0]
-        ) * (intersection_box[3] - intersection_box[1])
+        intersection_area = (intersection_box[2] - intersection_box[0]) * (
+            intersection_box[3] - intersection_box[1]
+        )
         block_area = (block_box[2] - block_box[0]) * (
             block_box[3] - block_box[1]
         )

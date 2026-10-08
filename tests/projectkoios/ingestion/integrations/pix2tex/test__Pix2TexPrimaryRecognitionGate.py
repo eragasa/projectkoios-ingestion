@@ -46,8 +46,7 @@ def test__primary_recognition_gate__retains_one_isolated_band() -> None:
     assert _foreground_profile(content) == (1, 0.375, 0.375)
 
 
-def test__primary_recognition_gate__identifies_overbroad_three_band_region(
-) -> None:
+def test__primary_gate__identifies_overbroad_three_band_region() -> None:
     content = _rgb_png(
         width=100,
         height=60,

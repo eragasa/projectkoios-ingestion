@@ -188,9 +188,9 @@ class LayoutReviewCase(AbstractDataObjectActionResult):
             raise ValueError(
                 "block reviews must match authoritative text-block order"
             )
-        if len(
-            {review.block_review_id for review in block_reviews}
-        ) != len(block_reviews):
+        if len({review.block_review_id for review in block_reviews}) != len(
+            block_reviews
+        ):
             raise ValueError("block review identities must be unique")
         mapping_id = request.render.mapping.mapping_id
         expected_overlap_count = 0

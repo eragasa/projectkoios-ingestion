@@ -43,10 +43,10 @@ exact replay evidence:
 - `SelectiveOCRPlanJsonContract`;
 - `SelectiveOCRReconciliationPlanJsonContract`;
 - `TranscriptBatchPlanJsonContract`;
-- `ReferenceEvidenceJsonContract`;
+- `reference/evidence/json/contract.py` — `ReferenceEvidenceJsonContract`;
 - page-projection JSON contracts;
 - extraction-cache JSON contracts; and
 - extraction-journal/projection JSON contracts.
 
-This document does not assign their final domain paths before their individual
-ownership reductions are designed.
+Paths remain unassigned until each individual ownership reduction is designed;
+reference evidence is now assigned by its separately reviewed structural map.

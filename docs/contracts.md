@@ -646,14 +646,15 @@ producer evidence, and exact audit scope/status/identity. It
 contains artifact digests and complete named lineage but no source locator,
 filename, workspace path, protected text, or machine locator.
 
-`build_reference_evidence` rejects mismatched-source, contradictory, incomplete,
-failed-audit, and noncanonical artifact inputs. `parse_reference_evidence`
-strictly rejects unknown fields, noncanonical JSON, unsupported versions or
-artifact generations, inconsistent identities, incomplete records, and bounded
-resource violations. `verify_reference_evidence` binds the record to a
-consumer-known source hash/size/media type and optionally to exact producer
-artifact bytes. Recorded passing audit remains explicitly distinct from
-independent revalidation.
+`ReferenceEvidenceProjectionActionizer` rejects mismatched-source,
+contradictory, incomplete, failed-audit, and noncanonical artifact inputs.
+`ReferenceEvidenceJsonContract` strictly rejects unknown fields, noncanonical
+JSON, unsupported versions or artifact generations, inconsistent identities,
+incomplete records, and bounded resource violations.
+`ReferenceEvidenceVerificationActionizer` binds the record to a consumer-known
+source hash/size/media type and optionally to exact producer artifact bytes.
+Recorded passing audit remains explicitly distinct from independent
+revalidation.
 
 The projection preserves `automated_unreviewed` and makes no proofreading,
 extraction-accuracy, semantic-correction, scientific-validity, publication, or

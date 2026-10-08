@@ -44,9 +44,7 @@ class LayoutBlockReviewEvidence(AbstractImmutableDataObject):
         render_id: str,
         mapping_id: str,
         block_id: str,
-        block_bounding_box_pixels: (
-            tuple[float, float, float, float] | None
-        ),
+        block_bounding_box_pixels: (tuple[float, float, float, float] | None),
         status: LayoutBlockReviewStatus,
         overlaps: tuple[LayoutBlockRegionOverlap, ...],
         significant_proposal_ids: tuple[str, ...],
