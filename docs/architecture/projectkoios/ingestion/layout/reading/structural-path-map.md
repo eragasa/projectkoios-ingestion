@@ -4,3 +4,4 @@
 | --- | --- |
 | Reading-layout package marker | `layout/reading/__init__.py` |
 | Deterministic order verifier | `layout/reading/order/` |
+| Normalized replica judgment evaluator | `layout/reading/evaluation/` |
