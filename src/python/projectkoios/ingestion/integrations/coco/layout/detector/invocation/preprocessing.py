@@ -37,7 +37,7 @@ class CocoLayoutDetectorTensorLayout(StrEnum):
 class CocoLayoutDetectorOriginalSizeOrder(StrEnum):
     """Closed original-image size argument order."""
 
-    HEIGHT_WIDTH = "height_width"
+    WIDTH_HEIGHT = "width_height"
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,6 +108,6 @@ class CocoLayoutDetectorPreprocessing(AbstractImmutableDataObject):
             tensor_data_type=CocoLayoutDetectorTensorDataType.UINT8,
             tensor_layout=CocoLayoutDetectorTensorLayout.NCHW,
             original_size_order=(
-                CocoLayoutDetectorOriginalSizeOrder.HEIGHT_WIDTH
+                CocoLayoutDetectorOriginalSizeOrder.WIDTH_HEIGHT
             ),
         )

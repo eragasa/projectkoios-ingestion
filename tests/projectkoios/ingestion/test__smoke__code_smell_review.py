@@ -34,6 +34,15 @@ from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.integrations.coco.layout.actionizer import (
     CocoLayoutRegionProposalActionizer,
 )
+from projectkoios.ingestion.integrations.coco.layout.admission.actionizer import (  # noqa: E501
+    CocoLayoutRegionAdmissionActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.admission.request import (  # noqa: E501
+    CocoLayoutRegionAdmissionRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.admission.result import (  # noqa: E501
+    CocoLayoutRegionAdmissionResult,
+)
 from projectkoios.ingestion.integrations.coco.layout.detector.actionizer import (  # noqa: E501
     CocoLayoutDetectorObservationActionizer,
 )
@@ -69,6 +78,15 @@ from projectkoios.ingestion.integrations.coco.layout.detector.request import (  
 )
 from projectkoios.ingestion.integrations.coco.layout.detector.result import (  # noqa: E501
     CocoLayoutDetectorResult,
+)
+from projectkoios.ingestion.integrations.coco.layout.equation.actionizer import (  # noqa: E501
+    CocoLayoutEquationProjectionActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.equation.request import (  # noqa: E501
+    CocoLayoutEquationProjectionRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.equation.result import (  # noqa: E501
+    CocoLayoutEquationProjectionResult,
 )
 from projectkoios.ingestion.integrations.coco.layout.request import (
     CocoLayoutProposalRequest,
@@ -375,6 +393,28 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=CocoLayoutDetectorGateActionizer,
         actionizer_base=ConfigurableDataObjectActionizer,
         result_type=CocoLayoutDetectorGateResult,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_region_admission",
+        request_type=CocoLayoutRegionAdmissionRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=CocoLayoutRegionAdmissionActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=CocoLayoutRegionAdmissionResult,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_equation_projection",
+        request_type=CocoLayoutEquationProjectionRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=CocoLayoutEquationProjectionActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=CocoLayoutEquationProjectionResult,
         result_base=AbstractDataObjectActionResult,
         configuration_field="configuration",
         stateless_actionizer=True,

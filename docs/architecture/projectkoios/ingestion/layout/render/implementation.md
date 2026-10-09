@@ -1,7 +1,6 @@
 # Layout render evidence architecture
 
-Status: implemented on the unmerged layout-review branch. Publication remains
-pending complete validation and fresh independent review.
+Status: implemented.
 
 `layout.render` identifies exact page pixels and the complete mapping between
 source-page coordinates and raster coordinates. It does not own PDF rendering,
@@ -54,7 +53,10 @@ silently approximated.
 The mapping factory normalizes finite coordinates and negative zero before
 identity construction. It transforms all four pixel-corner points and verifies
 that their normalized envelope agrees with the declared effective source bounds.
-Image dimensions and total pixels are checked before stable-ID serialization.
+`pixel_box_to_source_box()` applies the same affine transform to all four corners
+of one validated in-bounds pixel box and returns the normalized source-coordinate
+envelope. Image dimensions and total pixels are checked before stable-ID
+serialization.
 
 ## Review binding
 

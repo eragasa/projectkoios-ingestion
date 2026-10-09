@@ -17,7 +17,15 @@ def pix2tex_primary_recognition_ineligibility_reasons(
 
     reasons = list(primary_equation_recognition_ineligibility_reasons(assembly))
     raw_text = " ".join(assembly.raw_fragments)
-    if not 4 <= len(raw_text) <= 64:
+    detector_only_visual_evidence = (
+        assembly.prefilter_reasons == ("layout_detector_without_native_text",)
+        and assembly.raw_fragments == ("",)
+        and assembly.sanitized_native_text == ""
+        and assembly.source_block_ids == ()
+        and assembly.source_labels == ()
+        and len(assembly.candidate_ids) == 1
+    )
+    if not detector_only_visual_evidence and not 4 <= len(raw_text) <= 64:
         reasons.append("native_text_length_outside_4_64")
     if len(raw_text.split()) > 14:
         reasons.append("native_word_count_exceeds_14")

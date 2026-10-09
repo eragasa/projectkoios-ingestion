@@ -17,7 +17,9 @@ from projectkoios.ingestion.artifact.managed.verification.provider import (
 )
 from projectkoios.ingestion.integrations.coco.layout.detector.invocation.onnx import (  # noqa: E501
     MAX_INVOCATION_STREAM_CHUNK_BYTES,
+    OnnxRuntimeCocoLayoutDetectorProvider,
     create_coco_layout_detector_observations,
+    create_coco_layout_detector_original_sizes,
     read_verified_coco_layout_detector_image_bytes,
     read_verified_coco_layout_detector_model_bytes,
     validate_coco_layout_detector_onnx_outputs,
@@ -139,6 +141,21 @@ class OversizedChunkProvider(ManagedArtifactByteProvider):
     ) -> AbstractContextManager[Iterator[bytes]]:
         del reference, authority_id, maximum_bytes, chunk_bytes
         return oversized_chunks_context()
+
+
+def test_provider_accepts_platform_path_subclass(tmp_path: Path) -> None:
+    model_path = tmp_path / "model.onnx"
+    model_path.write_bytes(b"model")
+
+    provider = OnnxRuntimeCocoLayoutDetectorProvider(
+        model_path=model_path,
+        image_provider=ManagedFailureProvider(stage="entry"),
+        authority_id="fixture-authority",
+        execution_provider="CPUExecutionProvider",
+        execution_device_identity="fixture-cpu",
+    )
+
+    assert provider.model_path == model_path.absolute()
 
 
 def valid_output_tensors() -> list[FixtureTensor]:
@@ -291,6 +308,20 @@ def test_heron_preprocessing_rejects_non_640_target(
         CocoLayoutDetectorInvocationFailureKind.REQUEST_LIMIT
     )
     assert raised.value.code == "unsupported_preprocessing_configuration"
+
+
+def test_heron_original_size_tensor_uses_width_height_order() -> None:
+    import numpy
+
+    request = coco_layout_invocation_request()
+
+    sizes = create_coco_layout_detector_original_sizes(
+        request=request,
+        numpy=numpy,
+    )
+
+    assert request.preprocessing.original_size_order.value == "width_height"
+    assert sizes.tolist() == [[request.image.width, request.image.height]]
 
 
 def test_model_resource_accepts_declared_bytes_at_hard_ceiling() -> None:

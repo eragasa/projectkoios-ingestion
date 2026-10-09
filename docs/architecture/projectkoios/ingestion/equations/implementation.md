@@ -21,6 +21,11 @@ representation transition was requested.
 Detection now belongs to `ingestion.equations.detection`. It depends on the
 nominal `PageRegionRenderer` boundary. The deterministic detector requires a
 renderer from its composition root and has no concrete adapter default.
+Admitted COCO `Formula` detections enter through the separate
+`integrations.coco.layout.equation` projection hierarchy, which maps exact
+pixel geometry to source geometry and renders recognition-ready display
+assemblies while retaining detector lineage. The adapter does not merge model
+boxes into the native text-heuristic detector or make them authoritative.
 
 Assembly belongs to `ingestion.equations.assembly`. The deterministic assembler
 returns `EquationAssemblyResult`; the former `EquationAssemblyArtifact` name is

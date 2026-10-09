@@ -110,7 +110,7 @@ class Pix2TexCliEquationRecognizer(AbstractEquationRecognizer):
         executable_content = self.executable.read_bytes()
         self._identity = EquationRecognitionProcessorIdentity(
             processor_name="pix2tex-cli-equation-recognizer",
-            processor_version="5",
+            processor_version="6",
             backend_name="pix2tex",
             backend_version=backend_version,
             executable_sha256=SHA256Fingerprinter.fingerprint(
