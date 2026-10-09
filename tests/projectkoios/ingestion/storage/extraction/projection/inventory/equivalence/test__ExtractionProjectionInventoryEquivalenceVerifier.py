@@ -10,6 +10,9 @@ from projectkoios.ingestion.storage.extraction.materialization.configuration imp
 from projectkoios.ingestion.storage.extraction.materialization.evidence.collection import (  # noqa: E501
     ExtractionProjectionMaterializationCollectionEvidence,
 )
+from projectkoios.ingestion.storage.extraction.materialization.evidence.inventory import (  # noqa: E501
+    ExtractionProjectionMaterializationEvidenceInventory,
+)
 from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
     ExtractionProjectionMaterializationEvidence,
 )
@@ -105,7 +108,9 @@ def _observed(
 
 def _replay_evidence(
     expected: ExpectedExtractionProjectionInventory,
-) -> ExtractionProjectionMaterializationEvidence:
+    *,
+    shift_block_to_page: bool = False,
+) -> ExtractionProjectionMaterializationEvidenceInventory:
     inventory_configuration = (
         ExtractionProjectionInventoryConfiguration.mongodb_v1()
     )
@@ -118,6 +123,9 @@ def _replay_evidence(
         )
         for collection in ExtractionProjectionCollection
     }
+    if shift_block_to_page:
+        counts[ExtractionProjectionCollection.BLOCKS] -= 1
+        counts[ExtractionProjectionCollection.PAGES] += 1
     collections = tuple(
         ExtractionProjectionMaterializationCollectionEvidence.create(
             collection=collection,
@@ -126,7 +134,7 @@ def _replay_evidence(
         )
         for collection in ExtractionProjectionCollection
     )
-    return ExtractionProjectionMaterializationEvidence.create(
+    evidence = ExtractionProjectionMaterializationEvidence.create(
         projection_id="projection:replay-fixture",
         target_id=expected.target_id,
         configuration_id=(
@@ -136,6 +144,7 @@ def _replay_evidence(
         projected_document_count=sum(counts.values()),
         collections=collections,
     )
+    return ExtractionProjectionMaterializationEvidenceInventory(evidence)
 
 
 def test__equivalence_verifier__accepts_independent_rebuild_content() -> None:
@@ -151,6 +160,10 @@ def test__equivalence_verifier__accepts_independent_rebuild_content() -> None:
     )
 
     assert result.equivalent is True
+    assert (
+        result.kind is ExtractionProjectionEquivalenceKind.INDEPENDENT_REBUILD
+    )
+    assert result.replay_materialization_inventory_id is None
     assert result.disposition is ExtractionActionDisposition.CONTINUE
     assert result.mismatches == ()
 
@@ -184,7 +197,9 @@ def test__same_store_request__requires_replay_materialization_evidence() -> (
     initial = _observed(_expected())
     expected = ExpectedExtractionProjectionInventory.from_observed(initial)
 
-    with pytest.raises(TypeError, match="replay evidence is required"):
+    with pytest.raises(
+        TypeError, match="replay evidence and configuration are required"
+    ):
         ExtractionProjectionInventoryEquivalenceRequest.create(
             kind=ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY,
             expected=expected,
@@ -207,6 +222,9 @@ def test__same_store_expectation__ignores_query_authority_identity() -> None:
         expected=expected,
         observed=replay_observed,
         replay_materialization=_replay_evidence(expected),
+        replay_materialization_configuration=(
+            ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+        ),
     )
 
     result = ExtractionProjectionInventoryEquivalenceVerifier().action(
@@ -214,3 +232,30 @@ def test__same_store_expectation__ignores_query_authority_identity() -> None:
     )
 
     assert result.equivalent is True
+    assert result.kind is ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY
+    assert result.replay_materialization_inventory_id is not None
+
+
+def test__same_store_replay__rejects_shifted_collection_counts() -> None:
+    initial = _observed(_expected())
+    expected = ExpectedExtractionProjectionInventory.from_observed(initial)
+    request = ExtractionProjectionInventoryEquivalenceRequest.create(
+        kind=ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY,
+        expected=expected,
+        observed=initial,
+        replay_materialization=_replay_evidence(
+            expected, shift_block_to_page=True
+        ),
+        replay_materialization_configuration=(
+            ExtractionProjectionMaterializationConfiguration.mongodb_v1()
+        ),
+    )
+
+    result = ExtractionProjectionInventoryEquivalenceVerifier().action(
+        request=request
+    )
+
+    assert result.equivalent is False
+    assert result.mismatches == (
+        ExtractionProjectionInventoryMismatch.REPLAY_MATERIALIZATION,
+    )

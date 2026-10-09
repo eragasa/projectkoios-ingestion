@@ -49,27 +49,55 @@ class ExtractionProjectionInventoryEquivalenceVerifier(
             )
         if expected.schema_id != observed.schema_id:
             mismatches.append(ExtractionProjectionInventoryMismatch.SCHEMA)
+        expected_by_name = {
+            item.collection_name: item for item in expected.collections
+        }
         if (
             request.kind
             is ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY
         ):
             replay = request.replay_materialization
+            replay_configuration = request.replay_materialization_configuration
             expected_document_count = sum(
                 item.document_count for item in expected.collections
             )
-            if (
+            replay_is_invalid = (
                 replay is None
+                or replay_configuration is None
                 or replay.target_id != expected.target_id
+                or replay.configuration_id
+                != replay_configuration.configuration_id
+                or replay_configuration.schema_id != expected.schema_id
                 or replay.created_document_count != 0
                 or replay.unchanged_document_count != expected_document_count
                 or replay.projected_document_count != expected_document_count
+            )
+            if (
+                replay is not None
+                and replay_configuration is not None
+                and not replay_is_invalid
             ):
+                collection_counts = replay.collection_counts()
+                expected_physical_names = {
+                    replay_configuration.collection_name(collection)
+                    for collection in collection_counts
+                }
+                replay_is_invalid = expected_physical_names != set(
+                    expected_by_name
+                ) or any(
+                    created != 0
+                    or unchanged
+                    != expected_by_name[
+                        replay_configuration.collection_name(collection)
+                    ].document_count
+                    for collection, (created, unchanged) in (
+                        collection_counts.items()
+                    )
+                )
+            if replay_is_invalid:
                 mismatches.append(
                     ExtractionProjectionInventoryMismatch.REPLAY_MATERIALIZATION
                 )
-        expected_by_name = {
-            item.collection_name: item for item in expected.collections
-        }
         observed_by_name = {
             item.collection_name: item for item in observed.collections
         }

@@ -14,6 +14,9 @@ from projectkoios.ingestion.storage.extraction.actions.disposition import (
 from projectkoios.ingestion.storage.extraction.actions.status import (
     ExtractionActionStatus,
 )
+from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind import (  # noqa: E501
+    ExtractionProjectionEquivalenceKind,
+)
 from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.mismatch import (  # noqa: E501
     ExtractionProjectionInventoryMismatch,
 )
@@ -39,6 +42,10 @@ class ExtractionProjectionInventoryEquivalenceResult(
     idempotency_key: str
     status: ExtractionActionStatus
     disposition: ExtractionActionDisposition
+    kind: ExtractionProjectionEquivalenceKind
+    expected_inventory_id: str
+    observed_inventory_id: str
+    replay_materialization_inventory_id: str | None
     equivalent: bool
     mismatches: tuple[ExtractionProjectionInventoryMismatch, ...]
     mismatched_collection_names: tuple[str, ...]
@@ -63,11 +70,20 @@ class ExtractionProjectionInventoryEquivalenceResult(
             if equivalent
             else ExtractionActionDisposition.STOP_AMBIGUOUS_EVIDENCE
         )
+        replay_inventory_id = (
+            request.replay_materialization.inventory_id
+            if request.replay_materialization is not None
+            else None
+        )
         values = (
             request.request_id,
             request.idempotency_key,
             ExtractionActionStatus.COMPLETED,
             disposition,
+            request.kind,
+            request.expected.expected_inventory_id,
+            request.observed.inventory_id,
+            replay_inventory_id,
             equivalent,
             mismatches,
             mismatched_collection_names,
@@ -84,6 +100,10 @@ class ExtractionProjectionInventoryEquivalenceResult(
             idempotency_key=request.idempotency_key,
             status=ExtractionActionStatus.COMPLETED,
             disposition=disposition,
+            kind=request.kind,
+            expected_inventory_id=request.expected.expected_inventory_id,
+            observed_inventory_id=request.observed.inventory_id,
+            replay_materialization_inventory_id=replay_inventory_id,
             equivalent=equivalent,
             mismatches=mismatches,
             mismatched_collection_names=mismatched_collection_names,
@@ -98,6 +118,18 @@ class ExtractionProjectionInventoryEquivalenceResult(
             raise ValueError(
                 "inventory-equivalence comparison did not complete"
             )
+        if not isinstance(self.kind, ExtractionProjectionEquivalenceKind):
+            raise TypeError("inventory-equivalence kind is invalid")
+        for inventory_id in (
+            self.expected_inventory_id,
+            self.observed_inventory_id,
+        ):
+            if type(inventory_id) is not str or not inventory_id:
+                raise ValueError("inventory-equivalence identity is invalid")
+        if (
+            self.kind is ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY
+        ) != (self.replay_materialization_inventory_id is not None):
+            raise ValueError("replay materialization identity is inconsistent")
         if type(self.equivalent) is not bool:
             raise TypeError("inventory-equivalence outcome is invalid")
         if (
@@ -141,6 +173,10 @@ class ExtractionProjectionInventoryEquivalenceResult(
             self.idempotency_key,
             self.status,
             self.disposition,
+            self.kind,
+            self.expected_inventory_id,
+            self.observed_inventory_id,
+            self.replay_materialization_inventory_id,
             self.equivalent,
             self.mismatches,
             self.mismatched_collection_names,

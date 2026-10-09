@@ -17,6 +17,9 @@ ReadingEvidenceReadModel
 ReadingEvidenceMaterializer port   backend-neutral expected inventory
              |
        disk | SQLite | MongoDB adapters
+
+The fixed `ReadingEvidenceProjectionMaterializationPipeline` composes the
+projector and one materializer as a single synchronous Workflow prototask.
 ```
 
 ```text

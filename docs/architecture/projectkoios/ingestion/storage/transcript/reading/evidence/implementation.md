@@ -32,6 +32,8 @@ The completion manifest is projected only after all child members exist logicall
 
 Core reconstruction decodes only the current schema and contains no legacy or provider branch.
 
+For the v0.1 boundary, model-authored annotation resolution, optional human final-review evidence, page projections, and Search chunks are separate additive products. They reference canonical reading-evidence identities but are not embedded in this schema. Consequently, annotation or projection policy changes do not require rewriting a completed reading-evidence generation.
+
 ## Equivalence
 
 `ReadingEvidenceEquivalenceVerifier` remains separate from reconstruction. It compares two already-verified source results for exact canonical document, independently observed inventory, and projection-result equivalence. Same-store replay additionally requires matching baseline/replay materialization scope and replay evidence with zero created members. The result is a technical finding and grants no migration or cutover authorization.
@@ -39,6 +41,8 @@ Core reconstruction decodes only the current schema and contains no legacy or pr
 ## Adapter ports
 
 `ReadingEvidenceMaterializer` is the effectful write port. A concrete adapter receives one already-projected read model, exact target, physical mapping, and authority; it creates or exactly replays immutable members and materializes the completion manifest last.
+
+`ReadingEvidenceProjectionMaterializationPipeline` is the fixed synchronous composition of pure projection followed by one injected materializer. It exposes that composition to Workflow as one prototask and retains compact stage and materialization evidence. It owns no iteration or migration lifecycle.
 
 `ReadingEvidenceReadModelReader` is the effectful read port. A concrete adapter requires a completion manifest, performs bounded exact reads for one generation/document, and returns backend-neutral storage documents. The neutral verifier—not the adapter—owns typed reconstruction and equivalence.
 
