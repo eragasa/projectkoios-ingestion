@@ -15,3 +15,5 @@ annotations remain evidence rather than publication acceptance.
   replicated agreement, human annotation, and optional final human review.
 - [`integrations.layout_parser`](../integrations/layout_parser/index.md) — frozen
   vendor detection adaptation outside the layout domain.
+- [`integrations.coco.layout`](../integrations/coco/layout/index.md) — pinned,
+  framework-neutral COCO box-detection adaptation outside the layout domain.

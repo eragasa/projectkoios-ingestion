@@ -8,7 +8,8 @@ Current integrations:
 - [`mongodb`](mongodb/index.md) — rebuildable operational projections and explicit schema migration;
 - [`sqlite`](sqlite/processing/state/index.md) — local durable processing-state checkpoints;
 - [`pix2tex`](pix2tex/index.md) — bounded Pix2Tex equation recognition;
-- [`ollama`](ollama/index.md) — bounded local Ollama processing; and
-- [`layout_parser`](layout_parser/index.md) — frozen LayoutParser detection adaptation without an in-process vendor runtime.
+- [`ollama`](ollama/index.md) — bounded local Ollama processing;
+- [`layout_parser`](layout_parser/index.md) — frozen LayoutParser detection adaptation without an in-process vendor runtime; and
+- [`coco`](coco/index.md) — framework-neutral COCO-compatible layout-detection interchange and deterministic proposal adaptation.
 
 Prototype transcript/page files have no runtime compatibility adapter in the clean rewrite.

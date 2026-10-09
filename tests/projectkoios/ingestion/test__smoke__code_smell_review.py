@@ -31,6 +31,51 @@ from projectkoios.ingestion.base.actionizer.result import (
     AbstractDataObjectActionResult,
 )
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
+from projectkoios.ingestion.integrations.coco.layout.actionizer import (
+    CocoLayoutRegionProposalActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.actionizer import (  # noqa: E501
+    CocoLayoutDetectorObservationActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.gate.actionizer import (  # noqa: E501
+    CocoLayoutDetectorGateActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.gate.request import (  # noqa: E501
+    CocoLayoutDetectorGateRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.gate.result import (  # noqa: E501
+    CocoLayoutDetectorGateResult,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.actionizer import (  # noqa: E501
+    CocoLayoutDetectorInvocationActionizer,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.parsing.actionizer import (  # noqa: E501
+    CocoLayoutDetectorOutputParser,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.parsing.request import (  # noqa: E501
+    CocoLayoutDetectorOutputParsingRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.parsing.result import (  # noqa: E501
+    CocoLayoutDetectorOutputParsingResult,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.request import (  # noqa: E501
+    CocoLayoutDetectorInvocationRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.invocation.result import (  # noqa: E501
+    CocoLayoutDetectorInvocationResult,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.request import (  # noqa: E501
+    CocoLayoutDetectorRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.detector.result import (  # noqa: E501
+    CocoLayoutDetectorResult,
+)
+from projectkoios.ingestion.integrations.coco.layout.request import (
+    CocoLayoutProposalRequest,
+)
+from projectkoios.ingestion.integrations.coco.layout.result import (
+    CocoLayoutProposalResult,
+)
 from projectkoios.ingestion.integrations.layout_parser.actionizer import (
     LayoutParserRegionProposalActionizer,
 )
@@ -156,6 +201,7 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "storage",
     _SOURCE_ROOT / "integrations/mongodb",
     _SOURCE_ROOT / "integrations/sqlite",
+    _SOURCE_ROOT / "integrations/coco",
     _SOURCE_ROOT / "integrations/layout_parser",
     _SOURCE_ROOT / "layout/annotation",
     _SOURCE_ROOT / "layout/limits",
@@ -178,6 +224,7 @@ _MIGRATED_SCOPES = (
 _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
     _SOURCE_ROOT / "articles/structure",
     _SOURCE_ROOT / "figures/relevance",
+    _SOURCE_ROOT / "integrations/coco",
     _SOURCE_ROOT / "integrations/layout_parser",
     _SOURCE_ROOT / "layout/annotation",
     _SOURCE_ROOT / "layout/limits",
@@ -206,6 +253,7 @@ _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
     _SOURCE_ROOT / "transcript/reading/evidence",
 )
 _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
+    _SOURCE_ROOT / "integrations/coco",
     _SOURCE_ROOT / "integrations/layout_parser",
     _SOURCE_ROOT / "integrations/mongodb/transcript/reading/evidence",
     _SOURCE_ROOT / "storage/transcript/reading/evidence",
@@ -280,6 +328,58 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=DeterministicArticleStructureActionizer,
         actionizer_base=ConfigurableDataObjectActionizer,
         result_type=StructureAnalysis,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_detector_invocation",
+        request_type=CocoLayoutDetectorInvocationRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=CocoLayoutDetectorInvocationActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=CocoLayoutDetectorInvocationResult,
+        result_base=AbstractDataObjectActionResult,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_detector_output_parsing",
+        request_type=CocoLayoutDetectorOutputParsingRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=CocoLayoutDetectorOutputParser,
+        actionizer_base=DataObjectActionizer,
+        result_type=CocoLayoutDetectorOutputParsingResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_detector_observation",
+        request_type=CocoLayoutDetectorRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=CocoLayoutDetectorObservationActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=CocoLayoutDetectorResult,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_detector_gate",
+        request_type=CocoLayoutDetectorGateRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=CocoLayoutDetectorGateActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=CocoLayoutDetectorGateResult,
+        result_base=AbstractDataObjectActionResult,
+        configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="coco_layout_region_proposal",
+        request_type=CocoLayoutProposalRequest,
+        request_base=ConfigurableDataObjectActionRequest,
+        actionizer_type=CocoLayoutRegionProposalActionizer,
+        actionizer_base=ConfigurableDataObjectActionizer,
+        result_type=CocoLayoutProposalResult,
         result_base=AbstractDataObjectActionResult,
         configuration_field="configuration",
         stateless_actionizer=True,
