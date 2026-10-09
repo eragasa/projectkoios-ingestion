@@ -1,0 +1,1 @@
+"""Replicated model-annotation resolution."""

@@ -3,8 +3,9 @@
 Deterministic, affine-coordinate-aware comparison and selection of bounded
 layout failure-review cases.
 
-The implementation document describes the required pre-publication target
-architecture for the current provisional contracts.
+The implementation document describes the deterministic review architecture.
+Model-authored annotation resolution and optional terminal human review are
+owned by [`layout.annotation`](../annotation/index.md).
 
 - [Implementation](implementation.md)
 - [Schematic](schematic.md)

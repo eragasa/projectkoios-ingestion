@@ -40,6 +40,24 @@ from projectkoios.ingestion.integrations.layout_parser.request import (
 from projectkoios.ingestion.integrations.layout_parser.result import (
     LayoutParserProposalResult,
 )
+from projectkoios.ingestion.layout.annotation.model.parsing.actionizer import (
+    LayoutModelResponseParser,
+)
+from projectkoios.ingestion.layout.annotation.model.parsing.request import (
+    LayoutModelResponseParsingRequest,
+)
+from projectkoios.ingestion.layout.annotation.model.parsing.result import (
+    LayoutModelResponseParsingResult,
+)
+from projectkoios.ingestion.layout.annotation.model.resolution.actionizer import (  # noqa: E501
+    LayoutModelAnnotationResolutionActionizer,
+)
+from projectkoios.ingestion.layout.annotation.model.resolution.request import (
+    LayoutModelAnnotationResolutionRequest,
+)
+from projectkoios.ingestion.layout.annotation.model.resolution.result import (
+    LayoutModelAnnotationResolutionResult,
+)
 from projectkoios.ingestion.layout.review.actionizer import (
     DeterministicLayoutReviewActionizer,
 )
@@ -286,6 +304,26 @@ _ACTIONIZED_OPERATIONS = (
         result_type=LayoutReviewCase,
         result_base=AbstractDataObjectActionResult,
         configuration_field="configuration",
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="layout_model_response_parsing",
+        request_type=LayoutModelResponseParsingRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=LayoutModelResponseParser,
+        actionizer_base=DataObjectActionizer,
+        result_type=LayoutModelResponseParsingResult,
+        result_base=AbstractDataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="layout_model_annotation_resolution",
+        request_type=LayoutModelAnnotationResolutionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=LayoutModelAnnotationResolutionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=LayoutModelAnnotationResolutionResult,
+        result_base=AbstractDataObjectActionResult,
         stateless_actionizer=True,
     ),
     _ActionizedOperation(

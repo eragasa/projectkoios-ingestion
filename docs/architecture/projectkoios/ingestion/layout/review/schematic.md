@@ -30,10 +30,11 @@ LayoutPixelMapping     LayoutRegionProposal[] <── frozen adapter result
           - ordered block evidence
           - coverage and reasons
                   │
-         external human annotation
+                  ├──> external human annotation
+                  │        └──> LayoutAnnotationCollection
                   │
-                  v
-      LayoutAnnotationCollection
+                  └──> model annotation resolution
+                           └──> layout.annotation model evidence
 ```
 
 ## Authority boundary
@@ -42,7 +43,9 @@ LayoutPixelMapping     LayoutRegionProposal[] <── frozen adapter result
 PageLayoutResult                         authoritative layout evidence
 LayoutRegionProposal                    unaccepted proposal
 LayoutReviewCase                        deterministic comparison evidence
+LayoutModelAnnotationResolutionResult   replicated model evidence only
 LayoutAnnotationCollection              human benchmark evidence
+LayoutHumanFinalReviewEvidence          optional human judgment
 future explicit acceptance operation    only possible authority transition
 ```
 
