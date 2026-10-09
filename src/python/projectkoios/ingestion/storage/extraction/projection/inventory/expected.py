@@ -114,6 +114,27 @@ class ExpectedExtractionProjectionInventory(AbstractImmutableDataObject):
         )
 
     @classmethod
+    def for_target_from_observed(
+        cls,
+        *,
+        observed: ExtractionProjectionInventoryEvidence,
+        target: ExtractionProjectionTargetIdentity,
+    ) -> ExpectedExtractionProjectionInventory:
+        """Freeze observed content as expectation for an independent target."""
+        if type(observed) is not ExtractionProjectionInventoryEvidence:
+            raise TypeError("observed extraction inventory is invalid")
+        if type(target) is not ExtractionProjectionTargetIdentity:
+            raise TypeError("independent extraction target is invalid")
+        if target.schema_id != observed.schema_id:
+            raise ValueError("independent extraction target schema differs")
+        return cls._create(
+            target_id=target.target_id,
+            configuration_id=observed.configuration_id,
+            schema_id=observed.schema_id,
+            collections=observed.collections,
+        )
+
+    @classmethod
     def _create(
         cls,
         *,

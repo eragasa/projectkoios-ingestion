@@ -10,6 +10,9 @@ from projectkoios.ingestion.base.materializer.configuration import (
     AbstractMaterializationConfiguration,
 )
 from projectkoios.ingestion.identity import stable_id
+from projectkoios.ingestion.storage.extraction.projection.collection import (
+    ExtractionProjectionCollection,
+)
 
 _COLLECTION = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]{0,119}")
 
@@ -92,6 +95,28 @@ class ExtractionProjectionMaterializationConfiguration(
             manifests_collection=manifests,
             maximum_document_bytes=maximum_bytes,
         )
+
+    def collection_name(
+        self, collection: ExtractionProjectionCollection
+    ) -> str:
+        """Return the exact physical name for one logical collection."""
+        if not isinstance(collection, ExtractionProjectionCollection):
+            raise TypeError("extraction collection is invalid")
+        names = {
+            ExtractionProjectionCollection.DOCUMENTS: (
+                self.documents_collection
+            ),
+            ExtractionProjectionCollection.PAGES: self.pages_collection,
+            ExtractionProjectionCollection.BLOCKS: self.blocks_collection,
+            ExtractionProjectionCollection.WARNINGS: self.warnings_collection,
+            ExtractionProjectionCollection.MANIFESTS: (
+                self.manifests_collection
+            ),
+        }
+        try:
+            return names[collection]
+        except KeyError as error:
+            raise ValueError("unsupported extraction collection") from error
 
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:

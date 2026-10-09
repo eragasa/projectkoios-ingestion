@@ -42,8 +42,12 @@ The extraction read path uses the Projector terminology literally:
 | index readiness | `ExtractionProjectionIndexReadinessActionizer` | Effectful preparation and exact observation of required physical indexes |
 | projector inventory | `ExtractionProjectorInventory` | Read-only full-content observation of materialized target state |
 | inventory reader | `ExtractionProjectionInventoryReader` | Adapter port used by the projector inventory |
-| expected inventory | `ExpectedExtractionProjectionInventory` | Compact full-content evidence derived from immutable read models or a pre-replay snapshot |
+| expected inventory | `ExpectedExtractionProjectionInventory` | Compact full-content evidence derived from immutable read models, a pre-replay snapshot, or primary content retargeted to an independent rebuild |
+| aggregate replay evidence | `ExtractionProjectionMaterializationEvidenceInventory` | Canonical per-projection outcomes and exact per-collection counts for one target/configuration |
 | equivalence verifier | `ExtractionProjectionInventoryEquivalenceVerifier` | Pure comparison of expected and independently observed inventory evidence |
+| authoritative journal inventory | `ExtractionPublicationJournalInventory` | Independently validated complete journal count, head, and streamed record digest |
+| selected publication inventory | `ExtractionPublicationSelectionInventory` | Exact phase subset bound by publication-request and record digests |
+| completion manifest | `ExtractionProjectionMigrationCompletionManifest` | Immutable binding of plan, source freeze, exact replay, independent rebuild, and drift evidence |
 
 `ExtractionProjectionProjector` accepts no journal, database, authority, clock,
 retry policy, or mutable lookup. The source evidence verifies payload byte count
@@ -93,9 +97,25 @@ pairs for each configured collection. Any stored-field change therefore changes
 the collection and aggregate inventory identities. Inventory remains an
 observation; a separate equivalence verifier must compare expected and observed
 evidence before equivalence can be claimed. Independent-rebuild requests bind
-journal-derived expected evidence to one observed target. Same-store replay
-requests additionally require materialization evidence proving zero creations
-and an unchanged count equal to the complete expected document count.
+primary content retargeted to a distinct target to that target's observed
+inventory. Same-store replay requests require a canonical aggregate of every
+per-projection materialization outcome, zero creations, exact target and
+configuration identities, and unchanged counts equal to each mapped physical
+collection—not merely an equal overall document total. Aggregate replay evidence
+also binds the sorted projection-identity count and digest; completion compares
+that commitment with the frozen plan so another projection set with equal counts
+cannot substitute for the eligible phase.
+
+The authoritative journal inventory validates the complete sequence and hash
+chain without retaining record graphs. A separate selected-publication inventory
+is derived from that same complete record stream and binds its source-journal
+identity plus the exact records for one migration phase to the plan's
+publication-request digest. Later incremental phases therefore do not pretend
+that the full journal contains only their records, and a valid record from another
+journal cannot be substituted. The migration completion manifest can be constructed only
+after the selected phase, same-store replay, independently targeted rebuild, and
+write-freeze drift checks all agree. It is completion evidence only: Workflow
+still owns whether to publish it last and separately authorize cutover or cleanup.
 
 ## Provider actions
 

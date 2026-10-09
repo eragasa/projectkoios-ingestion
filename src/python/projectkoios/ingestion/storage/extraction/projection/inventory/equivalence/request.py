@@ -8,8 +8,11 @@ from typing import ClassVar
 from projectkoios.base import DataObjectActionRequest
 from projectkoios.ingestion.base.immutable import AbstractImmutableDataObject
 from projectkoios.ingestion.identity import stable_id
-from projectkoios.ingestion.storage.extraction.materialization.evidence.model import (  # noqa: E501
-    ExtractionProjectionMaterializationEvidence,
+from projectkoios.ingestion.storage.extraction.materialization.configuration import (  # noqa: E501
+    ExtractionProjectionMaterializationConfiguration,
+)
+from projectkoios.ingestion.storage.extraction.materialization.evidence.inventory import (  # noqa: E501
+    ExtractionProjectionMaterializationEvidenceInventory,
 )
 from projectkoios.ingestion.storage.extraction.projection.inventory.equivalence.kind import (  # noqa: E501
     ExtractionProjectionEquivalenceKind,
@@ -39,7 +42,12 @@ class ExtractionProjectionInventoryEquivalenceRequest(
     kind: ExtractionProjectionEquivalenceKind
     expected: ExpectedExtractionProjectionInventory
     observed: ExtractionProjectionInventoryEvidence
-    replay_materialization: ExtractionProjectionMaterializationEvidence | None
+    replay_materialization: (
+        ExtractionProjectionMaterializationEvidenceInventory | None
+    )
+    replay_materialization_configuration: (
+        ExtractionProjectionMaterializationConfiguration | None
+    )
     contract_version: str = CONTRACT_VERSION
 
     @classmethod
@@ -50,7 +58,10 @@ class ExtractionProjectionInventoryEquivalenceRequest(
         expected: ExpectedExtractionProjectionInventory,
         observed: ExtractionProjectionInventoryEvidence,
         replay_materialization: (
-            ExtractionProjectionMaterializationEvidence | None
+            ExtractionProjectionMaterializationEvidenceInventory | None
+        ) = None,
+        replay_materialization_configuration: (
+            ExtractionProjectionMaterializationConfiguration | None
         ) = None,
     ) -> ExtractionProjectionInventoryEquivalenceRequest:
         """Create one deterministic evidence-comparison request."""
@@ -59,8 +70,13 @@ class ExtractionProjectionInventoryEquivalenceRequest(
             expected.expected_inventory_id,
             observed.inventory_id,
             (
-                replay_materialization.evidence_id
+                replay_materialization.inventory_id
                 if replay_materialization is not None
+                else None
+            ),
+            (
+                replay_materialization_configuration.configuration_id
+                if replay_materialization_configuration is not None
                 else None
             ),
         )
@@ -80,6 +96,9 @@ class ExtractionProjectionInventoryEquivalenceRequest(
             expected=expected,
             observed=observed,
             replay_materialization=replay_materialization,
+            replay_materialization_configuration=(
+                replay_materialization_configuration
+            ),
         )
 
     def __post_init__(self) -> None:
@@ -94,18 +113,30 @@ class ExtractionProjectionInventoryEquivalenceRequest(
         if self.kind is ExtractionProjectionEquivalenceKind.SAME_STORE_REPLAY:
             if (
                 type(self.replay_materialization)
-                is not ExtractionProjectionMaterializationEvidence
+                is not ExtractionProjectionMaterializationEvidenceInventory
+                or type(self.replay_materialization_configuration)
+                is not ExtractionProjectionMaterializationConfiguration
             ):
-                raise TypeError("same-store replay evidence is required")
-        elif self.replay_materialization is not None:
+                raise TypeError(
+                    "same-store replay evidence and configuration are required"
+                )
+        elif (
+            self.replay_materialization is not None
+            or self.replay_materialization_configuration is not None
+        ):
             raise ValueError("independent rebuild cannot bind replay evidence")
         values = (
             self.kind,
             self.expected.expected_inventory_id,
             self.observed.inventory_id,
             (
-                self.replay_materialization.evidence_id
+                self.replay_materialization.inventory_id
                 if self.replay_materialization is not None
+                else None
+            ),
+            (
+                self.replay_materialization_configuration.configuration_id
+                if self.replay_materialization_configuration is not None
                 else None
             ),
         )

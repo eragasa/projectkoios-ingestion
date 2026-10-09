@@ -88,6 +88,9 @@ Extraction materialization API
 .. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence.model
    :members:
 
+.. automodule:: projectkoios.ingestion.storage.extraction.materialization.evidence.inventory
+   :members:
+
 .. automodule:: projectkoios.ingestion.storage.extraction.materialization.materializer
    :members:
 
@@ -221,6 +224,15 @@ Extraction provider-action API
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.journal.publication.actionizer
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.inventory
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.journal.selection
+   :members:
+
+.. automodule:: projectkoios.ingestion.storage.extraction.migration.completion.manifest
    :members:
 
 .. automodule:: projectkoios.ingestion.storage.extraction.recovery.subset.backend.base

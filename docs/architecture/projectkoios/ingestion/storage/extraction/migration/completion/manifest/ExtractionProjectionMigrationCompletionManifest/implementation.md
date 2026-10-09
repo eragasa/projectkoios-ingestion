@@ -1,0 +1,3 @@
+# `ExtractionProjectionMigrationCompletionManifest` implementation
+
+Construction fails unless the selected publication subset matches the plan count and request digest and binds the exact frozen journal, the complete authoritative journal is unchanged across migration, the replay projection count and identity digest match the plan, primary inventory scope is exact, same-store replay is collection-exact and equivalent, and an independently targeted rebuild is content-equivalent. The manifest binds the exact source commit and all evidence identities but does not authorize cutover, cleanup, or publication.
