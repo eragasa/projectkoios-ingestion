@@ -13,6 +13,7 @@ import pytest
 from projectkoios.base import (
     DataObjectActionizer,
     DataObjectActionRequest,
+    DataObjectActionResult,
     DataObjectModel,
 )
 from projectkoios.ingestion.articles.structure.actionizer import (
@@ -120,6 +121,15 @@ from projectkoios.ingestion.layout.annotation.model.resolution.request import (
 )
 from projectkoios.ingestion.layout.annotation.model.resolution.result import (
     LayoutModelAnnotationResolutionResult,
+)
+from projectkoios.ingestion.layout.reading.evaluation.actionizer import (
+    LayoutReadingOrderEvaluationActionizer,
+)
+from projectkoios.ingestion.layout.reading.evaluation.request import (
+    LayoutReadingOrderEvaluationRequest,
+)
+from projectkoios.ingestion.layout.reading.evaluation.result import (
+    LayoutReadingOrderEvaluationResult,
 )
 from projectkoios.ingestion.layout.review.actionizer import (
     DeterministicLayoutReviewActionizer,
@@ -473,6 +483,16 @@ _ACTIONIZED_OPERATIONS = (
         stateless_actionizer=True,
     ),
     _ActionizedOperation(
+        name="layout_reading_order_evaluation",
+        request_type=LayoutReadingOrderEvaluationRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=LayoutReadingOrderEvaluationActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=LayoutReadingOrderEvaluationResult,
+        result_base=DataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
         name="reference_claim_candidate_projection",
         request_type=ReferenceClaimCandidateProjectionRequest,
         request_base=DataObjectActionRequest,
@@ -775,6 +795,92 @@ def test__smoke__registered_scopes_do_not_import_private_members() -> None:
                             f"{path.relative_to(_SOURCE_ROOT)}:"
                             f"{node.lineno}:{imported.name}"
                         )
+
+    assert invalid == []
+
+
+def _forbidden_import_lines(
+    *,
+    source: str,
+    module_name: str,
+    forbidden_prefixes: tuple[str, ...],
+) -> tuple[int, ...]:
+    package_name = module_name.rpartition(".")[0]
+    invalid: list[int] = []
+    for node in ast.walk(ast.parse(source)):
+        imported_modules: tuple[str, ...] = ()
+        if isinstance(node, ast.Import):
+            imported_modules = tuple(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imported_module = node.module or ""
+            if node.level:
+                imported_module = resolve_name(
+                    "." * node.level + imported_module,
+                    package_name,
+                )
+            imported_modules = (
+                imported_module,
+                *(
+                    f"{imported_module}.{imported.name}"
+                    if imported_module
+                    else imported.name
+                    for imported in node.names
+                ),
+            )
+        if any(
+            module == prefix or module.startswith(f"{prefix}.")
+            for module in imported_modules
+            for prefix in forbidden_prefixes
+        ):
+            invalid.append(node.lineno)
+    return tuple(invalid)
+
+
+def test__smoke__execution_owner_import_detector_resolves_import_forms() -> (
+    None
+):
+    forbidden = ("projectkoios.ingestion.integrations",)
+    module_name = "projectkoios.ingestion.layout.reading.evaluation.example"
+
+    assert _forbidden_import_lines(
+        source="from ....integrations import coco",
+        module_name=module_name,
+        forbidden_prefixes=forbidden,
+    ) == (1,)
+    assert _forbidden_import_lines(
+        source="from projectkoios.ingestion import integrations",
+        module_name=module_name,
+        forbidden_prefixes=forbidden,
+    ) == (1,)
+    assert _forbidden_import_lines(
+        source="import projectkoios.ingestion.integrations.coco",
+        module_name=module_name,
+        forbidden_prefixes=forbidden,
+    ) == (1,)
+
+
+def test__smoke__reading_order_evaluation_has_no_execution_owner_imports() -> (
+    None
+):
+    evaluation_root = _SOURCE_ROOT / "layout/reading/evaluation"
+    forbidden_prefixes = (
+        "httpx",
+        "projectkoios.agent",
+        "projectkoios.ingestion.integrations",
+        "projectkoios.search",
+        "projectkoios.workflow",
+        "requests",
+        "workflow",
+    )
+    invalid = sorted(
+        f"{path.relative_to(_SOURCE_ROOT)}:{line_number}"
+        for path in evaluation_root.rglob("*.py")
+        for line_number in _forbidden_import_lines(
+            source=path.read_text(),
+            module_name=_module_name(path),
+            forbidden_prefixes=forbidden_prefixes,
+        )
+    )
 
     assert invalid == []
 

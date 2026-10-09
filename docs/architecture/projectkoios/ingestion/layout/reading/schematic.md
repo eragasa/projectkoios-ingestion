@@ -18,3 +18,24 @@ candidate producer evidence
 ```
 
 Resolved evidence grants neither model authority nor publication authority.
+
+```text
+exactly one candidate order
++ opaque Search evidence identity
++ declared Agent-normalized replica slots
+                         |
+                         v
+       pure replicated-judgment evaluator
+          |          |          |
+          v          v          v
+     agreement   coverage   candidate alignment
+          |          |          |
+          +---- exact limitations ----+
+                         |
+                         v
+       escalation required / not required
+```
+
+The evaluation branch never emits an accepted, corrected, selected, or final
+order. Retrieval, model execution, retry policy, and publication remain outside
+this package.
