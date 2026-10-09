@@ -1,0 +1,1 @@
+"""Strict model-response parsing."""

@@ -1,4 +1,4 @@
-"""Human labels for specific layout-analysis failure modes."""
+"""Labels for specific layout-analysis failure modes."""
 
 from __future__ import annotations
 

@@ -1,7 +1,8 @@
 # Layout review and annotation architecture
 
-Status: implemented on the unmerged layout-review branch. Publication remains
-pending complete validation and fresh independent review.
+Status: implemented and published. Model-authored annotation resolution and
+optional terminal human review are documented separately under
+[`layout.annotation`](../annotation/index.md).
 
 Layout review preserves disagreement evidence without changing authoritative
 page-layout results.
@@ -14,8 +15,8 @@ PageLayoutResult
     -> LayoutReviewRequest
     -> DeterministicLayoutReviewActionizer
     -> LayoutReviewCase(LayoutBlockReviewEvidence[])
-    -> external human annotation
-    -> LayoutAnnotationCollection
+    -> model annotation or external human annotation
+    -> layout.annotation evidence
 ```
 
 ## Authority
@@ -37,8 +38,9 @@ by these synchronous actions.
 - `layout/proposal/` owns backend-neutral, explicitly unaccepted region
   proposals and proposal-source identity.
 - `layout/review/` owns deterministic comparison and review-case preparation.
-- `layout/annotation/` owns human corrections, failure labels, and corrected
-  reading-order evidence.
+- `layout/annotation/` owns evidence-author-neutral correction values, human
+  annotation collections, strict model-response parsing, replicated model
+  resolution, explicit limitations, and optional terminal human review.
 - `integrations/layout_parser/` owns LayoutParser resource binding and frozen
   detection adaptation.
 
@@ -147,9 +149,11 @@ construction and deserialization.
 
 ## Annotation
 
-Human annotation remains separate from review preparation. Annotation records
-may identify corrected regions, native-block membership, observed failures, and
-reading-order edges.
+Annotation remains separate from review preparation. Annotation records may
+identify corrected regions, native-block membership, observed failures, and
+reading-order edges. The same bounded semantic values can appear in explicitly
+authored human collections or non-authoritative model candidates; their enclosing
+records preserve authorship.
 
 `layout/annotation/order.py` owns graph validation. It uses a bounded Kahn
 traversal with a deque, rejects self-edges and duplicate endpoint relations, and
@@ -202,9 +206,9 @@ The architecture explicitly rejects:
 - compatibility aliases or legacy decoders for the unpublished provisional
   contracts.
 
-## Acceptance evidence
+## Validation evidence
 
-Before publication, the implementation must demonstrate:
+The published deterministic review implementation is required to demonstrate:
 
 - exact 0/90/180/270-degree mapping tests;
 - translated-origin and outward-rounding mapping tests;

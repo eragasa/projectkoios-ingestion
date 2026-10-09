@@ -1,10 +1,10 @@
-"""Human layout annotation outcome and failure taxonomies."""
+"""Layout annotation outcome and failure taxonomies."""
 
 from enum import StrEnum
 
 
 class LayoutAnnotationOutcome(StrEnum):
-    """Human observation recorded without granting publication authority."""
+    """Observation recorded without granting publication authority."""
 
     NO_FAILURE_OBSERVED = "no_failure_observed"
     FAILURE_OBSERVED = "failure_observed"
@@ -12,7 +12,7 @@ class LayoutAnnotationOutcome(StrEnum):
 
 
 class LayoutFailureKind(StrEnum):
-    """Human-annotated failure observed in baseline or proposal evidence."""
+    """Failure observed in baseline or proposal evidence."""
 
     MISSED_REGION = "missed_region"
     FALSE_REGION = "false_region"

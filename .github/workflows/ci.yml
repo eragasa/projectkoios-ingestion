@@ -62,6 +62,9 @@ jobs:
           cpn
           scripts
 
+      - name: Run deterministic benchmark regressions
+        run: .venv/bin/python -m pytest -q -m benchmark
+
       - name: Run full test suite
         run: .venv/bin/python -m pytest -q
 

@@ -1,4 +1,4 @@
-"""Human-authored reading-order annotations and graph validation."""
+"""Reading-order annotations and graph validation."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ class LayoutReadingOrderAnnotation(AbstractImmutableDataObject):
 
 
 class LayoutReadingOrderValidation:
-    """Own bounded validation of human reading-order graph evidence."""
+    """Own bounded validation of reading-order graph evidence."""
 
     __slots__ = ()
 

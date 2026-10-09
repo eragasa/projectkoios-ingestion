@@ -15,5 +15,6 @@ class LayoutRegionKind(StrEnum):
     HEADER = "header"
     FOOTER = "footer"
     FOOTNOTE = "footnote"
+    CAPTION = "caption"
     SIDEBAR = "sidebar"
     OTHER = "other"

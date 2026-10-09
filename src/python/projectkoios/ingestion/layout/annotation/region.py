@@ -1,4 +1,4 @@
-"""Human-authored semantic region annotations."""
+"""Semantic region annotations."""
 
 from __future__ import annotations
 

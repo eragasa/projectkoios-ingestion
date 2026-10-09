@@ -39,10 +39,13 @@ decoder is retained.
 | `layout/review/configuration.py` | Review thresholds and cost bounds |
 | `layout/review/request.py` | Complete comparison request |
 | `layout/review/result.py` | Request-bound prepared review case |
-| `layout/annotation/kind.py` | Human outcome and failure taxonomy |
+| `layout/annotation/kind.py` | Evidence-author-neutral outcome and failure taxonomy |
 | `layout/annotation/region.py` | Corrected region and block membership |
 | `layout/annotation/failure.py` | Observed failure label |
+| `layout/annotation/validation.py` | Shared structural annotation validation |
 | `layout/annotation/collection.py` | Complete human annotation evidence |
+| `layout/annotation/model/` | Exact model invocation, parsing, limitation, and replicated resolution evidence |
+| `layout/annotation/human/evidence.py` | Optional terminal human review over exact model resolution |
 | `layout/annotation/limits/definition.py` | Annotation collection bounds |
 | `layout/annotation/limits/error.py` | Annotation limit failure |
 | `layout/validation/value.py` | Shared layout value validation |

@@ -96,6 +96,16 @@ uv build
 The continuous-integration environment is described in
 [`docs/ci.md`](docs/ci.md).
 
+## Related projects and formats
+
+The optional layout discovery and evaluation adapter builds on concepts from
+[Layout Parser](https://github.com/layout-parser/layout-parser). Layout Parser
+outputs remain non-authoritative detector evidence: Project Koios adapts them
+into its own immutable layout-proposal contracts and preserves the authoritative
+PDF extraction separately. The [COCO data
+format](https://cocodataset.org/#format-data) integration likewise provides an
+interchange boundary rather than the canonical Koios evidence contract.
+
 ## Documentation
 
 - [Architecture](docs/architecture/index.md)

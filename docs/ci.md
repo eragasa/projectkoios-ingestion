@@ -11,7 +11,9 @@ Every pull request and `master` push runs:
   claim-candidate slice;
 - Ruff lint over all production and test Python;
 - mypy over all production Python;
-- the complete pytest suite;
+- deterministic tests marked `benchmark` as a separately visible regression
+  gate;
+- the complete pytest suite, including those benchmark regressions;
 - the NumPy-docstring Sphinx API build under `docs/sphinx/`, with warnings
   treated as errors;
 - source and wheel builds;
@@ -29,8 +31,11 @@ Its smoke gates enforce objective package-shape rules in migrated scopes, while
 semantic ownership, action boundaries, and unstable API terminology receive an
 explicit human-readable review in each pull request.
 
-These checks verify software contracts only. They do not establish extraction
-accuracy, OCR adequacy, claim support, scientific validity, rights clearance,
-human acceptance, or publication authority. Real Tesseract execution remains an
+These checks verify software contracts only. The `benchmark` marker identifies
+frozen, deterministic regression evidence; it does not imply a timing benchmark
+or private-corpus quality claim. Private-corpus detector baselines and reports
+remain outside Git. The checks do not establish extraction accuracy, OCR
+adequacy, claim support, scientific validity, rights clearance, human
+acceptance, or publication authority. Real Tesseract execution remains an
 explicitly configured external smoke test and may be skipped when its fixture is
 not configured.
