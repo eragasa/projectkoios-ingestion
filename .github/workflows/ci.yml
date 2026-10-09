@@ -403,11 +403,26 @@ jobs:
               "projectkoios.ingestion.transcription.status.result",
               "projectkoios.ingestion.transcription.validation.request",
               "projectkoios.ingestion.transcription.validation.result",
+              "projectkoios.ingestion.page",
+              "projectkoios.ingestion.page.projection",
+              "projectkoios.ingestion.page.projection.actionizer",
+              "projectkoios.ingestion.page.projection.block",
+              "projectkoios.ingestion.page.projection.error",
+              "projectkoios.ingestion.page.projection.identity",
+              "projectkoios.ingestion.page.projection.limitation",
+              "projectkoios.ingestion.page.projection.limits",
+              "projectkoios.ingestion.page.projection.limits.definition",
+              "projectkoios.ingestion.page.projection.limits.error",
+              "projectkoios.ingestion.page.projection.page",
+              "projectkoios.ingestion.page.projection.request",
+              "projectkoios.ingestion.page.projection.result",
+              "projectkoios.ingestion.page.projection.window",
           )
           for module_name in required_modules:
               import_module(module_name)
 
           removed_modules = (
+              "projectkoios.ingestion.page_projection",
               "projectkoios.ingestion.batch",
               "projectkoios.ingestion.serialization",
               "projectkoios.ingestion.reference_claim_candidate",

@@ -136,6 +136,11 @@ from projectkoios.ingestion.layout.review.actionizer import (
 )
 from projectkoios.ingestion.layout.review.request import LayoutReviewRequest
 from projectkoios.ingestion.layout.review.result import LayoutReviewCase
+from projectkoios.ingestion.page.projection.actionizer import (
+    PageProjectionActionizer,
+)
+from projectkoios.ingestion.page.projection.request import PageProjectionRequest
+from projectkoios.ingestion.page.projection.result import PageProjectionResult
 from projectkoios.ingestion.reference.claim.candidate import (
     ReferenceClaimCandidate,
 )
@@ -224,6 +229,7 @@ def _repository_root() -> Path:
 
 _SOURCE_ROOT = _repository_root() / "src/python/projectkoios/ingestion"
 _MIGRATED_SCOPES = (
+    _SOURCE_ROOT / "page/projection",
     _SOURCE_ROOT / "articles",
     _SOURCE_ROOT / "base",
     _SOURCE_ROOT / "storage",
@@ -252,6 +258,7 @@ _MIGRATED_SCOPES = (
     _SOURCE_ROOT / "transcription",
 )
 _NO_PRIVATE_MEMBER_FUNCTION_SCOPES = (
+    _SOURCE_ROOT / "page/projection",
     _SOURCE_ROOT / "articles/structure",
     _SOURCE_ROOT / "figures/relevance",
     _SOURCE_ROOT / "integrations/coco",
@@ -277,6 +284,7 @@ _NO_STATIC_UTILITY_METHOD_SCOPES = (
     _SOURCE_ROOT / "reference/evidence/json/value.py",
 )
 _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
+    _SOURCE_ROOT / "page/projection",
     _SOURCE_ROOT / "integrations/mongodb/transcript/reading/evidence",
     _SOURCE_ROOT / "storage/transcript/reading/evidence",
     _SOURCE_ROOT / "reference/claim",
@@ -285,6 +293,7 @@ _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
     _SOURCE_ROOT / "transcript/reading/evidence",
 )
 _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
+    _SOURCE_ROOT / "page/projection",
     _SOURCE_ROOT / "integrations/coco",
     _SOURCE_ROOT / "integrations/docling",
     _SOURCE_ROOT / "integrations/layout_parser",
@@ -316,26 +325,6 @@ _EXTERNAL_MODULE_FUNCTIONS = frozenset(
         (
             "projectkoios.ingestion.integrations.ollama.multimodal.base",
             "build_ollama_multimodal_cache_key",
-        ),
-        (
-            "projectkoios.ingestion.page_projection",
-            "iter_page_projection_pages",
-        ),
-        (
-            "projectkoios.ingestion.page_projection",
-            "iter_page_projection_windows",
-        ),
-        (
-            "projectkoios.ingestion.page_projection",
-            "load_owner_validated_page_projection",
-        ),
-        (
-            "projectkoios.ingestion.page_projection",
-            "page_projection_validation_report_bytes",
-        ),
-        (
-            "projectkoios.ingestion.page_projection",
-            "validate_page_projection",
         ),
     }
 )
@@ -489,6 +478,16 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=LayoutReadingOrderEvaluationActionizer,
         actionizer_base=DataObjectActionizer,
         result_type=LayoutReadingOrderEvaluationResult,
+        result_base=DataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="page_projection",
+        request_type=PageProjectionRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=PageProjectionActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=PageProjectionResult,
         result_base=DataObjectActionResult,
         stateless_actionizer=True,
     ),
@@ -875,6 +874,37 @@ def test__smoke__reading_order_evaluation_has_no_execution_owner_imports() -> (
     invalid = sorted(
         f"{path.relative_to(_SOURCE_ROOT)}:{line_number}"
         for path in evaluation_root.rglob("*.py")
+        for line_number in _forbidden_import_lines(
+            source=path.read_text(),
+            module_name=_module_name(path),
+            forbidden_prefixes=forbidden_prefixes,
+        )
+    )
+
+    assert invalid == []
+
+
+def test__smoke__page_projection_has_no_flat_compatibility_module() -> None:
+    assert not (_SOURCE_ROOT / "page_projection.py").exists()
+
+
+def test__smoke__page_projection_has_no_execution_owner_imports() -> None:
+    projection_root = _SOURCE_ROOT / "page/projection"
+    forbidden_prefixes = (
+        "httpx",
+        "os",
+        "pathlib",
+        "pymongo",
+        "projectkoios.agent",
+        "projectkoios.ingestion.integrations",
+        "projectkoios.search",
+        "projectkoios.workflow",
+        "requests",
+        "workflow",
+    )
+    invalid = sorted(
+        f"{path.relative_to(_SOURCE_ROOT)}:{line_number}"
+        for path in projection_root.rglob("*.py")
         for line_number in _forbidden_import_lines(
             source=path.read_text(),
             module_name=_module_name(path),

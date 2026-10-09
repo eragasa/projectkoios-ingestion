@@ -1,3 +1,3 @@
 # `PageProjectionInputIdentityDerivation`
 
-Validates and fingerprints exact current reading-document/projection/inventory identities plus managed artifact verification identities after one bounded serialization. Providers, database configuration, paths, payload bytes, and prototype identities cannot participate.
+Validates and fingerprints the exact fresh `ReadingEvidenceSourceResult` identity, managed-artifact verification result identity, caption-policy boolean, and contract version after one bounded serialization. No independent document/projection/inventory aliases, provider configuration, database configuration, paths, or payload bytes are accepted. Request and result identities transitively bind the exact upstream source and verification attestations, including their provider and verifier provenance; block, block-inventory, page, and page-inventory identities remain provider-neutral.

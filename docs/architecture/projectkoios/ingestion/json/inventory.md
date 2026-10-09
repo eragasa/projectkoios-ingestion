@@ -17,7 +17,6 @@ verification behavior:
 | `ocr/reconciliation/batch/plan.py` | OCR reconciliation plan | Versioned pretty UTF-8 text with terminal newline |
 | `transcript_batch.py` | Transcript batch plan | Strict duplicate rejection, bounded bytes, sorted pretty text |
 | `reference/evidence/json/contract.py` | Reference evidence | Strict bounded canonical UTF-8 bytes and complete reconstruction |
-| `page_projection.py` | Validation report and owner projection | Compact sorted canonical bytes plus typed loading |
 | `cache.py` | Extraction result and cache entry | Strict duplicate/constant rejection and typed reconstruction |
 | `integrations/disk/extraction/store.py` | Journal records | Durable line-delimited JSON record transport |
 | `storage/extraction/projection/document.py` | Projected document JSON | Rebuildable typed read-model payload |

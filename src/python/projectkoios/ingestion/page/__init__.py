@@ -1,0 +1,1 @@
+"""Page-domain ingestion contracts."""

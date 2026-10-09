@@ -26,7 +26,6 @@ closed as unsuitable for unattended corpus execution.
 | 001 | `001.enrich_kittel8ed_multimodal.py` | Legacy `doc-01` detection, structured composition, and equation/figure evidence workflow. Retained for audit; do not resume model execution. |
 | 002 | `002.build_kittel8ed_reading_transcript.py` | Build the legacy `doc-01` reading projection. |
 | 003 | `003.process_selected_reference_multimodal.py` | Legacy `doc-02`–`doc-06` detection, equation handling, and reading projection runner. Retained for replay/audit; do not use it to resume the closed Pix2Tex queue. |
-| 004 | `004.validate_selected_reference_multimodal.py` | Validate legacy `doc-01`–`doc-06` reading projections against source and composed page text. |
 | 005 | `005.prepare_pending_reference_multimodal.py` | Freeze deterministic plans for `doc-07`–`doc-09`. |
 | 006 | `006.render_pending_reference_multimodal_candidates.py` | Retain deterministic equation, figure, and table evidence. |
 | 007 | `007.build_pending_reference_candidate_quality.py` | Build bounded quality inventories and equation assemblies. |
@@ -43,14 +42,9 @@ closed as unsuitable for unattended corpus execution.
 | 018 | `018.audit_pending_reference_pix2tex_output_quality.py` | Replay retained canary results and measure deterministic warning coverage. |
 | 019 | `019.build_pending_reference_reading_transcripts.py` | Publish the equation deferral inventory and deterministic `doc-07`–`doc-09` reading transcripts without recognized equation text. |
 | 020 | `020.validate_pending_reference_reading_transcripts.py` | Validate transcript identities, evidence hashes, review gates, coverage, and permissions. |
-| 021 | `021.recompose_neaman_equation_evidence.py` | Correct `doc-06` by retaining every primary equation-region reference independently of historical recognition output and resolve its stale mutable progress state. |
-| 022 | `022.build_reference_reading_corpus_coverage.py` | Audit all nine reading transcripts and freeze the pre-correction coverage gap found in legacy `doc-01`–`doc-05`. |
-| 023 | `023.recompose_legacy_reference_equation_evidence.py` | Correct `doc-01`–`doc-05`, retain every selected equation-region reference, and discard historical recognized equation text. |
-| 024 | `024.build_reference_reading_corpus_coverage_v2.py` | Validate and reconcile the authoritative nine-document reading corpus after legacy recomposition. |
 | 025 | `025.validate_reference_reading_corpus_coverage.py` | Recheck all nine transcripts, equation review gates, evidence hashes, unique identities, media, totals, and private permissions. |
 | 026 | `026.select_recognition_independent_equation_evidence.py` | Classify every prepared equation assembly from detector and assembly evidence only, retaining all candidate media without reading recognition output. |
 | 027 | `027.build_recognition_independent_reading_transcripts.py` | Compose and validate the three-book reading collection directly from workflow 026, proving semantic equivalence to the prior collection without reading recognition output. |
-| 028 | `028.build_recognition_independent_corpus_coverage.py` | Rebuild and validate nine-document coverage with workflow 027, then supersede the prior three-book and corpus roots after semantic equivalence passes. |
 | 029 | `029.run_bounded_ollama_multimodal_canary.py` | Plan and, only with `--apply`, run one create-once loopback Ollama transcription canary over an exact retained figure. The completed result remains nondeterministic, automated, unreviewed, unaccepted, chunk-ineligible, and publication-ineligible. |
 | 030 | `030.audit_bounded_ollama_multimodal_canary.py` | Replay the fixed canary bytes without model execution and audit coverage of the three visible labels. This validates one retained output, not deterministic Ollama behavior or corpus suitability. |
 | 031 | `031.plan_replicated_ollama_multimodal_canary.py` | Freeze three evidence classes and two independent invocation slots per sample for observed-variability analysis. This stage performs no model execution and grants no execution authorization. |
