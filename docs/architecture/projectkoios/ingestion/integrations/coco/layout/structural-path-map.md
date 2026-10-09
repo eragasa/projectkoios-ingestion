@@ -39,6 +39,10 @@
 | Adaptation result | `integrations/coco/layout/result.py` |
 | Adaptation actionizer | `integrations/coco/layout/actionizer.py` |
 | Reading-order sidecar | `integrations/coco/layout/reading/order.py` |
+| Resolved-order projection request | `integrations/coco/layout/reading/projection/request.py` |
+| Resolved-order projection result | `integrations/coco/layout/reading/projection/result.py` |
+| Resolved-order strict mapping derivation | `integrations/coco/layout/reading/projection/derivation.py` |
+| Resolved-order projection actionizer | `integrations/coco/layout/reading/projection/actionizer.py` |
 | Proposal/native-block lineage sidecar | `integrations/coco/layout/lineage.py` |
 | Bundle manifest | `integrations/coco/layout/manifest.py` |
 | Complete bundle verification | `integrations/coco/layout/bundle.py` |

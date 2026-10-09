@@ -170,9 +170,13 @@ proposal list. Proposal source identity includes detector, runtime, resource
 hash, and full configuration identity.
 
 The proposals remain non-authoritative evidence. They may be compared with
-`PageLayoutResult` by deterministic layout review. Reading order, native-block
-membership, model agreement, human review, and publication eligibility remain
-Koios contracts and are deliberately absent from COCO records.
+`PageLayoutResult` by deterministic layout review. A strict projection may map
+an independently resolved framework-neutral order through exact lineage into
+the complete annotation-ID and native-block-ID sequences required by the Koios
+reading-order sidecar. It rejects geometry, category, membership, digest, or
+coverage drift. Reading order and native-block membership remain Koios sidecar
+contracts rather than standard COCO annotation semantics; model agreement,
+human review, and publication eligibility remain separate authority domains.
 
 This integration is therefore suitable for token-free local detection while
 preserving the existing authority boundary: normal pages can use deterministic

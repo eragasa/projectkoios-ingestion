@@ -11,6 +11,8 @@ annotations remain evidence rather than publication acceptance.
 
 - [`render`](render/index.md) — exact pixel identity and source/pixel mapping.
 - [`review`](review/index.md) — bounded proposal comparison and review cases.
+- [`reading`](reading/index.md) — framework-neutral candidate evidence and
+  conservative deterministic reading-order verification.
 - [`annotation`](annotation/index.md) — strict model-response parsing,
   replicated agreement, human annotation, and optional final human review.
 - [`integrations.layout_parser`](../integrations/layout_parser/index.md) — frozen

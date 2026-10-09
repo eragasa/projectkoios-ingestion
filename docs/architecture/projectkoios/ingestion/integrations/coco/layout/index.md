@@ -10,9 +10,11 @@ canonical four-member annotation/reading-order/lineage/manifest bundle. Its
 local-detector boundary also owns exact runtime invocation evidence, pinned
 preprocessing, strict invocation-output parsing, raw framework-neutral
 observations, explicit label dispositions and exclusions, canonical
-annotation-ID assignment, exact observation-to-detection lineage, and a
-fail-closed admission gate bound to successful invocation and valid parsing
-evidence. The contracts record inference without embedding a runtime or
+annotation-ID assignment, exact observation-to-detection lineage, a fail-closed
+admission gate bound to successful invocation and valid parsing evidence, and a
+strict projection from framework-neutral deterministic resolution into complete
+COCO annotation/native-block sidecar sequences. The contracts record inference
+without embedding a runtime or
 granting publication authority.
 
 See [implementation](implementation.md), [schematic](schematic.md), and the
