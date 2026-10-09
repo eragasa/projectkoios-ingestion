@@ -34,6 +34,21 @@
 | Detector admission status and reasons | `integrations/coco/layout/detector/gate/reason.py` |
 | Detector admission result | `integrations/coco/layout/detector/gate/result.py` |
 | Detector admission actionizer | `integrations/coco/layout/detector/gate/actionizer.py` |
+| Generic per-category region admission | `integrations/coco/layout/admission/` |
+| Region-admission configuration | `integrations/coco/layout/admission/configuration.py` |
+| Region-admission request | `integrations/coco/layout/admission/request.py` |
+| Per-detection admission evidence | `integrations/coco/layout/admission/evidence.py` |
+| Per-category admission outcomes | `integrations/coco/layout/admission/outcome.py` |
+| Region-admission result | `integrations/coco/layout/admission/result.py` |
+| Region-admission actionizer | `integrations/coco/layout/admission/actionizer.py` |
+| Formula-to-equation projection hierarchy | `integrations/coco/layout/equation/` |
+| Equation projection configuration | `integrations/coco/layout/equation/configuration.py` |
+| Equation projection request | `integrations/coco/layout/equation/request.py` |
+| Equation candidate evidence | `integrations/coco/layout/equation/candidate.py` |
+| Equation projection exclusions | `integrations/coco/layout/equation/exclusion.py` |
+| Equation projection result | `integrations/coco/layout/equation/result.py` |
+| Equation projection actionizer | `integrations/coco/layout/equation/actionizer.py` |
+| Equation candidate assembler | `integrations/coco/layout/equation/assembler.py` |
 | Adaptation request | `integrations/coco/layout/request.py` |
 | Detection/proposal adaptation | `integrations/coco/layout/adaptation.py` |
 | Adaptation result | `integrations/coco/layout/result.py` |

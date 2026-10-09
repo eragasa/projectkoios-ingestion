@@ -76,7 +76,7 @@ class OnnxRuntimeCocoLayoutDetectorProvider(
             raise TypeError(
                 "image_provider must be ManagedArtifactByteProvider"
             )
-        if type(model_path) is not Path:
+        if not isinstance(model_path, Path):
             raise TypeError("model_path must be pathlib.Path")
         if not authority_id or not execution_provider:
             raise ValueError("authority and execution provider are required")
@@ -363,8 +363,9 @@ def execute_coco_layout_detector_onnx_runtime(
             kind=CocoLayoutDetectorInvocationFailureKind.IMAGE_MISMATCH,
             code="image_decode_or_preprocessing_failed",
         ) from error
-    original_sizes = numpy.asarray(
-        [[request.image.height, request.image.width]], dtype=numpy.int64
+    original_sizes = create_coco_layout_detector_original_sizes(
+        request=request,
+        numpy=numpy,
     )
     session = onnxruntime.InferenceSession(
         model_bytes,
@@ -391,6 +392,18 @@ def execute_coco_layout_detector_onnx_runtime(
         labels=labels,
         boxes=boxes,
         scores=scores,
+    )
+
+
+def create_coco_layout_detector_original_sizes(
+    *, request: CocoLayoutDetectorInvocationRequest, numpy: Any
+) -> Any:
+    """Create the pinned Heron width-height original-size tensor."""
+    if type(request) is not CocoLayoutDetectorInvocationRequest:
+        raise TypeError("request must be CocoLayoutDetectorInvocationRequest")
+    return numpy.asarray(
+        [[request.image.width, request.image.height]],
+        dtype=numpy.int64,
     )
 
 

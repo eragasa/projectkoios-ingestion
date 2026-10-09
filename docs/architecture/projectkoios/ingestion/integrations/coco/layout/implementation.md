@@ -57,7 +57,8 @@ paths, enforces a hard model-byte ceiling before allocation, streams and
 verifies exact managed image bytes under an explicit byte-provider authority,
 checks decoded dimensions, validates runtime/provider/device identity, restricts
 v0.1 execution to an exactly activated CPUExecutionProvider, applies the pinned
-640-by-640 RGB/bilinear/uint8/NCHW preprocessing, executes the named ONNX inputs,
+640-by-640 RGB/bilinear/uint8/NCHW preprocessing, supplies Heron's original-size
+tensor in `(width, height)` order, executes the named ONNX inputs,
 validates exact output tensor ranks, dimensions, dtypes, finite values, and
 bounds, and serializes a typed canonical raw-output document. Managed-image and
 provider-protocol failures remain inside the closed invocation failure taxonomy;
@@ -88,6 +89,35 @@ when policy allows them to remain nonblocking.
 Admission means only that the evidence may enter a later deterministic layout
 finalizer. It is not reading-order completeness, model agreement, human review,
 publication eligibility, or publication authority.
+
+## Generic category admission
+
+The [region-admission boundary](admission/index.md) separately evaluates every
+supported category in the exact profile. It preserves every parsed observation
+through either category admission evidence or the detector-limitation
+inventory. Confidence filtering, confidence-first same-category IoU
+suppression, and hard category count bounds are deterministic. Unsupported
+labels remain explicit limitations but do not block supported categories, and a
+category overflow escalates only that category.
+
+Category admission grants eligibility only to a category-specific projector.
+It does not replace or weaken the whole-page detector gate and grants no final
+layout, semantic, or publication authority.
+
+## Formula-to-equation projection
+
+The [equation bridge](equation/index.md) consumes the exact independently
+admitted `Formula` category from generic region admission. It can strengthen the
+formula confidence threshold, maps pixel boxes through the exact render affine
+transform, applies bounded source padding, and emits canonically ordered
+candidate evidence. A separate effectful assembler verifies current source
+bytes and renders each source region into a recognition-ready display
+`EquationAssemblyResult`.
+
+The bridge preserves admission, detector, render, coordinate-conversion,
+candidate, and assembly lineage. It does not alter the native page layout,
+recognize formula content, establish transcription correctness, or grant
+publication authority.
 
 ## Koios COCO Layout Profile v0.1
 

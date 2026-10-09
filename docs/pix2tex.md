@@ -20,3 +20,11 @@ Do not place external model weights in this repository. Do not assume that a pac
 Pix2tex is an untrusted, stochastic recognition backend. The adapter uses no shell, stages only selected bounded PNG evidence in a private temporary directory, disables GPU selection, applies a bounded timeout, and limits retained output and diagnostics. It does not provide operating-system sandboxing or a memory limit. Deployments processing untrusted inputs or models must add an appropriate OS isolation boundary.
 
 Pix2tex does not expose calibrated proposal or symbol confidence through this CLI. Every successful output is therefore explicitly unaccepted and confidence-unavailable. The optional `projectkoios-ingestion[mathml]` extra converts a retained LaTeX proposal to MathML; successful conversion does not validate the mathematics. Primary retrieval eligibility remains a conservative indexing decision rather than correctness or acceptance.
+
+The primary-recognition gate ordinarily requires bounded native equation text. A
+single-candidate visual assembly produced from admitted COCO `Formula` evidence
+may instead carry the exact `layout_detector_without_native_text` marker with no
+native block, label, fragment, or sanitized-text content. That narrow case omits
+only the native-text length check; display-kind, detector-status, rejection,
+grouping, PNG, and foreground-profile checks remain mandatory. Resulting LaTeX
+and MathML remain proposal evidence and do not establish transcription accuracy.

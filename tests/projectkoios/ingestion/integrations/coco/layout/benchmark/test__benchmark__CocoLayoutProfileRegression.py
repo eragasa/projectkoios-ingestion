@@ -149,16 +149,16 @@ def test__benchmark__heron_onnx_candidate_resource() -> None:
         (
             "preprocessing",
             "coco-layout-detector-preprocessing:sha256:"
-            "d08f02485b518b088ea15ffc817d607674bd2f92a5966e07d412dd6c5b46c335",
+            "d17a6d620cc3d84bcb92a5c3b523caec657e93903b64119c5ba393486256fbf5",
         ),
         (
             "invocation_request",
             "coco-layout-detector-invocation-request:sha256:"
-            "0be3674e5c38017820acc0d4ce541698433779fcdc37f5d3648a68d749ba7501",
+            "3a597ba4302c3e317cbddbece76c6ad94d9ac914bf3a032c136f5e052da7a65a",
         ),
         (
             "invocation_document_sha256",
-            "2e33e8aef42c26ce21c27f26c3bbe38cdc1ebe644a87bc7dfdde64a5eb7d3aa8",
+            "b10e6e4b467d85e47fd8222a9f5bc943f8ab8b78c8e9a808b874f83c421001bf",
         ),
         (
             "gate_configuration",
@@ -168,26 +168,26 @@ def test__benchmark__heron_onnx_candidate_resource() -> None:
         (
             "admitted_gate_result",
             "coco-layout-detector-gate-result:sha256:"
-            "92966b6914992629da96947f6c923428d31ad842c639282891b7fc9c861d2ae8",
+            "74fff266783de54981b1c04ee03848341b6f9f03673fe6938d64c9515557f659",
         ),
         (
             "escalated_gate_result",
             "coco-layout-detector-gate-result:sha256:"
-            "332910b5efd7dfe3778f384691fe0665ef7e18351caf7ef6cecaf575a8e60391",
+            "aa302463e5074786378b28d7d1a4a98e16dce58fa4c095b8859c900c72469f75",
         ),
         (
             "raw_output",
             "coco-layout-detector-raw-output:sha256:"
-            "518c8929a09e9172f2aa963f9f33ab5a506c85cfef6c042147fa40582bc2c821",
+            "75c42467efe8cf0a31f7f63fd3d2ecf562e625a457bb6e0b2d1d7a124c05acb6",
         ),
         (
             "raw_output_sha256",
-            "405383f3409725ee4ba755cf23f853f1bf092ca7e326cb0aeced14d9904fc8d4",
+            "178abb92eafef8871f72ef2083c3381de90682a9a9952d123294eff1d53a295e",
         ),
         (
             "output_parsing_result",
             "coco-layout-detector-output-parsing-result:sha256:"
-            "c54fb44cfdbcd8ab53042100b27d5a575b715581929194728da2bf81c75b83d5",
+            "bd1419296462644f9b2ae9c3b3038d8bb5964bc25e519e1cad0b36fababb73e2",
         ),
     ),
 )

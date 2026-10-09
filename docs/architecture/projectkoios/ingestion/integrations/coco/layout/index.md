@@ -11,11 +11,13 @@ local-detector boundary also owns exact runtime invocation evidence, pinned
 preprocessing, strict invocation-output parsing, raw framework-neutral
 observations, explicit label dispositions and exclusions, canonical
 annotation-ID assignment, exact observation-to-detection lineage, a fail-closed
-admission gate bound to successful invocation and valid parsing evidence, and a
-strict projection from framework-neutral deterministic resolution into complete
-COCO annotation/native-block sidecar sequences. The contracts record inference
-without embedding a runtime or
-granting publication authority.
+whole-page detector gate, [generic category admission](admission/index.md) for
+every supported profile category, a strict projection from framework-neutral
+deterministic resolution into complete COCO annotation/native-block sidecar
+sequences, and an [equation bridge](equation/index.md) from category-admitted
+`Formula` detections to recognition-ready equation assemblies. The contracts
+record inference without
+embedding recognition or granting publication authority.
 
 See [implementation](implementation.md), [schematic](schematic.md), and the
 [structural path map](structural-path-map.md).

@@ -6,16 +6,23 @@ directory and invokes the executable without a shell. One invocation receives a
 concrete `Pix2TexInvocationRequest` and either returns a concrete
 `Pix2TexInvocationResult` or raises `Pix2TexInvocationError`.
 
-Before invocation, processor version 5 applies a deterministic primary-evidence
+Before invocation, processor version 6 applies a deterministic primary-evidence
 gate. It retains all assemblies but invokes Pix2Tex only for proposed display
 assemblies with 4–64 native-text characters, at most 14 native words, at most
 three grouped candidates, and an opaque 8-bit RGB PNG containing at most two
-foreground bands. Two-band regions touching a vertical edge remain retained but
-are not requested. Ineligibility reasons are preserved as proposal warnings.
+foreground bands. The native-text length bound has one exact visual-evidence
+case: a single-candidate assembly whose identity-bound prefilter reason is
+`layout_detector_without_native_text`, whose native fragments and sanitized text
+are empty, and which has no native block or source-label bindings. This permits
+an admitted COCO `Formula` crop to produce proposal evidence without inventing
+native text; it does not bypass the display, detector-status, rejection,
+grouping, PNG, or foreground-profile checks. Two-band regions touching a
+vertical edge remain retained but are not requested. Ineligibility reasons are
+preserved as proposal warnings.
 These bounds screen overbroad, context-contaminated, truncated, and weak visual
 evidence; they do not establish mathematical correctness.
 
-Processor version 5 also records high-precision output warnings for brace,
+Processor version 6 also records high-precision output warnings for brace,
 `\left`/`\right`, and environment mismatches; excessive spacing; implausible
 output expansion; duplicated equation labels; and native equalities absent from
 the proposal. Warnings never accept output or make it chunk-text-eligible.

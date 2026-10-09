@@ -275,6 +275,43 @@ class LayoutPixelMapping(AbstractImmutableDataObject):
             (min(xs), min(ys), max(xs), max(ys)),
         )
 
+    def pixel_box_to_source_box(
+        self, pixel_box: LayoutBoundingBox
+    ) -> LayoutBoundingBox:
+        """Map one bounded raster-edge box into source-page geometry."""
+        box = LayoutValueValidation.require_box("pixel_box", pixel_box)
+        if (
+            box[0] < 0.0
+            or box[1] < 0.0
+            or box[2] > self.image_width
+            or box[3] > self.image_height
+        ):
+            raise ValueError("pixel box exceeds mapped image bounds")
+        a, b, c, d, e, f = self.pixel_to_source_matrix
+        corners = (
+            (box[0], box[1]),
+            (box[2], box[1]),
+            (box[0], box[3]),
+            (box[2], box[3]),
+        )
+        source_points = tuple(
+            (
+                LayoutValueValidation.require_number(
+                    "mapped source x", x * a + y * c + e
+                ),
+                LayoutValueValidation.require_number(
+                    "mapped source y", x * b + y * d + f
+                ),
+            )
+            for x, y in corners
+        )
+        xs = tuple(point[0] for point in source_points)
+        ys = tuple(point[1] for point in source_points)
+        return LayoutValueValidation.require_box(
+            "mapped source box",
+            (min(xs), min(ys), max(xs), max(ys)),
+        )
+
     def __post_init__(self) -> None:
         if self.contract_version != self.CONTRACT_VERSION:
             raise ValueError("unsupported layout pixel mapping contract")

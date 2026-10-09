@@ -158,6 +158,7 @@ def coco_layout_detector_request(
     reverse: bool = False,
     include_limitations: bool = True,
     omit_formula: bool = False,
+    duplicate_formula: bool = False,
 ) -> CocoLayoutDetectorRequest:
     """Return accepted, unsupported, and below-threshold observations."""
     _, _, render = LayoutReviewFixture().render_evidence()
@@ -197,6 +198,15 @@ def coco_layout_detector_request(
     )
     if not include_limitations:
         observations = (observations[0], observations[3])
+    if duplicate_formula:
+        observations += (
+            CocoLayoutDetectorObservation(
+                render_id=render.render_id,
+                model_label_id=2,
+                bounding_box_xyxy_pixels=(21.0, 21.0, 79.0, 39.0),
+                confidence=0.85,
+            ),
+        )
     if omit_formula:
         observations = tuple(
             observation
@@ -246,12 +256,14 @@ def coco_layout_gate_request(
     *,
     include_limitations: bool = False,
     omit_formula: bool = False,
+    duplicate_formula: bool = False,
     gate_configuration: CocoLayoutDetectorGateConfiguration | None = None,
 ) -> CocoLayoutDetectorGateRequest:
     """Build an exact detector-to-proposal-to-review evidence chain."""
     detector_request = coco_layout_detector_request(
         include_limitations=include_limitations,
         omit_formula=omit_formula,
+        duplicate_formula=duplicate_formula,
     )
     parsing_result = coco_layout_detector_parsing_result(detector_request)
     detector_result = parsing_result.detector_result

@@ -56,8 +56,17 @@ CocoLayoutProposalResult
         │                           v
         │                 CocoLayoutDetectorGateActionizer
         │                   │ requires the exact VALID parsing result
-        │                   ├─ admitted -> deterministic finalizer input
+        │                   ├─ admitted -> deterministic page-finalizer input
         │                   └─ unresolved -> bounded escalation candidate
+        │
+        ├───────────────> CocoLayoutRegionAdmissionActionizer
+        │                   │ exact VALID parsing + proposal evidence
+        │                   ├─ one independent outcome per profile category
+        │                   ├─ unsupported labels remain limitations
+        │                   └─ Formula admitted
+        │                         -> equation candidate projection
+        │                         -> verified region assembly
+        │                         -> recognition-ready evidence
         │
         v
 CocoLayoutBundle.create
