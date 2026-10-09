@@ -16,10 +16,7 @@ invariants. External runtime adapters, including Ollama, belong to
 Backend-neutral PDF extraction actions belong to `pdf.extraction`; concrete
 PyMuPDF extraction and rendering belong to `pdf.adapters.pymupdf`. Transcript
 batch operations and composition belong to `transcript.batch`; transcript
-evidence selection remains in `transcript.evidence.selection`. Reading-scale
-artifact validation and typed text-only loading belong to the public
-`page_projection` module; downstream consumers provide explicit artifact paths
-and never discover or parse the transcript layout themselves.
+evidence selection remains in `transcript.evidence.selection`. Pure current-schema citation-aligned text projection belongs to `page.projection`; it consumes an exact `ReadingEvidenceSourceResult` plus successful payload-free managed-artifact verification and performs no path loading or I/O. Search remains the sole owner of downstream chunking and retrieval admission.
 
 Concrete adapter selection occurs only in explicit composition roots. The
 existing explicit `PyMuPdfExtractor` exports from `projectkoios.ingestion` and

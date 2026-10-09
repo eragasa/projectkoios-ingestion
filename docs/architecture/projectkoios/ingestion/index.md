@@ -25,9 +25,8 @@ structured composition belongs to [`transcription`](transcription/index.md),
 whose marker-only subpackages own requests, derivations, items, omissions,
 results, validation records, and cache identity. Canonical rebuildable
 reading-scale evidence belongs to
-[`transcript.reading.evidence`](transcript/reading/evidence/index.md). The
-[`page_projection`](page_projection/index.md) module is a feasibility prototype,
-not a compatibility contract; the clean target is pure
+[`transcript.reading.evidence`](transcript/reading/evidence/index.md). Pure
+citation-aligned text projection belongs to
 [`page.projection`](page/projection/index.md). MongoDB schema retention is handled
 only by explicit side-by-side database migration. This package does not own
 cross-repository routing, product policy, Search indexes, or downstream authoring.

@@ -2,23 +2,31 @@
 
 ```text
 ReadingEvidenceSourceResult
+  document
+  projection_result_id
+  inventory.inventory_id
              +
 ManagedArtifactVerificationResult
+  exact fresh document.managed_artifacts coverage
              |
              v
 PageProjectionRequest
- current ReadingEvidenceDocument
- exact verification coverage
+  mandatory paragraph + heading policy
+  include_figure_captions: bool
              |
              v
 PageProjectionActionizer (pure)
              |
              v
 PageProjectionResult
- paragraph + heading + unique figure-caption text
+  complete citation-aligned page inventory
+  paragraph + heading text
+  optional unique figure-caption text
+  upstream reading limitations
+  mandatory non-authority limitations
              |
              v
-Search-owned downstream admission/chunking
+Search-owned downstream admission and chunking
 ```
 
-The prototype `page_projection.py`, JSONL layouts, reports, and IDs are not inputs or compatibility targets.
+Only the typed current-schema inputs shown above are accepted. The action performs no I/O and emits no table, equation, media, or payload text.
