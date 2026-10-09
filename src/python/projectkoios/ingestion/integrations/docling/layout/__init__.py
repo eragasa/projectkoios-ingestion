@@ -1,0 +1,1 @@
+"""Docling layout integration boundary."""

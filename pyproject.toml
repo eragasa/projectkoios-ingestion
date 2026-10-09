@@ -42,6 +42,11 @@ workflow = ["SNAKES==0.9.33"]
 docs = [
     "sphinx>=8.2,<10",
 ]
+layout-reading-order = [
+    "docling-core==2.101.1",
+    "docling-slim==2.135.0",
+    "Rtree==1.4.1",
+]
 
 [tool.uv.sources]
 projectkoios = { git = "https://github.com/eragasa/projectkoios.git", rev = "233f36900b9b44c943ecc5e27f2968ad4bee97ad" }
