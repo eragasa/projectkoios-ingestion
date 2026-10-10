@@ -39,7 +39,16 @@ The page projector does not repeat raw baseline/summary coverage heuristics. Com
 
 `PageProjectionResult` directly specializes `projectkoios.base.DataObjectActionResult`. Construction reruns the pure page derivation and rejects forged pages, incomplete coverage, altered limitations, or unsupported processor identity/version. Its semantic properties expose the exact source, document, upstream projection, upstream inventory, and artifact-verification identities.
 
-Search owns chunking, embeddings, ranking, evidence-bundle construction, and final retrieval admission. The pure typed call is this slice's complete executable boundary; there is no Ingestion workflow script, CLI, batch runner, pipeline wrapper, or source-to-verification convenience action. A future durable composition belongs to Applications and Workflow only when separately authorized. Page projection does not imply claim support, citation acceptance, proofreading, rights, publication suitability, or scientific validity.
+Search owns chunking, embeddings, ranking, evidence-bundle construction, and final retrieval admission. The pure typed call is this slice's complete page-projection boundary; there is no Ingestion workflow script, CLI, batch runner, pipeline wrapper, or source-to-verification convenience action. A future durable composition belongs to Applications and Workflow only when separately authorized. Page projection does not imply claim support, citation acceptance, proofreading, rights, publication suitability, or scientific validity.
+
+The additive [`enrichment`](enrichment/index.md) action consumes only an exact
+`PageProjectionResult` and emits one sanitized immutable entry per projected
+block. Paragraph and heading entries retain exact raw source-sequence text,
+digest, producer bindings, source-span IDs, opaque producer-warning facts, and
+applicable typed limitations. Figure-caption entries are explicit unavailable
+dispositions because current normalized caption evidence does not establish an
+exact raw/clean pair. The enrichment does not construct Search `EvidenceItem`
+values or attach References-owned authority.
 
 ## Bounds and identity
 
