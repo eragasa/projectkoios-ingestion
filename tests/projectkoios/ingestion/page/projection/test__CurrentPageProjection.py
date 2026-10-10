@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -111,6 +112,7 @@ from projectkoios.ingestion.transcript.reading.evidence.source.result import (
 
 from tests.projectkoios.ingestion.page.projection.fixture import (
     PageProjectionMixedVisualFixture,
+    PageProjectionObservationFixture,
 )
 from tests.projectkoios.ingestion.transcript.reading.evidence.projection.fixture import (  # noqa: E501
     ReadingEvidenceProjectionFixture,
@@ -284,6 +286,28 @@ def test__page_projection__omits_table_equation_and_media_text() -> None:
         "Canonical paragraph.",
         "Figure title",
     )
+
+
+def test__page_projection_observation__matches_frozen_fixture() -> None:
+    mixed = PageProjectionMixedVisualFixture.build()
+    result = PageProjectionActionizer().action(
+        request=request_for_document(
+            mixed.canonical,
+            document=mixed.document,
+            include_figure_captions=True,
+        )
+    )
+    observation = PageProjectionObservationFixture(result=result)
+    fixture_path = (
+        Path(__file__).parents[4]
+        / "fixtures"
+        / "page_projection"
+        / "current-schema-v1.json"
+    )
+
+    fixture_bytes = fixture_path.read_bytes()
+    assert fixture_bytes == observation.canonical_bytes()
+    assert not fixture_bytes.endswith(b"\n")
 
 
 def test__page_projection__preserves_exact_paragraph_and_location() -> None:

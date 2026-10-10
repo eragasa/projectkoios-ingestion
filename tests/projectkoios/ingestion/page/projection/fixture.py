@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from typing import ClassVar
 
 from projectkoios.ingestion.artifact.managed.inventory import (
     ManagedArtifactReferenceInventory,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
+from projectkoios.ingestion.page.projection.result import PageProjectionResult
 from projectkoios.ingestion.transcript.reading.evidence.block.equation.evidence import (  # noqa: E501
     ReadingEquationEvidenceBlock,
 )
@@ -261,3 +264,75 @@ class PageProjectionMixedVisualFixture:
             managed_artifacts=managed_artifacts,
             lineage=lineage,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class PageProjectionObservationFixture:
+    """Project one typed result into sanitized cross-repository evidence."""
+
+    FIXTURE_KIND: ClassVar[str] = (
+        "projectkoios.ingestion.page-projection-observation"
+    )
+    FIXTURE_SCHEMA: ClassVar[int] = 1
+
+    result: PageProjectionResult
+
+    def __post_init__(self) -> None:
+        if type(self.result) is not PageProjectionResult:
+            raise TypeError("result must be PageProjectionResult")
+
+    def observation(self) -> dict[str, object]:
+        """Return exact evidence without defining a wire format."""
+        pages: list[dict[str, object]] = []
+        for page in self.result.pages:
+            blocks = [
+                {
+                    "block_id": block.block_id,
+                    "order_index": block.order_index,
+                    "source_id": block.source_id.value,
+                    "style": block.style.value,
+                    "text": block.text,
+                }
+                for block in page.blocks
+            ]
+            pages.append(
+                {
+                    "block_inventory_id": page.blocks.inventory_id,
+                    "blocks": blocks,
+                    "location_id": page.page_location.location_id.value,
+                    "page_id": page.page_id,
+                    "physical_page_index": page.physical_page_index,
+                    "physical_page_number": page.physical_page_number,
+                    "printed_page_label": page.printed_page_label,
+                    "projected_text_bytes": page.blocks.projected_text_bytes,
+                    "source_page_id": page.source_page_id.value,
+                }
+            )
+        result = self.result
+        return {
+            "fixture_kind": self.FIXTURE_KIND,
+            "fixture_schema": self.FIXTURE_SCHEMA,
+            "page_projection_result": {
+                "artifact_verification_result_id": (
+                    result.artifact_verification_result_id
+                ),
+                "contract_name": result.CONTRACT_NAME,
+                "contract_version": result.CONTRACT_VERSION,
+                "document_id": result.document_id.value,
+                "limitation_inventory_id": result.limitations.inventory_id,
+                "page_inventory_id": result.pages.inventory_id,
+                "pages": pages,
+                "processor_id": result.processor_id,
+                "processor_version": result.processor_version,
+                "projection_result_id": result.projection_result_id.value,
+                "reading_inventory_id": result.reading_inventory_id.value,
+                "request_id": result.request.request_id,
+                "result_id": result.result_id,
+                "source_id": result.source_id.value,
+                "source_result_id": result.source_result_id,
+            },
+        }
+
+    def canonical_bytes(self) -> bytes:
+        """Return compact sorted UTF-8 bytes with no terminal newline."""
+        return CanonicalJsonSerializer.serialize_bytes(self.observation())
