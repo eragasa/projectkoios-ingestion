@@ -12,7 +12,8 @@ Every pull request and `master` push runs:
 - Ruff lint over all production and test Python plus the repository-local
   type-checker plugin;
 - mypy over all production Python and the local plugin, with strict checking
-  for the page-projection-enrichment slice;
+  for the page-projection-enrichment and durable page-projection-publication
+  slices;
 - deterministic tests marked `benchmark` as a separately visible regression
   gate;
 - the complete pytest suite, including those benchmark regressions;
@@ -33,7 +34,9 @@ Normal mypy execution loads the Ingestion-local
 private or nested classes, classes outside the action/enum/immutable-record
 taxonomy, and actionizers or facades that expose multiple public verbs in the
 page-projection-enrichment slice. Typed tuples, including nested tuples, and
-private helper functions or methods remain valid. Diagnostic fixtures exercise
+private helper functions or methods remain valid. The publication slice is
+strictly type-checked separately and its defining owner leaves plus trusted disk
+runtime are imported from the clean built wheel. Diagnostic fixtures exercise
 each rejection and the permitted cases; the strict CI invocation checks both
 the production slice and the plugin itself.
 

@@ -148,6 +148,15 @@ from projectkoios.ingestion.page.projection.enrichment.request import (
 from projectkoios.ingestion.page.projection.enrichment.result import (
     PageProjectionEvidenceEnrichmentResult,
 )
+from projectkoios.ingestion.page.projection.publication.actionizer import (
+    PageProjectionPublicationActionizer,
+)
+from projectkoios.ingestion.page.projection.publication.request import (
+    PageProjectionPublicationRequest,
+)
+from projectkoios.ingestion.page.projection.publication.result import (
+    PageProjectionPublicationResult,
+)
 from projectkoios.ingestion.page.projection.request import PageProjectionRequest
 from projectkoios.ingestion.page.projection.result import PageProjectionResult
 from projectkoios.ingestion.reference.claim.candidate import (
@@ -509,6 +518,15 @@ _ACTIONIZED_OPERATIONS = (
         result_type=PageProjectionEvidenceEnrichmentResult,
         result_base=DataObjectActionResult,
         stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="page_projection_publication",
+        request_type=PageProjectionPublicationRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=PageProjectionPublicationActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=PageProjectionPublicationResult,
+        result_base=DataObjectActionResult,
     ),
     _ActionizedOperation(
         name="reference_claim_candidate_projection",

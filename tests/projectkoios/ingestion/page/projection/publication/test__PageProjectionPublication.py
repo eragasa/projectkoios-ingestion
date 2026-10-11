@@ -1,0 +1,306 @@
+"""Durable owner lifecycle tests for page-projection publication."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+from projectkoios.ingestion.artifact.managed.media.type import (
+    ManagedArtifactMediaType,
+)
+from projectkoios.ingestion.artifact.managed.reference import (
+    ManagedArtifactReference,
+)
+from projectkoios.ingestion.integrations.disk.artifact.managed.binding import (
+    DiskManagedArtifactBinding,
+    DiskManagedArtifactBindingInventory,
+)
+from projectkoios.ingestion.integrations.disk.page.projection.publication.runtime import (  # noqa: E501
+    DiskPageProjectionPublicationRuntime,
+)
+from projectkoios.ingestion.page.projection.publication.codec import (
+    PageProjectionPublicationReceiptCodec,
+)
+from projectkoios.ingestion.page.projection.publication.configuration import (
+    PageProjectionPublicationConfiguration,
+)
+from projectkoios.ingestion.page.projection.publication.error import (
+    PageProjectionPublicationError,
+    PageProjectionPublicationFailureReason,
+)
+from projectkoios.ingestion.page.projection.publication.request import (
+    PageProjectionPublicationRequest,
+)
+from projectkoios.ingestion.page.projection.publication.status import (
+    PageProjectionPublicationDisposition,
+    PageProjectionPublicationProfile,
+)
+from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
+
+pymupdf = pytest.importorskip("pymupdf")
+
+
+def make_pdf() -> bytes:
+    """Return one small deterministic two-page native-text PDF."""
+    document = pymupdf.open()
+    first = document.new_page()
+    first.insert_text((72, 72), "First current evidence paragraph.")
+    second = document.new_page()
+    second.insert_text((72, 72), "Second current evidence paragraph.")
+    content = document.tobytes()
+    document.close()
+    return content
+
+
+def make_runtime(
+    *,
+    source_root: Path,
+    publication_root: Path,
+    reference: ManagedArtifactReference,
+    relative_path: str,
+    deployment_scope_id: str = "test-private-development",
+) -> DiskPageProjectionPublicationRuntime:
+    """Build one trusted runtime without exposing paths to its request."""
+    binding = DiskManagedArtifactBinding(
+        artifact_id=reference.artifact_id,
+        relative_path=relative_path,
+    )
+    return DiskPageProjectionPublicationRuntime(
+        source_root=source_root,
+        source_bindings=DiskManagedArtifactBindingInventory(binding),
+        publication_root=publication_root,
+        deployment_scope_id=deployment_scope_id,
+        configuration=PageProjectionPublicationConfiguration(
+            profile=PageProjectionPublicationProfile.NATIVE_PDF_TEXT_V1,
+            authority_id="test-page-projection-publication-owner",
+            maximum_page_count=100,
+            maximum_block_count=10_000,
+        ),
+    )
+
+
+def make_request(
+    *,
+    runtime: DiskPageProjectionPublicationRuntime,
+    reference: ManagedArtifactReference,
+    token: str,
+    expected_current_publication_id: str | None = None,
+    maximum_block_count: int = 100,
+) -> PageProjectionPublicationRequest:
+    """Build one owner-native request from safe exact artifact scalars."""
+    actionizer = runtime.create_actionizer()
+    return PageProjectionPublicationRequest(
+        source_artifact=reference,
+        expected_pipeline_configuration_id=(
+            actionizer.pipeline_configuration_id
+        ),
+        maximum_page_count=10,
+        maximum_block_count=maximum_block_count,
+        idempotency_token=token,
+        expected_current_publication_id=(expected_current_publication_id),
+    )
+
+
+def test__PageProjectionPublication__creates_and_replays_after_restart(
+    tmp_path: Path,
+) -> None:
+    content = make_pdf()
+    source_root = tmp_path / "source"
+    publication_root = tmp_path / "publication"
+    source_root.mkdir()
+    publication_root.mkdir()
+    source_path = source_root / "opaque.pdf"
+    source_path.write_bytes(content)
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path=source_path.name,
+    )
+    request = make_request(
+        runtime=runtime,
+        reference=reference,
+        token="opaque-token-1",
+    )
+
+    created = runtime.create_actionizer().action(request=request)
+    source_path.unlink()
+    restarted_runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path="opaque.pdf",
+    )
+    replayed = restarted_runtime.create_actionizer().action(request=request)
+
+    assert created.disposition is PageProjectionPublicationDisposition.CREATED
+    assert replayed.disposition is (
+        PageProjectionPublicationDisposition.REPLAYED_IDENTICAL
+    )
+    assert replayed.receipt_id == created.receipt_id
+    assert replayed.receipt_sha256 == created.receipt_sha256
+    assert replayed.receipt_byte_length == created.receipt_byte_length
+    assert replayed.receipt_body_json == created.receipt_body_json
+    assert replayed.committed_publication_id == (
+        created.committed_publication_id
+    )
+
+    codec = PageProjectionPublicationReceiptCodec()
+    receipt = codec.decode(body_json=created.receipt_body_json)
+    assert codec.encode(receipt=receipt) == created.receipt_body_json
+    body = json.loads(created.receipt_body_json)
+    assert body["source_sha256"] == reference.sha256
+    assert body["source_artifact_id"] == reference.artifact_id
+    assert body["page_count"] == 2
+    assert body["block_count"] == 2
+    assert body["enrichment_available_count"] == 2
+    assert body["enrichment_unavailable_count"] == 0
+    assert body["extraction_warning_codes"] == ["pdf.low_text_density"]
+    assert body["reading_limitation_codes"] == []
+    assert body["page_projection_limitation_codes"] == [
+        "citation_acceptance_not_established",
+        "claim_support_not_established",
+        "proofreading_not_established",
+        "publication_suitability_not_established",
+        "rights_not_established",
+        "scientific_validity_not_established",
+    ]
+    changed = dict(body)
+    changed["private_path"] = "/private/source.pdf"
+    changed_json = json.dumps(changed, separators=(",", ":"), sort_keys=True)
+    with pytest.raises(ValueError, match="fields differ"):
+        codec.decode(body_json=changed_json)
+    assert not any(
+        unsafe in key
+        for key in body
+        for unsafe in (
+            "path",
+            "locator",
+            "bytes",
+            "queue",
+            "selection",
+            "observation",
+            "runtime_evidence",
+            "source_asset",
+        )
+    )
+
+
+def test__PageProjectionPublication__conflict_and_cas_precede_source_read(
+    tmp_path: Path,
+) -> None:
+    content = make_pdf()
+    source_root = tmp_path / "source"
+    publication_root = tmp_path / "publication"
+    source_root.mkdir()
+    publication_root.mkdir()
+    source_path = source_root / "book.pdf"
+    source_path.write_bytes(content)
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path=source_path.name,
+    )
+    first = make_request(
+        runtime=runtime,
+        reference=reference,
+        token="same-token",
+    )
+    runtime.create_actionizer().action(request=first)
+    source_path.unlink()
+
+    conflicting = make_request(
+        runtime=runtime,
+        reference=reference,
+        token="same-token",
+        maximum_block_count=101,
+    )
+    with pytest.raises(PageProjectionPublicationError) as conflict:
+        runtime.create_actionizer().action(request=conflicting)
+    assert conflict.value.reason is (
+        PageProjectionPublicationFailureReason.IDEMPOTENCY_CONFLICT
+    )
+
+    stale = make_request(
+        runtime=runtime,
+        reference=reference,
+        token="new-token",
+        expected_current_publication_id=None,
+    )
+    with pytest.raises(PageProjectionPublicationError) as stale_error:
+        runtime.create_actionizer().action(request=stale)
+    assert stale_error.value.reason is (
+        PageProjectionPublicationFailureReason.STALE_CURRENT_PUBLICATION
+    )
+
+
+def test__PageProjectionPublication__content_identity_excludes_path_and_scope(
+    tmp_path: Path,
+) -> None:
+    content = make_pdf()
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    results = []
+    for index, relative_path in enumerate(("first.pdf", "nested/second.pdf")):
+        root = tmp_path / str(index)
+        source_root = root / "source"
+        publication_root = root / "publication"
+        source_path = source_root / relative_path
+        source_path.parent.mkdir(parents=True)
+        publication_root.mkdir(parents=True)
+        source_path.write_bytes(content)
+        runtime = make_runtime(
+            source_root=source_root,
+            publication_root=publication_root,
+            reference=reference,
+            relative_path=relative_path,
+            deployment_scope_id=f"test-scope-{index}",
+        )
+        request = make_request(
+            runtime=runtime,
+            reference=reference,
+            token=f"token-{index}",
+        )
+        results.append(runtime.create_actionizer().action(request=request))
+
+    assert results[0].receipt_body_json == results[1].receipt_body_json
+    assert results[0].receipt_id == results[1].receipt_id
+    assert results[0].committed_publication_id == (
+        results[1].committed_publication_id
+    )
+    assert results[0].idempotency_scope_id != results[1].idempotency_scope_id
+
+
+def test__PageProjectionPublication__request_excludes_external_authority() -> (
+    None
+):
+    field_names = set(PageProjectionPublicationRequest.__dataclass_fields__)
+
+    assert field_names.isdisjoint(
+        {
+            "queue_id",
+            "selection_id",
+            "asset_observation_id",
+            "runtime_evidence_id",
+            "source_asset_id",
+            "decision_id",
+            "binding_id",
+            "path",
+            "content",
+        }
+    )
