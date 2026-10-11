@@ -139,6 +139,15 @@ from projectkoios.ingestion.layout.review.result import LayoutReviewCase
 from projectkoios.ingestion.page.projection.actionizer import (
     PageProjectionActionizer,
 )
+from projectkoios.ingestion.page.projection.enrichment.actionizer import (
+    PageProjectionEvidenceEnrichmentActionizer,
+)
+from projectkoios.ingestion.page.projection.enrichment.request import (
+    PageProjectionEvidenceEnrichmentRequest,
+)
+from projectkoios.ingestion.page.projection.enrichment.result import (
+    PageProjectionEvidenceEnrichmentResult,
+)
 from projectkoios.ingestion.page.projection.request import PageProjectionRequest
 from projectkoios.ingestion.page.projection.result import PageProjectionResult
 from projectkoios.ingestion.reference.claim.candidate import (
@@ -488,6 +497,16 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=PageProjectionActionizer,
         actionizer_base=DataObjectActionizer,
         result_type=PageProjectionResult,
+        result_base=DataObjectActionResult,
+        stateless_actionizer=True,
+    ),
+    _ActionizedOperation(
+        name="page_projection_evidence_enrichment",
+        request_type=PageProjectionEvidenceEnrichmentRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=PageProjectionEvidenceEnrichmentActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=PageProjectionEvidenceEnrichmentResult,
         result_base=DataObjectActionResult,
         stateless_actionizer=True,
     ),

@@ -25,8 +25,17 @@ PageProjectionResult
   upstream reading limitations
   mandatory non-authority limitations
              |
+      +------+------+
+      |             |
+      v             v
+Search-owned     Ingestion enrichment
+chunking         exact raw text/span/warning facts
+                 explicit caption unavailability
+      |             |
+      +------+------+
+             |
              v
-Search-owned downstream admission and chunking
+Downstream owner composition by exact source_evidence_id
 ```
 
 Only the typed current-schema inputs shown above are accepted. The action performs no I/O and emits no table, equation, media, or payload text.

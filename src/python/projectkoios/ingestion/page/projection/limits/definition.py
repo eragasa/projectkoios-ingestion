@@ -30,6 +30,15 @@ class PageProjectionLimits:
     maximum_total_work: int = field(default=2_024_096, init=False)
     maximum_identity_characters: int = field(default=1_024, init=False)
     maximum_processor_version_bytes: int = field(default=1_024, init=False)
+    maximum_enrichment_retained_text_bytes: int = field(
+        default=4_194_304,
+        init=False,
+    )
+    maximum_enrichment_identities: int = field(default=16_384, init=False)
+    maximum_enrichment_warnings: int = field(default=16_384, init=False)
+    maximum_enrichment_limitations: int = field(default=16_384, init=False)
+    maximum_enrichment_code_bytes: int = field(default=256, init=False)
+    maximum_enrichment_detail_bytes: int = field(default=16_384, init=False)
     maximum_identity_input_bytes: int = field(default=16_777_216, init=False)
 
     def require_count(

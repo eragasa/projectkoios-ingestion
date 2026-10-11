@@ -9,8 +9,10 @@ Every pull request and `master` push runs:
 
 - formatting checks for the reference-evidence, page-locator, and
   claim-candidate slice;
-- Ruff lint over all production and test Python;
-- mypy over all production Python;
+- Ruff lint over all production and test Python plus the repository-local
+  type-checker plugin;
+- mypy over all production Python and the local plugin, with strict checking
+  for the page-projection-enrichment slice;
 - deterministic tests marked `benchmark` as a separately visible regression
   gate;
 - the complete pytest suite, including those benchmark regressions;
@@ -25,6 +27,15 @@ the reference-evidence slice predate the current Ruff formatter and are not
 silently reformatted by this CI introduction. Lint, typing, tests, and packaging
 still cover the full repository. Expanding formatter ownership requires a
 separate reviewed baseline-only change.
+
+Normal mypy execution loads the Ingestion-local
+`typecheck.page_projection_enrichment` plugin. Its actual-source scan rejects
+private or nested classes, classes outside the action/enum/immutable-record
+taxonomy, and actionizers or facades that expose multiple public verbs in the
+page-projection-enrichment slice. Typed tuples, including nested tuples, and
+private helper functions or methods remain valid. Diagnostic fixtures exercise
+each rejection and the permitted cases; the strict CI invocation checks both
+the production slice and the plugin itself.
 
 Hierarchy changes also follow the maintained [code smell review](code-smell-review.md).
 Its smoke gates enforce objective package-shape rules in migrated scopes, while
