@@ -24,6 +24,9 @@ from projectkoios.ingestion.transcript.reading.evidence.identity.kind import (
 from projectkoios.ingestion.transcript.reading.evidence.label.inventory import (
     ReadingSourceLabelInventory,
 )
+from projectkoios.ingestion.transcript.reading.evidence.limits.definition import (  # noqa: E501
+    READING_EVIDENCE_LIMITS,
+)
 from projectkoios.ingestion.transcript.reading.evidence.limits.error import (
     ReadingEvidenceLimitError,
 )
@@ -68,6 +71,31 @@ def test__reading_evidence_identity_inventory__rejects_another_role(
         ReadingEvidenceIdentityInventory(
             ReadingEvidenceIdentityKind.DOCUMENT,
             source,
+        )
+
+
+def test__reading_evidence_identity_inventory__supports_document_records(
+) -> None:
+    record_count = READING_EVIDENCE_LIMITS.maximum_identities + 1
+    identities = tuple(
+        ReadingEvidenceIdentity(
+            kind=ReadingEvidenceIdentityKind.CLEAN_TEXT,
+            value=f"clean-text:{index:05d}",
+        )
+        for index in range(record_count)
+    )
+
+    inventory = ReadingEvidenceIdentityInventory(
+        ReadingEvidenceIdentityKind.CLEAN_TEXT,
+        *identities,
+    )
+
+    assert record_count <= READING_EVIDENCE_LIMITS.maximum_records
+    assert len(inventory) == record_count
+    with pytest.raises(ReadingEvidenceLimitError, match="identity count"):
+        ReadingEvidenceIdentityInventory(
+            ReadingEvidenceIdentityKind.WARNING,
+            *identities,
         )
 
 

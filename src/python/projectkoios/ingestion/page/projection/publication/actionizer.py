@@ -74,6 +74,9 @@ from projectkoios.ingestion.sha256.fingerprinter import SHA256Fingerprinter
 from projectkoios.ingestion.transcript.reading.evidence.error import (
     ReadingEvidenceError,
 )
+from projectkoios.ingestion.transcript.reading.evidence.limits.definition import (  # noqa: E501
+    READING_EVIDENCE_LIMITS,
+)
 from projectkoios.ingestion.transcript.reading.evidence.limits.error import (
     ReadingEvidenceLimitError,
 )
@@ -284,6 +287,9 @@ def derive_page_projection_publication_pipeline_id(
             "maximum_block_count": configuration.maximum_block_count,
             "maximum_page_count": configuration.maximum_page_count,
             "maximum_payload_bytes": configuration.maximum_payload_bytes,
+            "maximum_projection_inventory_identities": (
+                READING_EVIDENCE_LIMITS.maximum_records
+            ),
             "maximum_source_bytes": configuration.maximum_source_bytes,
             "profile": configuration.profile,
             "reading_producer_version": "1.0",

@@ -21,6 +21,16 @@ from projectkoios.ingestion.transcript.reading.evidence.limits.error import (
     ReadingEvidenceLimitError,
 )
 
+_DOCUMENT_PROJECTION_KINDS = frozenset(
+    {
+        ReadingEvidenceIdentityKind.CLEAN_TEXT,
+        ReadingEvidenceIdentityKind.EQUATION,
+        ReadingEvidenceIdentityKind.FIGURE,
+        ReadingEvidenceIdentityKind.PAGE_TEXT,
+        ReadingEvidenceIdentityKind.TABLE,
+    }
+)
+
 
 @dataclass(frozen=True, slots=True, init=False)
 class ReadingEvidenceIdentityInventory:
@@ -37,7 +47,12 @@ class ReadingEvidenceIdentityInventory:
         if not isinstance(kind, ReadingEvidenceIdentityKind):
             raise TypeError("kind must be ReadingEvidenceIdentityKind")
         values = tuple(identities)
-        if len(values) > READING_EVIDENCE_LIMITS.maximum_identities:
+        maximum = (
+            READING_EVIDENCE_LIMITS.maximum_records
+            if kind in _DOCUMENT_PROJECTION_KINDS
+            else READING_EVIDENCE_LIMITS.maximum_identities
+        )
+        if len(values) > maximum:
             raise ReadingEvidenceLimitError("identity count exceeds its limit")
         if any(type(value) is not ReadingEvidenceIdentity for value in values):
             raise TypeError("identity inventory contains an invalid value")

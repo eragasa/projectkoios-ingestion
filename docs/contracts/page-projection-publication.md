@@ -57,8 +57,14 @@ authority join, or caller-controlled provider/profile/version ceiling.
 Trusted runtime owns the source root and exact artifact-to-relative-path
 bindings, publication root, deployment scope, owner authority, profile,
 provider, dependency versions, stream limit, absolute source/page/block/payload
-ceilings, and extraction configuration. Browser bounds can only narrow these
-ceilings.
+ceilings, the role-aware document-projection identity-inventory ceiling, and
+extraction configuration. The pipeline freshness identity binds all of these
+effective ceilings. Browser bounds can only narrow request-exposed ceilings.
+
+Document-projection inventories for page text, clean text, figures, tables,
+and equations may contain up to the already-supported record/block ceiling.
+Other identity roles retain the tighter 16,384-item bound used for warnings,
+associations, and other small inventories.
 
 `request_fingerprint` hashes every request field except the token. `request_id`
 hashes that fingerprint plus the token. The publication identity excludes the

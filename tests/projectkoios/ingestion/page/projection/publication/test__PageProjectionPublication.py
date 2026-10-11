@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from projectkoios.ingestion.artifact.managed.media.type import (
@@ -18,6 +19,9 @@ from projectkoios.ingestion.integrations.disk.artifact.managed.binding import (
 )
 from projectkoios.ingestion.integrations.disk.page.projection.publication.runtime import (  # noqa: E501
     DiskPageProjectionPublicationRuntime,
+)
+from projectkoios.ingestion.page.projection.publication import (
+    actionizer as publication_actionizer_module,
 )
 from projectkoios.ingestion.page.projection.publication.codec import (
     PageProjectionPublicationReceiptCodec,
@@ -100,6 +104,38 @@ def make_request(
         idempotency_token=token,
         expected_current_publication_id=(expected_current_publication_id),
     )
+
+
+def test__PageProjectionPublication__binds_inventory_ceiling(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    content = make_pdf()
+    source_root = tmp_path / "source"
+    publication_root = tmp_path / "publication"
+    source_root.mkdir()
+    publication_root.mkdir()
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path="opaque.pdf",
+    )
+    baseline = runtime.create_actionizer().pipeline_configuration_id
+
+    monkeypatch.setattr(
+        publication_actionizer_module,
+        "READING_EVIDENCE_LIMITS",
+        SimpleNamespace(maximum_records=1_000_001),
+    )
+
+    changed = runtime.create_actionizer().pipeline_configuration_id
+    assert changed != baseline
 
 
 def test__PageProjectionPublication__creates_and_replays_after_restart(
