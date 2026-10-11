@@ -157,8 +157,22 @@ class DiskPageProjectionPublicationJournal(PageProjectionPublicationJournal):
             return None
         current = require_disk_string(state.get("current_publication_id"))
         entries = require_disk_json_object(state.get("idempotency"))
+        if len(entries) > 4_096:
+            raise PageProjectionPublicationError(
+                reason=(
+                    PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                ),
+                message="publication journal entries exceed their bound",
+            )
         receipts: dict[str, PageProjectionPublicationReceipt] = {}
-        for raw_entry in entries.values():
+        for token_digest, raw_entry in entries.items():
+            if not SHA256Hash.is_canonical(token_digest):
+                raise PageProjectionPublicationError(
+                    reason=(
+                        PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                    ),
+                    message="publication journal token digest is invalid",
+                )
             entry = require_disk_json_object(raw_entry)
             if set(entry) != {
                 "receipt_id",
@@ -549,7 +563,16 @@ def read_disk_publication_state(
         ) from error
     state = require_disk_json_object(value)
     if (
-        state.get("contract_name") != "disk-page-projection-publication-subject"
+        set(state)
+        != {
+            "contract_name",
+            "contract_version",
+            "current_publication_id",
+            "idempotency",
+            "source_artifact_id",
+        }
+        or state.get("contract_name")
+        != "disk-page-projection-publication-subject"
         or state.get("contract_version") != "1.0"
         or state.get("source_artifact_id") != source_artifact_id
         or CanonicalJsonSerializer.serialize_bytes(state) != content
@@ -686,7 +709,15 @@ def read_disk_publication_result(
             ),
             message="committed receipt identity is invalid",
         )
-    receipt_digest = SHA256Hash(receipt_id.removeprefix(prefix))
+    raw_receipt_digest = receipt_id.removeprefix(prefix)
+    if not SHA256Hash.is_canonical(raw_receipt_digest):
+        raise PageProjectionPublicationError(
+            reason=(
+                PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+            ),
+            message="committed receipt digest is invalid",
+        )
+    receipt_digest = SHA256Hash(raw_receipt_digest)
     receipt_path = disk_existing_content_path(
         root=root, collection="receipts", digest=receipt_digest
     )

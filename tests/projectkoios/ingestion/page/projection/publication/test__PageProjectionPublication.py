@@ -20,6 +20,7 @@ from projectkoios.ingestion.integrations.disk.artifact.managed.binding import (
 from projectkoios.ingestion.integrations.disk.page.projection.publication.runtime import (  # noqa: E501
     DiskPageProjectionPublicationRuntime,
 )
+from projectkoios.ingestion.json.canonical import CanonicalJsonSerializer
 from projectkoios.ingestion.page.projection.publication import (
     actionizer as publication_actionizer_module,
 )
@@ -390,21 +391,35 @@ def test__PageProjectionPublicationRead__fails_closed_on_corruption(
         / receipt_digest[:2]
         / f"{receipt_digest}.json"
     )
-    receipt_path.write_bytes(b"{}")
     subject_paths = tuple((publication_root / "subjects").iterdir())
-    state_before = subject_paths[0].read_bytes()
+    state_path = subject_paths[0]
+    state_before = state_path.read_bytes()
+    state = json.loads(state_before)
+    state["unexpected"] = "unsafe"
+    state_path.write_bytes(CanonicalJsonSerializer.serialize_bytes(state))
 
-    with pytest.raises(PageProjectionPublicationError) as failure:
+    with pytest.raises(PageProjectionPublicationError) as state_failure:
         runtime.create_read_actionizer().action(
             request=PageProjectionPublicationReadRequest(
                 source_artifact=reference
             )
         )
-
-    assert failure.value.reason is (
+    assert state_failure.value.reason is (
         PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
     )
-    assert subject_paths[0].read_bytes() == state_before
+
+    state_path.write_bytes(state_before)
+    receipt_path.write_bytes(b"{}")
+    with pytest.raises(PageProjectionPublicationError) as receipt_failure:
+        runtime.create_read_actionizer().action(
+            request=PageProjectionPublicationReadRequest(
+                source_artifact=reference
+            )
+        )
+    assert receipt_failure.value.reason is (
+        PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+    )
+    assert state_path.read_bytes() == state_before
 
 
 def test__PageProjectionPublication__content_identity_excludes_path_and_scope(
