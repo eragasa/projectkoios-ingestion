@@ -79,6 +79,7 @@ select = ["E", "F", "I", "UP", "B"]
 mypy_path = "src/python"
 namespace_packages = true
 explicit_package_bases = true
+plugins = ["typecheck.page_projection_enrichment"]
 
 [[tool.mypy.overrides]]
 module = ["projectkoios.chunking", "projectkoios.repositories.*"]

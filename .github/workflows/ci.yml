@@ -53,14 +53,24 @@ jobs:
           scripts
           tests
           docs/sphinx
+          typecheck
 
-      - name: Type-check all production source
+      - name: Type-check all production source and local checker
         run: >-
           .venv/bin/python -m mypy
           src/python
           workflow
           cpn
           scripts
+          typecheck
+
+      - name: Strictly type-check page projection enrichment
+        run: >-
+          .venv/bin/python -m mypy
+          --strict
+          --follow-imports=silent
+          src/python/projectkoios/ingestion/page/projection/enrichment
+          typecheck
 
       - name: Run deterministic benchmark regressions
         run: .venv/bin/python -m pytest -q -m benchmark
@@ -237,6 +247,18 @@ jobs:
               "projectkoios.ingestion.json.parser",
               "projectkoios.ingestion.json.serializer",
               "projectkoios.ingestion.json.value",
+              "projectkoios.ingestion.page.projection.enrichment.actionizer",
+              "projectkoios.ingestion.page.projection.enrichment.basis",
+              "projectkoios.ingestion.page.projection.enrichment.binding",
+              "projectkoios.ingestion.page.projection.enrichment.derivation",
+              "projectkoios.ingestion.page.projection.enrichment.identity",
+              "projectkoios.ingestion.page.projection.enrichment.inventory",
+              "projectkoios.ingestion.page.projection.enrichment.limitation",
+              "projectkoios.ingestion.page.projection.enrichment.producer",
+              "projectkoios.ingestion.page.projection.enrichment.record",
+              "projectkoios.ingestion.page.projection.enrichment.request",
+              "projectkoios.ingestion.page.projection.enrichment.result",
+              "projectkoios.ingestion.page.projection.enrichment.warning",
               "projectkoios.ingestion.reference.claim.candidate",
               "projectkoios.ingestion.reference.claim.definition",
               "projectkoios.ingestion.reference.claim.error",
