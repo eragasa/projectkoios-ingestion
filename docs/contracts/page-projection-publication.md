@@ -40,6 +40,36 @@ Trusted disk composition:
 
 Package initializers contain only ownership docstrings and export no names.
 
+## Pure current-publication read
+
+A separate owner-native read supports restart and fresh-client CAS discovery:
+
+- `projectkoios.ingestion.page.projection.publication.read.request.PageProjectionPublicationReadRequest`
+- `projectkoios.ingestion.page.projection.publication.read.actionizer.PageProjectionPublicationReadActionizer`
+- `projectkoios.ingestion.page.projection.publication.read.result.PageProjectionPublicationReadResult`
+- `projectkoios.ingestion.page.projection.publication.read.status.PageProjectionPublicationReadDisposition`
+
+The request contains only one exact locator-free `source_artifact`. The read
+result is either `ABSENT`, with every current-receipt field absent, or `CURRENT`,
+with `current_publication_id`, `receipt_id`, `receipt_sha256`,
+`receipt_byte_length`, and exact canonical `receipt_body_json`. It also carries
+the source artifact ID, read request ID, and derived result ID. It never returns
+the private payload, path, text, locator, token, store scope, or an external
+References/Courses identity.
+
+The read action depends only on `PageProjectionPublicationStore`. The disk
+runtime exposes `create_read_actionizer()` beside the mutation composition. A
+current read holds the source-subject lock, validates canonical state, the safe
+receipt digest/schema, and the private payload digest/length, then returns only
+the safe receipt boundary. An absent read does not create a lock or any other
+state. Store or integrity corruption uses the existing closed
+`PageProjectionPublicationError` reasons; absence is a successful disposition,
+not an error.
+
+This leaf cannot mutate authority and does not participate in mutation pipeline
+freshness or publication/A/B identities. Adding it leaves the mutation request,
+result, receipt, pipeline identity, and committed objects byte-unchanged.
+
 ## Request field audit
 
 | Field | Trust and meaning | Identity role |

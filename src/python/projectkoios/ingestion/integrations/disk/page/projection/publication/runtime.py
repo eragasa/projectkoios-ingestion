@@ -20,6 +20,9 @@ from projectkoios.ingestion.page.projection.publication.actionizer import (
 from projectkoios.ingestion.page.projection.publication.configuration import (
     PageProjectionPublicationConfiguration,
 )
+from projectkoios.ingestion.page.projection.publication.read.actionizer import (
+    PageProjectionPublicationReadActionizer,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,3 +72,13 @@ class DiskPageProjectionPublicationRuntime:
             store=store,
             configuration=self.configuration,
         )
+
+    def create_read_actionizer(
+        self,
+    ) -> PageProjectionPublicationReadActionizer:
+        """Compose the pure current-publication read from trusted storage."""
+        store = DiskPageProjectionPublicationStore(
+            root=self.publication_root,
+            deployment_scope_id=self.deployment_scope_id,
+        )
+        return PageProjectionPublicationReadActionizer(store=store)

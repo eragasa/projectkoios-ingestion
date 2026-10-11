@@ -33,6 +33,15 @@ from projectkoios.ingestion.page.projection.publication.error import (
     PageProjectionPublicationError,
     PageProjectionPublicationFailureReason,
 )
+from projectkoios.ingestion.page.projection.publication.read.request import (
+    PageProjectionPublicationReadRequest,
+)
+from projectkoios.ingestion.page.projection.publication.read.result import (
+    PageProjectionPublicationReadResult,
+)
+from projectkoios.ingestion.page.projection.publication.read.status import (
+    PageProjectionPublicationReadDisposition,
+)
 from projectkoios.ingestion.page.projection.publication.request import (
     PageProjectionPublicationRequest,
 )
@@ -138,6 +147,55 @@ def test__PageProjectionPublication__binds_inventory_ceiling(
     assert changed != baseline
 
 
+def test__PageProjectionPublicationRead__absent_has_no_effect(
+    tmp_path: Path,
+) -> None:
+    content = make_pdf()
+    source_root = tmp_path / "source"
+    publication_root = tmp_path / "publication"
+    source_root.mkdir()
+    publication_root.mkdir()
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path="absent.pdf",
+    )
+    actionizer = runtime.create_read_actionizer()
+    before = tuple(
+        sorted(
+            path.relative_to(publication_root)
+            for path in publication_root.rglob("*")
+        )
+    )
+
+    result = actionizer.action(
+        request=PageProjectionPublicationReadRequest(
+            source_artifact=reference
+        )
+    )
+
+    after = tuple(
+        sorted(
+            path.relative_to(publication_root)
+            for path in publication_root.rglob("*")
+        )
+    )
+    assert result.disposition is PageProjectionPublicationReadDisposition.ABSENT
+    assert result.source_artifact_id == reference.artifact_id
+    assert result.current_publication_id is None
+    assert result.receipt_id is None
+    assert result.receipt_sha256 is None
+    assert result.receipt_byte_length is None
+    assert result.receipt_body_json is None
+    assert after == before
+
+
 def test__PageProjectionPublication__creates_and_replays_after_restart(
     tmp_path: Path,
 ) -> None:
@@ -186,6 +244,21 @@ def test__PageProjectionPublication__creates_and_replays_after_restart(
     assert replayed.committed_publication_id == (
         created.committed_publication_id
     )
+
+    current = restarted_runtime.create_read_actionizer().action(
+        request=PageProjectionPublicationReadRequest(
+            source_artifact=reference
+        )
+    )
+    assert current.disposition is (
+        PageProjectionPublicationReadDisposition.CURRENT
+    )
+    assert current.source_artifact_id == reference.artifact_id
+    assert current.current_publication_id == created.committed_publication_id
+    assert current.receipt_id == created.receipt_id
+    assert current.receipt_sha256 == created.receipt_sha256
+    assert current.receipt_byte_length == created.receipt_byte_length
+    assert current.receipt_body_json == created.receipt_body_json
 
     codec = PageProjectionPublicationReceiptCodec()
     receipt = codec.decode(body_json=created.receipt_body_json)
@@ -282,6 +355,58 @@ def test__PageProjectionPublication__conflict_and_cas_precede_source_read(
     )
 
 
+def test__PageProjectionPublicationRead__fails_closed_on_corruption(
+    tmp_path: Path,
+) -> None:
+    content = make_pdf()
+    source_root = tmp_path / "source"
+    publication_root = tmp_path / "publication"
+    source_root.mkdir()
+    publication_root.mkdir()
+    source_path = source_root / "book.pdf"
+    source_path.write_bytes(content)
+    reference = ManagedArtifactReference(
+        sha256=SHA256Fingerprinter.fingerprint(content=content),
+        byte_length=len(content),
+        media_type=ManagedArtifactMediaType.APPLICATION_PDF,
+    )
+    runtime = make_runtime(
+        source_root=source_root,
+        publication_root=publication_root,
+        reference=reference,
+        relative_path=source_path.name,
+    )
+    created = runtime.create_actionizer().action(
+        request=make_request(
+            runtime=runtime,
+            reference=reference,
+            token="corruption-read-token",
+        )
+    )
+    receipt_digest = str(created.receipt_sha256)
+    receipt_path = (
+        publication_root
+        / "receipts"
+        / receipt_digest[:2]
+        / f"{receipt_digest}.json"
+    )
+    receipt_path.write_bytes(b"{}")
+    subject_paths = tuple((publication_root / "subjects").iterdir())
+    state_before = subject_paths[0].read_bytes()
+
+    with pytest.raises(PageProjectionPublicationError) as failure:
+        runtime.create_read_actionizer().action(
+            request=PageProjectionPublicationReadRequest(
+                source_artifact=reference
+            )
+        )
+
+    assert failure.value.reason is (
+        PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+    )
+    assert subject_paths[0].read_bytes() == state_before
+
+
 def test__PageProjectionPublication__content_identity_excludes_path_and_scope(
     tmp_path: Path,
 ) -> None:
@@ -326,6 +451,12 @@ def test__PageProjectionPublication__request_excludes_external_authority() -> (
     None
 ):
     field_names = set(PageProjectionPublicationRequest.__dataclass_fields__)
+    read_request_fields = set(
+        PageProjectionPublicationReadRequest.__dataclass_fields__
+    )
+    read_result_fields = set(
+        PageProjectionPublicationReadResult.__dataclass_fields__
+    )
 
     assert field_names.isdisjoint(
         {
@@ -340,3 +471,17 @@ def test__PageProjectionPublication__request_excludes_external_authority() -> (
             "content",
         }
     )
+    unsafe_fields = {
+        "queue_id",
+        "selection_id",
+        "asset_observation_id",
+        "runtime_evidence_id",
+        "source_asset_id",
+        "decision_id",
+        "binding_id",
+        "path",
+        "payload",
+        "content",
+    }
+    assert read_request_fields.isdisjoint(unsafe_fields)
+    assert read_result_fields.isdisjoint(unsafe_fields)

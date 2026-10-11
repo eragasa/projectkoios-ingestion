@@ -17,9 +17,14 @@ from projectkoios.ingestion.page.projection.publication.result import (
 
 
 class PageProjectionPublicationJournal(ABC):
-    """Own replay, head CAS, and atomic authority commit under one lock."""
+    """Own current reads, replay, head CAS, and commit under one lock."""
 
     __slots__ = ()
+
+    @abstractmethod
+    def read_current(self) -> PageProjectionPublicationReceipt | None:
+        """Return the integrity-verified current safe receipt, when present."""
+        raise NotImplementedError
 
     @abstractmethod
     def replay(
@@ -62,6 +67,13 @@ class PageProjectionPublicationStore(ABC):
     @abstractmethod
     def scope_id(self) -> str:
         """Return the immutable trusted deployment/publication scope."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def read_current(
+        self, *, source_artifact_id: str
+    ) -> PageProjectionPublicationReceipt | None:
+        """Read one current receipt under the source-subject lock."""
         raise NotImplementedError
 
     @abstractmethod

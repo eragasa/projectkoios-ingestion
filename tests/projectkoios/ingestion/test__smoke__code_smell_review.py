@@ -151,6 +151,15 @@ from projectkoios.ingestion.page.projection.enrichment.result import (
 from projectkoios.ingestion.page.projection.publication.actionizer import (
     PageProjectionPublicationActionizer,
 )
+from projectkoios.ingestion.page.projection.publication.read.actionizer import (
+    PageProjectionPublicationReadActionizer,
+)
+from projectkoios.ingestion.page.projection.publication.read.request import (
+    PageProjectionPublicationReadRequest,
+)
+from projectkoios.ingestion.page.projection.publication.read.result import (
+    PageProjectionPublicationReadResult,
+)
 from projectkoios.ingestion.page.projection.publication.request import (
     PageProjectionPublicationRequest,
 )
@@ -526,6 +535,15 @@ _ACTIONIZED_OPERATIONS = (
         actionizer_type=PageProjectionPublicationActionizer,
         actionizer_base=DataObjectActionizer,
         result_type=PageProjectionPublicationResult,
+        result_base=DataObjectActionResult,
+    ),
+    _ActionizedOperation(
+        name="page_projection_publication_read",
+        request_type=PageProjectionPublicationReadRequest,
+        request_base=DataObjectActionRequest,
+        actionizer_type=PageProjectionPublicationReadActionizer,
+        actionizer_base=DataObjectActionizer,
+        result_type=PageProjectionPublicationReadResult,
         result_base=DataObjectActionResult,
     ),
     _ActionizedOperation(

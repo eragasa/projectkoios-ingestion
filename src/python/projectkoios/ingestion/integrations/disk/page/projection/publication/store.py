@@ -98,6 +98,19 @@ class DiskPageProjectionPublicationStore(PageProjectionPublicationStore):
         """Return the immutable trusted publication scope identity."""
         return self._scope_id
 
+    def read_current(
+        self, *, source_artifact_id: str
+    ) -> PageProjectionPublicationReceipt | None:
+        """Read one current receipt without creating publication state."""
+        PAGE_PROJECTION_LIMITS.require_identity(
+            source_artifact_id, "source_artifact_id"
+        )
+        return read_disk_page_projection_publication_current(
+            root=self.root,
+            scope_id=self.scope_id,
+            source_artifact_id=source_artifact_id,
+        )
+
     def open_journal(
         self, *, source_artifact_id: str
     ) -> AbstractContextManager[PageProjectionPublicationJournal]:
@@ -133,6 +146,81 @@ class DiskPageProjectionPublicationJournal(PageProjectionPublicationJournal):
                 "store_scope_id": scope_id,
             },
         )
+
+    def read_current(self) -> PageProjectionPublicationReceipt | None:
+        """Return the current receipt after verifying state and private data."""
+        state = read_disk_publication_state(
+            root=self.root,
+            source_artifact_id=self.source_artifact_id,
+        )
+        if state is None:
+            return None
+        current = require_disk_string(state.get("current_publication_id"))
+        entries = require_disk_json_object(state.get("idempotency"))
+        receipts: dict[str, PageProjectionPublicationReceipt] = {}
+        for raw_entry in entries.values():
+            entry = require_disk_json_object(raw_entry)
+            if set(entry) != {
+                "receipt_id",
+                "request_fingerprint",
+                "request_id",
+            }:
+                raise PageProjectionPublicationError(
+                    reason=(
+                        PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                    ),
+                    message="publication journal entry is malformed",
+                )
+            receipt_id = require_disk_string(entry.get("receipt_id"))
+            request_id = require_disk_string(entry.get("request_id"))
+            request_fingerprint = require_disk_string(
+                entry.get("request_fingerprint")
+            )
+            if not request_id.startswith(
+                "page-projection-publication-request:sha256:"
+            ) or not request_fingerprint.startswith(
+                "page-projection-publication-request-fingerprint:sha256:"
+            ):
+                raise PageProjectionPublicationError(
+                    reason=(
+                        PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                    ),
+                    message="publication journal request identity is invalid",
+                )
+            if receipt_id not in receipts:
+                result = read_disk_publication_result(
+                    root=self.root,
+                    idempotency_scope_id=self.idempotency_scope_id,
+                    request_id=request_id,
+                    receipt_id=receipt_id,
+                    disposition=(
+                        PageProjectionPublicationDisposition.REPLAYED_IDENTICAL
+                    ),
+                )
+                receipt = PageProjectionPublicationReceiptCodec().decode(
+                    body_json=result.receipt_body_json
+                )
+                if receipt.source_artifact_id != self.source_artifact_id:
+                    raise PageProjectionPublicationError(
+                        reason=(
+                            PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                        ),
+                        message="publication receipt source differs",
+                    )
+                receipts[receipt_id] = receipt
+        matches = tuple(
+            receipt
+            for receipt in receipts.values()
+            if receipt.publication_id == current
+        )
+        if len(matches) != 1:
+            raise PageProjectionPublicationError(
+                reason=(
+                    PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                ),
+                message="current publication receipt is not singular",
+            )
+        return matches[0]
 
     def replay(
         self, *, request: PageProjectionPublicationRequest
@@ -302,10 +390,10 @@ def open_disk_page_projection_publication_journal(
     *, root: Path, scope_id: str, source_artifact_id: str
 ) -> Iterator[PageProjectionPublicationJournal]:
     """Hold one advisory subject lock across replay, CAS, and commit."""
-    subject_digest = SHA256Fingerprinter.fingerprint(
-        content=source_artifact_id.encode("utf-8", errors="strict")
+    lock_path = disk_subject_lock_path(
+        root=root,
+        source_artifact_id=source_artifact_id,
     )
-    lock_path = root / "locks" / f"{subject_digest}.lock"
     descriptor = os.open(
         lock_path,
         os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW,
@@ -325,6 +413,62 @@ def open_disk_page_projection_publication_journal(
             os.close(descriptor)
 
 
+def read_disk_page_projection_publication_current(
+    *, root: Path, scope_id: str, source_artifact_id: str
+) -> PageProjectionPublicationReceipt | None:
+    """Read one subject under an existing lock without creating an effect."""
+    lock_path = disk_subject_lock_path(
+        root=root,
+        source_artifact_id=source_artifact_id,
+    )
+    flags = os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW
+    try:
+        descriptor = os.open(lock_path, flags)
+    except FileNotFoundError:
+        state = read_disk_publication_state(
+            root=root,
+            source_artifact_id=source_artifact_id,
+        )
+        if state is None:
+            return None
+        try:
+            descriptor = os.open(lock_path, flags)
+        except OSError as error:
+            raise PageProjectionPublicationError(
+                reason=(
+                    PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+                ),
+                message="publication subject lock is unavailable",
+            ) from error
+    except OSError as error:
+        raise PageProjectionPublicationError(
+            reason=(
+                PageProjectionPublicationFailureReason.PUBLICATION_STORE_UNAVAILABLE
+            ),
+            message="publication subject lock cannot be opened",
+        ) from error
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_SH)
+        return DiskPageProjectionPublicationJournal(
+            root=root,
+            scope_id=scope_id,
+            source_artifact_id=source_artifact_id,
+        ).read_current()
+    finally:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+
+
+def disk_subject_lock_path(*, root: Path, source_artifact_id: str) -> Path:
+    """Return the digest-only advisory lock path for one source subject."""
+    subject_digest = SHA256Fingerprinter.fingerprint(
+        content=source_artifact_id.encode("utf-8", errors="strict")
+    )
+    return root / "locks" / f"{subject_digest}.lock"
+
+
 def fingerprint_disk_idempotency_token(token: str) -> str:
     """Return a safe state key without persisting the opaque caller token."""
     return SHA256Fingerprinter.fingerprint(
@@ -341,7 +485,7 @@ def disk_subject_path(*, root: Path, source_artifact_id: str) -> Path:
 
 
 def disk_content_path(*, root: Path, collection: str, digest: str) -> Path:
-    """Return one sharded digest-only immutable content path."""
+    """Return one sharded digest-only immutable content path for writing."""
     if collection not in {"objects", "receipts"}:
         raise ValueError("content collection is unsupported")
     if not SHA256Hash.is_canonical(digest):
@@ -356,6 +500,26 @@ def disk_content_path(*, root: Path, collection: str, digest: str) -> Path:
             message="publication content directory is unsafe",
         )
     return directory / f"{digest}.json"
+
+
+def disk_existing_content_path(
+    *, root: Path, collection: str, digest: str
+) -> Path:
+    """Return one existing content path without creating store state."""
+    if collection not in {"objects", "receipts"}:
+        raise ValueError("content collection is unsupported")
+    if not SHA256Hash.is_canonical(digest):
+        raise ValueError("content digest is not canonical")
+    directory = root / collection / digest[:2]
+    path = directory / f"{digest}.json"
+    if directory.is_symlink() or path.is_symlink():
+        raise PageProjectionPublicationError(
+            reason=(
+                PageProjectionPublicationFailureReason.PUBLICATION_INTEGRITY_INVALID
+            ),
+            message="publication content path is unsafe",
+        )
+    return path
 
 
 def read_disk_publication_state(
@@ -523,7 +687,7 @@ def read_disk_publication_result(
             message="committed receipt identity is invalid",
         )
     receipt_digest = SHA256Hash(receipt_id.removeprefix(prefix))
-    receipt_path = disk_content_path(
+    receipt_path = disk_existing_content_path(
         root=root, collection="receipts", digest=receipt_digest
     )
     try:
@@ -555,7 +719,7 @@ def read_disk_publication_result(
     publication_id = receipt.publication_id
     payload_digest = receipt.payload_sha256
     payload_length = receipt.payload_byte_length
-    payload_path = disk_content_path(
+    payload_path = disk_existing_content_path(
         root=root, collection="objects", digest=payload_digest
     )
     try:

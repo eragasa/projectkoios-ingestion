@@ -139,6 +139,15 @@ jobs:
           from projectkoios.ingestion.page.projection.publication.error import (
               PageProjectionPublicationError,
           )
+          from projectkoios.ingestion.page.projection.publication.read.actionizer import (
+              PageProjectionPublicationReadActionizer,
+          )
+          from projectkoios.ingestion.page.projection.publication.read.request import (
+              PageProjectionPublicationReadRequest,
+          )
+          from projectkoios.ingestion.page.projection.publication.read.result import (
+              PageProjectionPublicationReadResult,
+          )
           from projectkoios.ingestion.page.projection.publication.request import (
               PageProjectionPublicationRequest,
           )
@@ -157,6 +166,9 @@ jobs:
           assert ExtractionProjectionProjector is not None
           assert PageProjectionPublicationActionizer is not None
           assert PageProjectionPublicationError is not None
+          assert PageProjectionPublicationReadActionizer is not None
+          assert PageProjectionPublicationReadRequest is not None
+          assert PageProjectionPublicationReadResult is not None
           assert PageProjectionPublicationRequest is not None
           assert PageProjectionPublicationResult is not None
 
