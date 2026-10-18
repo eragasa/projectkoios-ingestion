@@ -2,3 +2,6 @@
 scripts/pdf_fixture_matrix.py text eol=lf
 tests/fixtures/pdf/*.json text eol=lf
 tests/fixtures/pdf/*.pdf binary
+tests/fixtures/pdf/real-journal-articles/*.pdf binary
+tests/fixtures/pdf/real-journal-articles/README.md text eol=lf
+tests/fixtures/pdf/real-journal-articles/manifest.json text eol=lf
