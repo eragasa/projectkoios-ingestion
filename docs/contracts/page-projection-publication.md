@@ -164,6 +164,39 @@ No separate preview or status action is required. Request construction is
 pure, exact replay is read-only, non-replay mutation is guarded by explicit
 CAS, and success is returned only after a post-commit owner reread.
 
+## Exact typed immutable load
+
+A separate load leaf reconstructs the exact defining owner types for an
+already-known immutable publication:
+
+- `PageProjectionPublicationLoadRequest` binds the complete managed artifact,
+  pipeline, publication, receipt, payload, Page Projection, and enrichment
+  identities plus exact receipt/payload digests and lengths;
+- `PageProjectionPublicationLoadActionizer` verifies and decodes those exact
+  immutable objects; and
+- `PageProjectionPublicationLoadResult` returns exact `PageProjectionResult`
+  and `PageProjectionEvidenceEnrichmentResult` values, not wire projections,
+  aliases, compatibility values, or flattened text.
+
+`DiskPageProjectionPublicationLoadRuntime` holds the explicit private root as
+operational configuration. The root and object paths never enter the request,
+result, publication identity, or payload identity. The disk source selects
+content-addressed receipt and payload objects directly from their requested
+SHA-256 identities; it does not consult the mutable subject head. An older
+immutable publication therefore remains loadable after a newer head commits.
+The source performs bounded no-follow regular-file reads and no writes,
+directory creation, extraction, OCR, or publication effects.
+
+The loader reuses `PageProjectionPublicationReceiptCodec`, verifies the exact
+receipt and payload lengths and SHA-256 values before parsing, and enforces the
+request's declared payload byte ceiling before allocation. Its payload codec
+admits only the current closed field/type/version grammar, reconstructs through
+public constructors, compares stored derived identities, and requires
+byte-for-byte canonical reserialization. Unknown or missing fields,
+noncanonical JSON, unsupported types or versions, corruption, and identity
+drift fail closed. Equation evidence remains owned by canonical reading
+evidence and is never synthesized or flattened into Page Projection.
+
 ## Closed failures
 
 `PageProjectionPublicationError.reason` is one
