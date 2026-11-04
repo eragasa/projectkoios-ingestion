@@ -310,6 +310,7 @@ _NO_STATIC_UTILITY_METHOD_SCOPES = (
     _SOURCE_ROOT / "reference/evidence/validation.py",
     _SOURCE_ROOT / "reference/evidence/json/value.py",
 )
+_STATIC_UTILITY_METHOD_OWNER_SCOPES = (_SOURCE_ROOT / "sha256",)
 _NO_PUBLIC_RAW_TUPLE_FIELD_SCOPES = (
     _SOURCE_ROOT / "page/projection",
     _SOURCE_ROOT / "integrations/mongodb/transcript/reading/evidence",
@@ -339,6 +340,7 @@ _NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES = (
     _SOURCE_ROOT / "transcript/reading/evidence",
     _SOURCE_ROOT / "transcription",
 )
+_EXTERNAL_STATIC_UTILITY_METHODS: frozenset[tuple[str, str, str]] = frozenset()
 _EXTERNAL_MODULE_FUNCTIONS = frozenset(
     {
         (
@@ -690,6 +692,7 @@ def test__smoke__registered_migrated_scopes_exist() -> None:
             *_MIGRATED_SCOPES,
             *_NO_PRIVATE_MEMBER_FUNCTION_SCOPES,
             *_NO_STATIC_UTILITY_METHOD_SCOPES,
+            *_STATIC_UTILITY_METHOD_OWNER_SCOPES,
             *_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES,
         }
     )
@@ -799,6 +802,112 @@ def test__smoke__registered_scopes_have_no_static_utility_methods() -> None:
                     )
 
     assert invalid == []
+
+
+def test__smoke__registered_static_utility_methods_have_source_owners() -> None:
+    modules = {
+        _module_name(path): (path, ast.parse(path.read_text()))
+        for path in _source_python_paths()
+    }
+    definitions = {
+        (module_name, class_node.name, method_node.name): (path, method_node)
+        for path in _python_paths(_STATIC_UTILITY_METHOD_OWNER_SCOPES)
+        for module_name in (_module_name(path),)
+        for class_node in (
+            node
+            for node in ast.walk(modules[module_name][1])
+            if isinstance(node, ast.ClassDef)
+        )
+        for method_node in class_node.body
+        if isinstance(method_node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Name)
+            and decorator.id in {"classmethod", "staticmethod"}
+            for decorator in method_node.decorator_list
+        )
+    }
+    class_keys = {
+        (module_name, class_node.name)
+        for module_name, (_, tree) in modules.items()
+        for class_node in tree.body
+        if isinstance(class_node, ast.ClassDef)
+    }
+    references: set[tuple[str, str, str]] = set()
+    for module_name, (path, tree) in modules.items():
+        package_name = (
+            module_name
+            if path.name == "__init__.py"
+            else module_name.rpartition(".")[0]
+        )
+        class_aliases = {
+            class_name: (module_name, class_name)
+            for owner_module, class_name in class_keys
+            if owner_module == module_name
+        }
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            imported_module = node.module or ""
+            if node.level:
+                imported_module = resolve_name(
+                    "." * node.level + imported_module,
+                    package_name,
+                )
+            for imported in node.names:
+                class_key = (imported_module, imported.name)
+                if class_key in class_keys:
+                    class_aliases[imported.asname or imported.name] = class_key
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in class_aliases
+            ):
+                continue
+            owner_module, class_name = class_aliases[node.value.id]
+            key = (owner_module, class_name, node.attr)
+            if key in definitions:
+                references.add(key)
+        for class_node in (
+            node for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
+        ):
+            class_key = (module_name, class_node.name)
+            for method_node in class_node.body:
+                if (
+                    not isinstance(
+                        method_node,
+                        (ast.FunctionDef, ast.AsyncFunctionDef),
+                    )
+                    or not method_node.args.args
+                ):
+                    continue
+                receiver_name = method_node.args.args[0].arg
+                for node in ast.walk(method_node):
+                    if not (
+                        isinstance(node, ast.Attribute)
+                        and isinstance(node.value, ast.Name)
+                        and node.value.id == receiver_name
+                    ):
+                        continue
+                    key = (*class_key, node.attr)
+                    if key in definitions:
+                        references.add(key)
+
+    invalid = sorted(
+        f"{path.relative_to(_SOURCE_ROOT)}:{node.lineno}:"
+        f"{class_name}.{method_name}"
+        for key, (path, node) in definitions.items()
+        for _, class_name, method_name in (key,)
+        if key not in references and key not in _EXTERNAL_STATIC_UTILITY_METHODS
+    )
+    invalid_external_registrations = sorted(
+        ":".join(key)
+        for key in _EXTERNAL_STATIC_UTILITY_METHODS
+        if key not in definitions or key in references
+    )
+
+    assert invalid == []
+    assert invalid_external_registrations == []
 
 
 def test__smoke__registered_scopes_have_no_public_raw_tuple_fields() -> None:

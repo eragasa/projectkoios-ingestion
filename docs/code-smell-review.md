@@ -24,6 +24,10 @@ The local smoke suite checks objective rules in each migrated source scope:
 - registered utility-clean scopes do not use `staticmethod` or `classmethod` to
   turn classes into procedural namespaces; cohesive codecs and legacy scopes
   remain outside that registry until separately reduced;
+- registered static-utility owner scopes contain no `staticmethod` or
+  `classmethod` without an exact production-source owner call or explicit
+  external-use registration; this ownership check does not bless the utility
+  container or replace its eventual semantic reduction;
 - registered semantic-collection scopes expose no public raw `tuple[...]`
   fields; private tuple storage remains an implementation detail of immutable
   inventories;
@@ -38,8 +42,11 @@ The local smoke suite checks objective rules in each migrated source scope:
 When an operation adopts the request/actionizer/result standard, add it to the
 smoke suite's `_ACTIONIZED_OPERATIONS` registry in the same change. Register a
 public function in `_EXTERNAL_MODULE_FUNCTIONS` only when its caller genuinely
-lives outside production source, and remove stale registrations. Add a domain
-to `_NO_PRIVATE_MEMBER_FUNCTION_SCOPES` or
+lives outside production source, and remove stale registrations. Apply the same
+rule to `_EXTERNAL_STATIC_UTILITY_METHODS`; register a static utility scope for
+owner checking as soon as its current production calls are explicit, even when
+separate utility-container reduction remains open. Add a domain to
+`_NO_PRIVATE_MEMBER_FUNCTION_SCOPES` or
 `_NO_CROSS_MODULE_PRIVATE_IMPORT_SCOPES` as soon as its applicable debt is
 removed. Register reduced domains or precise leaves in
 `_NO_STATIC_UTILITY_METHOD_SCOPES` and semantic collection domains in

@@ -72,13 +72,3 @@ def test__sha256_verifier__returns_false_for_malformed_expected_hash() -> None:
             content="abc",  # type: ignore[arg-type]
             expected="not-a-hash",
         )
-
-
-def test__sha256_verifier__supports_ordered_chunks() -> None:
-    expected = SHA256Fingerprinter.fingerprint(content=b"abc")
-
-    assert SHA256Verifier.verify_chunks(chunks=(b"a", b"bc"), expected=expected)
-    assert not SHA256Verifier.verify_chunks(
-        chunks=(b"a", b"bc"),
-        expected="not-a-hash",
-    )
