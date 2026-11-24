@@ -1,0 +1,1 @@
+"""Accepted table evidence namespace."""
