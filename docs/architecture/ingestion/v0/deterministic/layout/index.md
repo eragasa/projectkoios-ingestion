@@ -11,6 +11,10 @@ processor version `2`.
 Validation is maintained in the focused actionizer and compatibility processor
 test suites.
 
+A non-authoritative parallel item-map design is documented under
+[`layout.page`](../../../../projectkoios/ingestion/layout/page/index.md). It is not
+a `v2` rename and does not change this implementation or authorize cutover.
+
 ## Short Description
 
 The deterministic page-layout processor converts the exact geometric evidence

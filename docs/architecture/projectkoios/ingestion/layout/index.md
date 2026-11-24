@@ -9,6 +9,9 @@ unaccepted, review cases are deterministic comparison evidence, replicated
 model resolutions remain non-authoritative model evidence, and human
 annotations remain evidence rather than publication acceptance.
 
+- [`page`](page/index.md) — parallel-build design for exact persisted
+  page-item and item-layout maps; the current `PageLayoutResult` remains
+  authoritative until explicit cutover.
 - [`render`](render/index.md) — exact pixel identity and source/pixel mapping.
 - [`review`](review/index.md) — bounded proposal comparison and review cases.
 - [`reading`](reading/index.md) — framework-neutral candidate evidence,

@@ -67,6 +67,22 @@ compound stems still require the same semantic review.
 
 ## Human semantic review
 
+Ownership cleanup must move only toward stronger constructed semantic ownership:
+
+```text
+private dangling function
+    -> public dangling function
+    -> static class method
+    -> instance method on an empty-constructor class
+    -> instance method on a semantically non-trivial constructed owner
+```
+
+Intermediate forms remain smells; the target is the final form. A constructor
+is non-trivial only when its validated state and invariants are genuinely used
+by the behavior. Moving a static method to a module function, renaming a private
+helper public, or injecting dummy constructor state is a regression rather than
+a cleanup.
+
 Automated token splitting is prohibited. For every moved or introduced path,
 review the owned type or operation and answer these questions:
 

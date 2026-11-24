@@ -102,6 +102,10 @@ Contains the ordered extraction result for one physical PDF page:
 
 Page order is physical source order. Printed labels may be non-numeric.
 
+A [parallel source Page design](architecture/projectkoios/ingestion/documents/page/index.md)
+assigns ordered/keyed page-item inventory ownership to the source Page. It does
+not change the current `ExtractedPage` contract or authorize cutover.
+
 ## `ExtractedDocument`
 
 The destination-independent result of deterministic source extraction:
